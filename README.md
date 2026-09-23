@@ -15,13 +15,16 @@ Turn a DOI into a reference, find a DOI from a title, and convert pasted referen
 | `index.html` | The web tool, single file, with `citations.js` inlined by `build.sh`. |
 | `citations.js` | The formatting library: the only place citation rules live. |
 | `build.sh` | Re-inlines `citations.js` into `index.html` and refreshes the Apps Script copy. |
+| `data/styles-index.json` | Name and title of every CSL style, from Zotero's style index. Loaded only when you open the style search. |
+| `data/endnote-shortlist.json` | CSL styles whose titles match the `.ens` files in an EndNote 21 Styles folder. |
+| `tools/build-style-index.py` | Regenerates both data files. Pass your EndNote Styles folder to refresh the shortlist. |
 | `apps-script/Code.gs` + `apps-script/Citations.gs` | The same logic as Google Sheets custom functions plus an export menu. |
 
 After editing `citations.js`, run `./build.sh`; it updates both `index.html` and `apps-script/Citations.gs`.
 
 ## Web tool
 
-1. **DOI → reference.** Paste a DOI, doi.org link, arXiv ID, PubMed or PMC ID, or any text containing one. You get APA 7, MLA 9, Chicago 17, Harvard, Vancouver, IEEE and Annals of Carnegie Museum, plus BibTeX, RIS and EndNote tagged. *Copy* gives plain text. *Rich* keeps the italics for Word and Google Docs. Link straight to a lookup with `?q=`, e.g. `https://toldxls.github.io/AutoDOI/?q=10.1038/nature12373`, or drag the bookmarklet in Settings to your bookmarks bar to cite the article page you are reading.
+1. **DOI → reference.** Paste a DOI, doi.org link, arXiv ID, PubMed or PMC ID, or any text containing one. You get APA 7, MLA 9, Chicago 17, Harvard, Vancouver, IEEE and Annals of Carnegie Museum, plus BibTeX, RIS and EndNote tagged. The **Style** dropdown shows all of them, just one, or opens a search across the 10,000+ journal styles of the [Citation Style Language](https://citationstyles.org/) repository (Nature, Geology, American Mineralogist, and so on), rendered in the browser by citeproc-js. Tick *Only the styles that also ship with EndNote* to narrow the search to the 261 styles whose names match EndNote 21's Styles folder. Styles you pick are remembered in the dropdown and in the batch tab's reference list. *Copy* gives plain text. *Rich* keeps the italics for Word and Google Docs. Link straight to a lookup with `?q=`, e.g. `https://toldxls.github.io/AutoDOI/?q=10.1038/nature12373`, or drag the bookmarklet in Settings to your bookmarks bar to cite the article page you are reading.
 2. **Find a DOI.** Title plus optional journal. Best matches come back with a match chip; *Format* sends one to the first tab.
 3. **Reference → EndNote.** Paste one or more references in any style, one per line, or separated by blank lines if they wrap. Each is matched against Crossref and colour-coded green / amber / red by how well the record's title, year and first author appear in your text. Untick anything wrong, then copy the combined `.enw`, `.ris` or BibTeX text, or a clean reference list re-formatted in any of the styles (alphabetical, or numbered for Vancouver and IEEE). Cmd/Ctrl+Enter submits.
 
@@ -52,6 +55,10 @@ Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faste
 ## License
 
 MIT. See `LICENSE`.
+
+## EndNote `.ens` styles
+
+EndNote's own style files are a proprietary binary format that nothing outside EndNote can read, so they cannot be loaded here directly. The Citation Style Language repository covers most of the same journals under the same names; the search box finds them and the EndNote checkbox shows which ones overlap. A journal missing from both can be added as a hand-written style in `citations.js`, as Annals of Carnegie Museum was.
 
 ## Caveats
 

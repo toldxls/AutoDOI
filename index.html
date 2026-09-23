@@ -92,6 +92,13 @@
   .reflist { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px; }
   .reflist p { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; margin: 10px 0; overflow-wrap: anywhere; }
   select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+  .toolbar .field { margin: 0; }
+  .check { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+  #csl-box { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  #csl-box[hidden] { display: none; }
+  .hit.style { cursor: pointer; padding: 9px 14px; }
+  .hit.style:hover, .hit.style:focus-visible { border-color: var(--accent); }
   .bookmarklet { display: inline-block; padding: 5px 10px; border: 1px dashed var(--accent); border-radius: 6px; color: var(--accent); text-decoration: none; font-weight: 500; cursor: grab; }
   @media (max-width: 640px) { .cite { grid-template-columns: 1fr; gap: 8px; } .cite .actions { justify-content: flex-start; } }
 
@@ -142,11 +149,21 @@
 
   <!-- ===== 1. DOI -> reference ===== -->
   <section class="panel" id="panel-cite" role="tabpanel" aria-labelledby="tab-cite">
-    <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, or any text containing one. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
+    <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, or any text containing one. Show every built-in style, pick one, or search 10,000 journal styles. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
     <form class="bar" id="form-cite">
       <input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI">
       <button class="btn primary" type="submit" id="doi-go">Look up</button>
     </form>
+    <div class="toolbar">
+      <label class="field" for="style-select">Style</label>
+      <select id="style-select" aria-label="Output style"></select>
+      <span class="status" id="style-status" style="margin:0"></span>
+    </div>
+    <div id="csl-box" hidden>
+      <input type="text" id="csl-search" placeholder="Journal or style name, e.g. Nature, American Mineralogist, Geology" autocomplete="off" aria-label="Search journal styles">
+      <label class="check"><input type="checkbox" id="csl-mine"> Only the styles that also ship with EndNote</label>
+      <div class="results" id="csl-results" style="margin-top:0"></div>
+    </div>
     <p class="status" id="doi-status"></p>
     <div id="doi-result"></div>
   </section>
@@ -192,7 +209,7 @@
     <div class="row"><span>Link directly to a lookup with <code>?q=</code>, for example <code id="qexample"></code>.</span></div>
   </details>
 
-  <footer>Article titles are shown as the publisher deposited them, so APA's sentence-case rule and MLA's title case may need a manual touch. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server.</footer>
+  <footer>Article titles are shown as the publisher deposited them, so APA's sentence-case rule and MLA's title case may need a manual touch. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server. Journal styles come from the <a href="https://citationstyles.org/">Citation Style Language</a> project (CC BY-SA 3.0) and are rendered in your browser by <a href="https://github.com/Juris-M/citeproc-js">citeproc-js</a>.</footer>
 </div>
 
 <!-- citations.js (inlined by build.sh; edit citations.js, not this block) -->
@@ -995,6 +1012,151 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
 
+  /* ---------- output style choice ---------- */
+  var styleState = { mode: 'all', csl: null }; // mode: 'all' | a built-in style id | 'csl'
+  var recents = []; try { recents = JSON.parse(store.get('cslrecent') || '[]'); } catch (e) { recents = []; }
+  function recentByName(name) { return recents.filter(function (r) { return r.name === name; })[0] || null; }
+
+  function fillStyleSelect() {
+    var sel = $('style-select'); sel.innerHTML = '';
+    var add = function (value, label, parent) { var o = document.createElement('option'); o.value = value; o.textContent = label; (parent || sel).appendChild(o); };
+    add('all', 'All built-in styles');
+    var g1 = document.createElement('optgroup'); g1.label = 'Built-in';
+    A.STYLES.forEach(function (st) { add(st.id, st.label, g1); }); sel.appendChild(g1);
+    if (recents.length) {
+      var g2 = document.createElement('optgroup'); g2.label = 'Journal styles you have used';
+      recents.forEach(function (r) { add('csl:' + r.name, r.title, g2); }); sel.appendChild(g2);
+    }
+    add('search', 'Search 10,000 journal styles…');
+    sel.value = styleState.mode === 'csl' ? 'csl:' + styleState.csl.name : styleState.mode;
+  }
+  function setStyle(mode, cslStyle) {
+    styleState.mode = mode; styleState.csl = cslStyle || null;
+    if (mode === 'csl') {
+      recents = [cslStyle].concat(recents.filter(function (r) { return r.name !== cslStyle.name; })).slice(0, 12);
+      store.set('cslrecent', JSON.stringify(recents));
+    }
+    store.set('style', mode === 'csl' ? 'csl:' + cslStyle.name : mode);
+    fillStyleSelect();
+    if (currentRecord) showCitation(currentRecord, currentChip);
+  }
+  $('style-select').addEventListener('change', function () {
+    var v = this.value;
+    if (v === 'search') { $('csl-box').hidden = false; $('csl-search').focus(); ensureIndex().then(runSearch, function (e) { $('style-status').textContent = e.message; }); return; }
+    $('csl-box').hidden = true;
+    if (v.indexOf('csl:') === 0) setStyle('csl', recentByName(v.slice(4))); else setStyle(v);
+  });
+
+  /* ---------- Citation Style Language styles via citeproc-js ---------- */
+  var csl = { index: null, mine: null, locale: null, xml: {}, loading: null };
+  var CSL_REPO = 'https://raw.githubusercontent.com/citation-style-language/styles/master/';
+  var CSL_LOCALE = 'https://raw.githubusercontent.com/citation-style-language/locales/master/locales-en-US.xml';
+  var CITEPROC = 'https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js';
+
+  async function fetchText(url) { var res = await fetch(url); if (!res.ok) throw new Error('Could not load ' + url.split('/').pop() + ' (' + res.status + ')'); return res.text(); }
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var sc = document.createElement('script'); sc.src = src; sc.onload = resolve;
+      sc.onerror = function () { reject(new Error('Could not load the citation engine from jsdelivr.')); };
+      document.head.appendChild(sc);
+    });
+  }
+  async function ensureCiteproc() {
+    if (window.CSL && window.CSL.Engine) return;
+    if (!csl.loading) {
+      if (typeof window.module === 'undefined') window.module = { exports: {} }; // the file ends with module.exports = CSL
+      csl.loading = loadScript(CITEPROC);
+    }
+    await csl.loading;
+    if (!(window.CSL && window.CSL.Engine)) throw new Error('The citation engine did not initialise.');
+  }
+  async function ensureIndex() {
+    if (csl.index) return;
+    $('style-status').textContent = 'Loading the style list…';
+    try {
+      var res = await Promise.all([fetch('data/styles-index.json'), fetch('data/endnote-shortlist.json')]);
+      if (!res[0].ok || !res[1].ok) throw new Error('Could not load the style list.');
+      csl.index = await res[0].json(); csl.mine = new Set(await res[1].json());
+    } finally { $('style-status').textContent = ''; }
+  }
+  function runSearch() {
+    var q = $('csl-search').value.trim().toLowerCase(), mine = $('csl-mine').checked, box = $('csl-results');
+    box.innerHTML = '';
+    if (!csl.index) return;
+    var words = q.split(/\s+/).filter(Boolean), hits = [];
+    for (var i = 0; i < csl.index.length; i++) {
+      var e = csl.index[i];
+      if (mine && !csl.mine.has(e[0])) continue;
+      var t = e[1].toLowerCase();
+      if (!words.length) { if (mine) hits.push([0, e]); continue; }
+      var ok = true, score = 0;
+      for (var w = 0; w < words.length; w++) {
+        var pos = t.indexOf(words[w]);
+        if (pos === -1 && e[0].indexOf(words[w]) === -1) { ok = false; break; }
+        score += pos === 0 ? 3 : (pos > 0 && /[^a-z0-9]/.test(t[pos - 1])) ? 2 : 1;
+      }
+      if (ok) hits.push([score - t.length / 200, e]);
+    }
+    hits.sort(function (a, b) { return b[0] - a[0]; });
+    hits.slice(0, 30).forEach(function (h) {
+      var e = h[1], d = el('div', 'hit style'); d.tabIndex = 0;
+      d.appendChild(el('div', 't', e[1]));
+      d.appendChild(el('div', 'm', e[0] + (csl.mine.has(e[0]) ? ' · also ships with EndNote' : '')));
+      var pick = function () { setStyle('csl', { name: e[0], title: e[1] }); $('csl-box').hidden = true; };
+      d.addEventListener('click', pick);
+      d.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pick(); });
+      box.appendChild(d);
+    });
+    if (words.length && !hits.length) box.appendChild(el('div', 'status', 'No style with that name. Try one word from the journal title.'));
+    else if (hits.length > 30) box.appendChild(el('div', 'status', hits.length + ' matches; showing the first 30. Add another word to narrow it.'));
+  }
+  $('csl-search').addEventListener('input', runSearch);
+  $('csl-mine').addEventListener('change', runSearch);
+
+  async function getStyleXml(name, depth) {
+    if (csl.xml[name]) return csl.xml[name];
+    var xml = await fetchText(CSL_REPO + encodeURIComponent(name) + '.csl');
+    var link = xml.match(/<link[^>]*rel="independent-parent"[^>]*>/); // dependent style: render with its parent
+    if (link && (depth || 0) < 2) {
+      var href = link[0].match(/href="([^"]+)"/);
+      if (href) xml = await getStyleXml(href[1].replace(/\/$/, '').split('/').pop(), (depth || 0) + 1);
+    }
+    csl.xml[name] = xml; return xml;
+  }
+  async function getLocale() { if (!csl.locale) csl.locale = await fetchText(CSL_LOCALE); return csl.locale; }
+
+  var CSL_TYPES = { journal: 'article-journal', chapter: 'chapter', book: 'book', proceedings: 'paper-conference', preprint: 'article',
+    dataset: 'dataset', software: 'software', thesis: 'thesis', report: 'report', generic: 'document' };
+  function toCsl(r, id) {
+    var name = function (p) { return p.literal ? { literal: p.family } : { family: p.family, given: p.given, suffix: p.suffix || undefined }; };
+    var it = { id: id, type: CSL_TYPES[A.kind(r)] || 'document', title: r.title, author: r.authors.map(name), editor: r.editors.map(name),
+      'container-title': r.container || undefined, 'container-title-short': r.shortContainer || undefined,
+      volume: r.volume || undefined, issue: r.issue || undefined, page: r.pages || undefined,
+      publisher: r.publisher || undefined, 'publisher-place': r.place || undefined,
+      DOI: r.doi || undefined, URL: r.url || undefined, ISSN: r.issn || undefined, ISBN: r.isbn || undefined };
+    if (r.year) it.issued = { 'date-parts': [[Number(r.year)].concat(r.month ? [r.month] : []).concat(r.day ? [r.day] : [])] };
+    Object.keys(it).forEach(function (k) { if (it[k] === undefined) delete it[k]; });
+    return it;
+  }
+  function cslEntryHtml(html) { // flatten citeproc's div wrapper to one inline string
+    var d = document.createElement('div'); d.innerHTML = html;
+    var left = d.querySelector('.csl-left-margin'), right = d.querySelector('.csl-right-inline');
+    var inner = right ? (left ? left.innerHTML.trim() + ' ' : '') + right.innerHTML.trim() : (d.querySelector('.csl-entry') || d).innerHTML.trim();
+    return inner.replace(/\s+/g, ' ');
+  }
+  function htmlToText(html) { var d = document.createElement('div'); d.innerHTML = html; return d.textContent; }
+  async function cslRender(style, records) {
+    await Promise.all([ensureCiteproc(), getLocale(), getStyleXml(style.name)]);
+    var items = {}, ids = [];
+    records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1)); items[it.id] = it; ids.push(it.id); });
+    var eng = new window.CSL.Engine({ retrieveLocale: function () { return csl.locale; }, retrieveItem: function (id) { return items[id]; } }, csl.xml[style.name]);
+    eng.updateItems(ids);
+    var bib = eng.makeBibliography();
+    var entries = ((bib && bib[1]) || []).map(cslEntryHtml);
+    var inText = ''; try { inText = eng.makeCitationCluster(ids.map(function (id) { return { id: id }; })); } catch (e) { inText = ''; }
+    return { entries: entries, inText: inText };
+  }
+
   /* ---------- rendering ---------- */
   function el(tag, cls, text) {
     var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e;
@@ -1026,7 +1188,7 @@
     if (opts.chip) head.appendChild(opts.chip);
     box.appendChild(head);
 
-    A.STYLES.forEach(function (s) {
+    A.STYLES.filter(function (s) { return !opts.styles || opts.styles.indexOf(s.id) !== -1; }).forEach(function (s) {
       var row = el('div', 'cite');
       row.appendChild(el('div', 'style', s.label));
       var html = A.formatHtml(r, s.id), text = A.stripTags(html);
@@ -1069,10 +1231,26 @@
     var act = el('div', 'actions');
     var sel = document.createElement('select'); sel.id = 'list-style'; sel.setAttribute('aria-label', 'Reference list style');
     A.STYLES.forEach(function (st) { var o = document.createElement('option'); o.value = st.id; o.textContent = st.label; sel.appendChild(o); });
-    sel.value = store.get('liststyle') || 'apa';
+    if (recents.length) {
+      var og = document.createElement('optgroup'); og.label = 'Journal styles you have used';
+      recents.forEach(function (rc) { var o = document.createElement('option'); o.value = 'csl:' + rc.name; o.textContent = rc.title; og.appendChild(o); });
+      sel.appendChild(og);
+    }
+    var saved = store.get('liststyle') || 'apa';
+    sel.value = saved; if (sel.value !== saved) sel.value = 'apa';
     var list = el('div', 'reflist');
     var current = { html: '', text: '' };
     function build() {
+      store.set('liststyle', sel.value);
+      if (sel.value.indexOf('csl:') === 0) {
+        list.textContent = 'Rendering…';
+        cslRender(recentByName(sel.value.slice(4)), records).then(function (res) {
+          current.html = res.entries.map(function (h) { return '<p>' + h + '</p>'; }).join('');
+          current.text = res.entries.map(htmlToText).join('\n');
+          list.innerHTML = current.html;
+        }, function (e) { list.textContent = e.message; });
+        return;
+      }
       var numbered = sel.value === 'vancouver' || sel.value === 'ieee';
       var items = records.map(function (r, i) { return A.formatHtml(r, sel.value, numbered ? i + 1 : undefined); });
       if (!numbered) { // alphabetical by first author, as most author-date styles want
@@ -1095,9 +1273,26 @@
   }
 
   /* ---------- 1. DOI -> reference ---------- */
+  var currentRecord = null, currentChip = null;
   function showCitation(r, chip) {
+    currentRecord = r; currentChip = chip || null;
     var out = $('doi-result'); out.innerHTML = '';
-    out.appendChild(renderRecord(r, { chip: chip }));
+    var only = styleState.mode === 'all' ? null : styleState.mode === 'csl' ? [] : [styleState.mode];
+    var box = renderRecord(r, { chip: chip, styles: only });
+    out.appendChild(box);
+    if (styleState.mode === 'csl') {
+      var row = el('div', 'cite'), t = el('div', 'text', 'Rendering…');
+      row.appendChild(el('div', 'style', styleState.csl.title)); row.appendChild(t); box.appendChild(row);
+      cslRender(styleState.csl, [r]).then(function (res) {
+        var html = res.entries[0] || '', text = htmlToText(html);
+        t.innerHTML = html;
+        if (res.inText) t.appendChild(el('div', 'intext', 'In text: ' + htmlToText(res.inText)));
+        var act = el('div', 'actions');
+        act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
+        act.appendChild(button('Rich', '', function (b) { copyRich(b, html, text); }));
+        row.appendChild(act);
+      }, function (e) { t.textContent = e.message; t.classList.add('status', 'err'); });
+    }
     out.appendChild(el('div', 'section-label', 'Export formats'));
     renderExports(out, [r], fileBase(r));
   }
@@ -1246,6 +1441,12 @@
 
   /* ---------- page at rest: an example record so the layout shows what it does ---------- */
   var SAMPLE = {"type":"journal-article","doi":"10.1038/nature12373","url":"https://doi.org/10.1038/nature12373","title":"Nanometre-scale thermometry in a living cell","subtitle":"","container":"Nature","shortContainer":"Nature","authors":[{"family":"Kucsko","given":"G.","literal":false},{"family":"Maurer","given":"P. C.","literal":false},{"family":"Yao","given":"N. Y.","literal":false},{"family":"Kubo","given":"M.","literal":false},{"family":"Noh","given":"H. J.","literal":false},{"family":"Lo","given":"P. K.","literal":false},{"family":"Park","given":"H.","literal":false},{"family":"Lukin","given":"M. D.","literal":false}],"editors":[],"year":"2013","month":7,"day":31,"volume":"500","issue":"7460","pages":"54-58","articleNumber":"","publisher":"Springer Science and Business Media LLC","place":"","issn":"0028-0836","isbn":"","abstract":"","language":"en","event":""};
+  (function () {
+    var savedStyle = store.get('style') || 'all';
+    if (savedStyle.indexOf('csl:') === 0) { var rc = recentByName(savedStyle.slice(4)); if (rc) { styleState.mode = 'csl'; styleState.csl = rc; } }
+    else if (savedStyle === 'all' || A.STYLES.some(function (st) { return st.id === savedStyle; })) styleState.mode = savedStyle;
+    fillStyleSelect();
+  })();
   var base = location.origin + location.pathname;
   $('qexample').textContent = base + '?q=10.1038/nature12373';
   $('bookmarklet').href = "javascript:(function(){var m=document.querySelector('meta[name=\"citation_doi\"],meta[name=\"dc.identifier\"],meta[name=\"DC.Identifier\"],meta[name=\"prism.doi\"]');" +
