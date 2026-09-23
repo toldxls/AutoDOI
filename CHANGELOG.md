@@ -5,6 +5,7 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 ## Unreleased
 
 - Browser suite now also covers a journal style rendered through citeproc (search, pick, deep link), RIS and BibTeX file import, Title Case conversion, the Settings panel, and every flow in dark mode as well as light. The citation engine, one style and the locale are fetched once into a local cache; everything else stays mocked.
+- Browser suite: a dependent CSL style (Nature Geoscience) is rendered through its parent, including by deep link on a fresh page, and a phone-width pass (390 px, touch) checks that no tab overflows sideways before or after content arrives, that tap targets are at least 24 px tall, and that axe still passes.
 - `tests/sheets-menu.test.js` runs the Google Sheets menu and custom functions against stubbed Apps Script services: menu registration, Drive export files in EndNote and RIS form, alert text, misses, and the `DOI_CITE`, `FIND_DOI`, `REF_TO_DOI` and `REF_TO_RIS` formulas.
 
 ## 1.1.0 - 2026-09-23

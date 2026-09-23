@@ -31,9 +31,10 @@ var STYLES_SHA = (html.match(/CSL_STYLES_COMMIT = '([0-9a-f]{40})'/) || [])[1];
 var LOCALES_SHA = (html.match(/CSL_LOCALES_COMMIT = '([0-9a-f]{40})'/) || [])[1];
 var STYLE_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/nature.csl';
 var LOCALE_URL = 'https://raw.githubusercontent.com/citation-style-language/locales/' + LOCALES_SHA + '/locales-en-US.xml';
+var DEP_STYLE_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/dependent/nature-geoscience.csl'; // dependent style: rendered with nature.csl as parent
 var upstream = {}; // url -> body
 async function loadUpstream() {
-  var want = { citeproc: CITEPROC_URL, style: STYLE_URL, locale: LOCALE_URL };
+  var want = { citeproc: CITEPROC_URL, style: STYLE_URL, dependent: DEP_STYLE_URL, locale: LOCALE_URL };
   fs.mkdirSync(CACHE, { recursive: true });
   for (var k in want) {
     var url = want[k], f = path.join(CACHE, k + '-' + url.split('/').slice(-2).join('_').replace(/[^\w.-]/g, '_'));
@@ -179,10 +180,26 @@ async function runFlows(browser, base, dark, cslReady) {
     check(name('citation engine came from the pinned, integrity-checked URL'), s.state.requests.indexOf(CITEPROC_URL) !== -1 && s.state.requests.indexOf(STYLE_URL) !== -1 && s.state.requests.indexOf(LOCALE_URL) !== -1);
     check(name('no page errors after CSL rendering'), s.state.errors.length === 0, s.state.errors.join(' | '));
     await axeCheck('DOI tab with a CSL style');
+    // A dependent style: its own file only names a parent, which must be fetched and used
+    await page.selectOption('#style-select', 'search');
+    await page.fill('#csl-search', 'nature geoscience');
+    var dep = page.locator('#csl-results .hit.style').filter({ has: page.locator('.m', { hasText: /^nature-geoscience( ·|$)/ }) }).first();
+    await dep.waitFor();
+    await dep.click();
+    await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && !/Rendering/.test(c.textContent) && /Kucsko/.test(c.textContent); }, null, { timeout: 20000 });
+    var depText = await page.locator('#doi-result .cite').first().textContent();
+    check(name('dependent style renders with its parent'), /Nature Geoscience/.test(depText) && /Kucsko, G\. et al\./.test(depText) && /500, 54/.test(depText), depText.slice(0, 300));
+    check(name('dependent style fetched its own file and reused the cached parent'), s.state.requests.indexOf(DEP_STYLE_URL) !== -1 && s.state.requests.filter(function (u) { return u === STYLE_URL; }).length === 1, s.state.requests.filter(function (u) { return /citation-style-language/.test(u); }).join(', '));
+    check(name('style select remembers both picked styles'), (await page.locator('#style-select option[value="csl:nature"]').count()) === 1 && (await page.locator('#style-select option[value="csl:nature-geoscience"]').count()) === 1);
     // Deep link into a CSL style
     await page.goto(base + '?q=10.1038/nature12373&style=csl:nature', { waitUntil: 'load' });
     await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && !/Rendering/.test(c.textContent) && /Kucsko/.test(c.textContent); }, null, { timeout: 20000 });
     check(name('?style=csl: deep link renders through citeproc'), /Nature 500, 54/.test(await page.locator('#doi-result .cite').first().textContent()));
+    // Deep link into a dependent style on a fresh page (no remembered title): the title comes from the style file
+    await page.evaluate(function () { localStorage.removeItem('autodoi.cslRecent'); localStorage.removeItem('autodoi.style'); });
+    await page.goto(base + '?q=10.1038/nature12373&style=csl:nature-geoscience', { waitUntil: 'load' });
+    await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && !/Rendering/.test(c.textContent) && /Kucsko/.test(c.textContent); }, null, { timeout: 20000 });
+    check(name('?style=csl: deep link to a dependent style renders and names it'), /Nature Geoscience/.test(await page.locator('#doi-result .cite').first().textContent()) && /Nature Geoscience/.test(await page.locator('#style-select option:checked').textContent()), await page.locator('#style-select option:checked').textContent());
     await page.selectOption('#style-select', 'all');
   }
 
@@ -253,6 +270,59 @@ async function runFlows(browser, base, dark, cslReady) {
   await s.ctx.close();
 }
 
+// Phone width: nothing overflows sideways on any tab, before and after content arrives, and axe still passes
+async function mobileFlows(browser, base) {
+  var ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+  var page = await ctx.newPage(), errors = [];
+  page.on('pageerror', function (e) { errors.push(e.message); });
+  await mockNetwork(page, base, []);
+  var name = function (n) { return n + ' [phone]'; };
+  var DEVICE_W = 390;
+  async function fits(label) {
+    // Mobile Chrome widens the layout viewport to fit overflowing content (innerWidth grows past the screen), so
+    // everything is measured against the device width, never against innerWidth
+    var r = await page.evaluate(function (w) {
+      var bad = [];
+      if (window.innerWidth > w + 1) bad.push('layout viewport widened to ' + window.innerWidth + 'px');
+      if (document.documentElement.scrollWidth > w + 1) bad.push('document ' + document.documentElement.scrollWidth + 'px');
+      Array.prototype.forEach.call(document.querySelectorAll('body *'), function (el) {
+        if (!el.offsetParent && el.tagName !== 'BODY') return;
+        var b = el.getBoundingClientRect(); if (b.width && b.right > w + 1) bad.push(el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className && typeof el.className === 'string' ? '.' + el.className.split(' ')[0] : '') + ' ' + Math.round(b.right) + 'px');
+      });
+      return { w: w, bad: bad.slice(0, 6) };
+    }, DEVICE_W);
+    check(name('no horizontal overflow: ' + label), r.bad.length === 0, r.w + 'px wide; ' + r.bad.join(', '));
+  }
+  async function axeCheck(label) {
+    var results = await new AxeBuilder({ page: page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze();
+    var v = results.violations.filter(function (x) { return x.impact === 'critical' || x.impact === 'serious' || x.impact === 'moderate'; });
+    check(name('axe: no violations on ' + label), v.length === 0, v.map(function (x) { return x.id + ' (' + x.impact + '): ' + x.help + ' e.g. ' + x.nodes[0].target.join(' '); }).join(' | '));
+  }
+  await page.goto(base, { waitUntil: 'load' });
+  check(name('viewport meta present'), /width=device-width/.test(await page.locator('meta[name="viewport"]').getAttribute('content')));
+  await fits('DOI tab at rest');
+  var tabsRight = await page.evaluate(function () { return Math.round(document.querySelector('[role=tablist]').getBoundingClientRect().right); });
+  check(name('tab strip fits the screen'), tabsRight <= DEVICE_W, tabsRight + 'px');
+  await page.tap('#tab-find'); await fits('Find tab');
+  await page.tap('#tab-export'); await fits('Export tab');
+  await page.tap('#tab-cite');
+  await page.fill('#doi-input', '10.1038/nature12373'); await page.tap('#doi-go');
+  await page.waitForFunction(function () { return /Copy/.test(document.querySelector('#doi-result').textContent) && !/Looking/.test(document.querySelector('#doi-status').textContent); }, null, { timeout: 15000 });
+  await fits('DOI tab with a result'); await axeCheck('DOI tab with a result');
+  var tapOk = await page.evaluate(function () { // buttons and links people tap should be at least 24px tall (WCAG 2.5.8)
+    return Array.prototype.filter.call(document.querySelectorAll('#doi-result button, [role=tab], .btn'), function (b) { var r = b.getBoundingClientRect(); return r.height && r.height < 24; }).map(function (b) { return b.textContent.trim().slice(0, 20) + ' ' + Math.round(b.getBoundingClientRect().height) + 'px'; });
+  });
+  check(name('tap targets are at least 24px tall'), tapOk.length === 0, tapOk.join(', '));
+  await page.tap('#tab-export');
+  await page.selectOption('#split-mode', 'lines');
+  await page.fill('#export-input', 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54-58.\nVaswani A, Shazeer N, Parmar N. Attention is all you need. Advances in Neural Information Processing Systems. 2017;30:5998-6008.');
+  await page.tap('#export-go');
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  await fits('Export tab with matches'); await axeCheck('Export tab with matches');
+  check(name('no page errors'), errors.length === 0, errors.join(' | '));
+  await ctx.close();
+}
+
 async function main() {
   var cslReady = await loadUpstream();
   if (!cslReady) { skipped.push('CSL rendering (citeproc, nature.csl or locale not fetched)'); if (process.env.CI) { failed++; console.log('FAIL CSL files must be fetchable under CI'); } }
@@ -263,6 +333,7 @@ async function main() {
   try {
     await runFlows(browser, base, false, cslReady);
     await runFlows(browser, base, true, cslReady);
+    await mobileFlows(browser, base);
   } catch (e) {
     failed++; console.log('FAIL exception: ' + (e.stack || e.message));
     try { fs.mkdirSync(OUT, { recursive: true }); var pages = browser.contexts().flatMap(function (c) { return c.pages(); }); if (pages.length) await pages[0].screenshot({ path: path.join(OUT, 'failure.png'), fullPage: true }); } catch (e2) {}

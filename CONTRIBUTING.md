@@ -34,7 +34,7 @@ Open `index.html` in a browser to try the page; it works from a `file://` URL fo
 - `tests/*.test.js` are dependency-free suites run by `tests/run.js`; each prints `N passed, M failed`. Add a case next to the ones that look like yours.
 - Citation rules need a test with the expected string and, for a journal style, a comment or commit message pointing at the author guidelines you followed.
 - `tests/splitter-bench.test.js` holds accuracy thresholds on 85 real reference lists; if you raise accuracy, raise the threshold.
-- `tests/browser/ui.test.js` drives the built page in headless Chromium with every external API mocked, in light and dark mode. It fetches citeproc, one style and the locale once into `tests/browser/cache/`; after that it is offline. Extend it when you change the page's behaviour.
+- `tests/browser/ui.test.js` drives the built page in headless Chromium with every external API mocked, in light and dark mode and at phone width. It fetches citeproc, one style and the locale once into `tests/browser/cache/`; after that it is offline. Extend it when you change the page's behaviour.
 - `tests/sheets-menu.test.js` and `tests/smoke-sheets.js` run the Sheets script with stubbed Apps Script services; add a case there for changes to `Code.gs`.
 
 ## Style
