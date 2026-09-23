@@ -4,7 +4,7 @@ Thanks for helping. Bug reports and journal style requests go through the issue 
 
 ## Set up
 
-Plain JavaScript, no build tooling. Node 18 or newer runs the tests (`.nvmrc` says 20, which CI uses).
+Plain JavaScript, no build tooling. Node 18 or newer runs the tests (`.nvmrc` says 24, the current LTS, which CI uses).
 
 ```
 git clone https://github.com/toldxls/AutoDOI.git
