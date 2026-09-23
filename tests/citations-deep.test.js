@@ -256,7 +256,9 @@ eq('31 place brackets', N({ type: 'book', title: ['T'], 'publisher-location': '[
 eq('31 s.l.', N({ type: 'book', title: ['T'], 'publisher-location': '[S.l.]' }).place, '');
 
 /* 32-34. linear time on adversarial input (100 KB) */
-const timed = (label, fn) => { const t = Date.now(); fn(); const ms = Date.now() - t; eq(label + ' < 200 ms (' + ms + ' ms)', ms < 200, true); };
+// Guards against quadratic or worse blow-ups (previously up to 72 s on these inputs), not exact speed: CI machines are slower
+const LIMIT = Number(process.env.AUTODOI_TIME_LIMIT_MS || 1000);
+const timed = (label, fn) => { const t = Date.now(); fn(); const ms = Date.now() - t; eq(label + ' < ' + LIMIT + ' ms (' + ms + ' ms)', ms < LIMIT, true); };
 const K = 100000, rep = (p) => p.repeat(Math.ceil(K / p.length)).slice(0, K);
 timed('32 newline runs + sub', () => N({ title: [rep(' \n') + '<sub>2</sub>'] }));
 timed('32 newline runs + sup', () => N({ title: [rep(' \n') + '<sup>2</sup>\n'] }));
