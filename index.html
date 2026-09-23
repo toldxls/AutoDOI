@@ -4318,6 +4318,16 @@
       var hits = await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6);
       var viaOA = false;
       hits = hits.filter(function (r) { return r.title; });
+      // Short or common titles ("Deep learning") drown in relevance ranking: ask again, most-cited first, and keep exact titles only
+      if (!hits.some(function (r) { return titleSimilarity(title, r.title) >= 0.95; })) {
+        try {
+          var extra = { 'query.bibliographic': title, sort: 'is-referenced-by-count', order: 'desc' };
+          if (journal) extra.filter = 'container-title:' + journal.replace(/,/g, ' ').replace(/\s+/g, ' ').trim(); // commas separate Crossref filters
+          var cited = (await search(extra, 20)).filter(function (r) { return r.title && titleSimilarity(title, r.title) >= 0.95; });
+          var seenD = {}; hits.forEach(function (r) { seenD[(r.doi || '').toLowerCase()] = 1; });
+          hits = cited.filter(function (r) { return !seenD[(r.doi || '').toLowerCase()]; }).slice(0, 3).concat(hits);
+        } catch (e) { /* keep the first results */ }
+      }
       if (!hits.length || Math.max.apply(null, hits.map(function (r) { return titleSimilarity(title, r.title); })) < 0.8) {
         try { var oa = (await openAlexSearch(title + (journal ? ' ' + journal : ''), 5)).filter(function (r) { return r.title; }); if (oa.length) { hits = hits.concat(oa); viaOA = true; } } catch (e) { /* Crossref results only */ }
       }
