@@ -54,17 +54,7 @@ Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faste
 
 ## Bugs and missing styles
 
-Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Each reference also has a **Report** button that carries the DOI and style into the bug form so you only have to say what is wrong.
-
-## Usage counter (optional)
-
-GitHub Pages has no visitor statistics, so the page has a hook for [GoatCounter](https://www.goatcounter.com/), a free, cookie-free counter that needs no consent banner. To turn it on:
-
-1. Create a GoatCounter site (for example `autodoi`).
-2. Set `ANALYTICS_ENDPOINT` near the top of the script in `index.html` to `https://autodoi.goatcounter.com/count`.
-3. Commit and push.
-
-It counts page opens and these events: lookups, DOI searches, batch matches, copies and exports, and which style was used. No DOIs, queries, reference text or email addresses are ever sent, and with the endpoint blank nothing loads at all.
+Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Each reference also has a **Report** button that carries the DOI and style into the bug form so you only have to say what is wrong. When a lookup or a style fails, the error message gets a **Report this** link. The page keeps the last few error messages in memory and adds them to the form's *Error details* field; nothing is sent anywhere unless you open a report. There is no analytics or tracking.
 
 ## License
 

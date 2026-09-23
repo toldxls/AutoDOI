@@ -924,17 +924,17 @@
     set: function (k, v) { try { localStorage.setItem('autodoi.' + k, v); } catch (e) {} }
   };
 
-  /* ---------- optional usage counter (GoatCounter; nothing loads while the endpoint is blank) ---------- */
-  var ANALYTICS_ENDPOINT = ''; // e.g. 'https://autodoi.goatcounter.com/count' — see README
-  var track = function () {};
-  if (ANALYTICS_ENDPOINT) {
-    window.goatcounter = { endpoint: ANALYTICS_ENDPOINT, no_onload: true, allow_local: false };
-    var gc = document.createElement('script'); gc.async = true; gc.src = 'https://gc.zgo.at/count.js';
-    gc.onload = function () {
-      window.goatcounter.count({ path: location.pathname }); // never the query string: it can hold a DOI
-      track = function (name) { window.goatcounter.count({ path: 'event/' + name, title: name, event: true }); };
-    };
-    document.head.appendChild(gc);
+  /* ---------- local error log: stays in this browser, travels only inside a bug report the user opens ---------- */
+  var errorLog = [];
+  function logError(category, err, extra) {
+    errorLog.push({ t: new Date().toISOString().slice(0, 19).replace('T', ' '), cat: category, msg: (err && err.message) || String(err), extra: extra || '' });
+    if (errorLog.length > 10) errorLog.shift();
+    updateReportLinks();
+  }
+  function errorReport() {
+    if (!errorLog.length) return '';
+    return errorLog.slice(-5).map(function (e) { return e.t + '  ' + e.cat + (e.extra ? ' [' + e.extra + ']' : '') + ': ' + e.msg; }).join('\n') +
+      '\n\nBrowser: ' + navigator.userAgent;
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
@@ -944,12 +944,27 @@
     Object.keys(fields).forEach(function (k) { if (fields[k]) url += '&' + k + '=' + encodeURIComponent(fields[k]); });
     return url;
   }
+  function updateReportLinks() {
+    $('link-bug').href = issueUrl('bug_report.yml', { style: currentStyleLabel(), where: 'Web page', errors: errorReport() });
+  }
+  // Shows an error in a status line with a link that opens a prefilled bug report
+  function showError(statusEl, category, err, extra) {
+    logError(category, err, extra);
+    statusEl.className = 'status err'; statusEl.textContent = (err && err.message) || String(err);
+    var a = el('a', '', 'Report this'); a.target = '_blank'; a.rel = 'noopener'; a.style.marginLeft = '8px';
+    a.href = issueUrl('bug_report.yml', { doi: extra || '', style: currentStyleLabel(), where: 'Web page', errors: errorReport(), title: '[Bug] ' + category });
+    statusEl.appendChild(document.createTextNode(' ')); statusEl.appendChild(a);
+  }
   function currentStyleLabel() {
+    if (!styleState) return '';
     if (styleState.mode === 'csl') return styleState.csl.title;
     if (styleState.mode === 'all') return '';
     var st = A.STYLES.filter(function (x) { return x.id === styleState.mode; })[0];
     return st ? st.label : styleState.mode;
   }
+
+  window.addEventListener('error', function (ev) { logError('uncaught', ev.error || ev.message); });
+  window.addEventListener('unhandledrejection', function (ev) { logError('unhandled', ev.reason); });
 
   /* ---------- tabs ---------- */
   var TABS = ['cite', 'find', 'export'];
@@ -1021,12 +1036,10 @@
     var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); return ok;
   }
   function copyPlain(btn, text) {
-    track('copy');
     var p = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(text) : Promise.reject();
     p.then(function () { flash(btn, 'Copied'); }, function () { flash(btn, fallbackCopy(text) ? 'Copied' : 'Select and copy'); });
   }
   function copyRich(btn, html, text) {
-    track('copy-rich');
     if (navigator.clipboard && window.ClipboardItem) {
       try {
         var item = new ClipboardItem({
@@ -1043,7 +1056,6 @@
   /* ---------- downloads ---------- */
   var canDownload = true;
   function download(name, text) {
-    track('download-' + name.split('.').pop());
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -1070,7 +1082,6 @@
   }
   function setStyle(mode, cslStyle) {
     styleState.mode = mode; styleState.csl = cslStyle || null;
-    track('style-' + (mode === 'csl' ? 'csl' : mode));
     if (mode === 'csl') {
       recents = [cslStyle].concat(recents.filter(function (r) { return r.name !== cslStyle.name; })).slice(0, 12);
       store.set('cslrecent', JSON.stringify(recents));
@@ -1081,7 +1092,7 @@
   }
   $('style-select').addEventListener('change', function () {
     var v = this.value;
-    if (v === 'search') { $('csl-box').hidden = false; $('csl-search').focus(); ensureIndex().then(runSearch, function (e) { $('style-status').textContent = e.message; }); return; }
+    if (v === 'search') { $('csl-box').hidden = false; $('csl-search').focus(); ensureIndex().then(runSearch, function (e) { logError('style-index', e); $('style-status').textContent = e.message; }); return; }
     $('csl-box').hidden = true;
     if (v.indexOf('csl:') === 0) setStyle('csl', recentByName(v.slice(4))); else setStyle(v);
   });
@@ -1230,7 +1241,7 @@
     var side = el('div', 'actions'); side.style.display = 'flex'; side.style.gap = '6px'; side.style.alignItems = 'center';
     if (opts.chip) side.appendChild(opts.chip);
     var rep = el('a', 'btn small', 'Report'); rep.target = '_blank'; rep.rel = 'noopener'; rep.title = 'Report a problem with this reference on GitHub';
-    rep.href = issueUrl('bug_report.yml', { doi: r.doi, style: currentStyleLabel(), where: 'Web page', title: '[Bug] ' + (r.doi || r.title) });
+    rep.href = issueUrl('bug_report.yml', { doi: r.doi, style: currentStyleLabel(), where: 'Web page', errors: errorReport(), title: '[Bug] ' + (r.doi || r.title) });
     rep.style.textDecoration = 'none';
     side.appendChild(rep);
     head.appendChild(side);
@@ -1296,7 +1307,7 @@
           current.html = res.entries.map(function (h) { return '<p>' + h + '</p>'; }).join('');
           current.text = res.entries.map(htmlToText).join('\n');
           list.innerHTML = current.html;
-        }, function (e) { list.textContent = e.message; });
+        }, function (e) { logError('citeproc-list', e, sel.value.slice(4)); list.textContent = e.message; });
         return;
       }
       var numbered = sel.value === 'vancouver' || sel.value === 'ieee';
@@ -1339,7 +1350,7 @@
         act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
         act.appendChild(button('Rich', '', function (b) { copyRich(b, html, text); }));
         row.appendChild(act);
-      }, function (e) { t.textContent = e.message; t.classList.add('status', 'err'); });
+      }, function (e) { logError('citeproc', e, styleState.csl.name); t.textContent = e.message; t.classList.add('status', 'err'); });
     }
     out.appendChild(el('div', 'section-label', 'Export formats'));
     renderExports(out, [r], fileBase(r));
@@ -1360,9 +1371,8 @@
       var r = await fetchRecord(doi);
       showCitation(r);
       status.textContent = '';
-      track('lookup');
     } catch (e) {
-      status.textContent = e.message; status.className = 'status err';
+      showError(status, 'lookup', e, doi || '');
     } finally { $('doi-go').disabled = false; }
   }
   $('form-cite').addEventListener('submit', function (ev) { ev.preventDefault(); lookup($('doi-input').value); });
@@ -1378,7 +1388,6 @@
     status.textContent = 'Searching Crossref…'; $('find-go').disabled = true;
     try {
       var hits = await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6);
-      track('find');
       if (!hits.length) { status.textContent = 'No matches. Try fewer words from the title.'; return; }
       status.textContent = hits.length + ' best matches, most likely first.';
       hits.forEach(function (r) { r.conf = A.matchConfidence(title + ' ' + journal, r); });
@@ -1402,7 +1411,7 @@
         h.appendChild(act);
         list.appendChild(h);
       });
-    } catch (e) { status.textContent = e.message; status.className = 'status err'; }
+    } catch (e) { showError(status, 'find', e); }
     finally { $('find-go').disabled = false; }
   });
 
@@ -1472,6 +1481,7 @@
         }
         m.appendChild(o);
       } catch (e) {
+        logError('batch', e);
         m.classList.add('bad');
         var oe = el('div', 'out'); oe.appendChild(el('span', 'chip bad', 'Error')); oe.appendChild(el('span', 't', e.message)); m.appendChild(oe);
       }
@@ -1479,7 +1489,6 @@
     }
     $('export-go').disabled = false;
     status.textContent = found.length + ' of ' + refs.length + ' matched.';
-    track('batch');
     function build() {
       out.innerHTML = '';
       var recs = found.filter(function (f) { return f.box.checked; }).map(function (f) { return f.rec; });

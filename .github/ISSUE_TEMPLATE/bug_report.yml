@@ -25,6 +25,12 @@ body:
       description: The correct form, ideally with a link to the journal's author guidelines.
     validations:
       required: true
+  - type: textarea
+    id: errors
+    attributes:
+      label: Error details
+      description: Filled in automatically when you use a Report button on the page. Leave as is.
+      render: text
   - type: dropdown
     id: where
     attributes:
