@@ -1362,6 +1362,8 @@
     // Blank lines between entries mean each entry may wrap over several lines (typical when copied from a PDF)
     var chunks = /\n\s*\n/.test(t) ? t.split(/\n\s*\n+/).map(function (c) { return c.replace(/\s*\n\s*/g, ' '); }) : t.split(/\n+/);
     return chunks.map(function (l) {
+      l = l.trim();
+      if (/^(https?:\/\/)?(dx\.)?doi\.org\/|^doi:|^10\.\d{4,9}\//i.test(l)) return l; // a bare DOI line is not a numbered item
       return l.replace(/^\s*(\[\d+\]|\d+[.)]|[•\-–*])\s*/, '').trim();
     }).filter(function (l) { return l.length > 8; });
   }
