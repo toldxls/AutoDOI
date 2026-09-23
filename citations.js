@@ -10,21 +10,54 @@
   'use strict';
 
   var DOI_RE = /10\.\d{4,9}\/[^\s"']+/i;
+  // HTML tags that abut a DOI in pasted markup: "10.1000/abc</a>", "10.1000/abc<br/>" (a SICI's "<857::AID-SIM777>" is not a tag)
+  var DOI_TAG_RE = /<\/?(?:a|br|p|div|span|i|b|em|strong|sub|sup|u|li|td|tr|font)\b[^<>]*>/gi;
+  var DOI_TAIL = /[.,;:!?*\u2026\u2014"'\u201C\u201D\u2018\u2019]/; // punctuation and quotes that close a sentence, not a DOI
 
   /* ---------- helpers ---------- */
 
+  // Trailing characters matching re removed by a backwards scan (the regex /[...]+$/ is quadratic on long runs)
+  function trimTail(s, re) {
+    var i = s.length;
+    while (i > 0 && re.test(s.charAt(i - 1))) i--;
+    return i === s.length ? s : s.slice(0, i);
+  }
+  // Trailing ")", "]" or ">" removed only while unbalanced (counted once: "10.1000/" + 50k ")" is linear)
+  function trimUnbalanced(doi) {
+    var open = 0, close = 0, lt = 0, gt = 0, i, c;
+    for (i = 0; i < doi.length; i++) {
+      c = doi.charAt(i);
+      if (c === '(' || c === '[') open++; else if (c === ')' || c === ']') close++; else if (c === '<') lt++; else if (c === '>') gt++;
+    }
+    var end = doi.length;
+    while (end > 0) {
+      c = doi.charAt(end - 1);
+      if ((c === ')' || c === ']') && close > open) close--;
+      else if (c === '>' && gt > lt) gt--;
+      else break;
+      end--;
+    }
+    return end === doi.length ? doi : doi.slice(0, end);
+  }
   function extractDoi(text) {
     if (!text) return null;
-    var m = String(text).match(DOI_RE);
+    var s = String(text).replace(DOI_TAG_RE, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    var m = s.match(DOI_RE);
     if (!m) return null;
-    var doi = m[0].replace(/[.,;:]+$/, '').replace(/[<>]+$/, '')
-      .replace(/\/(full|abstract|pdf|epdf|epub|fulltext|html|meta|summary|references|figures|supplemental|suppl_file)(\/.*)?$/i, ''); // publisher landing-page suffixes
-    // drop a trailing ")" or "]" only if it is unbalanced
-    while (/[)\]]$/.test(doi)) {
-      var open = (doi.match(/[(\[]/g) || []).length;
-      var close = (doi.match(/[)\]]/g) || []).length;
-      if (close > open) doi = doi.slice(0, -1); else break;
+    var doi = m[0];
+    // a DOI inside a link: "?query" and "#fragment" belong to the URL, and reserved characters arrive percent-encoded
+    if (/https?:\/\/[^\s"'<>]*$/i.test(s.slice(0, m.index))) {
+      doi = doi.replace(/[?#].*$/, '');
+      if (/%[0-9A-Fa-f]{2}/.test(doi)) { try { doi = decodeURIComponent(doi); } catch (e) { /* malformed escape: keep as written */ } }
     }
+    // publisher landing-page suffixes, closing punctuation, quotes and unbalanced brackets, until nothing more comes off: "(see 10.1000/abc.)"
+    var prev;
+    do {
+      prev = doi;
+      doi = doi.replace(/\/(full|abstract|pdf|epdf|epub|fulltext|html|meta|summary|references|figures|tables|supplemental|suppl_file)(?:[\/;].*)?$/i, '');
+      doi = trimUnbalanced(trimTail(doi.replace(/(?:'|\u2019)s$/, ''), DOI_TAIL));
+    } while (doi !== prev);
+    if (!/^10\.\d{4,9}\/./.test(doi)) return null; // nothing left after the prefix
     // bioRxiv / medRxiv landing pages: 10.1101/2020.03.24.20042937v3.full -> 10.1101/2020.03.24.20042937
     if (/^10\.1101\//.test(doi)) doi = doi.replace(/(?:v\d+)?(?:\.(?:full|abstract|full-text|supplementary-material|article-info|article-metrics)(?:\.pdf(?:\+html)?)?)?$/i, '');
     return doi;
@@ -35,8 +68,8 @@
     var doi = extractDoi(text);
     if (doi) return doi;
     var t = String(text || '').trim();
-    var m = t.match(/(?:arxiv\.org\/(?:abs|pdf)\/|arxiv:\s*)(\d{4}\.\d{4,5}|[a-z\-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?/i)
-      || t.match(/^(\d{4}\.\d{4,5})(?:v\d+)?$/);
+    var m = t.match(/(?:arxiv\.org\/(?:abs|pdf|html)\/|arxiv:\s*)(\d{4}\.\d{4,5}|[a-z\-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?/i)
+      || t.match(/^(\d{4}\.\d{4,5})(?:v\d+)?\.?$/);
     if (m) return '10.48550/arXiv.' + m[1];
     return null;
   }
@@ -105,7 +138,7 @@
       if (!suffix && toks.length > 1 && NAME_SUFFIX.test(toks[toks.length - 1])) suffix = toks.pop(); // "John Smith III"
       if (toks.length === 1) return suffix ? { family: toks[0], given: '', suffix: suffix } : { name: n };
       var fam = [toks.pop()];
-      while (toks.length > 1 && NAME_PARTICLE.test(toks[toks.length - 1])) fam.unshift(toks.pop());
+      while (toks.length > 0 && NAME_PARTICLE.test(toks[toks.length - 1])) fam.unshift(toks.pop()); // "de la Cruz": particles and one capitalised word are a family name
       out = { family: fam.join(' '), given: toks.join(' ') };
     }
     if (suffix) out.suffix = suffix;
@@ -142,10 +175,11 @@
 
   // Open Library search.json doc -> Crossref-message-like book object
   function fromOpenLibrary(doc, isbn) {
-    var year = doc.first_publish_year || (doc.publish_year && Math.min.apply(null, doc.publish_year)) || '';
+    var years = (Array.isArray(doc.publish_year) ? doc.publish_year : []).map(Number).filter(function (y) { return y > 0; });
+    var year = doc.first_publish_year || (years.length ? Math.min.apply(null, years) : '') || ''; // an empty list is not year Infinity
     return {
       type: 'book',
-      title: [doc.title + (doc.subtitle ? ': ' + doc.subtitle : '')],
+      title: [doc.title ? doc.title + (doc.subtitle ? ': ' + doc.subtitle : '') : (doc.subtitle || '')],
       author: (doc.author_name || []).map(function (n) { return splitName(n) || { name: n }; }),
       publisher: (doc.publisher || [])[0] || '',
       'publisher-location': (doc.publish_place || [])[0] || '',
@@ -185,12 +219,15 @@
       return String.fromCharCode(n);
     });
   }
+  // A real tag: "<sub>", "</mml:math>", "<br/>", "<a href=…>", or an HTML comment; "CD4 <200 cells/µL and viral load >1000" is text
+  // (the comment opener is spelled with an escape so this file can be inlined into index.html)
+  var TAG_RE = /<\/?[A-Za-z][\w:.-]*(?:\s[^<>]*)?\/?>|<\x21--[\s\S]*?--\x3e/g;
   // Tags removed, entities decoded, whitespace collapsed; private-use formatting markers removed unless keepMarks
   function cleanText(s, keepMarks) {
     if (s === undefined || s === null) return '';
     var t = String(s);
     if (t.indexOf('lt;') !== -1) { t = t.replace(ENCODED_TAG, '<$1>'); ENCODED_TAG.lastIndex = 0; } // "&lt;i&gt;" is markup, not text
-    t = decodeEntities(t.replace(/<[^<>]*>/g, ''))
+    t = decodeEntities(t.replace(TAG_RE, ''))
       .replace(/[\u200B\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')  // zero-width space, bidi controls (ZWJ/ZWNJ are spelling)
       .replace(/[\uE007-\uF8FF]|[\uDB80-\uDBFF][\uDC00-\uDFFF]/g, ''); // publisher private-use glyphs (Elsevier U+E5F8) have no meaning here
     if (!keepMarks) t = t.replace(PUA_RE, '');
@@ -222,7 +259,7 @@
     return String(html)
       .replace(/<sub>([^<]*)<\/sub>/g, function (a, t) { return marksToText(SUBO + t + SUBC); })
       .replace(/<sup>([^<]*)<\/sup>/g, function (a, t) { return marksToText(SUPO + t + SUPC); })
-      .replace(/<[^>]+>/g, '')
+      .replace(TAG_RE, '')
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   }
 
@@ -872,8 +909,19 @@
   var PREPRINT_PREFIX = { '10.31223': 'EarthArXiv', '10.32942': 'EcoEvoRxiv' };
 
   function hasName(p) { return !!(p.family || p.given); }
+  // author / editor as deposited: a list of people; null entries and non-lists ("Smith", {}) are not people
+  function people(v) {
+    return (Array.isArray(v) ? v : []).filter(function (p) { return p && typeof p === 'object'; }).map(person).filter(hasName);
+  }
+  // "10.1000/abc." / " 10.1000/abc;" as deposited, an array, or not a string at all: the bare DOI or nothing
+  function cleanDoi(d) {
+    if (Array.isArray(d)) d = d[0];
+    if (typeof d !== 'string') return '';
+    return d.replace(/^\s+|\s+$/g, '').replace(/[.,;]+$/, '').replace(/\s+$/, '');
+  }
   function normalize(m) {
     var dp = datePartsOf(m);
+    var doi = cleanDoi(m.DOI || m.doi);
     var type = m.type || 'other';
     var page = samePages(clean(m.page || ''));
     var isPart = /chapter|section|book-part|proceedings-article|paper-conference/.test(type);
@@ -892,8 +940,8 @@
     var tm = colonSpace(trimPunct(markup(titleSrc)));
     var r = {
       type: type,
-      doi: m.DOI || m.doi || '',
-      url: m.URL || (m.DOI ? 'https://doi.org/' + m.DOI : ''),
+      doi: doi,
+      url: m.URL || (doi ? 'https://doi.org/' + doi : ''),
       title: trimPunct(stripMarks(tm)),
       titleMarked: tm,
       subtitle: stripMarks(markup(subSrc)),
@@ -906,9 +954,9 @@
       numPages: clean(m['number-of-pages'] || ''),
       genre: clean(m.genre || first(m.degree) || ''),
       accessed: acc ? { year: acc[0], month: accMonth, day: accMonth ? validDay(acc[2]) : 0 } : null,
-      authors: (m.author || []).map(person).filter(hasName),
+      authors: people(m.author),
       authorsOthers: !!m['author-others'], // BibTeX "and others": the list was truncated at the source
-      editors: (m.editor || []).map(person).filter(hasName),
+      editors: people(m.editor),
       year: dp[0] ? String(dp[0]) : '',
       years: ['issued', 'published-print', 'published-online', 'published'].map(function (k) { var d = m[k] && m[k]['date-parts'] && m[k]['date-parts'][0]; return d && d[0] ? String(d[0]) : ''; })
         .filter(function (y, i, a) { return y && a.indexOf(y) === i; }), // print and online years can differ; references may cite either
@@ -993,7 +1041,7 @@
     var out = [];
     tokens.forEach(function (tok) {
       tok = tok.replace(/\.+$/, '').replace(/^[\-\u2010\u2011]+|[\-\u2010\u2011]+$/g, '');
-      if (!tok) return;
+      if (!tok || /^(?:&|and)$/i.test(tok)) return; // "J & K" -> "J. K.": the conjunction is not an initial
       // "PC" style compressed initials
       if (/^[A-Z\u00C0-\u00D6\u00D8-\u00DE]{2,3}$/.test(tok)) {
         tok.split('').forEach(function (ch) { out.push(ch); });
@@ -1055,14 +1103,21 @@
 
   /* ---------- text styles (return HTML with <i>) ---------- */
 
-  function doiLink(r) { return r.doi ? 'https://doi.org/' + r.doi : r.url; }
+  // https://doi.org/ link: only characters that break a URL are percent-encoded, so a SICI DOI stays readable as APA readers
+  // expect: "(SICI)1097-0258(19980430)17:8<857::AID-SIM777>3.0.CO;2-E" -> "(SICI)1097-0258(19980430)17:8%3C857::AID-SIM777%3E3.0.CO;2-E"
+  function doiUrl(doi) {
+    return 'https://doi.org/' + String(doi).replace(/%(?![0-9A-Fa-f]{2})|[<>"\s#?\[\]{}|\\^`]|[\uD800-\uDBFF][\uDC00-\uDFFF]|[^\x00-\x7F]/g, function (c) {
+      try { return encodeURIComponent(c); } catch (e) { return c; } // a lone surrogate cannot be encoded
+    });
+  }
+  function doiLink(r) { return r.doi ? doiUrl(r.doi) : r.url; }
   function endsPunct(s) { return /[.?!][\uE000-\uE005]*$/.test(s); }
   function dot(s) { return s ? (endsPunct(s) ? s : s + '.') : ''; }
   function I(s) { return s ? '<i>' + esc(s, true) + '</i>' : ''; }
   function Idot(s) { return s ? I(s) + (endsPunct(s) ? '' : '.') : ''; } // italic title, no ".?." doubling
   function T(s) { return esc(s); }
   // Full stop after an HTML fragment unless its text already ends with one ("<i>Wiley, Inc.</i>", "Politics?")
-  function htmlDot(h) { return endsPunct(String(h).replace(/<[^>]*>/g, '')) ? h : h + '.'; }
+  function htmlDot(h) { return endsPunct(String(h).replace(TAG_RE, '')) ? h : h + '.'; }
   function hostOf(r) { return r.container || r.institution || r.publisher; } // preprint server, repository, publisher
   // publisher shown after the host only when it is a distinct entity (a book's publisher), not the repository owner
   function showPublisher(r, k) { return k !== 'journal' && !!r.publisher && !(r.institution && !r.container) && r.publisher !== hostOf(r); }
@@ -1223,7 +1278,7 @@
   function harvard(r) {
     var k = kind(r);
     var n = r.authors.length;
-    var hn = function (p) { return p.literal ? p.family : p.family + (p.given ? ', ' + initials(p.given, { space: false }) : ''); };
+    var hn = function (p) { if (p.literal) return p.family; var ini = initials(p.given, { space: false }); return p.family + (ini ? ', ' + ini : ''); }; // a given name of only nicknames has no initials
     var hlist = function (people) {
       var m = people.length;
       return m === 1 ? hn(people[0]) : m <= 3 ? joinAnd(people.map(hn), 'and', false) : hn(people[0]) + ' et al.';
@@ -1437,11 +1492,12 @@
   // ASCII form for keys: "Çelik" -> "Celik", "Bartók" -> "Bartok", "Øster" -> "Oster"
   var ASCII_LETTERS = { 'ß': 'ss', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'ø': 'o', 'Ø': 'O', 'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D',
     'ð': 'd', 'Ð': 'D', 'þ': 'th', 'Þ': 'Th', 'ı': 'i' };
-  function toAscii(s) {
+  function foldAscii(s) { // letters folded, everything else kept: "García" -> "Garcia", "Schrödinger" -> "Schrodinger"
     var t = String(s || '').replace(/[ßæÆœŒøØłŁđĐðÐþÞı]/g, function (c) { return ASCII_LETTERS[c]; });
     if (t.normalize) t = t.normalize('NFD');
-    return t.replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]/g, '');
+    return t.replace(/[\u0300-\u036f]/g, '');
   }
+  function toAscii(s) { return foldAscii(s).replace(/[^A-Za-z0-9]/g, ''); }
   function bibKey(r) {
     var words = (toAsciiWords(r.title)).filter(function (w) {
       return !/^(the|and|for|with|from|into|over|under|that|this|are|was|were|its|our|their)$/i.test(w);
@@ -1459,10 +1515,13 @@
   function bibEsc(s) { return String(s).replace(/[\\{}~^&%$#_]/g, function (c) { return BIB_ESC[c]; }); }
   // braces keep "World Health Organization" as one name; escaped first so the braces survive
   // BibTeX's three-part form puts the suffix second: "King, Jr., Martin Luther"
+  // a part holding " and " is braced so BibTeX does not split the name there ("{Smith and Jones}, C")
+  function bibPart(s) { return /\sand\s/i.test(s) ? '{' + bibEsc(s) + '}' : bibEsc(s); }
   function bibName(p) {
     if (p.literal) return '{' + bibEsc(p.family) + '}';
-    if (!p.suffix) return bibEsc(nameLastFull(p));
-    return bibEsc(p.family + ', ' + p.suffix + ',' + (p.given ? ' ' + p.given : ''));
+    var fam = bibPart(p.family), given = p.given ? bibPart(p.given) : '';
+    if (!p.suffix) return fam + (given ? ', ' + given : '');
+    return fam + ', ' + bibEsc(p.suffix) + ',' + (given ? ' ' + given : '');
   }
   // RIS / EndNote single-field name (EndNote convention): a trailing comma marks it, and commas inside
   // it are doubled so EndNote does not split it there: "USDOE,, Washington,, DC (United States),"
@@ -1495,6 +1554,9 @@
     }).join('');
   }
 
+  // The publisher field of an export: the preprint server or repository (r.institution) when the styles show it as the host
+  function hostPublisher(r) { return r.institution && !r.container ? r.institution : r.publisher; }
+
   function bibtex(r) {
     var k = kind(r);
     var type = { journal: 'article', chapter: 'incollection', book: 'book', proceedings: 'inproceedings',
@@ -1513,12 +1575,13 @@
     add('edition', validEdition(r.edition));
     add('volume', r.volume);
     add('number', r.issue);
-    add('pages', r.pages ? enDash(r.pages).replace('–', '--') : '');
+    add('pages', r.pages ? enDash(r.pages).replace(/–/g, '--') : '');
+    if (r.isArticleNumber) add('eid', r.pages);                    // article number, read back as one (pages kept for plain BibTeX styles)
     add('year', r.year);
     if (monthName(MONTHS_ABBR, r.month)) add('month', monthName(MONTHS_ABBR, r.month).replace('.', '').toLowerCase(), 'bare');
     if (k === 'thesis') add('school', r.publisher || r.institution);
     else if (k === 'report') add('institution', r.publisher || r.institution);
-    else add('publisher', r.publisher);
+    else add('publisher', hostPublisher(r));
     add('address', r.place);
     add('issn', r.issn, true);
     add('isbn', r.isbn, true);
@@ -1528,6 +1591,7 @@
     if (k === 'dataset') add('note', 'Dataset');
     if (k === 'software') add('note', 'Software');
     if (k === 'standard') add('note', 'Standard');
+    add('abstract', r.abstract);
     return '@' + type + '{' + bibKey(r) + ',\n' + f.join(',\n') + '\n}';
   }
 
@@ -1569,9 +1633,10 @@
     add('PY', r.year);
     var dm = validMonth(r.month);
     if (r.year) add('DA', r.year + '/' + (dm ? pad2(dm) : '') + '/' + (dm && validDay(r.day) ? pad2(r.day) : '') + '/');
-    add('PB', r.publisher);
+    add('PB', hostPublisher(r));
     add('CY', r.place);
-    add('SN', r.issn || r.isbn);
+    add('SN', r.isbn);                                            // RIS: SN is the ISBN of a book and the ISSN of a serial; both are kept
+    add('SN', r.issn);
     add('DO', r.doi);
     var urls = rawTags(r, 'ris', ['UR']);
     (urls.length ? urls : [doiLink(r)]).forEach(function (u) { add('UR', u); }); // a file's own links are kept
@@ -1604,12 +1669,13 @@
     add('%7', validEdition(r.edition));
     add('%V', r.volume);
     add('%N', r.issue);
-    add('%P', r.pages ? enDash(r.pages).replace('–', '-') : '');
+    add('%P', r.pages ? enDash(r.pages).replace(/–/g, '-') : '');
     add('%D', r.year);
     if (monthName(MONTHS, r.month)) add('%8', monthName(MONTHS, r.month) + (validDay(r.day) ? ' ' + r.day : ''));
-    add('%I', r.publisher);
+    add('%I', hostPublisher(r));
     add('%C', r.place);
-    add('%@', r.issn || r.isbn);
+    add('%@', r.isbn);
+    add('%@', r.issn);
     add('%R', r.doi);
     var urls = rawTags(r, 'enw', ['U']);
     (urls.length ? urls : [doiLink(r)]).forEach(function (u) { add('%U', u); });
@@ -1659,8 +1725,13 @@
 
   /* ---------- matching confidence ---------- */
 
+  // Sub/superscript digits and signs as plain characters: "Fe₂O₃" and "Fe<sub>2</sub>O<sub>3</sub>" are the same formula
+  var SCRIPT_CHARS = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9', '⁰': '0', '¹': '1', '²': '2', '³': '3',
+    '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁺': '+', '⁻': '-', '₊': '+', '₋': '-' };
   function tokens(s) {
-    return stripMarks(clean(s)).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    var t = clean(s).replace(/[\uE000-\uE00F]/g, '')
+      .replace(/[\u2080-\u2089\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207A\u207B\u208A\u208B]/g, function (c) { return SCRIPT_CHARS[c]; });
+    return foldAscii(t).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
       .filter(function (w) { return w.length >= 3; });
   }
 
@@ -1682,7 +1753,7 @@
       else if (!yearsInRef.some(function (x) { return recYears.indexOf(x) !== -1; })) score -= 0.05; // online vs print year
     } else if (recYears.length) score -= 0.15;
     // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
-    var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction)\b/i;
+    var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
     if ((NOTICE.test(r.title) || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
     if (r.authors.length) {
       var fam = tokens(r.authors[0].family)[0];

@@ -105,7 +105,39 @@
     'open slot mining abandoned active historic';
   // Name openers: the capitalised word after them is part of the name ("Mount Baker",
   // "Cape Cod", "Fort Union", "San Rafael", "Lac des Iles").
-  var OPENER_WORDS = 'mount mt cape fort port saint san santa lac monte cerro isla sierra';
+  var OPENER_WORDS = 'mount mt cape fort port saint san santa lac monte cerro isla sierra lago rio río loch ben lake point';
+  // Openers that are also ordinary nouns ("Lake Sediments", "Point Sources"): the next word is
+  // kept only when it is a known place epithet / surname ("Lake Superior", "Lake George").
+  var OPENER_STRICT = 'lake point';
+  var PLACE_EPITHETS = 'superior placid district constance eyre chad victoria mono pyramid crater salt bear slave ' +
+    'clear pleasant hope grand grande louise moraine peak forest fork conception arena barrow reyes general';
+  // Memorial / discussion lead-ins: the capitalised words after them are a personal name
+  // ("Obituary: Peter Green", "Comments On Baker And White"). Longest match wins.
+  var LEAD_INS = ['obituary', 'in memoriam', 'memorial', 'memorial to', 'tribute to', 'a tribute to', 'in memory of',
+    'remembering', 'festschrift for', 'dedicated to', 'comments on', 'comment on', 'reply to', 'response to',
+    'discussion of', 'review of', 'in honor of', 'in honour of'];
+  // Common title words after a lead-in that rule out a personal name.
+  var NAME_STOP = 'recent advances new the a an of in on and for with from to by at its their some further methods ' +
+    'results data evidence studies study analysis review notes observations geology mineralogy chemistry biology ' +
+    'structure structures origin history systematics taxonomy phylogeny evolution distribution occurrence ' +
+    'occurrences description redescription revision paper papers article report';
+  // Lowercase particles inside a personal name ("Ludwig van Beethoven", "Pierre de Fermat").
+  var NAME_PARTICLES = 'de van von der den da di le la du del della dos das y af zu ter';
+  // Frequent English surnames that are also common words: name-like after a lead-in.
+  var SURNAMES = 'green brown white black smith baker miller taylor walker young king hall wood hill stone fox bell ' +
+    'cook wright hunt price long short gray grey ford lane field marsh moore wells bishop knight page rose bird day may ' +
+    'rice reed ward west north south east bridges brooks banks rivers wolf fisher hunter carter mason cooper turner ' +
+    'parker palmer fowler shepherd chapman butler barber gardner farmer archer dyer weaver thatcher sawyer carpenter ' +
+    'slater sherman spencer marshall steward stewart bailey chamberlain chancellor dean abbott monk priest pope bright ' +
+    'sharp swift strong wise good best savage noble gentle hardy sterling golden silver love hope grace joy bliss frost ' +
+    'snow winter summers spring flower bloom berry cherry plum apple olive holly heath moss fern reid read reading lord ' +
+    'earl duke prince kaiser church temple cross chapel castle tower house holmes bond small little bigg sparrow crane ' +
+    'crow hawk drake swan peacock finch martin robin starling lamb bull hart buck roe todd';
+  // Words that make a two-letter symbol between "of"/"in" an element ("Diffusion Of He In Olivine").
+  var CHEM_CONTEXT = 'isotope isotopes diffusion partitioning solubility mobility transport content contents ' +
+    'concentration concentrations abundance abundances ratio ratios systematics geochemistry budget flux fluxes loss ' +
+    'retention degassing enrichment depletion doping doped substitution incorporation adsorption sorption uptake ' +
+    'release cycling speciation oxidation reduction valence coordination';
   // Adjective + head pairs that form a name head after a kept word ("McMurdo Volcanic
   // Group", "Sudbury Igneous Complex", "Powdermill Nature Reserve").
   var COMPOUND_HEADS = {
@@ -167,6 +199,7 @@
   var PHRASES = [
     // countries, regions, states, cities
     'United States|United States of America|United Kingdom|United Nations|United Arab Emirates|New Zealand|South Africa|' +
+    'Black Forest|Black Hills|Blue Ridge|White Mountains|Green Mountains|Rocky Mountains|Great Dividing Range|Great Barrier Reef|Green River|White River|Red River|Snake River|Yellow River|Yellow Sea|Yellowstone National Park|Black Range|Blue Mountains|Iron Mountain|Copper Harbor|Silver City|Gold Coast|Ivory Coast|Grand Canyon|Great Salt Lake|Long Island|Long Valley|Death Valley|Mammoth Cave|Bay Area|' +
     'North America|South America|Central America|Latin America|North Korea|South Korea|Saudi Arabia|Sri Lanka|' +
     'Costa Rica|Puerto Rico|El Salvador|Czech Republic|Dominican Republic|Central African Republic|' +
     'Democratic Republic of the Congo|Republic of the Congo|Ivory Coast|Gold Coast|Sierra Leone|Burkina Faso|' +
@@ -256,6 +289,9 @@
   var ENTITY_RE = /^&(#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/;
   var GENUS_END = /(a|e|us|um|is|es|on|ops|ys|x|os|as|ites|ma|ium|oides|mys|don|pus|er)$/;
   var EPITHET_END = /(us|a|um|i|ae|is|ex)$/;
+  // Capitalised epithet after a genus ("Drosophila Melanogaster"): also -oides, -orum, -aster
+  // and the longer Latin -e endings (-ale, -are, -ense, -ile, -forme); bare -e is too name-like.
+  var EPITHET_END_WIDE = /(us|a|um|i|ae|is|ex|oides|orum|aster|[a-z]{3,}(ale|are|ense|ile|forme|oide))$/;
   var GENUS_O = { homo: 1, vibrio: 1, danio: 1, bubo: 1, falco: 1, buteo: 1 };
   // family / order / superfamily names are capitalised even when a word list has them
   var HIGHER_TAXON_RE = /(idae|aceae|oidea|oidae|inae|formes|opoda|ineae|mycetes|phyceae|opsida)$/;
@@ -324,6 +360,18 @@
   var AMBIG_PLURAL_SET = setOf(AMBIG_PLURALS);
   var NOT_GENUS_SET = setOf(NOT_GENUS);
   var OPENER_SET = setOf(OPENER_WORDS);
+  var OPENER_STRICT_SET = setOf(OPENER_STRICT);
+  var PLACE_EPITHET_SET = setOf(PLACE_EPITHETS);
+  var NAME_STOP_SET = setOf(NAME_STOP);
+  var NAME_PARTICLE_SET = setOf(NAME_PARTICLES);
+  var SURNAME_SET = setOf(SURNAMES);
+  var CHEM_SET = setOf(CHEM_CONTEXT);
+  var LEAD_IN_LIST = (function () {
+    var l = [];
+    for (var i = 0; i < LEAD_INS.length; i++) l.push(LEAD_INS[i].split(' '));
+    l.sort(function (a, b) { return b.length - a.length; });
+    return l;
+  })();
   var INSTITUTION_SET = setOf(INSTITUTION_WORDS);
   var GEO_OF_SET = setOf(GEO_OF_WORDS);
   var COMPOUND_SET = (function () {
@@ -703,7 +751,28 @@
 
   // "As", "In", "He", "Be", "At", "No" as element symbols: in a list of symbols
   // ("Pb, As and Cd", "He, Ne, Ar", "As and Pb") or before an oxidation state ("As(III)").
-  function isElementContext(toks, i) {
+  // An unambiguous chemistry token anywhere in the title: a two-letter element symbol that is
+  // not a word ("Pb", "Sr"), an isotope ("40Ar", "3He") or a formula ("Fe2O3", "NaCl", "CO2").
+  function isChemToken(t) {
+    if (!t || t.length > 14 || AMBIG_EL_SET.has(t)) return false;
+    if (ELEMENT_SET.has(t)) return true;
+    var iso = /^\d+([A-Z][a-z]?)$/.exec(t);
+    if (iso) return EL_BY_UPPER[iso[1].toUpperCase()] === iso[1];
+    if (!/^([A-Z][a-z]?\d*){2,}$/.test(t) || !/[a-z\d]/.test(t)) return false;
+    var segs = t.match(/[A-Z][a-z]?/g);
+    for (var k = 0; k < segs.length; k++) if (EL_BY_UPPER[segs[k].toUpperCase()] !== segs[k]) return false;
+    return true;
+  }
+  function titleHasChem(toks) {
+    for (var k = 0; k < toks.length; k++) {
+      if (toks[k].kind !== 'word') continue;
+      var parts = toks[k].text.split(JOINER_SPLIT);
+      for (var q = 0; q < parts.length; q += 2) if (isChemToken(parts[q])) return true;
+    }
+    return false;
+  }
+
+  function isElementContext(toks, i, chem) {
     var n = toks.length;
     if (i + 1 < n && toks[i + 1].kind === 'punct') {
       var nt = toks[i + 1].text;
@@ -720,7 +789,16 @@
     if (link(p) && toks[p].text !== ')' && sym(prevSolid(toks, p))) return true;
     var q = nextSolid(toks, i);
     if (q >= 0 && link(q) && toks[q].text !== '(' && sym(nextSolid(toks, q))) return true;
-    return false;
+    // "Diffusion Of He In Olivine": after "of", "in", "with", "and", "or" or "/", and before "in",
+    // "and", "or", a separator or a chemistry word (or anywhere chemical in a chemical title)
+    var pv = p >= 0 && ((toks[p].kind === 'word' && p === i - 2 && /^(of|in|with|and|or)$/i.test(toks[p].text)) ||
+      (toks[p].kind === 'punct' && toks[p].text === '/'));
+    if (!pv || q < 0) return false;
+    var qt = toks[q];
+    if (qt.kind === 'punct') return /^[\/,\-–]/.test(qt.text);
+    if (qt.kind !== 'word') return false;
+    if (/^(in|and|or)$/i.test(qt.text) || CHEM_SET.has(lookupKey(qt.text))) return true;
+    return !!chem;
   }
 
   // Phrase matching: returns an array phrase[i] = canonical part text for matched tokens.
@@ -782,6 +860,62 @@
   function isHeadKey(key) { return inSet(HEAD_SET, key); }
   function isGeoTime(key) { return GEO_TIME_SET.has(key); }
 
+  // "Lake Superior", "Point Barrow": the word after a strict opener is a name when it is unknown
+  // or a curated place epithet / surname; never a plural ("Lake Sediments").
+  function openerNameOk(e) {
+    if (e.anchor || e.phrase) return true;
+    var key = e.key || '';
+    return !!key && !/s$/.test(key) && (PLACE_EPITHET_SET.has(key) || SURNAME_SET.has(key));
+  }
+
+  // Sentence-start token i: does a lead-in phrase ("Obituary", "Comments On") start here? When it
+  // does, the following run of 1-4 capitalised name-like words (unknown to the list or a frequent
+  // surname, joined by "and", "&", initials and particles) is marked in `zone`. Any common
+  // title word ("Recent", "Geology"), lowercase word or punctuation ends the name; a run that
+  // contains a non-name common word is not a name at all ("Review Of Recent Advances").
+  function markLeadInNames(toks, i, words, zone) {
+    var j, m, w, best = 0;
+    for (var L = 0; L < LEAD_IN_LIST.length && !best; L++) {
+      var ph = LEAD_IN_LIST[L];
+      for (j = i, m = 0; m < ph.length; m++) {
+        if (j >= toks.length || toks[j].kind !== 'word' || toks[j].text.toLowerCase() !== ph[m]) break;
+        if (m < ph.length - 1 && !(toks[j + 1] && toks[j + 1].text === ' ')) break;
+        j += 2;
+      }
+      if (m === ph.length) best = j;
+    }
+    if (!best) return;
+    j = best;
+    if (j < toks.length && toks[j].kind === 'space') j++;
+    if (j < toks.length && toks[j].kind === 'punct' && /^[:—–\-,]$/.test(toks[j].text)) j++;
+    var names = [], count = 0, pending = [];
+    for (; j < toks.length; j++) {
+      var t = toks[j];
+      if (t.kind === 'space') { if (t.text !== ' ') break; continue; }
+      if (t.kind === 'punct') {
+        if (t.text === '&' && count) { pending.push(j); continue; }
+        if (t.text === '.' && names.length && toks[j - 1].kind === 'word' && toks[j - 1].text.length === 1) continue;   // initial "J."
+        break;
+      }
+      w = t.text;
+      if (!isUpper(w.charAt(0))) {
+        if (count && (NAME_PARTICLE_SET.has(w) || w === 'and')) { pending.push(j); continue; }   // 'Baker and White'
+        break;
+      }
+      if (w.length === 1) { if (toks[j + 1] && toks[j + 1].text === '.') { names.push(j); pending = []; continue; } break; }
+      if (!hasLower(w) || hasUpper(w.slice(1)) || hasDigit(w) || JOINERS.test(w)) break;
+      var key = lookupKey(w);
+      if (BREAKER_SET.has(key)) { if (key === 'and' && count) { pending.push(j); continue; } break; }
+      if (key === 'et' || key === 'al') break;
+      if (NAME_STOP_SET.has(key)) return;
+      if (isCommon(key, words) && !SURNAME_SET.has(key)) return;
+      if (++count > 4) return;
+      names.push(j); pending = [];
+    }
+    if (!count) return;
+    for (m = 0; m < names.length; m++) zone[names[m]] = true;
+  }
+
   /* ---------- sentence case ---------- */
 
   // The converter proper. Returns { toks, meta } where meta[i] (for word tokens) records
@@ -791,6 +925,8 @@
     var toks = tokenize(title), infos = [], meta = [], i;
     var phrase = matchPhrases(toks);
     var run = [], seenWord = false, inQuote = false;
+    var chemTitle = titleHasChem(toks);
+    var nameZone = {};        // token index -> true: capitalised word of a personal name after a lead-in
     var instChain = 0;       // "Museum of Comparative Zoology": 1 = institution head seen, 2 = inside its "of" name
 
     function entryKey(e) { var ps = e.info.parts; return lookupKey(ps[ps.length - 1]); }
@@ -842,7 +978,8 @@
           // "Gulf of Guinea", "University of Utah": head + of + name
           if (r === n - 1 && k && e.ofName && (inSet(X_HEAD_SET, k) || INSTITUTION_SET.has(k))) { kept[r] = true; via[r] = 'h'; changed = true; continue; }
           // D: name opener + the capitalised word after it ("Mount Baker", "Cape Cod", "Lac Des Iles")
-          if (r + 1 < n && single(e) && k && OPENER_SET.has(k) && single(run[r + 1]) && run[r + 1].info.cls[0] !== 'breaker') {
+          if (r + 1 < n && single(e) && k && OPENER_SET.has(k) && single(run[r + 1]) && run[r + 1].info.cls[0] !== 'breaker' &&
+              (!OPENER_STRICT_SET.has(k) || openerNameOk(run[r + 1]))) {
             kept[r] = true; via[r] = 'p';
             if (!kept[r + 1]) { kept[r + 1] = true; via[r + 1] = 'h'; }
             changed = true; continue;
@@ -943,6 +1080,10 @@
         }
       }
       infos[i] = info;
+      // "Obituary: Peter Green", "Comments On Baker And White": the capitalised words after a
+      // memorial / discussion lead-in are a personal name and keep their capitals
+      if (start) markLeadInNames(toks, i, words, nameZone);
+      if (nameZone[i] && info.parts.length === 1 && info.cls[0] === 'candidate') { info.cls[0] = 'unknown'; wholeClass(info); }
       var ph = phrase[i];
       // words of an institution's "of" name keep their capitals ("Museum of Comparative Zoology")
       if (instChain === 2) {
@@ -960,9 +1101,15 @@
       }
 
       // element symbols that are also words: "Pb, As and Cd", "As(III)"
-      if (!ph && AMBIG_EL_SET.has(tok.text) && isElementContext(toks, i)) {
+      if (!ph && AMBIG_EL_SET.has(tok.text) && isElementContext(toks, i, chemTitle)) {
         info = { pieces: [tok.text], parts: [tok.text], cls: ['fixed'], whole: 'neutral' };
         infos[i] = info;
+      }
+      // "Be-Doped", "He-Rich", "In-Bearing": a symbol joined to a chemistry word after "of"/"in"/"with"
+      if (!ph && !start && info.parts.length > 1 && AMBIG_EL_SET.has(info.parts[0]) && info.cls[0] !== 'fixed' &&
+          (CHEM_SET.has(lookupKey(info.parts[1])) || /^(rich|bearing|free|based|containing|poor)$/i.test(info.parts[1]))) {
+        var ep = prevSolid(toks, i);
+        if (ep >= 0 && ep === i - 2 && toks[ep].kind === 'word' && /^(of|in|with|and|or)$/i.test(toks[ep].text)) { info.cls[0] = 'fixed'; wholeClass(info); }
       }
       // capital "A" mid-title: the article, unless it is a label ("Vitamin A", "Part A:")
       if (tok.text === 'A' && !start) {
@@ -1084,7 +1231,7 @@
     if (isGeoTime(key) || isHeadKey(key) || PROPER_PLURAL_SET.has(key)) return false;
     if (words && words.has('^' + key)) return false;
     if (HIGHER_TAXON_RE.test(key) || /(ales|ida|oda|ia|acea|phyta|zoa|morpha)$/.test(key)) return false;   // Sphaeriidae, Mammalia
-    return EPITHET_END.test(key);
+    return EPITHET_END_WIDE.test(key);
   }
 
   function toSentenceCase(title, opts) {
