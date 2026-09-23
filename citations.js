@@ -60,6 +60,16 @@
       .trim();
   }
 
+  // Library-catalogue records (BHL, MARC) leave trailing " :", " ,", " ;" on places and publishers
+  function trimPunct(s) { return String(s || '').replace(/[\s,:;\/]+$/, '').trim(); }
+
+  function cleanAbstract(s) {
+    if (!s) return '';
+    var t = String(s).replace(/<\/(jats:p|jats:title|jats:sec|p|title|sec)>/gi, ' ');
+    t = clean(t).replace(/^(Abstract|Summary)\b[\s.:]*/i, '');
+    return t;
+  }
+
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
@@ -86,18 +96,33 @@
     return name;
   }
 
+  function isCaps(s) { return s.length > 1 && s === s.toUpperCase() && s !== s.toLowerCase(); }
+
   function person(p) {
-    if (p.family || p.given) {
-      return { family: uncaps(clean(p.family)), given: clean(p.given), suffix: clean(p.suffix || ''), literal: false };
+    var fam = clean(p.family);
+    if (fam) {
+      var given = clean(p.given);
+      // "SMITH, JOHN" deposited in capitals: title-case the given name too, but leave initials ("J.D.", "PC") alone
+      if (isCaps(fam) && isCaps(given)) {
+        given = given.split(/\s+/).map(function (tok) {
+          if (/\./.test(tok)) return tok;                       // "J.D."
+          if (/^[A-Z]{1,3}$/.test(tok) && !/[AEIOUY]/.test(tok)) return tok; // "PC", "JD"
+          return uncaps(tok);                                   // "IAN", "JOHN"
+        }).join(' ');
+      }
+      return { family: uncaps(fam), given: given, suffix: clean(p.suffix || ''), literal: false };
     }
-    var name = clean(p.name || p.literal || '');
-    return { family: name, given: '', literal: true };
+    var name = clean(p.name || p.literal || p.given || '');
+    return { family: name, given: '', suffix: '', literal: true };
   }
 
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
     'August', 'September', 'October', 'November', 'December'];
   var MONTHS_ABBR = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.',
     'Sep.', 'Oct.', 'Nov.', 'Dec.'];
+  var MONTHS_IEEE = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'June', 'July', 'Aug.',
+    'Sept.', 'Oct.', 'Nov.', 'Dec.'];
+  var ORDINAL_WORDS = ['', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 
   /* ---------- normalize ---------- */
 
@@ -105,14 +130,28 @@
     var dp = datePartsOf(m);
     var type = m.type || 'other';
     var page = clean(m.page || '');
+    var isPart = /chapter|section|book-part|proceedings-article|paper-conference/.test(type);
+    // Crossref lists a chapter's series first and the book last: ["Use R!", "ggplot2"]
+    var ct = m['container-title'];
+    var containers = Array.isArray(ct) ? ct.filter(Boolean) : (ct ? [ct] : []);
+    var container = isPart && containers.length > 1 ? containers[containers.length - 1] : containers[0];
+    var series = isPart && containers.length > 1 ? containers[0] : first(m['collection-title'] || m.series || '');
+    var inst = m.institution;
+    var acc = m.accessed && m.accessed['date-parts'] && m.accessed['date-parts'][0];
     var r = {
       type: type,
       doi: m.DOI || m.doi || '',
       url: m.URL || (m.DOI ? 'https://doi.org/' + m.DOI : ''),
-      title: clean(first(m.title)),
+      title: trimPunct(clean(first(m.title))),
       subtitle: clean(first(m.subtitle)),
-      container: clean(first(m['container-title'])),
+      container: trimPunct(clean(container)),
+      series: trimPunct(clean(series)),
       shortContainer: clean(first(m['short-container-title'])),
+      institution: clean(Array.isArray(inst) ? (inst[0] && inst[0].name) : (inst && inst.name) || inst || ''),
+      edition: clean(m.edition || m['edition-number'] || ''),
+      numPages: clean(m['number-of-pages'] || ''),
+      genre: clean(m.genre || first(m.degree) || ''),
+      accessed: acc ? { year: acc[0], month: acc[1] || 0, day: acc[2] || 0 } : null,
       authors: (m.author || []).map(person),
       editors: (m.editor || []).map(person),
       year: dp[0] ? String(dp[0]) : '',
@@ -122,11 +161,11 @@
       issue: clean(m.issue || ''),
       pages: page,
       articleNumber: clean(m['article-number'] || ''),
-      publisher: clean(m.publisher || ''),
-      place: clean(m['publisher-location'] || m['publisher-place'] || ''),
+      publisher: trimPunct(clean(m.publisher || '')),
+      place: trimPunct(clean(m['publisher-location'] || m['publisher-place'] || '')),
       issn: clean(first(m.ISSN) || ''),
       isbn: clean(first(m.ISBN) || ''),
-      abstract: clean(m.abstract || ''),
+      abstract: cleanAbstract(m.abstract || ''),
       language: clean(m.language || ''),
       event: clean((m.event && m.event.name) || ''),
       score: m.score
@@ -134,9 +173,8 @@
     if (r.subtitle && r.title && r.title.indexOf(r.subtitle) === -1) {
       r.title = r.title + ': ' + r.subtitle;
     }
-    if (r.title && !/[.?!]$/.test(r.title)) { /* keep as is; punctuation added per style */ }
     r.isArticleNumber = false;
-    if (!r.pages && r.articleNumber) { r.pages = r.articleNumber; r.isArticleNumber = true; }
+    if (r.articleNumber && (!r.pages || r.pages === r.articleNumber)) { r.pages = r.articleNumber; r.isArticleNumber = true; }
     if (r.pages && /^e\d+$/i.test(r.pages)) r.isArticleNumber = true;
     return r;
   }
@@ -161,40 +199,42 @@
   function initials(given, opts) {
     opts = opts || {};
     if (!given) return '';
-    var tokens = given.replace(/\./g, '. ').split(/\s+/).filter(Boolean);
+    // "J.-P." stays one token; "P.C." becomes two
+    var tokens = given.replace(/\.(?![\-\u2010\u2011])/g, '. ').split(/\s+/).filter(Boolean);
     var out = [];
     tokens.forEach(function (tok) {
-      tok = tok.replace(/\.$/, '');
+      tok = tok.replace(/\.+$/, '').replace(/^[\-\u2010\u2011]+|[\-\u2010\u2011]+$/g, '');
       if (!tok) return;
       // "PC" style compressed initials
-      if (/^[A-Z]{2,3}$/.test(tok)) {
+      if (/^[A-Z\u00C0-\u00D6\u00D8-\u00DE]{2,3}$/.test(tok)) {
         tok.split('').forEach(function (ch) { out.push(ch); });
         return;
       }
-      var parts = tok.split('-').map(function (p) { return p.charAt(0).toUpperCase(); });
-      out.push(parts.join(opts.dots === false ? '-' : '.-'));
+      var parts = tok.split(/[\-\u2010\u2011]/).filter(Boolean).map(function (p) { return p.replace(/\./g, '').charAt(0).toUpperCase(); });
+      if (parts.length) out.push(parts.join(opts.dots === false ? '-' : '.-'));
     });
     if (opts.dots === false) return out.join('');
     return out.map(function (x) { return x + '.'; }).join(opts.space === false ? '' : ' ');
   }
 
-  function nameLastInit(p, sep) { // "Kucsko, G."
+  function sfx(p) { return p.suffix ? ', ' + p.suffix : ''; }
+  function nameLastInit(p, sep) { // "Kucsko, G." / "King, M. L., Jr."
     if (p.literal) return p.family;
     var ini = initials(p.given);
-    return p.family + (ini ? (typeof sep === 'string' ? sep : ', ') + ini : '');
+    return p.family + (ini ? (typeof sep === 'string' ? sep : ', ') + ini : '') + sfx(p);
   }
-  function nameLastFull(p) { // "Kucsko, Georg"
+  function nameLastFull(p) { // "Kucsko, Georg" / "King, Martin Luther, Jr."
     if (p.literal) return p.family;
-    return p.family + (p.given ? ', ' + p.given : '');
+    return p.family + (p.given ? ', ' + p.given : '') + sfx(p);
   }
-  function nameFullFirst(p) { // "Georg Kucsko"
+  function nameFullFirst(p) { // "Georg Kucsko" / "Martin Luther King Jr."
     if (p.literal) return p.family;
-    return (p.given ? p.given + ' ' : '') + p.family;
+    return (p.given ? p.given + ' ' : '') + p.family + (p.suffix ? ' ' + p.suffix : '');
   }
-  function nameInitFirst(p) { // "G. Kucsko"
+  function nameInitFirst(p) { // "G. Kucsko" / "M. L. King, Jr."
     if (p.literal) return p.family;
     var ini = initials(p.given);
-    return (ini ? ini + ' ' : '') + p.family;
+    return (ini ? ini + ' ' : '') + p.family + sfx(p);
   }
   function nameVancouver(p) { // "Kucsko G"
     if (p.literal) return p.family;
@@ -230,17 +270,36 @@
   function endsPunct(s) { return /[.?!]$/.test(s); }
   function dot(s) { return s ? (endsPunct(s) ? s : s + '.') : ''; }
   function I(s) { return s ? '<i>' + esc(s) + '</i>' : ''; }
+  function Idot(s) { return s ? I(s) + (endsPunct(s) ? '' : '.') : ''; } // italic title, no ".?." doubling
   function T(s) { return esc(s); }
+  function hostOf(r) { return r.container || r.institution || r.publisher; } // preprint server, repository, publisher
+  // publisher shown after the host only when it is a distinct entity (a book's publisher), not the repository owner
+  function showPublisher(r, k) { return k !== 'journal' && !!r.publisher && !(r.institution && !r.container) && r.publisher !== hostOf(r); }
+  function pp(pages) { return (isRange(pages) ? 'pp. ' : 'p. ') + pageRange(pages); }
 
+  // "3" -> "3rd ed." (APA/IEEE) or "Third Edition" (Carnegie); text editions pass through
+  function editionLabel(ed, style) {
+    var n = parseInt(ed, 10);
+    if (!isNaN(n) && /^\d+(st|nd|rd|th)?\.?$/i.test(ed.trim())) {
+      if (style === 'carnegie') return (ORDINAL_WORDS[n] || n + 'th') + ' Edition';
+      var suf = (n % 100 >= 11 && n % 100 <= 13) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th';
+      return n + suf + ' ed.';
+    }
+    return /edition|ed\./i.test(ed) ? ed : ed + (style === 'carnegie' ? ' Edition' : ' ed.');
+  }
+  function apaNames(people) {
+    var n = people.length, li = function (p) { return nameLastInit(p); };
+    if (n === 0) return '';
+    if (n === 1) return li(people[0]);
+    if (n === 2) return li(people[0]) + ', & ' + li(people[1]);
+    if (n <= 20) return people.slice(0, -1).map(li).join(', ') + ', & ' + li(people[n - 1]);
+    return people.slice(0, 19).map(li).join(', ') + ', . . . ' + li(people[n - 1]);
+  }
   function apa(r) {
     var k = kind(r);
-    var n = r.authors.length;
-    var names;
-    if (n === 0) names = '';
-    else if (n === 1) names = nameLastInit(r.authors[0]);
-    else if (n === 2) names = nameLastInit(r.authors[0]) + ', & ' + nameLastInit(r.authors[1]);
-    else if (n <= 20) names = r.authors.slice(0, -1).map(nameLastInit).join(', ') + ', & ' + nameLastInit(r.authors[n - 1]);
-    else names = r.authors.slice(0, 19).map(nameLastInit).join(', ') + ', . . . ' + nameLastInit(r.authors[n - 1]);
+    var names = apaNames(r.authors);
+    if (!names && r.editors.length) names = apaNames(r.editors) + (r.editors.length > 1 ? ' (Eds.)' : ' (Ed.)'); // edited book
+    var n = names ? 1 : 0;
     var year = '(' + (r.year || 'n.d.') + ').';
     var out = [];
     var link = doiLink(r);
@@ -250,25 +309,31 @@
 
     if (k === 'journal') {
       var src = [I(r.container), vol, r.pages ? (r.isArticleNumber ? 'Article ' : '') + T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
-      if (n) out.push(T(dot(names)), year, T(dot(r.title)), src + '.');
-      else out.push(T(dot(r.title)), year, src + '.');
+      if (n) out.push(T(dot(names)), year, T(dot(r.title)));
+      else out.push(T(dot(r.title)), year);
+      if (src) out.push(src + '.');
     } else if (k === 'chapter' || k === 'proceedings') {
       var eds = r.editors.map(nameInitFirst);
       var inPart = 'In ' + (eds.length ? T(joinAnd(eds, '&', true)) + ' (' + (eds.length > 1 ? 'Eds.' : 'Ed.') + '), ' : '') +
-        I(r.container) + (r.pages ? ' (pp. ' + T(pageRange(r.pages)) + ')' : '') + '.';
+        I(r.container) + (r.pages ? ' (' + T(pp(r.pages)) + ')' : '') + '.';
       if (n) out.push(T(dot(names)), year, T(dot(r.title)), inPart);
       else out.push(T(dot(r.title)), year, inPart);
       if (r.publisher) out.push(T(dot(r.publisher)));
     } else if (k === 'book') {
-      if (n) out.push(T(dot(names)), year, I(r.title) + '.');
-      else out.push(I(r.title) + '.', year);
+      var ed = r.edition ? ' (' + T(editionLabel(r.edition, 'apa')) + ')' : '';
+      if (n) out.push(T(dot(names)), year, I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''));
+      else out.push(I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''), year);
       if (r.publisher) out.push(T(dot(r.publisher)));
     } else {
-      var label = { preprint: 'Preprint', dataset: 'Data set', software: 'Computer software', thesis: 'Doctoral dissertation', report: 'Report' }[k];
-      var titlePart = I(r.title) + (label ? ' [' + label + ']' : '') + '.';
+      var label = { preprint: 'Preprint', dataset: 'Data set', software: 'Computer software', report: 'Report' }[k];
+      var host = hostOf(r);
+      if (k === 'thesis') {
+        var deg = /m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
+        label = T(deg + (host ? ', ' + host : '')); host = '';
+      }
+      var titlePart = I(r.title) + (label ? ' [' + label + ']' : '') + (label || !endsPunct(r.title) ? '.' : '');
       if (n) out.push(T(dot(names)), year, titlePart);
       else out.push(titlePart, year);
-      var host = r.container || r.publisher;
       if (host) out.push(T(dot(host)));
     }
     if (link) out.push(T(link));
@@ -282,24 +347,31 @@
     if (n === 1) names = nameLastFull(r.authors[0]);
     else if (n === 2) names = nameLastFull(r.authors[0]) + ', and ' + nameFullFirst(r.authors[1]);
     else if (n >= 3) names = nameLastFull(r.authors[0]) + ', et al';
+    if (!names && r.editors.length) { // edited book: "Ed, Alan, editor." / "Ed, Alan, and Beth Ed, editors."
+      var ne = r.editors.length;
+      names = (ne === 1 ? nameLastFull(r.editors[0]) : ne === 2 ? nameLastFull(r.editors[0]) + ', and ' + nameFullFirst(r.editors[1]) : nameLastFull(r.editors[0]) + ', et al') + (ne > 1 ? ', editors' : ', editor');
+    }
     var out = [];
     if (names) out.push(T(dot(names)));
     var quoted = '“' + T(dot(r.title)) + '”';
     var link = doiLink(r);
     var contParts = [];
     if (k === 'book') {
-      out.push(I(r.title) + '.');
+      out.push(Idot(r.title));
       if (r.publisher) contParts.push(T(r.publisher));
       if (r.year) contParts.push(T(r.year));
     } else {
       out.push(quoted);
       if (r.container) contParts.push(I(r.container));
-      if (k === 'chapter' && r.editors.length) contParts.push('edited by ' + T(joinAnd(r.editors.map(nameFullFirst), 'and', false)));
+      else if (k !== 'journal' && hostOf(r)) contParts.push(T(hostOf(r)));
+      if ((k === 'chapter' || k === 'proceedings') && r.editors.length) {
+        contParts.push('edited by ' + T(r.editors.length > 2 ? nameFullFirst(r.editors[0]) + ' et al.' : joinAnd(r.editors.map(nameFullFirst), 'and', false)));
+      }
       if (r.volume) contParts.push('vol. ' + T(r.volume));
       if (r.issue) contParts.push('no. ' + T(r.issue));
-      if (k !== 'journal' && r.publisher) contParts.push(T(r.publisher));
+      if (showPublisher(r, k)) contParts.push(T(r.publisher));
       if (r.year) contParts.push(T(r.year));
-      if (r.pages) contParts.push((isRange(r.pages) ? 'pp. ' : 'p. ') + T(pageRange(r.pages)));
+      if (r.pages) contParts.push(T(pp(r.pages)));
     }
     if (link) contParts.push(T(link));
     if (contParts.length) out.push(contParts.join(', ') + '.');
@@ -316,6 +388,10 @@
       names = [nameLastFull(r.authors[0])].concat(rest.slice(0, -1)).join(', ') + ', and ' + rest[rest.length - 1];
     }
     else if (n > 10) names = nameLastFull(r.authors[0]) + ', ' + r.authors.slice(1, 7).map(nameFullFirst).join(', ') + ', et al';
+    if (!names && r.editors.length) { // edited book: "Ed, Alan, ed." / "Ed, Alan, and Beth Ed, eds."
+      var re = r.editors.slice(1).map(nameFullFirst);
+      names = (re.length ? [nameLastFull(r.editors[0])].concat(re.slice(0, -1)).join(', ') + ', and ' + re[re.length - 1] : nameLastFull(r.editors[0])) + (r.editors.length > 1 ? ', eds' : ', ed');
+    }
     var out = [];
     if (names) out.push(T(dot(names)));
     var link = doiLink(r);
@@ -326,9 +402,10 @@
       if (r.issue) s += ', no. ' + T(r.issue);
       s += r.year ? ' (' + T(r.year) + ')' : '';
       if (r.pages) s += ': ' + T(pageRange(r.pages));
-      out.push(s + '.');
+      s = s.replace(/^[\s,]+/, '');
+      if (s) out.push(s + '.');
     } else if (k === 'book') {
-      out.push(I(r.title) + '.');
+      out.push(Idot(r.title + (r.edition ? '. ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : '')));
       var pub = [r.place, r.publisher].filter(Boolean).join(': ');
       out.push(T(dot([pub, r.year].filter(Boolean).join(', '))));
     } else if (k === 'chapter' || k === 'proceedings') {
@@ -341,7 +418,7 @@
       out.push(T(dot([pub2, r.year].filter(Boolean).join(', '))));
     } else {
       out.push('“' + T(dot(r.title)) + '”');
-      var host = [r.container || r.publisher, r.year].filter(Boolean).join(', ');
+      var host = [hostOf(r), r.year].filter(Boolean).join(', ');
       if (host) out.push(T(dot(host)));
     }
     if (link) out.push(T(link) + '.');
@@ -352,24 +429,34 @@
     var k = kind(r);
     var n = r.authors.length;
     var hn = function (p) { return p.literal ? p.family : p.family + (p.given ? ', ' + initials(p.given, { space: false }) : ''); };
-    var names = '';
-    if (n === 1) names = hn(r.authors[0]);
-    else if (n === 2 || n === 3) names = joinAnd(r.authors.map(hn), 'and', false);
-    else if (n > 3) names = hn(r.authors[0]) + ' et al.';
+    var hlist = function (people) {
+      var m = people.length;
+      return m === 1 ? hn(people[0]) : m <= 3 ? joinAnd(people.map(hn), 'and', false) : hn(people[0]) + ' et al.';
+    };
+    var names = n ? hlist(r.authors) : '';
+    if (!names && r.editors.length) names = hlist(r.editors) + (r.editors.length > 1 ? ' (eds.)' : ' (ed.)');
     var out = [];
     var year = '(' + (r.year || 'no date') + ')';
     var link = doiLink(r);
     if (names) out.push(T(names), year);
     else out.push(year);
+    var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
-      out.push(I(r.title) + '.');
-      if (r.publisher) out.push(T(dot([r.place, r.publisher].filter(Boolean).join(': '))));
+      out.push(Idot(r.title + (r.edition ? '. ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : '')));
+      if (placePub) out.push(T(dot(placePub)));
+    } else if (k === 'chapter' || k === 'proceedings') {
+      // Cite Them Right: 'Title', in Editor, A. and Editor, B. (eds.) Book. Place: Publisher, pp. x–y.
+      var inb = 'in ' + (r.editors.length ? T(hlist(r.editors)) + (r.editors.length > 1 ? ' (eds.) ' : ' (ed.) ') : '') + I(r.container) + '.';
+      out.push('‘' + T(r.title) + '’, ' + inb);
+      var tail = [placePub, r.pages ? T(pp(r.pages)) : ''].filter(Boolean).join(', ');
+      if (tail) out.push(T(tail) + '.');
     } else {
       var parts = ['‘' + T(r.title) + '’'];
       if (r.container) parts.push(I(r.container));
-      if (r.volume) parts.push(T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : ''));
-      if (k !== 'journal' && r.publisher) parts.push(T(r.publisher));
-      if (r.pages) parts.push((isRange(r.pages) ? 'pp. ' : 'p. ') + T(pageRange(r.pages)));
+      else if (k !== 'journal' && hostOf(r)) parts.push(T(hostOf(r)));
+      if (r.volume || r.issue) parts.push(T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : ''));
+      if (showPublisher(r, k)) parts.push(T(r.publisher));
+      if (r.pages) parts.push(T(pp(r.pages)));
       out.push(parts.join(', ') + '.');
     }
     if (link) out.push('Available at: ' + T(link) + '.');
@@ -380,22 +467,30 @@
     var k = kind(r);
     var n = r.authors.length;
     var names = n > 6 ? r.authors.slice(0, 6).map(nameVancouver).join(', ') + ', et al' : r.authors.map(nameVancouver).join(', ');
+    if (!names && r.editors.length) names = r.editors.map(nameVancouver).join(', ') + (r.editors.length > 1 ? ', editors' : ', editor');
     var out = [];
     if (num) out.push(String(num) + '.');
     if (names) out.push(T(dot(names)));
     out.push(T(dot(r.title)));
+    var placePubYear = [r.place, r.publisher].filter(Boolean).join(': ') + (r.year ? '; ' + r.year : '');
     if (k === 'journal') {
-      var s = T(r.shortContainer || r.container) + '.';
-      s += ' ' + (r.year || '');
-      if (r.volume) s += ';' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '');
-      if (r.pages) s += ':' + T(nlmPages(r.pages));
-      out.push(s + '.');
+      var s = T(dot(r.shortContainer || r.container));
+      var tail = (r.year || '') + (r.volume ? ';' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '') : '') + (r.pages ? ':' + T(nlmPages(r.pages)) : '');
+      if (tail) s += ' ' + tail.replace(/^;/, '');
+      out.push(s + (endsPunct(s) && !tail ? '' : '.'));
     } else if (k === 'book') {
-      out.push(T(dot([r.place, r.publisher].filter(Boolean).join(': ') + (r.year ? '; ' + r.year : ''))));
+      if (r.edition) out.push(T(editionLabel(r.edition, 'apa')));
+      if (placePubYear) out.push(T(dot(placePubYear)));
+    } else if (k === 'chapter' || k === 'proceedings') {
+      // Citing Medicine: In: Editor A, Editor B, editors. Book. Place: Publisher; year. p. 10-20.
+      var edsV = r.editors.length ? r.editors.map(nameVancouver).join(', ') + (r.editors.length > 1 ? ', editors. ' : ', editor. ') : '';
+      out.push('In: ' + T(edsV) + T(dot(r.container)));
+      if (placePubYear) out.push(T(dot(placePubYear)));
+      if (r.pages) out.push('p. ' + T(nlmPages(r.pages)) + '.');
     } else {
-      var host = [r.container, r.publisher].filter(Boolean).join('. ');
-      var tail = [host, r.year].filter(Boolean).join('; ');
-      if (tail) out.push(T(dot(tail)));
+      var host = hostOf(r);
+      var tailG = [host ? dot(host).replace(/\.$/, '') : '', r.year].filter(Boolean).join('; ');
+      if (tailG) out.push(T(dot(tailG)));
     }
     if (r.doi) out.push('doi:' + T(r.doi));
     return out.join(' ');
@@ -407,24 +502,34 @@
     var names = '';
     if (n > 6) names = nameInitFirst(r.authors[0]) + ' et al.';
     else names = joinAnd(r.authors.map(nameInitFirst), 'and', n > 2);
+    if (!names && r.editors.length) names = joinAnd(r.editors.map(nameInitFirst), 'and', r.editors.length > 2) + (r.editors.length > 1 ? ', Eds.' : ', Ed.');
     var out = [];
     if (num) out.push('[' + num + ']');
     if (names) out.push(T(names) + ',');
-    var mon = r.month ? MONTHS_ABBR[r.month - 1] + ' ' : '';
+    var mon = r.month ? MONTHS_IEEE[r.month - 1] + ' ' : '';
     var link = doiLink(r);
+    var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
-      out.push(I(r.title) + '.');
-      var pub = [r.place, r.publisher].filter(Boolean).join(': ');
-      out.push(T([pub, r.year].filter(Boolean).join(', ')) + (r.doi ? ', doi: ' + T(r.doi) + '.' : '.'));
+      out.push(I(r.title) + (r.edition ? ', ' + T(editionLabel(r.edition, 'apa')) : (endsPunct(r.title) ? '' : '.')));
+      out.push(T([placePub, r.year].filter(Boolean).join(', ')) + (r.doi ? ', doi: ' + T(r.doi) + '.' : '.'));
+    } else if (k === 'chapter' || k === 'proceedings') {
+      // “Title,” in Book, A. Ed and B. Ed, Eds. City: Publisher, year, pp. x–y, doi: …
+      var edsI = r.editors.length ? ', ' + T(joinAnd(r.editors.map(nameInitFirst), 'and', r.editors.length > 2)) + (r.editors.length > 1 ? ', Eds.' : ', Ed.') : '';
+      var head = '“' + T(r.title) + ',” in ' + I(r.container) + edsI;
+      var restC = [];
+      if (r.year) restC.push(mon + T(r.year));
+      if (r.pages) restC.push(T(pp(r.pages)));
+      if (r.doi) restC.push('doi: ' + T(r.doi));
+      out.push(head + (edsI ? ' ' : '. ') + T(placePub) + (placePub && restC.length ? ', ' : '') + restC.join(', ') + '.');
     } else {
       var parts = ['“' + T(r.title) + ',”'];
       var rest = [];
-      if (k === 'chapter' || k === 'proceedings') rest.push('in ' + I(r.container));
-      else if (r.container) rest.push(I(r.container));
+      if (r.container) rest.push(I(r.container));
+      else if (k !== 'journal' && hostOf(r)) rest.push(T(hostOf(r)));
       if (r.volume) rest.push('vol. ' + T(r.volume));
       if (r.issue) rest.push('no. ' + T(r.issue));
-      if (r.pages) rest.push((isRange(r.pages) ? 'pp. ' : 'p. ') + T(pageRange(r.pages)));
-      if (k !== 'journal' && r.publisher) rest.push(T(r.publisher));
+      if (r.pages) rest.push(r.isArticleNumber ? 'Art. no. ' + T(r.pages) : T(pp(r.pages)));
+      if (showPublisher(r, k)) rest.push(T(r.publisher));
       if (r.year) rest.push(mon + T(r.year));
       if (r.doi) rest.push('doi: ' + T(r.doi));
       out.push(parts.join(' ') + (rest.length ? ' ' + rest.join(', ') : '') + '.');
@@ -476,24 +581,33 @@
       if (pages) s += (r.volume ? ':' : ', ') + T(pages);
       out.push(s + '.');
     } else if (k === 'book') {
-      out.push(T(dot(r.title)));
+      // Samways, M.J. 1994. Insect Conservation Biology. Chapman and Hall, London. 380 pp.
+      // Ostle, B., and R.W. Mensing. 1975. Statistics in Research, Third Edition. Iowa State University Press, Ames, Iowa.
+      out.push(T(dot(r.title + (r.edition ? ', ' + editionLabel(r.edition, 'carnegie') : ''))));
       if (pubPlace) out.push(T(dot(pubPlace)));
+      if (/^\d+$/.test(r.numPages)) out.push(T(r.numPages) + ' pp.');
     } else if (k === 'chapter' || k === 'proceedings') {
       out.push(T(dot(r.title)));
-      if (r.volume) { // paper in a numbered series volume
+      if (r.volume && (r.series || r.publisher)) { // paper in a numbered series volume: In Book (eds.). Series, 36:245-266.
         out.push('In ' + T(r.container) + eds + '.');
-        out.push(T(r.publisher || r.container) + ', ' + T(r.volume) + (pages ? ':' + T(pages) : '') + '.');
+        out.push(T(r.series || r.publisher) + ', ' + T(r.volume) + (pages ? ':' + T(pages) : '') + '.');
       } else {
         out.push((pages ? 'Pp. ' + T(pages) + ', in ' : 'In ') + T(r.container) + eds + (eds || !endsPunct(r.container) ? '.' : ''));
         if (pubPlace) out.push(T(dot(pubPlace)));
       }
     } else if (k === 'thesis') {
       out.push(T(dot(r.title)));
-      out.push(T(dot(['Unpublished Ph.D. Dissertation', r.publisher, r.place].filter(Boolean).join(', '))));
-    } else { // preprint, dataset, software, report, web resource
-      var host = r.container || r.publisher;
-      var today = new Date();
-      out.push(T(r.title) + ' [cited ' + today.getDate() + ' ' + MONTHS[today.getMonth()] + ' ' + today.getFullYear() + '].');
+      var degree = r.genre ? (/thesis|dissertation/i.test(r.genre) ? r.genre : r.genre + ' Thesis') : 'Ph.D. Dissertation';
+      out.push(T(dot(['Unpublished ' + degree, r.publisher || r.institution, r.place].filter(Boolean).join(', '))));
+    } else if (k === 'preprint') {
+      out.push(T(dot(r.title)));
+      var repo = hostOf(r);
+      if (repo) out.push(T(repo) + ' preprint.');
+      if (r.doi || r.url) out.push('Available from ' + T(doiLink(r)));
+    } else { // dataset, software, report, web resource: Title [cited 16 July 2008]. Available from URL
+      var host = hostOf(r);
+      var when = r.accessed || (function () { var d = new Date(); return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() }; })();
+      out.push(T(r.title) + ' [cited ' + (when.day ? when.day + ' ' : '') + (when.month ? MONTHS[when.month - 1] + ' ' : '') + when.year + '].');
       if (host) out.push(T(dot(host)));
       if (r.doi || r.url) out.push('Available from ' + T(doiLink(r)));
     }
@@ -510,37 +624,45 @@
   /* ---------- machine formats (plain text) ---------- */
 
   function bibKey(r) {
-    var fam = r.authors.length ? r.authors[0].family : (r.container || 'ref');
+    var fam = (r.authors.length ? r.authors[0].family : (r.container || '')).replace(/[^A-Za-z0-9]/g, '') || 'ref';
     var word = (r.title.match(/[A-Za-z]{3,}/g) || []).filter(function (w) {
       return !/^(the|and|for|with|from|into|over|under|that|this|are|was|were|its|our|their)$/i.test(w);
     })[0] || '';
-    return (fam + (r.year || '') + word).replace(/[^A-Za-z0-9]/g, '');
+    return fam + (r.year || '') + word.replace(/[^A-Za-z0-9]/g, '');
   }
-  function bibEsc(s) { return String(s).replace(/([&%$#_])/g, '\\$1'); }
+  var BIB_ESC = { '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}',
+    '&': '\\&', '%': '\\%', '$': '\\$', '#': '\\#', '_': '\\_' };
+  function bibEsc(s) { return String(s).replace(/[\\{}~^&%$#_]/g, function (c) { return BIB_ESC[c]; }); }
+  // braces keep "World Health Organization" as one name; escaped first so the braces survive
+  function bibName(p) { return p.literal ? '{' + bibEsc(p.family) + '}' : bibEsc(nameLastFull(p)); }
 
   function bibtex(r) {
     var k = kind(r);
     var type = { journal: 'article', chapter: 'incollection', book: 'book', proceedings: 'inproceedings',
       thesis: 'phdthesis', report: 'techreport' }[k] || 'misc';
     var f = [];
-    var add = function (key, val) { if (val) f.push('  ' + key + ' = {' + bibEsc(val) + '}'); };
+    var add = function (key, val, raw) { if (val) f.push('  ' + key + ' = ' + (raw === 'bare' ? val : '{' + (raw ? val : bibEsc(val)) + '}')); };
     add('title', r.title);
-    add('author', r.authors.map(nameLastFull).join(' and '));
-    add('editor', r.editors.map(nameLastFull).join(' and '));
+    add('author', r.authors.map(bibName).join(' and '), true);
+    add('editor', r.editors.map(bibName).join(' and '), true);
     if (k === 'journal') add('journal', r.container);
     else if (k === 'chapter' || k === 'proceedings') add('booktitle', r.container);
     else if (r.container) add('howpublished', r.container);
+    add('series', r.series);
+    add('edition', r.edition);
     add('volume', r.volume);
     add('number', r.issue);
     add('pages', r.pages ? enDash(r.pages).replace('–', '--') : '');
     add('year', r.year);
-    if (r.month) add('month', MONTHS_ABBR[r.month - 1].replace('.', '').toLowerCase());
-    add('publisher', r.publisher);
+    if (r.month) add('month', MONTHS_ABBR[r.month - 1].replace('.', '').toLowerCase(), 'bare');
+    if (k === 'thesis') add('school', r.publisher || r.institution);
+    else if (k === 'report') add('institution', r.publisher || r.institution);
+    else add('publisher', r.publisher);
     add('address', r.place);
-    add('issn', r.issn);
-    add('isbn', r.isbn);
-    add('doi', r.doi);
-    add('url', doiLink(r));
+    add('issn', r.issn, true);
+    add('isbn', r.isbn, true);
+    add('doi', r.doi, true);
+    add('url', doiLink(r), true);
     if (k === 'preprint') add('note', 'Preprint');
     if (k === 'dataset') add('note', 'Dataset');
     if (k === 'software') add('note', 'Software');
@@ -554,10 +676,13 @@
     var L = [];
     var add = function (tag, val) { if (val) L.push(tag + '  - ' + val); };
     add('TY', type);
-    r.authors.forEach(function (p) { add('AU', nameLastFull(p)); });
-    r.editors.forEach(function (p) { add('ED', nameLastFull(p)); });
+    var risName = function (p) { return p.literal ? p.family + ',' : nameLastFull(p); }; // trailing comma = single-field name
+    r.authors.forEach(function (p) { add('AU', risName(p)); });
+    r.editors.forEach(function (p) { add('ED', risName(p)); });
     add('TI', r.title);
     add('T2', r.container);
+    add('T3', r.series);
+    add('ET', r.edition);
     if (r.shortContainer && r.shortContainer !== r.container) add('JO', r.shortContainer);
     add('VL', r.volume);
     add('IS', r.issue);
@@ -583,11 +708,14 @@
     var L = [];
     var add = function (tag, val) { if (val) L.push(tag + ' ' + val); };
     add('%0', type);
-    r.authors.forEach(function (p) { add('%A', nameLastFull(p)); });
-    r.editors.forEach(function (p) { add('%E', nameLastFull(p)); });
+    var enName = function (p) { return p.literal ? p.family + ',' : nameLastFull(p); };
+    r.authors.forEach(function (p) { add('%A', enName(p)); });
+    r.editors.forEach(function (p) { add('%E', enName(p)); });
     add('%T', r.title);
     if (k === 'journal') add('%J', r.container);
     else add('%B', r.container);
+    add('%S', r.series);
+    add('%7', r.edition);
     add('%V', r.volume);
     add('%N', r.issue);
     add('%P', r.pages ? enDash(r.pages).replace('–', '-') : '');
@@ -646,13 +774,15 @@
   }
 
   // How well does a found record explain the reference text the user pasted? 0..1
-  function matchConfidence(refText, record) {
+  function matchConfidence(refText, record, opts) {
+    opts = opts || {};
     var r = record.authors ? record : normalize(record);
     var hay = ' ' + tokens(refText).join(' ') + ' ';
     var tt = tokens(r.title);
     if (!tt.length) return 0;
     var hit = tt.filter(function (w) { return hay.indexOf(' ' + w + ' ') !== -1; }).length;
     var score = hit / tt.length;
+    if (opts.titleOnly) return Math.max(0, Math.min(1, score)); // the Find tab has no year or author to check
     var yearsInRef = (String(refText).match(/\b(19|20)\d{2}\b/g) || []);
     if (r.year && yearsInRef.length && yearsInRef.indexOf(r.year) === -1) score -= 0.35; // a different year is a different record
     else if (r.year && hay.indexOf(' ' + r.year + ' ') === -1) score -= 0.15;

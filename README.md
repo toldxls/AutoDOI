@@ -38,19 +38,22 @@ Import into EndNote: *File → Import → File*, import option **EndNote Import*
 
 1. In a sheet: *Extensions → Apps Script*.
 2. Replace the default `Code.gs` with `apps-script/Code.gs`. Add a second file named `Citations` and paste `apps-script/Citations.gs`.
-3. Save, then reload the spreadsheet. Grant the URL-fetch and Drive permissions when asked.
+3. In *Project Settings*, tick *Show "appsscript.json" manifest file*, then replace its contents with `apps-script/appsscript.json` (this keeps the Drive permission limited to files the script creates).
+4. Save and reload the spreadsheet. The formulas work immediately; the AutoDOI menu asks for permission the first time you use it.
 
 | Formula | Result |
 | --- | --- |
-| `=DOI_CITE(A2, "apa")` | Reference. Styles: `apa`, `mla`, `chicago`, `harvard`, `vancouver`, `ieee`, `carnegie`, `bibtex`, `ris`, `endnote`. Also accepts arXiv, PubMed and PMC IDs |
-| `=DOI_CITE(A2:A100, "vancouver")` | Whole column at once |
-| `=FIND_DOI(B2, C2)` | Best DOI for title B2 and journal C2 |
+| `=DOI_CITE(A2, "apa")` | Reference. Styles: `apa`, `mla`, `chicago`, `harvard`, `vancouver`, `ieee`, `carnegie`, `bibtex`, `ris`, `endnote`. Also accepts arXiv IDs and `PMID: 123` / `PMC123` |
+| `=DOI_CITE(A2:A100, "vancouver")` | Whole column at once. Uncached DOIs are fetched in parallel |
+| `=FIND_DOI(B2, C2)` | Best DOI for title B2 and journal C2 (either may be a range aligned with the titles) |
 | `=FIND_DOI(B2, C2, TRUE)` | DOI, matched title, journal, year and a 0–1 confidence, as a row |
 | `=REF_TO_DOI(D2)` / `=REF_TO_ENW(D2)` / `=REF_TO_RIS(D2)` | From a pasted reference in any style |
 
+Sheets stops a custom function after 30 seconds. On a very long column the cells that did not make it read `Retry`; recalculate (edit any cell) and they fill from the cache built so far. Results are cached for six hours.
+
 Menu **AutoDOI → Export selection as .enw / .ris** matches every selected cell (DOIs or references) and writes one import file to your Drive.
 
-Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faster polite pool. Results are cached for six hours so recalculation does not re-query.
+Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faster polite pool.
 
 ## Bugs and missing styles
 

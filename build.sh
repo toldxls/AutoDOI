@@ -4,16 +4,21 @@
 set -e
 cd "$(dirname "$0")"
 python3 - <<'PY'
-import re
-html = open('index.html').read()
-lib = open('citations.js').read()
+import re, sys
+html = open('index.html', encoding='utf-8').read()
+lib = open('citations.js', encoding='utf-8').read()
+for bad in ('</script', '<!--', '-->'):
+    if bad in lib:
+        sys.exit('citations.js contains "%s", which would break index.html when inlined' % bad)
 block = '<!-- citations.js (inlined by build.sh; edit citations.js, not this block) -->\n<script>\n' + lib + '\n</script>\n<!-- /citations.js -->'
 pattern = re.compile(r'<!-- citations\.js .*?<!-- /citations\.js -->', re.S)
 if pattern.search(html):
-    html = pattern.sub(lambda m: block, html)
-else:
+    html = pattern.sub(lambda m: block, html, count=1)
+elif '<script src="citations.js"></script>' in html:
     html = html.replace('<script src="citations.js"></script>', block)
-open('index.html', 'w').write(html)
+else:
+    sys.exit('index.html has no citations.js marker block to replace')
+open('index.html', 'w', encoding='utf-8').write(html)
 PY
 cp citations.js apps-script/Citations.gs
 echo "index.html and apps-script/Citations.gs refreshed"

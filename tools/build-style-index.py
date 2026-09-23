@@ -27,11 +27,17 @@ def toks(s):
     s = re.sub(r'\b\d+(st|nd|rd|th)\b', ' ', s.lower())
     return [ABBR.get(t, t) for t in re.sub(r'[^a-z0-9]+', ' ', s).split() if ABBR.get(t, t) not in STOP]
 
+def write_json(path, data):
+    # write to a temp file first so a failure keeps the previous index intact
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(data, f, separators=(',', ':'), ensure_ascii=False)
+    os.replace(tmp, path)
+
 def main():
-    styles = json.load(urllib.request.urlopen(STYLES_JSON))
+    styles = json.load(urllib.request.urlopen(STYLES_JSON, timeout=60))
     compact = [[s['name'], s['title'], 1 if s.get('dependent') else 0] for s in styles]
-    with open(os.path.join(ROOT, 'data', 'styles-index.json'), 'w') as f:
-        json.dump(compact, f, separators=(',', ':'), ensure_ascii=False)
+    write_json(os.path.join(ROOT, 'data', 'styles-index.json'), compact)
     print(len(compact), 'styles indexed')
 
     endnote_dir = sys.argv[1] if len(sys.argv) > 1 else None
@@ -49,8 +55,7 @@ def main():
     for n in names:
         cands = by_key.get(' '.join(toks(n))) or by_set.get(frozenset(toks(n)))
         if cands: matched.add(sorted(cands, key=lambda s: s.get('dependent', 0))[0]['name'])
-    with open(os.path.join(ROOT, 'data', 'endnote-shortlist.json'), 'w') as f:
-        json.dump(sorted(matched), f, separators=(',', ':'))
+    write_json(os.path.join(ROOT, 'data', 'endnote-shortlist.json'), sorted(matched))
     print(len(names), 'EndNote styles ->', len(matched), 'CSL matches')
 
 if __name__ == '__main__':
