@@ -64,6 +64,7 @@
   input[type="text"].mono { font-family: var(--mono); font-size: 14px; }
   textarea { font-family: var(--serif); font-size: 15px; line-height: 1.55; min-height: 140px; resize: vertical; }
   .split-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .linkish { appearance: none; border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
   .split-bar select { font-size: 13px; padding: 3px 6px; }
   #split-count { font-weight: 500; color: var(--ink); }
   #split-details summary { cursor: pointer; }
@@ -236,6 +237,7 @@
             <option value="numbered">Numbered list (1. / [1])</option>
           </select>
         </label>
+        <button type="button" class="linkish" id="speed-hint" hidden>Add your email for 3× faster matching</button>
         <details id="split-details"><summary>Show how it was split</summary><ol id="split-list"></ol></details>
       </div>
       <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
@@ -246,6 +248,7 @@
         <span class="status" id="export-status" style="margin:0" role="status" aria-live="polite"></span>
       </div>
     </form>
+    <p class="status" id="oa-notice" hidden>OpenAlex's free daily search allowance for your network is used up, so references are matched with Crossref only until midnight UTC. A free OpenAlex API key in Settings gives you your own allowance.</p>
     <div class="matches" id="export-matches"></div>
     <div id="export-output"></div>
   </section>
@@ -255,6 +258,10 @@
     <div class="row">
       <label for="polite-email">Contact email for Crossref's polite pool (optional, faster and more reliable; stays in this browser)</label>
       <input type="text" id="polite-email" placeholder="you@example.org" autocomplete="off">
+    </div>
+    <div class="row">
+      <label for="openalex-key">OpenAlex API key (optional, free from openalex.org; gives you your own daily search allowance; stays in this browser)</label>
+      <input type="text" id="openalex-key" placeholder="OpenAlex key" autocomplete="off">
     </div>
     <div class="row">
       <button class="btn small" type="button" id="clear-words">Forget remembered title words</button>
@@ -4377,6 +4384,8 @@
 
   /* ---------- settings ---------- */
   $('polite-email').value = store.get('email') || '';
+  $('openalex-key').value = store.get('oakey') || '';
+  $('openalex-key').addEventListener('change', function () { store.set('oakey', this.value.trim()); if (this.value.trim()) { oaBlockedUntil = 0; store.set('oaBlocked', '0'); } });
   $('polite-email').addEventListener('change', function () { store.set('email', $('polite-email').value.trim()); });
   function polite(url) {
     var e = ($('polite-email').value || '').trim();
@@ -4387,17 +4396,38 @@
   var SELECT = 'DOI,URL,title,subtitle,author,editor,container-title,short-container-title,issued,published-print,published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event,relation';
 
   // Crossref's public pool allows about one request per second per client: serialise and space its calls
-  var crChain = Promise.resolve();
-  function spaced(fn, ms) {
-    var p = crChain.then(fn);
-    crChain = p.catch(function () {}).then(function () { return new Promise(function (r) { setTimeout(r, ms); }); });
-    return p;
+  // Crossref's public API has two pools, each allowing one request at a time: searches ("array", 1 per second) and
+  // single-DOI lookups ("single", 5 per second). Each pool gets its own queue; the gap is timed from the previous start.
+  var crQueues = {};
+  // Start requests no closer than `ms` apart and at most `conc` at a time (Crossref: 1 at a time publicly, 3 with an email)
+  function spaced(fn, ms, pool, conc) {
+    var q = crQueues[pool || 'array'] || (crQueues[pool || 'array'] = { lastStart: 0, active: 0, waiting: [] });
+    conc = conc || 1;
+    return new Promise(function (resolve, reject) {
+      q.waiting.push({ fn: fn, resolve: resolve, reject: reject });
+      pump();
+    });
+    function pump() {
+      if (!q.waiting.length || q.active >= conc || q.timer) return;
+      var wait = Math.max(0, q.lastStart + ms - Date.now());
+      q.timer = setTimeout(function () {
+        q.timer = null;
+        if (!q.waiting.length || q.active >= conc) return;
+        var job = q.waiting.shift();
+        q.active++; q.lastStart = Date.now();
+        Promise.resolve().then(job.fn).then(function (v) { q.active--; job.resolve(v); pump(); }, function (e) { q.active--; job.reject(e); pump(); });
+        pump();
+      }, wait);
+    }
   }
   // fetch that retries once on 429 / 5xx or a network-level failure; Crossref calls go through the spaced queue
   var crPenalty = 0; // extra spacing after Crossref says "too many requests"; decays as calls succeed
   async function fetchRetry(url, opts) {
     var isCrossref = /api\.crossref\.org/.test(url);
-    var doFetch = function () { return isCrossref ? spaced(function () { return fetch(url, opts); }, ($('polite-email').value.trim() ? 250 : 1050) + crPenalty) : fetch(url, opts); };
+    var single = /api\.crossref\.org\/works\/10\./.test(url), withEmail = !!$('polite-email').value.trim();
+    var gap = (single ? 210 : (withEmail ? 350 : 1050)) + crPenalty;
+    var conc = withEmail ? 3 : 1; // Crossref's polite pool (with an email) allows 3 at once; the public pool 1
+    var doFetch = function () { return isCrossref ? spaced(function () { return fetch(url, opts); }, gap, single ? 'single' : 'array', conc) : fetch(url, opts); };
     var res;
     try { res = await doFetch(); }
     catch (e) { await new Promise(function (r) { setTimeout(r, 1500); }); res = await doFetch(); }
@@ -4505,13 +4535,31 @@
 
   /* ---------- OpenAlex: second search backend (theses, EarthArXiv, DataCite, grey literature) ---------- */
   var OA_SELECT = 'id,doi,title,display_name,authorships,publication_year,publication_date,biblio,primary_location,type,ids';
+  var oaBlockedUntil = Number(store.get('oaBlocked') || 0);
+  function oaUrl(url) { var k = ($('openalex-key') && $('openalex-key').value || '').trim(); return polite(url) + (k ? '&api_key=' + encodeURIComponent(k) : ''); }
+  function oaAvailable() { return Date.now() > oaBlockedUntil; }
+  async function oaFetch(url) {
+    if (!oaAvailable()) throw new Error('OpenAlex daily allowance used up');
+    var res = await fetch(oaUrl(url));
+    if (res.status === 429) { // OpenAlex charges credits; without a key the free daily allowance is shared by your network
+      var d = new Date(); d.setUTCHours(24, 0, 0, 0); oaBlockedUntil = d.getTime(); store.set('oaBlocked', String(oaBlockedUntil));
+      oaNotice();
+      throw new Error('OpenAlex daily allowance used up');
+    }
+    return res;
+  }
+  function oaNotice() {
+    if (oaNotice.shown) return; oaNotice.shown = true;
+    logError('openalex', new Error('free daily allowance used up'));
+    var n = $('oa-notice'); if (n) n.hidden = false;
+  }
   async function openAlexSearch(text, rows) {
-    var res = await fetchRetry(polite('https://api.openalex.org/works?per-page=' + rows + '&select=' + OA_SELECT + '&search=' + encodeURIComponent(text)));
+    var res = await oaFetch('https://api.openalex.org/works?per-page=' + rows + '&select=' + OA_SELECT + '&search=' + encodeURIComponent(String(text).slice(0, 300)));
     if (!res.ok) throw new Error('OpenAlex returned ' + res.status);
     return ((await res.json()).results || []).map(function (w) { return A.normalize(A.fromOpenAlex(w)); });
   }
   async function openAlexByDoi(doi) {
-    var res = await fetch(polite('https://api.openalex.org/works/' + encodeURIComponent('https://doi.org/' + doi) + '?select=' + OA_SELECT));
+    var res = await oaFetch('https://api.openalex.org/works/' + encodeURIComponent('https://doi.org/' + doi) + '?select=' + OA_SELECT);
     if (!res.ok) throw new Error('OpenAlex returned ' + res.status);
     return A.normalize(A.fromOpenAlex(await res.json()));
   }
@@ -5460,6 +5508,10 @@
 
   $('export-input').addEventListener('input', function () { clearTimeout(previewTimer); previewTimer = setTimeout(updateSplitPreview, 250); });
   (function () { var sm = store.get('splitmode'); if (sm && /^(auto|lines|blank|numbered)$/.test(sm)) $('split-mode').value = sm; })();
+  $('speed-hint').addEventListener('click', function () {
+    var d = document.querySelector('details.settings'); d.open = true; $('polite-email').focus(); d.scrollIntoView({ block: 'center' });
+  });
+  $('polite-email').addEventListener('input', function () { if (this.value.trim()) $('speed-hint').hidden = true; });
   $('split-mode').addEventListener('change', function () { store.set('splitmode', this.value); updateSplitPreview(); });
   $('export-input').addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); $('export-go').click(); }
@@ -5487,6 +5539,7 @@
     if (!raw.trim()) { $('split-count').textContent = ''; $('split-list').innerHTML = ''; return; }
     var items = batchItems(raw);
     var nFileRecs = items.filter(function (x) { return x.kind === 'rec'; }).length, nText = items.length - nFileRecs;
+    $('speed-hint').hidden = !(nText > 10 && !$('polite-email').value.trim());
     $('split-count').textContent = (nText ? nText + ' reference' + (nText === 1 ? '' : 's') : '') + (nText && nFileRecs ? ' + ' : '') +
       (nFileRecs ? nFileRecs + ' file record' + (nFileRecs === 1 ? '' : 's') : '') + ' found';
     var ol = $('split-list'); ol.innerHTML = '';
@@ -5625,8 +5678,12 @@
       fr.appendChild(inp); fr.appendChild(go); row.node.appendChild(fr);
     }
 
+    var pending = {}; // look-ahead: lookups for the next few references start early (Crossref's queue still paces them)
+    var ahead = $('polite-email').value.trim() ? 4 : 2;
+    var startLookup = function (k) { if (k < items.length && items[k].kind === 'text' && !pending[k]) pending[k] = resolve(items[k].text).then(function (r) { return { ok: r }; }, function (e) { return { err: e }; }); };
     for (var i = 0; i < items.length; i++) {
       if (!current()) return; // a newer batch started or Stop was pressed
+      for (var k = i; k <= i + ahead; k++) startLookup(k);
       var it = items[i];
       status.textContent = (it.kind === 'rec' ? 'Reading ' : 'Matching ') + (i + 1) + ' of ' + items.length + '…';
       var m = el('div', 'match');
@@ -5641,7 +5698,9 @@
         continue;
       }
       try {
-        var res = await resolve(it.text);
+        var got = await pending[i]; delete pending[i];
+        if (got.err) throw got.err;
+        var res = got.ok;
         if (!current()) return;
         if (!res.record) {
           m.classList.add('bad');

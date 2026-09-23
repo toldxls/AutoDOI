@@ -88,6 +88,10 @@ The page passes the axe-core accessibility checks (landmarks, headings, labels, 
 
 The page sends only the identifiers or reference text you look up, to the services listed above. It has a Content Security Policy, loads the pinned citation engine with a Subresource Integrity hash, validates downloaded style files, and never puts pasted text into shareable links or bug reports. The bookmarklet sends only a DOI found on the page, never the page's address.
 
+## Speed
+
+Crossref's public service answers one search at a time, so a batch takes about 2 seconds per reference. Adding your email under Settings puts you in Crossref's "polite" pool, which allows three searches at once: about 0.6 seconds per reference (15 references: 29 s without, 9 s with). The email is only sent to Crossref and OpenAlex and stays in your browser. OpenAlex, used as a second opinion for hard references, now charges credits: without a key your network gets a small free daily allowance, after which AutoDOI uses Crossref alone until midnight UTC; a free OpenAlex API key in Settings gives you your own allowance.
+
 ## Caveats
 
 - Reference matching is a search, not parsing. Always check the match chip before importing; a reference with no Crossref or OpenAlex record will return the nearest wrong paper, so use the fix box or untick it.
