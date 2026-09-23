@@ -9,7 +9,7 @@
 (function (root) {
   'use strict';
 
-  var DOI_RE = /10\.\d{4,9}\/[^\s"'<>]+/i;
+  var DOI_RE = /10\.\d{4,9}\/[^\s"']+/i;
 
   /* ---------- helpers ---------- */
 
@@ -17,7 +17,7 @@
     if (!text) return null;
     var m = String(text).match(DOI_RE);
     if (!m) return null;
-    var doi = m[0].replace(/[.,;:]+$/, '');
+    var doi = m[0].replace(/[.,;:]+$/, '').replace(/[<>]+$/, '');
     // drop a trailing ")" or "]" only if it is unbalanced
     while (/[)\]]$/.test(doi)) {
       var open = (doi.match(/[(\[]/g) || []).length;
@@ -25,6 +25,27 @@
       if (close > open) doi = doi.slice(0, -1); else break;
     }
     return doi;
+  }
+
+  // A DOI, or an arXiv identifier mapped to its DataCite DOI (arXiv:2301.01234 -> 10.48550/arXiv.2301.01234)
+  function toDoi(text) {
+    var doi = extractDoi(text);
+    if (doi) return doi;
+    var t = String(text || '').trim();
+    var m = t.match(/(?:arxiv\.org\/(?:abs|pdf)\/|arxiv:\s*)(\d{4}\.\d{4,5}|[a-z\-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?/i)
+      || t.match(/^(\d{4}\.\d{4,5})(?:v\d+)?$/);
+    if (m) return '10.48550/arXiv.' + m[1];
+    return null;
+  }
+
+  // PubMed / PMC identifiers in free text: "PMID: 23903748", "PMC4221854", a pubmed.ncbi.nlm.nih.gov link
+  function extractPmid(text) {
+    var t = String(text || '');
+    var m = t.match(/\bPMC\d{4,9}\b/i);
+    if (m) return { type: 'pmcid', id: m[0].toUpperCase() };
+    m = t.match(/(?:pmid\s*:?\s*|pubmed\.ncbi\.nlm\.nih\.gov\/|pubmed\/)(\d{4,9})/i) || t.trim().match(/^(\d{4,9})$/);
+    if (m) return { type: 'pmid', id: m[1] };
+    return null;
   }
 
   function first(v) { return Array.isArray(v) ? v[0] : v; }
@@ -57,9 +78,17 @@
     return [];
   }
 
+  // Some publishers deposit names in capitals ("WATSON"); bring them back to title case
+  function uncaps(name) {
+    if (name.length > 1 && name === name.toUpperCase() && name !== name.toLowerCase()) {
+      return name.toLowerCase().replace(/(^|[\s\-'])(\S)/g, function (m, a, b) { return a + b.toUpperCase(); });
+    }
+    return name;
+  }
+
   function person(p) {
     if (p.family || p.given) {
-      return { family: clean(p.family), given: clean(p.given), literal: false };
+      return { family: uncaps(clean(p.family)), given: clean(p.given), suffix: clean(p.suffix || ''), literal: false };
     }
     var name = clean(p.name || p.literal || '');
     return { family: name, given: '', literal: true };
@@ -106,7 +135,9 @@
       r.title = r.title + ': ' + r.subtitle;
     }
     if (r.title && !/[.?!]$/.test(r.title)) { /* keep as is; punctuation added per style */ }
-    if (!r.pages && r.articleNumber) r.pages = r.articleNumber;
+    r.isArticleNumber = false;
+    if (!r.pages && r.articleNumber) { r.pages = r.articleNumber; r.isArticleNumber = true; }
+    if (r.pages && /^e\d+$/i.test(r.pages)) r.isArticleNumber = true;
     return r;
   }
 
@@ -218,7 +249,7 @@
     else if (r.issue) vol = '(' + T(r.issue) + ')';
 
     if (k === 'journal') {
-      var src = [I(r.container), vol, r.pages ? T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
+      var src = [I(r.container), vol, r.pages ? (r.isArticleNumber ? 'Article ' : '') + T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
       if (n) out.push(T(dot(names)), year, T(dot(r.title)), src + '.');
       else out.push(T(dot(r.title)), year, src + '.');
     } else if (k === 'chapter' || k === 'proceedings') {
@@ -280,7 +311,10 @@
     var n = r.authors.length;
     var names = '';
     if (n === 1) names = nameLastFull(r.authors[0]);
-    else if (n >= 2 && n <= 10) names = nameLastFull(r.authors[0]) + ', ' + joinAnd(r.authors.slice(1).map(nameFullFirst), 'and', n > 2);
+    else if (n >= 2 && n <= 10) {
+      var rest = r.authors.slice(1).map(nameFullFirst);
+      names = [nameLastFull(r.authors[0])].concat(rest.slice(0, -1)).join(', ') + ', and ' + rest[rest.length - 1];
+    }
     else if (n > 10) names = nameLastFull(r.authors[0]) + ', ' + r.authors.slice(1, 7).map(nameFullFirst).join(', ') + ', et al';
     var out = [];
     if (names) out.push(T(dot(names)));
@@ -381,7 +415,7 @@
     if (k === 'book') {
       out.push(I(r.title) + '.');
       var pub = [r.place, r.publisher].filter(Boolean).join(': ');
-      out.push(T(dot([pub, r.year].filter(Boolean).join(', '))));
+      out.push(T([pub, r.year].filter(Boolean).join(', ')) + (r.doi ? ', doi: ' + T(r.doi) + '.' : '.'));
     } else {
       var parts = ['“' + T(r.title) + ',”'];
       var rest = [];
@@ -397,6 +431,80 @@
     }
     if (!r.doi && link) out.push('[Online]. Available: ' + T(link));
     return out.join(' ');
+  }
+
+  // Annals of Carnegie Museum / Bulletin of Carnegie Museum of Natural History.
+  // Source: CMNH Publications Authors' Guide (6 Jan 2010), Literature Cited section:
+  // all authors named (no et al.), initials without spaces ("Rawlins, J.E."), serial comma before "and",
+  // periodicals spelled out, "Journal, volume(issue):pages" with no space after the colon,
+  // books as "Title, Edition. Publisher, Place.", chapters as "Pp. x-y, in Book (Eds., eds.). Publisher, Place."
+  function carnegieNames(people, mode) {
+    var ini = function (p) { return initials(p.given, { space: false }); };
+    var lastFirst = function (p) {
+      if (p.literal) return p.family;
+      var i = ini(p); return p.family + (i ? ', ' + i : '') + (p.suffix ? ', ' + p.suffix : '');
+    };
+    var firstLast = function (p) {
+      if (p.literal) return p.family;
+      var i = ini(p); return (i ? i + ' ' : '') + p.family + (p.suffix ? ', ' + p.suffix : '');
+    };
+    var n = people.length;
+    if (!n) return '';
+    if (mode === 'inline') { // editors inside parentheses: "K.D. Rose and J.D. Archibald"
+      var all = people.map(firstLast);
+      return n <= 2 ? all.join(' and ') : all.slice(0, -1).join(', ') + ', and ' + all[n - 1];
+    }
+    if (n === 1) return lastFirst(people[0]);
+    var rest = people.slice(1).map(firstLast);
+    return [lastFirst(people[0])].concat(rest.slice(0, -1)).join(', ') + ', and ' + rest[rest.length - 1];
+  }
+
+  function carnegie(r) {
+    var k = kind(r);
+    var names = carnegieNames(r.authors);
+    if (!names && r.editors.length) names = carnegieNames(r.editors) + (r.editors.length > 1 ? ' (eds.)' : ' (ed.)');
+    var out = [];
+    if (names) out.push(T(dot(names)));
+    out.push(T((r.year || 'n.d.') + '.'));
+    var pages = r.pages ? r.pages.replace(/\s*[-–—]+\s*/g, '-') : '';
+    var pubPlace = [r.publisher, r.place].filter(Boolean).join(', ');
+    var eds = r.editors.length ? ' (' + T(carnegieNames(r.editors, 'inline')) + (r.editors.length > 1 ? ', eds.)' : ', ed.)') : '';
+    if (k === 'journal') {
+      out.push(T(dot(r.title)));
+      var s = T(r.container);
+      if (r.volume) s += ', ' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '');
+      if (pages) s += (r.volume ? ':' : ', ') + T(pages);
+      out.push(s + '.');
+    } else if (k === 'book') {
+      out.push(T(dot(r.title)));
+      if (pubPlace) out.push(T(dot(pubPlace)));
+    } else if (k === 'chapter' || k === 'proceedings') {
+      out.push(T(dot(r.title)));
+      if (r.volume) { // paper in a numbered series volume
+        out.push('In ' + T(r.container) + eds + '.');
+        out.push(T(r.publisher || r.container) + ', ' + T(r.volume) + (pages ? ':' + T(pages) : '') + '.');
+      } else {
+        out.push((pages ? 'Pp. ' + T(pages) + ', in ' : 'In ') + T(r.container) + eds + (eds || !endsPunct(r.container) ? '.' : ''));
+        if (pubPlace) out.push(T(dot(pubPlace)));
+      }
+    } else if (k === 'thesis') {
+      out.push(T(dot(r.title)));
+      out.push(T(dot(['Unpublished Ph.D. Dissertation', r.publisher, r.place].filter(Boolean).join(', '))));
+    } else { // preprint, dataset, software, report, web resource
+      var host = r.container || r.publisher;
+      var today = new Date();
+      out.push(T(r.title) + ' [cited ' + today.getDate() + ' ' + MONTHS[today.getMonth()] + ' ' + today.getFullYear() + '].');
+      if (host) out.push(T(dot(host)));
+      if (r.doi || r.url) out.push('Available from ' + T(doiLink(r)));
+    }
+    return out.join(' ');
+  }
+
+  // In-text form for the Carnegie style: (Wible 2000), (Wible and Rawlins 2001), (Wible et al. 2002)
+  function carnegieInText(r) {
+    var fam = r.authors.map(function (p) { return p.family; });
+    var who = fam.length === 0 ? (r.container || 'Anon.') : fam.length === 1 ? fam[0] : fam.length === 2 ? fam[0] + ' and ' + fam[1] : fam[0] + ' et al.';
+    return '(' + who + ' ' + (r.year || 'n.d.') + ')';
   }
 
   /* ---------- machine formats (plain text) ---------- */
@@ -503,7 +611,8 @@
     { id: 'chicago', label: 'Chicago 17th', fn: chicago, rich: true },
     { id: 'harvard', label: 'Harvard', fn: harvard, rich: true },
     { id: 'vancouver', label: 'Vancouver', fn: vancouver, rich: true },
-    { id: 'ieee', label: 'IEEE', fn: ieee, rich: true }
+    { id: 'ieee', label: 'IEEE', fn: ieee, rich: true },
+    { id: 'carnegie', label: 'Annals of Carnegie Museum', fn: carnegie, rich: true, inText: carnegieInText }
   ];
   var EXPORTS = [
     { id: 'bibtex', label: 'BibTeX', fn: bibtex, ext: 'bib' },
@@ -511,21 +620,21 @@
     { id: 'endnote', label: 'EndNote tagged', fn: endnote, ext: 'enw' }
   ];
 
-  function format(record, styleId) {
+  function format(record, styleId, num) {
     var r = record.authors ? record : normalize(record);
     var all = STYLES.concat(EXPORTS);
     for (var i = 0; i < all.length; i++) {
       if (all[i].id === styleId) {
-        var out = all[i].fn(r);
+        var out = all[i].fn(r, num);
         return all[i].rich ? stripTags(out) : out;
       }
     }
     throw new Error('Unknown style: ' + styleId);
   }
 
-  function formatHtml(record, styleId) {
+  function formatHtml(record, styleId, num) {
     var r = record.authors ? record : normalize(record);
-    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r);
+    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, num);
     throw new Error('Unknown text style: ' + styleId);
   }
 
@@ -556,11 +665,18 @@
 
   var api = {
     extractDoi: extractDoi,
+    toDoi: toDoi,
+    extractPmid: extractPmid,
     normalize: normalize,
     kind: kind,
     format: format,
     formatHtml: formatHtml,
     stripTags: stripTags,
+    inText: function (record, styleId) {
+      var r = record.authors ? record : normalize(record);
+      for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r);
+      return '';
+    },
     matchConfidence: matchConfidence,
     STYLES: STYLES,
     EXPORTS: EXPORTS

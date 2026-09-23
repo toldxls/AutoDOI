@@ -83,11 +83,16 @@
   .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
   .chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
 
-  .cite { display: grid; grid-template-columns: 110px 1fr auto; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); align-items: start; }
+  .cite { display: grid; grid-template-columns: 120px 1fr auto; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); align-items: start; }
   .cite:last-child { border-bottom: 0; }
   .cite .style { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
   .cite .text { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; overflow-wrap: anywhere; }
   .cite .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .cite .intext { font-family: var(--sans); font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .reflist { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px; }
+  .reflist p { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; margin: 10px 0; overflow-wrap: anywhere; }
+  select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+  .bookmarklet { display: inline-block; padding: 5px 10px; border: 1px dashed var(--accent); border-radius: 6px; color: var(--accent); text-decoration: none; font-weight: 500; cursor: grab; }
   @media (max-width: 640px) { .cite { grid-template-columns: 1fr; gap: 8px; } .cite .actions { justify-content: flex-start; } }
 
   .section-label { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 24px 0 8px; }
@@ -137,7 +142,7 @@
 
   <!-- ===== 1. DOI -> reference ===== -->
   <section class="panel" id="panel-cite" role="tabpanel" aria-labelledby="tab-cite">
-    <p class="lead">Paste a DOI, a doi.org link, or any text containing one. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
+    <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, or any text containing one. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
     <form class="bar" id="form-cite">
       <input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI">
       <button class="btn primary" type="submit" id="doi-go">Look up</button>
@@ -162,7 +167,7 @@
 
   <!-- ===== 3. Reference -> EndNote ===== -->
   <section class="panel" id="panel-export" role="tabpanel" aria-labelledby="tab-export" hidden>
-    <p class="lead">Paste one or more references in any style, one per line. Each is matched against Crossref, then exported as EndNote tagged (.enw) and RIS. Check the match colour before importing.</p>
+    <p class="lead">Paste one or more references in any style, one per line (or separated by blank lines if they wrap). Each is matched against Crossref, then exported as EndNote tagged (.enw), RIS, BibTeX, or a clean reference list in any style. Check the match colour before using.</p>
     <form id="form-export">
       <textarea id="export-input" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Vaswani A, et al. Attention is all you need. NeurIPS 2017."></textarea>
       <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
@@ -180,6 +185,11 @@
       <label for="polite-email">Contact email for Crossref's polite pool (optional, faster and more reliable; stays in this browser)</label>
       <input type="text" id="polite-email" placeholder="you@example.org" autocomplete="off">
     </div>
+    <div class="row">
+      <span>Bookmarklet: drag this to your bookmarks bar, then click it on any journal article page to cite it here.</span>
+      <a class="bookmarklet" id="bookmarklet" href="#">Cite with AutoDOI</a>
+    </div>
+    <div class="row"><span>Link directly to a lookup with <code>?q=</code>, for example <code id="qexample"></code>.</span></div>
   </details>
 
   <footer>Article titles are shown as the publisher deposited them, so APA's sentence-case rule and MLA's title case may need a manual touch. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server.</footer>
@@ -198,7 +208,7 @@
 (function (root) {
   'use strict';
 
-  var DOI_RE = /10\.\d{4,9}\/[^\s"'<>]+/i;
+  var DOI_RE = /10\.\d{4,9}\/[^\s"']+/i;
 
   /* ---------- helpers ---------- */
 
@@ -206,7 +216,7 @@
     if (!text) return null;
     var m = String(text).match(DOI_RE);
     if (!m) return null;
-    var doi = m[0].replace(/[.,;:]+$/, '');
+    var doi = m[0].replace(/[.,;:]+$/, '').replace(/[<>]+$/, '');
     // drop a trailing ")" or "]" only if it is unbalanced
     while (/[)\]]$/.test(doi)) {
       var open = (doi.match(/[(\[]/g) || []).length;
@@ -214,6 +224,27 @@
       if (close > open) doi = doi.slice(0, -1); else break;
     }
     return doi;
+  }
+
+  // A DOI, or an arXiv identifier mapped to its DataCite DOI (arXiv:2301.01234 -> 10.48550/arXiv.2301.01234)
+  function toDoi(text) {
+    var doi = extractDoi(text);
+    if (doi) return doi;
+    var t = String(text || '').trim();
+    var m = t.match(/(?:arxiv\.org\/(?:abs|pdf)\/|arxiv:\s*)(\d{4}\.\d{4,5}|[a-z\-]+(?:\.[A-Z]{2})?\/\d{7})(?:v\d+)?/i)
+      || t.match(/^(\d{4}\.\d{4,5})(?:v\d+)?$/);
+    if (m) return '10.48550/arXiv.' + m[1];
+    return null;
+  }
+
+  // PubMed / PMC identifiers in free text: "PMID: 23903748", "PMC4221854", a pubmed.ncbi.nlm.nih.gov link
+  function extractPmid(text) {
+    var t = String(text || '');
+    var m = t.match(/\bPMC\d{4,9}\b/i);
+    if (m) return { type: 'pmcid', id: m[0].toUpperCase() };
+    m = t.match(/(?:pmid\s*:?\s*|pubmed\.ncbi\.nlm\.nih\.gov\/|pubmed\/)(\d{4,9})/i) || t.trim().match(/^(\d{4,9})$/);
+    if (m) return { type: 'pmid', id: m[1] };
+    return null;
   }
 
   function first(v) { return Array.isArray(v) ? v[0] : v; }
@@ -246,9 +277,17 @@
     return [];
   }
 
+  // Some publishers deposit names in capitals ("WATSON"); bring them back to title case
+  function uncaps(name) {
+    if (name.length > 1 && name === name.toUpperCase() && name !== name.toLowerCase()) {
+      return name.toLowerCase().replace(/(^|[\s\-'])(\S)/g, function (m, a, b) { return a + b.toUpperCase(); });
+    }
+    return name;
+  }
+
   function person(p) {
     if (p.family || p.given) {
-      return { family: clean(p.family), given: clean(p.given), literal: false };
+      return { family: uncaps(clean(p.family)), given: clean(p.given), suffix: clean(p.suffix || ''), literal: false };
     }
     var name = clean(p.name || p.literal || '');
     return { family: name, given: '', literal: true };
@@ -295,7 +334,9 @@
       r.title = r.title + ': ' + r.subtitle;
     }
     if (r.title && !/[.?!]$/.test(r.title)) { /* keep as is; punctuation added per style */ }
-    if (!r.pages && r.articleNumber) r.pages = r.articleNumber;
+    r.isArticleNumber = false;
+    if (!r.pages && r.articleNumber) { r.pages = r.articleNumber; r.isArticleNumber = true; }
+    if (r.pages && /^e\d+$/i.test(r.pages)) r.isArticleNumber = true;
     return r;
   }
 
@@ -407,7 +448,7 @@
     else if (r.issue) vol = '(' + T(r.issue) + ')';
 
     if (k === 'journal') {
-      var src = [I(r.container), vol, r.pages ? T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
+      var src = [I(r.container), vol, r.pages ? (r.isArticleNumber ? 'Article ' : '') + T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
       if (n) out.push(T(dot(names)), year, T(dot(r.title)), src + '.');
       else out.push(T(dot(r.title)), year, src + '.');
     } else if (k === 'chapter' || k === 'proceedings') {
@@ -469,7 +510,10 @@
     var n = r.authors.length;
     var names = '';
     if (n === 1) names = nameLastFull(r.authors[0]);
-    else if (n >= 2 && n <= 10) names = nameLastFull(r.authors[0]) + ', ' + joinAnd(r.authors.slice(1).map(nameFullFirst), 'and', n > 2);
+    else if (n >= 2 && n <= 10) {
+      var rest = r.authors.slice(1).map(nameFullFirst);
+      names = [nameLastFull(r.authors[0])].concat(rest.slice(0, -1)).join(', ') + ', and ' + rest[rest.length - 1];
+    }
     else if (n > 10) names = nameLastFull(r.authors[0]) + ', ' + r.authors.slice(1, 7).map(nameFullFirst).join(', ') + ', et al';
     var out = [];
     if (names) out.push(T(dot(names)));
@@ -570,7 +614,7 @@
     if (k === 'book') {
       out.push(I(r.title) + '.');
       var pub = [r.place, r.publisher].filter(Boolean).join(': ');
-      out.push(T(dot([pub, r.year].filter(Boolean).join(', '))));
+      out.push(T([pub, r.year].filter(Boolean).join(', ')) + (r.doi ? ', doi: ' + T(r.doi) + '.' : '.'));
     } else {
       var parts = ['“' + T(r.title) + ',”'];
       var rest = [];
@@ -586,6 +630,80 @@
     }
     if (!r.doi && link) out.push('[Online]. Available: ' + T(link));
     return out.join(' ');
+  }
+
+  // Annals of Carnegie Museum / Bulletin of Carnegie Museum of Natural History.
+  // Source: CMNH Publications Authors' Guide (6 Jan 2010), Literature Cited section:
+  // all authors named (no et al.), initials without spaces ("Rawlins, J.E."), serial comma before "and",
+  // periodicals spelled out, "Journal, volume(issue):pages" with no space after the colon,
+  // books as "Title, Edition. Publisher, Place.", chapters as "Pp. x-y, in Book (Eds., eds.). Publisher, Place."
+  function carnegieNames(people, mode) {
+    var ini = function (p) { return initials(p.given, { space: false }); };
+    var lastFirst = function (p) {
+      if (p.literal) return p.family;
+      var i = ini(p); return p.family + (i ? ', ' + i : '') + (p.suffix ? ', ' + p.suffix : '');
+    };
+    var firstLast = function (p) {
+      if (p.literal) return p.family;
+      var i = ini(p); return (i ? i + ' ' : '') + p.family + (p.suffix ? ', ' + p.suffix : '');
+    };
+    var n = people.length;
+    if (!n) return '';
+    if (mode === 'inline') { // editors inside parentheses: "K.D. Rose and J.D. Archibald"
+      var all = people.map(firstLast);
+      return n <= 2 ? all.join(' and ') : all.slice(0, -1).join(', ') + ', and ' + all[n - 1];
+    }
+    if (n === 1) return lastFirst(people[0]);
+    var rest = people.slice(1).map(firstLast);
+    return [lastFirst(people[0])].concat(rest.slice(0, -1)).join(', ') + ', and ' + rest[rest.length - 1];
+  }
+
+  function carnegie(r) {
+    var k = kind(r);
+    var names = carnegieNames(r.authors);
+    if (!names && r.editors.length) names = carnegieNames(r.editors) + (r.editors.length > 1 ? ' (eds.)' : ' (ed.)');
+    var out = [];
+    if (names) out.push(T(dot(names)));
+    out.push(T((r.year || 'n.d.') + '.'));
+    var pages = r.pages ? r.pages.replace(/\s*[-–—]+\s*/g, '-') : '';
+    var pubPlace = [r.publisher, r.place].filter(Boolean).join(', ');
+    var eds = r.editors.length ? ' (' + T(carnegieNames(r.editors, 'inline')) + (r.editors.length > 1 ? ', eds.)' : ', ed.)') : '';
+    if (k === 'journal') {
+      out.push(T(dot(r.title)));
+      var s = T(r.container);
+      if (r.volume) s += ', ' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '');
+      if (pages) s += (r.volume ? ':' : ', ') + T(pages);
+      out.push(s + '.');
+    } else if (k === 'book') {
+      out.push(T(dot(r.title)));
+      if (pubPlace) out.push(T(dot(pubPlace)));
+    } else if (k === 'chapter' || k === 'proceedings') {
+      out.push(T(dot(r.title)));
+      if (r.volume) { // paper in a numbered series volume
+        out.push('In ' + T(r.container) + eds + '.');
+        out.push(T(r.publisher || r.container) + ', ' + T(r.volume) + (pages ? ':' + T(pages) : '') + '.');
+      } else {
+        out.push((pages ? 'Pp. ' + T(pages) + ', in ' : 'In ') + T(r.container) + eds + (eds || !endsPunct(r.container) ? '.' : ''));
+        if (pubPlace) out.push(T(dot(pubPlace)));
+      }
+    } else if (k === 'thesis') {
+      out.push(T(dot(r.title)));
+      out.push(T(dot(['Unpublished Ph.D. Dissertation', r.publisher, r.place].filter(Boolean).join(', '))));
+    } else { // preprint, dataset, software, report, web resource
+      var host = r.container || r.publisher;
+      var today = new Date();
+      out.push(T(r.title) + ' [cited ' + today.getDate() + ' ' + MONTHS[today.getMonth()] + ' ' + today.getFullYear() + '].');
+      if (host) out.push(T(dot(host)));
+      if (r.doi || r.url) out.push('Available from ' + T(doiLink(r)));
+    }
+    return out.join(' ');
+  }
+
+  // In-text form for the Carnegie style: (Wible 2000), (Wible and Rawlins 2001), (Wible et al. 2002)
+  function carnegieInText(r) {
+    var fam = r.authors.map(function (p) { return p.family; });
+    var who = fam.length === 0 ? (r.container || 'Anon.') : fam.length === 1 ? fam[0] : fam.length === 2 ? fam[0] + ' and ' + fam[1] : fam[0] + ' et al.';
+    return '(' + who + ' ' + (r.year || 'n.d.') + ')';
   }
 
   /* ---------- machine formats (plain text) ---------- */
@@ -692,7 +810,8 @@
     { id: 'chicago', label: 'Chicago 17th', fn: chicago, rich: true },
     { id: 'harvard', label: 'Harvard', fn: harvard, rich: true },
     { id: 'vancouver', label: 'Vancouver', fn: vancouver, rich: true },
-    { id: 'ieee', label: 'IEEE', fn: ieee, rich: true }
+    { id: 'ieee', label: 'IEEE', fn: ieee, rich: true },
+    { id: 'carnegie', label: 'Annals of Carnegie Museum', fn: carnegie, rich: true, inText: carnegieInText }
   ];
   var EXPORTS = [
     { id: 'bibtex', label: 'BibTeX', fn: bibtex, ext: 'bib' },
@@ -700,21 +819,21 @@
     { id: 'endnote', label: 'EndNote tagged', fn: endnote, ext: 'enw' }
   ];
 
-  function format(record, styleId) {
+  function format(record, styleId, num) {
     var r = record.authors ? record : normalize(record);
     var all = STYLES.concat(EXPORTS);
     for (var i = 0; i < all.length; i++) {
       if (all[i].id === styleId) {
-        var out = all[i].fn(r);
+        var out = all[i].fn(r, num);
         return all[i].rich ? stripTags(out) : out;
       }
     }
     throw new Error('Unknown style: ' + styleId);
   }
 
-  function formatHtml(record, styleId) {
+  function formatHtml(record, styleId, num) {
     var r = record.authors ? record : normalize(record);
-    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r);
+    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, num);
     throw new Error('Unknown text style: ' + styleId);
   }
 
@@ -745,11 +864,18 @@
 
   var api = {
     extractDoi: extractDoi,
+    toDoi: toDoi,
+    extractPmid: extractPmid,
     normalize: normalize,
     kind: kind,
     format: format,
     formatHtml: formatHtml,
     stripTags: stripTags,
+    inText: function (record, styleId) {
+      var r = record.authors ? record : normalize(record);
+      for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r);
+      return '';
+    },
     matchConfidence: matchConfidence,
     STYLES: STYLES,
     EXPORTS: EXPORTS
@@ -805,6 +931,23 @@
     var alt = await fetch('https://doi.org/' + doi, { headers: { Accept: 'application/vnd.citationstyles.csl+json' } });
     if (!alt.ok) throw new Error('DOI not found at Crossref or doi.org (' + alt.status + ')');
     return A.normalize(await alt.json());
+  }
+
+  async function pmidToDoi(pm) {
+    var q = pm.type === 'pmcid' ? 'PMCID:' + pm.id : 'EXT_ID:' + pm.id + ' AND SRC:MED';
+    var res = await fetch('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=lite&query=' + encodeURIComponent(q));
+    if (!res.ok) throw new Error('Europe PMC returned ' + res.status);
+    var hits = (await res.json()).resultList.result;
+    if (!hits.length || !hits[0].doi) throw new Error('Europe PMC has no DOI for ' + pm.id);
+    return hits[0].doi;
+  }
+
+  // DOI, arXiv ID, or PubMed/PMC ID -> DOI (or null)
+  async function idToDoi(text) {
+    var doi = A.toDoi(text);
+    if (doi) return doi;
+    var pm = A.extractPmid(text);
+    return pm ? pmidToDoi(pm) : null;
   }
 
   async function search(params, rows) {
@@ -887,7 +1030,9 @@
       var row = el('div', 'cite');
       row.appendChild(el('div', 'style', s.label));
       var html = A.formatHtml(r, s.id), text = A.stripTags(html);
-      var t = el('div', 'text'); t.innerHTML = html; row.appendChild(t);
+      var t = el('div', 'text'); t.innerHTML = html;
+      if (s.inText) t.appendChild(el('div', 'intext', 'In text: ' + s.inText(r)));
+      row.appendChild(t);
       var act = el('div', 'actions');
       act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
       act.appendChild(button('Rich', '', function (b) { copyRich(b, html, text); }));
@@ -917,6 +1062,38 @@
     });
   }
 
+  function renderRefList(container, records) {
+    var wrap = el('div', 'export');
+    var head = el('div', 'head');
+    head.appendChild(el('span', 'section-label', 'Reference list')).style.margin = '0';
+    var act = el('div', 'actions');
+    var sel = document.createElement('select'); sel.id = 'list-style'; sel.setAttribute('aria-label', 'Reference list style');
+    A.STYLES.forEach(function (st) { var o = document.createElement('option'); o.value = st.id; o.textContent = st.label; sel.appendChild(o); });
+    sel.value = store.get('liststyle') || 'apa';
+    var list = el('div', 'reflist');
+    var current = { html: '', text: '' };
+    function build() {
+      var numbered = sel.value === 'vancouver' || sel.value === 'ieee';
+      var items = records.map(function (r, i) { return A.formatHtml(r, sel.value, numbered ? i + 1 : undefined); });
+      if (!numbered) { // alphabetical by first author, as most author-date styles want
+        items = items.slice().sort(function (a, b) { return A.stripTags(a).localeCompare(A.stripTags(b)); });
+      }
+      current.html = items.map(function (h) { return '<p>' + h + '</p>'; }).join('');
+      current.text = items.map(A.stripTags).join('\n');
+      list.innerHTML = current.html;
+      store.set('liststyle', sel.value);
+    }
+    sel.addEventListener('change', build);
+    act.appendChild(sel);
+    act.appendChild(button('Copy', '', function (b) { copyPlain(b, current.text); }));
+    act.appendChild(button('Rich', '', function (b) { copyRich(b, current.html, current.text); }));
+    head.appendChild(act);
+    wrap.appendChild(head);
+    wrap.appendChild(list);
+    build();
+    container.appendChild(wrap);
+  }
+
   /* ---------- 1. DOI -> reference ---------- */
   function showCitation(r, chip) {
     var out = $('doi-result'); out.innerHTML = '';
@@ -927,11 +1104,16 @@
 
   async function lookup(text) {
     var status = $('doi-status'); status.className = 'status';
-    var doi = A.extractDoi(text);
-    if (!doi) { status.textContent = 'No DOI found in that text. A DOI looks like 10.1234/abc123.'; status.className = 'status err'; return; }
-    $('doi-input').value = doi;
-    status.textContent = 'Looking up ' + doi + '…'; $('doi-go').disabled = true;
+    $('doi-go').disabled = true;
     try {
+      var doi = A.toDoi(text);
+      if (!doi) {
+        var pm = A.extractPmid(text);
+        if (pm) { status.textContent = 'Resolving ' + pm.id + ' through Europe PMC…'; doi = await pmidToDoi(pm); }
+      }
+      if (!doi) { status.textContent = 'No DOI, arXiv ID or PubMed ID found in that text. A DOI looks like 10.1234/abc123.'; status.className = 'status err'; return; }
+      $('doi-input').value = doi;
+      status.textContent = 'Looking up ' + doi + '…';
       var r = await fetchRecord(doi);
       showCitation(r);
       status.textContent = '';
@@ -940,7 +1122,7 @@
     } finally { $('doi-go').disabled = false; }
   }
   $('form-cite').addEventListener('submit', function (ev) { ev.preventDefault(); lookup($('doi-input').value); });
-  $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.extractDoi($('doi-input').value)) lookup($('doi-input').value); }, 0); });
+  $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.toDoi($('doi-input').value) || A.extractPmid($('doi-input').value)) lookup($('doi-input').value); }, 0); });
 
   /* ---------- 2. Find a DOI ---------- */
   $('form-find').addEventListener('submit', async function (ev) {
@@ -981,12 +1163,16 @@
 
   /* ---------- 3. Reference -> EndNote ---------- */
   function splitReferences(text) {
-    return text.split(/\n+/).map(function (l) {
+    var t = text.replace(/\r/g, '').trim();
+    // Blank lines between entries mean each entry may wrap over several lines (typical when copied from a PDF)
+    var chunks = /\n\s*\n/.test(t) ? t.split(/\n\s*\n+/).map(function (c) { return c.replace(/\s*\n\s*/g, ' '); }) : t.split(/\n+/);
+    return chunks.map(function (l) {
       return l.replace(/^\s*(\[\d+\]|\d+[.)]|[•\-–*])\s*/, '').trim();
     }).filter(function (l) { return l.length > 8; });
   }
   async function resolve(refText) {
-    var doi = A.extractDoi(refText);
+    var doi = null;
+    try { doi = await idToDoi(refText); } catch (e) { /* fall through to search */ }
     if (doi) {
       try { var r = await fetchRecord(doi); return { record: r, conf: 1, via: 'doi' }; } catch (e) { /* fall through to search */ }
     }
@@ -1000,6 +1186,9 @@
     return { record: best, conf: bestConf, via: 'search' };
   }
 
+  $('export-input').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); $('export-go').click(); }
+  });
   $('form-export').addEventListener('submit', async function (ev) {
     ev.preventDefault();
     var refs = splitReferences($('export-input').value);
@@ -1048,6 +1237,7 @@
       var recs = found.filter(function (f) { return f.box.checked; }).map(function (f) { return f.rec; });
       if (!recs.length) return;
       out.appendChild(el('div', 'section-label', 'Export · ' + recs.length + ' record' + (recs.length > 1 ? 's' : '')));
+      renderRefList(out, recs);
       renderExports(out, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
     }
     found.forEach(function (f) { f.box.addEventListener('change', build); });
@@ -1056,8 +1246,20 @@
 
   /* ---------- page at rest: an example record so the layout shows what it does ---------- */
   var SAMPLE = {"type":"journal-article","doi":"10.1038/nature12373","url":"https://doi.org/10.1038/nature12373","title":"Nanometre-scale thermometry in a living cell","subtitle":"","container":"Nature","shortContainer":"Nature","authors":[{"family":"Kucsko","given":"G.","literal":false},{"family":"Maurer","given":"P. C.","literal":false},{"family":"Yao","given":"N. Y.","literal":false},{"family":"Kubo","given":"M.","literal":false},{"family":"Noh","given":"H. J.","literal":false},{"family":"Lo","given":"P. K.","literal":false},{"family":"Park","given":"H.","literal":false},{"family":"Lukin","given":"M. D.","literal":false}],"editors":[],"year":"2013","month":7,"day":31,"volume":"500","issue":"7460","pages":"54-58","articleNumber":"","publisher":"Springer Science and Business Media LLC","place":"","issn":"0028-0836","isbn":"","abstract":"","language":"en","event":""};
-  $('doi-input').value = SAMPLE.doi;
-  showCitation(SAMPLE, el('span', 'chip', 'Example'));
+  var base = location.origin + location.pathname;
+  $('qexample').textContent = base + '?q=10.1038/nature12373';
+  $('bookmarklet').href = "javascript:(function(){var m=document.querySelector('meta[name=\"citation_doi\"],meta[name=\"dc.identifier\"],meta[name=\"DC.Identifier\"],meta[name=\"prism.doi\"]');" +
+    "var t=m?m.content:(document.body.innerText.match(/10\\.\\d{4,9}\\/[^\\s\"'<>]+/)||[location.href])[0];" +
+    "location.href=" + JSON.stringify(base + '?q=') + "+encodeURIComponent(t);})();";
+  $('bookmarklet').addEventListener('click', function (ev) { ev.preventDefault(); });
+
+  var q = new URLSearchParams(location.search).get('q') || new URLSearchParams(location.search).get('doi');
+  if (q) {
+    $('doi-input').value = q; showTab('cite'); lookup(q);
+  } else {
+    $('doi-input').value = SAMPLE.doi;
+    showCitation(SAMPLE, el('span', 'chip', 'Example'));
+  }
 })();
 </script>
 </body>

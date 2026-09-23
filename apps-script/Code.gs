@@ -5,7 +5,9 @@
  * save, reload the sheet. Custom functions appear immediately; the AutoDOI menu appears on reload.
  *
  * Custom functions (all accept a single cell or a range):
- *   =DOI_CITE(A2, "apa")        APA 7 reference. Styles: apa, mla, chicago, harvard, vancouver, ieee, bibtex, ris, endnote
+ *   =DOI_CITE(A2, "apa")        APA 7 reference. Styles: apa, mla, chicago, harvard, vancouver, ieee, carnegie
+ *                               (Annals of Carnegie Museum), bibtex, ris, endnote.
+ *                               Also accepts arXiv IDs, PubMed IDs ("PMID: 123") and PMC IDs.
  *   =DOI_CITE(A2:A50, "vancouver")
  *   =FIND_DOI(B2, C2)           Best-matching DOI for a title (+ optional journal)
  *   =FIND_DOI(B2, C2, TRUE)     ...as a row: DOI, matched title, journal, year, confidence 0-1
@@ -36,14 +38,14 @@ function onOpen() {
 /**
  * Formats a DOI as a reference.
  * @param {string|Array} doi A DOI, doi.org link, or range of them.
- * @param {string} style apa | mla | chicago | harvard | vancouver | ieee | bibtex | ris | endnote (default apa)
+ * @param {string} style apa | mla | chicago | harvard | vancouver | ieee | carnegie | bibtex | ris | endnote (default apa)
  * @return {string|Array} The formatted reference(s).
  * @customfunction
  */
 function DOI_CITE(doi, style) {
   style = (style || 'apa').toString().toLowerCase();
   return map_(doi, function (v) {
-    var d = AutoDOI.extractDoi(v);
+    var d = idToDoi_(v);
     if (!d) return v ? 'No DOI found' : '';
     return AutoDOI.format(fetchRecord_(d), style);
   });
@@ -170,7 +172,7 @@ function search_(params, rows) {
 
 // A reference in any style -> best record (or null). Uses the DOI directly when the text contains one.
 function resolve_(text) {
-  var doi = AutoDOI.extractDoi(text);
+  var doi = idToDoi_(text);
   if (doi) { try { return fetchRecord_(doi); } catch (e) { /* fall through */ } }
   var hits = search_({ 'query.bibliographic': text }, 3);
   if (!hits.length) return null;
@@ -180,6 +182,22 @@ function resolve_(text) {
     if (c > bestConf + 0.2) { best = hits[i]; bestConf = c; }
   }
   return bestConf >= 0.35 ? best : null;
+}
+
+// DOI, arXiv ID, or PubMed/PMC ID (resolved through Europe PMC) -> DOI or null
+function idToDoi_(text) {
+  var doi = AutoDOI.toDoi(text);
+  if (doi) return doi;
+  var pm = AutoDOI.extractPmid(text);
+  if (!pm) return null;
+  var q = pm.type === 'pmcid' ? 'PMCID:' + pm.id : 'EXT_ID:' + pm.id + ' AND SRC:MED';
+  return cached_('pm:' + pm.id, function () {
+    var res = UrlFetchApp.fetch('https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=lite&query=' +
+      encodeURIComponent(q), { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) throw new Error('Europe PMC returned ' + res.getResponseCode());
+    var hits = JSON.parse(res.getContentText()).resultList.result;
+    return (hits.length && hits[0].doi) ? hits[0].doi : null;
+  });
 }
 
 /* ------------------------------------------------------------------ */
