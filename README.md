@@ -4,20 +4,20 @@ Turn a DOI into a reference, find a DOI from a title, and convert pasted referen
 
 ## Use it
 
-**No install.** Open the live page: **https://toldxls.github.io/AutoDOI/** and bookmark it. Everything runs in your browser; nothing is stored on a server. The page talks directly to public scholarly APIs: Crossref and doi.org (metadata), OpenAlex (second search), Europe PMC (PubMed IDs), Open Library (ISBNs), the NLM Catalog (journal abbreviations), and GitHub / jsDelivr (journal style files, the citation engine, abbreviation lists). Only the identifiers or text you look up are sent.
+**No install.** Open the live page: **https://toldxls.github.io/AutoDOI/** and bookmark it. Everything runs in your browser; nothing is stored on a server. The page talks directly to public scholarly APIs: Crossref and doi.org (metadata), OpenAlex (second search), Europe PMC (PubMed IDs), Open Library (ISBNs), the NLM Catalog (journal abbreviations), and GitHub / jsDelivr (journal style files, the citation engine, abbreviation lists). Only the identifiers or text you look up are sent. The page's fonts come from Google Fonts, which sees your address like any web server does; if that matters, use the offline copy, which falls back to system fonts.
 
-**Offline copy.** Download `index.html` (Code → Download ZIP, or the raw file) and double-click it. It is a single self-contained file.
+**Offline copy.** Download `index.html` (Code → Download ZIP, or the raw file) and double-click it. It is a single self-contained file for the built-in styles. Style search and the Titles conversion need the `data/` folder next to it (or the hosted page).
 
 ## Files
 
 | File | What it is |
 | --- | --- |
-| `index.html` | The web tool, single file, with `citations.js` inlined by `build.sh`. |
+| `index.html` | The web tool, single file, with `citations.js`, `parsers.js` and `sentencecase.js` inlined by `build.sh`. |
 | `citations.js` | The formatting library: the only place citation rules live. |
 | `parsers.js` | Reads RIS, EndNote tagged and BibTeX files into records the library can format. |
 | `sentencecase.js` | Sentence case and Title Case conversion that keeps taxa, places and acronyms capitalised. |
-| `data/common-words.js` | 35,000 common English words that are safe to lowercase; loaded only when you turn on title conversion. Rebuilt by `tools/build-common-words.py`. |
-| `build.sh` | Re-inlines `citations.js` into `index.html` and refreshes the Apps Script copy. |
+| `data/common-words.js` | About 118,000 common English words that are safe to lowercase; loaded only when you turn on title conversion. Rebuilt by `tools/build-common-words.py`. |
+| `build.sh` | Re-inlines the three library files into `index.html` and refreshes the Apps Script copy. |
 | `data/styles-index.json` | Name and title of every CSL style, from Zotero's style index. Loaded only when you open the style search. |
 | `data/endnote-shortlist.json` | CSL styles whose titles match the `.ens` files in an EndNote 21 Styles folder. |
 | `tools/build-style-index.py` | Regenerates both data files. Pass your EndNote Styles folder to refresh the shortlist. |
@@ -60,7 +60,7 @@ Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faste
 
 ## Bugs and missing styles
 
-Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Each reference also has a **Report** button that carries the DOI and style into the bug form so you only have to say what is wrong. When a lookup or a style fails, the error message gets a **Report this** link. The page keeps the last few error messages in memory and adds them to the form's *Error details* field; nothing is sent anywhere unless you open a report. There is no analytics or tracking.
+Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Below each result, a **Report it** link carries the DOI and style into the bug form so you only have to say what is wrong (the button on the result itself, **View article**, opens the publisher's page through doi.org). When a lookup or a style fails, the error message gets a **Report this** link. The page keeps the last few error messages in memory and adds them, with your browser's version string, to the form's *Error details* field; nothing is sent anywhere unless you open a report. There is no analytics or tracking.
 
 ## Development
 
@@ -81,11 +81,11 @@ MIT. See `LICENSE`.
 
 The **Titles** control beside the style menu converts article titles to *Sentence case* (APA and most science journals) or *Title Case* (MLA, Chicago). A word is lowercased only when it is a common English word; anything unknown, such as *Tyrannosaurus*, *Cretaceous* or *Morrison*, keeps its capitals, along with the capitalised words next to it, so "Late Cretaceous Hell Creek Formation" survives intact. Acronyms and mixed-case terms (DNA, NumPy, mRNA, pH) are never touched. Lowercased words are highlighted in the heading: click one to restore it, or click a capitalised word to force it lowercase. Those choices are remembered in your browser and apply to the batch tab's reference list and exports too.
 
-Titles that are already in sentence case are left untouched. About 300 multi-word names (United States, Gulf of Mexico, Burgess Shale, Natural History Museum, …) and name patterns such as "X Formation", "X Basin" or "X Island" keep their capitals, and species epithets are lowercased after a genus (Tyrannosaurus rex). All-caps titles (common in older museum and society journals) are converted too, keeping short acronyms such as DNA or USGS. Known limit: unfamiliar technical words (new taxon or compound names) keep their capitals; click them to lowercase.
+Titles that are already in sentence case are left untouched. About 400 multi-word names (United States, Gulf of Mexico, Burgess Shale, Natural History Museum, …) and name patterns such as "X Formation", "X Basin" or "X Island" keep their capitals, and species epithets are lowercased after a genus (Tyrannosaurus rex). All-caps titles (common in older museum and society journals) are converted too, keeping short acronyms such as DNA or USGS. Known limit: unfamiliar technical words (new taxon or compound names) keep their capitals; click them to lowercase.
 
 ### Chemical formulas, isotopes and taxa in titles
 
-Formulas in titles are set with real subscripts and superscripts: Mg₂SiO₄, (Mg,Fe)SiO₃, Ca₃Zr₂[Fe₂SiO₁₂], CaSO₄·2H₂O, Fe³⁺, SO₄²⁻, ⁴⁰Ar/³⁹Ar, δ¹⁸O, ^[4]Fe coordination. Markup the publisher deposited (`<sub>`, `<sup>`, `<i>` for taxa, MathML) is kept as well. Rich copy and journal styles use true sub/superscript formatting; plain copy, RIS and EndNote files use Unicode characters (Fe₂O₃); BibTeX uses `\textsubscript{}`. Detection only accepts valid element symbols and deliberately leaves alone things like H1N1, 16S rRNA, vitamin B12, 4K, CD4+ and "Mg- and Fe-rich". Turn it off under Settings if a title is misread, and report it with the Report button. The Sheets functions get the same Unicode output.
+Formulas in titles are set with real subscripts and superscripts: Mg₂SiO₄, (Mg,Fe)SiO₃, Ca₃Zr₂[Fe₂SiO₁₂], CaSO₄·2H₂O, Fe³⁺, SO₄²⁻, ⁴⁰Ar/³⁹Ar, δ¹⁸O, ^[4]Fe coordination. Markup the publisher deposited (`<sub>`, `<sup>`, `<i>` for taxa, MathML) is kept as well. Rich copy and journal styles use true sub/superscript formatting; plain copy, RIS and EndNote files use Unicode characters (Fe₂O₃); BibTeX uses `\textsubscript{}`. Detection only accepts valid element symbols and deliberately leaves alone things like H1N1, 16S rRNA, vitamin B12, 4K, CD4+ and "Mg- and Fe-rich". Turn it off under Settings if a title is misread, and report it with the Report it link. The Sheets functions get the same Unicode output.
 
 ## EndNote `.ens` styles
 
@@ -101,7 +101,7 @@ The page sends only the identifiers or reference text you look up, to the servic
 
 ## Speed
 
-Crossref's public service answers one search at a time, so a batch takes about 2 seconds per reference. Adding your email under Settings puts you in Crossref's "polite" pool, which allows three searches at once: about 0.6 seconds per reference (15 references: 29 s without, 9 s with). The email is only sent to Crossref and OpenAlex and stays in your browser. OpenAlex, used as a second opinion for hard references, now charges credits: without a key your network gets a small free daily allowance, after which AutoDOI uses Crossref alone until midnight UTC; a free OpenAlex API key in Settings gives you your own allowance.
+Crossref's public service answers one search at a time, so a batch takes about 2 to 2.5 seconds per reference. Adding your email under Settings puts you in Crossref's "polite" pool, which allows three searches at once: about 0.6 to 1.2 seconds per reference (15 references: 29 s without, 9 s with, measured). The email is only sent to Crossref and OpenAlex and stays in your browser. OpenAlex, used as a second opinion for hard references, now charges credits: without a key your network gets a small free daily allowance, after which AutoDOI uses Crossref alone until midnight UTC; a free OpenAlex API key in Settings gives you your own allowance.
 
 ## Caveats
 

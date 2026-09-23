@@ -4457,6 +4457,7 @@
 
   /* ---------- journal abbreviations: NLM Catalog (by ISSN, then exact title), JabRef lists as fallback ---------- */
   var abbrCache = {}; try { abbrCache = JSON.parse(store.get('abbr2') || '{}'); } catch (e) { abbrCache = {}; }
+  if (!abbrCache || typeof abbrCache !== 'object' || Array.isArray(abbrCache)) abbrCache = {};
   var abbrPending = {};
   var nlmChain = Promise.resolve();
   function nlmFetch(url) { // NCBI allows ~3 requests/s without a key: serialise and space them
@@ -4540,7 +4541,7 @@
 
   /* ---------- OpenAlex: second search backend (theses, EarthArXiv, DataCite, grey literature) ---------- */
   var OA_SELECT = 'id,doi,title,display_name,authorships,publication_year,publication_date,biblio,primary_location,type,ids';
-  var oaBlockedUntil = Number(store.get('oaBlocked') || 0);
+  var oaBlockedUntil = Number(store.get('oaBlocked')) || 0;
   function oaUrl(url) { var k = ($('openalex-key') && $('openalex-key').value || '').trim(); return polite(url) + (k ? '&api_key=' + encodeURIComponent(k) : ''); }
   function oaAvailable() { return Date.now() > oaBlockedUntil; }
   async function oaFetch(url) {
@@ -4694,6 +4695,7 @@
   /* ---------- output style choice ---------- */
   var styleState = { mode: 'all', csl: null }; // mode: 'all' | a built-in style id | 'csl'
   var recents = []; try { recents = JSON.parse(store.get('cslrecent') || '[]'); } catch (e) { recents = []; }
+  if (!Array.isArray(recents)) recents = []; recents = recents.filter(function (r) { return r && typeof r === 'object' && typeof r.name === 'string'; });
   function recentByName(name) { return recents.filter(function (r) { return r.name === name; })[0] || null; }
 
   function fillStyleSelect() {
@@ -5010,8 +5012,9 @@
   // Where to read the work: its DOI (which forwards to the publisher's page), else its own URL, else the book's ISBN record
   function articleHref(r) {
     if (r.doi) return 'https://doi.org/' + r.doi.split('/').map(encodeURIComponent).join('/');
+    var isbn = String(r.isbn || '').replace(/[^0-9Xx]/g, '');
+    if (/^(\d{9}[\dXx]|\d{13})$/.test(isbn)) return 'https://openlibrary.org/isbn/' + isbn;
     if (r.url && /^https?:\/\//i.test(r.url)) return r.url;
-    if (r.isbn) return 'https://openlibrary.org/isbn/' + encodeURIComponent(r.isbn);
     return '';
   }
   function articleLabel(r) { var k = A.kind(r); return k === 'book' ? 'View book' : k === 'journal' || k === 'chapter' || k === 'proceedings' || k === 'preprint' ? 'View article' : 'View record'; }
@@ -5114,7 +5117,7 @@
         if (x.id === 'bibtex') { // make keys unique within one export: Smith2020Deep, Smith2020Deep-b, ...
           out = out.replace(/^(@\w+\{)([^,]+),/, function (m, head, key) {
             var n = (seenKeys[key] || 0) + 1; seenKeys[key] = n;
-            return head + (n === 1 ? key : key + '-' + String.fromCharCode(95 + n)) + ',';
+            return head + (n === 1 ? key : key + '-' + n) + ',';
           });
         }
         return out;
@@ -5360,7 +5363,7 @@
   // Lines that are nothing but an identifier are always their own reference
   var ID_LINE = /^((https?:\/\/)?(dx\.)?doi\.org\/\S+|doi:\s*\S+|10\.\d{4,9}\/\S+|PMC\d{4,9}|(PMID:?\s*)?\d{5,9}|arXiv:\s*\S+|\d{4}\.\d{4,5}(v\d+)?|ISBN[\s:\-0-9Xx]+|https?:\/\/\S+)\.?$/i;
   var UC = 'A-Z\u00C0-\u00D6\u00D8-\u00DE\u0391-\u03A9\u0400-\u042F', WC = 'A-Za-z\u00C0-\u00FF\u0100-\u017F\u0370-\u03FF\u0400-\u04FF\'\u2019\\-';
-  var PARTICLES = '(?:(?:van|von|de|der|den|del|della|da|di|du|la|le|dos|das|ter|ten|zu|mac|st\\.?|d[\'\u2019])\\s*)+';
+  var PARTICLES = '(?:(?:van|von|de|der|den|del|della|da|di|du|la|le|dos|das|ter|ten|zu|mac|st\\.?)\\s+|d[\'\u2019]\\s*)+'; // each particle ends in a space: one way to parse, no backtracking blow-up
   // A line starts a new reference when it is numbered/bulleted, begins with a DOI or URL, or opens like an author name
   var START = new RegExp('^(\\[\\d{1,3}\\]|\\d{1,3}[.)]|[\u2022\\-\u2013\u2014*\u00B7])\\s|^(https?:\\/\\/|doi:|10\\.\\d{4,9}\\/)' +
     '|^' + PARTICLES + '[' + UC + '][' + WC + ']*,?\\s' +                                  // van der Maaten, L. / de Carvalho, A.
@@ -5396,13 +5399,14 @@
   function splitByMode(text, mode) {
     var t = String(text || '').replace(/\r\n?/g, '\n').trim();
     var parts;
-    if (mode === 'blank') parts = t.split(/\n\s*\n+/).map(function (c) { return c.replace(/\s*\n\s*/g, ' '); });
+    t = t.replace(/[ \t]{2,}/g, ' '); // first, so the patterns below never scan a long run of spaces from every position
+    if (mode === 'blank') parts = t.split(/\n[ \t]?\n+/).map(function (c) { return c.replace(/[ \t]?\n[ \t]?/g, ' '); });
     else if (mode === 'numbered') {
       parts = []; var next = null;
       t.split('\n').forEach(function (raw) {
         var l = raw.trim(); if (!l) return;
         var mm = l.match(/^\[?(\d{1,4})[\].)]\s/), num = mm ? Number(mm[1]) : null;
-        if (!parts.length || (num !== null && (next === null || num === next))) { parts.push(l); if (num !== null) next = num + 1; } // "1998. Title" inside a wrap is not item 1998
+        if (!parts.length || (num !== null && (next === null || (num >= next && num - next <= 5)))) { parts.push(l); if (num !== null) next = num + 1; } // a gap of a few numbers is a deleted entry; "1998. Title" inside a wrap is not item 1998
         else parts[parts.length - 1] += ' ' + l;
       });
     } else { // one per line; a line that is only a DOI/URL belongs to the reference above
@@ -5413,12 +5417,12 @@
         else parts.push(l);
       });
     }
-    return parts.map(function (l) { return l.replace(/^\s*(\[\d{1,4}\]|\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim(); })
+    return parts.map(function (l) { if (ID_LINE.test(l) || /^(https?:\/\/|doi:|10\.\d{4,9}\/)/i.test(l)) return l.trim(); return l.replace(/^\s*(\[\d{1,4}\]|\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim(); })
       .filter(function (l) { return l.length > 8 || ID_LINE.test(l); });
   }
   function splitReferences(text, mode) {
     if (mode && mode !== 'auto') return splitByMode(text, mode);
-    var t = String(text || '').replace(/\r\n?/g, '\n').replace(/(\S)[ \t]{2,}/g, '$1 ').replace(/^\s*\n/, '').replace(/\s+$/, '');
+    var t = String(text || '').replace(/\r\n?/g, '\n').replace(/[ \t]{2,}/g, ' ').replace(/^[ \t]*\n+/, '').trimEnd();
     var rawLines = t.split('\n');
     var hasBlank = /\n\s*\n/.test(t);
     var NUM = /^(\[\d{1,3}\]|\d{1,3}[.)])\s/;
@@ -5595,11 +5599,11 @@
     return items;
   }
 
-  $('export-stop').addEventListener('click', function () { batchSeq++; $('export-stop').hidden = true; $('export-go').disabled = false; $('export-status').textContent = 'Stopped. Rows already matched are kept below.'; if (stopBuild) stopBuild(); });
-  var stopBuild = null;
+  var batchStopped = false;
+  $('export-stop').addEventListener('click', function () { batchStopped = true; $('export-stop').hidden = true; $('export-status').textContent = 'Stopping…'; });
   $('form-export').addEventListener('submit', async function (ev) {
     ev.preventDefault();
-    var mySeq = ++batchSeq;
+    var mySeq = ++batchSeq; batchStopped = false;
     var current = function () { return mySeq === batchSeq; };
     var items = batchItems($('export-input').value);
     var status = $('export-status'), list = $('export-matches'), out = $('export-output');
@@ -5643,7 +5647,7 @@
       if (recs.length) renderExports(out, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
       if (kept.length) out.appendChild(el('p', 'status', kept.length + ' reference' + (kept.length > 1 ? 's are' : ' is') + ' kept exactly as pasted in the reference list above; ' + (kept.length > 1 ? 'they are' : 'it is') + ' not in the EndNote / RIS / BibTeX files because no record was found.'));
     }
-    rebuildBatch = build; stopBuild = function () { build(); };
+    rebuildBatch = build;
     function setRow(row, rec, level, via, src) {
       if (!current()) return;
       row.node.className = 'match ' + level;
@@ -5710,7 +5714,8 @@
     var ahead = $('polite-email').value.trim() ? 4 : 2;
     var startLookup = function (k) { if (k < items.length && items[k].kind === 'text' && !pending[k]) pending[k] = resolve(items[k].text).then(function (r) { return { ok: r }; }, function (e) { return { err: e }; }); };
     for (var i = 0; i < items.length; i++) {
-      if (!current()) return; // a newer batch started or Stop was pressed
+      if (!current()) return; // a newer batch has replaced this one
+      if (batchStopped) { items = items.slice(0, i); break; } // Stop: keep what is done and fall through to the summary and export
       for (var k = i; k <= i + ahead; k++) startLookup(k);
       var it = items[i];
       status.textContent = (it.kind === 'rec' ? 'Reading ' : 'Matching ') + (i + 1) + ' of ' + items.length + '…';
@@ -5764,6 +5769,7 @@
     if (nCheck) parts.push(nCheck + ' to check (unticked)');
     if (nNone) parts.push(nNone + ' not matched');
     var summary = (nFile && !nText ? nGood + ' records read from the file' + (nFile > 1 ? 's' : '') : parts.join(', ')) + '.';
+    if (batchStopped) summary = 'Stopped after ' + items.length + ': ' + summary;
     $('export-go').disabled = false; $('export-stop').hidden = true;
     status.textContent = summary;
     build(); // show the export now; journal abbreviations are filled in afterwards

@@ -92,7 +92,8 @@ NAMEDB = 'https://raw.githubusercontent.com/smashew/NameDatabases/master/NamesDa
 IMA_PAGES = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
              'P–Q', 'R', 'S', 'T', 'U–V', 'W–X', 'Y–Z']
 IMA_TITLE = 'List of minerals recognized by the International Mineralogical Association (%s)'
-UA = 'AutoDOI-wordlist-builder/2.0 (https://github.com/; mailto:autodoi@example.org)'
+MAILTO = os.environ.get('CROSSREF_MAILTO', '')  # your address, for Crossref's polite pool; optional
+UA = 'AutoDOI-wordlist-builder/2.0 (https://github.com/toldxls/AutoDOI' + ('; mailto:' + MAILTO if MAILTO else '') + ')'
 
 # Crossref journals (ISSN) whose sentence-case titles provide case evidence.
 CROSSREF_ISSNS = """
@@ -439,7 +440,8 @@ def load_crossref(cache, offline, exclude):
                 continue
             got, cursor = [], '*'
             for page in range(CROSSREF_PAGES):
-                q = {'select': 'DOI,title', 'rows': '1000', 'cursor': cursor, 'mailto': 'autodoi@example.org'}
+                q = {'select': 'DOI,title', 'rows': '1000', 'cursor': cursor}
+                if MAILTO: q['mailto'] = MAILTO
                 text = fetch('https://api.crossref.org/journals/%s/works?%s' % (issn, urllib.parse.urlencode(q)), timeout=120)
                 try:
                     msg = json.loads(text)['message'] if text else None

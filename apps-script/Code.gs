@@ -55,13 +55,13 @@ function DOI_CITE(doi, style) {
   // Resolve identifiers first, then fetch every uncached DOI in one parallel batch.
   var cells = flatten_(doi);
   var dois = [];
-  cells.forEach(function (c) { var d = c.text ? idToDoi_(c.text, c.isNumber) : null; c.doi = d; if (d) dois.push(d); });
+  cells.forEach(function (c) { var d = null; try { d = c.text ? idToDoi_(c.text, c.isNumber) : null; } catch (e) { /* reported per cell below */ } c.doi = d; if (d) dois.push(d); });
   prefetchRecords_(dois, deadline);
   return map_(doi, function (t, r, c, isNumber) {
     if (!t) return '';
     var d = idToDoi_(t, isNumber);
     if (!d) return 'No DOI found';
-    if (Date.now() > deadline) return 'Retry';
+    if (Date.now() > deadline && cacheGet_('doi:' + d.toLowerCase()) === undefined) return 'Retry';
     var rec = fetchRecord_(d);
     if (rec.notFound) return 'DOI not found (' + rec.status + ')';
     return AutoDOI.format(rec, style);
@@ -167,17 +167,18 @@ function polite_(url) {
 
 // Cache keys must be <= 250 characters: hash everything.
 function cacheKey_(s) {
-  return 'ad1:' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s, Utilities.Charset.UTF_8));
+  return 'ad2:' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s, Utilities.Charset.UTF_8));
 }
+// Values are wrapped so that a cached null ("no DOI for this PMID") counts as a hit; undefined means not cached.
 function cacheGet_(s) {
-  try { var hit = CacheService.getScriptCache().get(cacheKey_(s)); return hit ? JSON.parse(hit) : null; } catch (e) { return null; }
+  try { var hit = CacheService.getScriptCache().get(cacheKey_(s)); if (!hit) return undefined; var w = JSON.parse(hit); return (w && typeof w === 'object' && 'v' in w) ? w.v : undefined; } catch (e) { return undefined; }
 }
 function cachePut_(s, val) {
-  try { CacheService.getScriptCache().put(cacheKey_(s), JSON.stringify(val), CACHE_SECONDS); } catch (e) { /* too large; fine */ }
+  try { CacheService.getScriptCache().put(cacheKey_(s), JSON.stringify({ v: val }), CACHE_SECONDS); } catch (e) { /* too large; fine */ }
 }
 function cached_(s, producer) {
   var hit = cacheGet_(s);
-  if (hit !== null) return hit;
+  if (hit !== undefined) return hit;
   var val = producer();
   cachePut_(s, val);
   return val;
@@ -195,20 +196,20 @@ function recordFromCrossref_(doi, res) {
   var code = res.getResponseCode();
   if (code === 200 && isJson_(res)) return AutoDOI.normalize(JSON.parse(res.getContentText()).message);
   if (code === 404) return null; // caller tries doi.org
-  throw new Error('Crossref returned ' + code);
+  throw new Error(code === 200 ? 'Crossref returned an unexpected reply (not JSON)' : 'Crossref returned ' + code);
 }
 
 // Fetch many DOIs in parallel (UrlFetchApp.fetchAll), filling the cache; misses fall back one by one later.
 function prefetchRecords_(dois, deadline) {
   var todo = []; var seen = {};
-  dois.forEach(function (d) { var k = d.toLowerCase(); if (!seen[k] && cacheGet_('doi:' + k) === null) { seen[k] = true; todo.push(d); } });
+  dois.forEach(function (d) { var k = d.toLowerCase(); if (!seen[k] && cacheGet_('doi:' + k) === undefined) { seen[k] = true; todo.push(d); } });
   // Crossref's public pool allows only a few concurrent requests: fetch in small parallel groups, pausing between them
   for (var i = 0; i < todo.length && Date.now() < deadline; i += 4) {
     if (i) Utilities.sleep(POLITE_EMAIL ? 250 : 1000);
     var chunk = todo.slice(i, i + 4);
     var responses;
     try { responses = UrlFetchApp.fetchAll(chunk.map(function (d) { return { url: crossrefUrl_(d), muteHttpExceptions: true }; })); }
-    catch (e) { return; }
+    catch (e) { continue; } // transient failure of this group: the next group still runs; misses are fetched one by one later
     responses.forEach(function (res, j) {
       try { var rec = recordFromCrossref_(chunk[j], res); if (rec) cachePut_('doi:' + chunk[j].toLowerCase(), rec); }
       catch (e) { /* leave uncached; fetchRecord_ reports it */ }

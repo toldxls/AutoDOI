@@ -30,3 +30,17 @@ t('hanging indent capital wrap', "Smith, J. (2019). A long title about the geolo
 t('book ending Press.', "Darwin, C. (1859). On the origin of species. John Murray.\nMayr, E. (1942). Systematics and the origin of species. Columbia University Press.\nSimpson, G. G. (1944). Tempo and mode. Columbia University Press.", 3);
 t('Chicago', "Smith, John. 2020. “A Title.” Geology 48: 1–2.\nJones, Kate. 2019. “Another.” Nature 5: 3–4.", 2);
 console.log(pass + ' passed, ' + fail + ' failed');
+
+// --- regressions from the 2026-09-23 page-script review ---
+const splitByMode = new Function(html.slice(a, b) + '; return splitByMode;')();
+const timed = (label, fn, limit) => { const t0 = Date.now(); fn(); const ms = Date.now() - t0; if (ms < (limit || 1000)) pass++; else { fail++; console.log('FAIL', label, ms + ' ms'); } };
+timed('particle run does not backtrack exponentially', () => splitReferences("Smith, J. (2020). Foo bar baz.\n" + "della ".repeat(30) + "x\nJones, K. (2019). Other. Journal, 1, 2-3."));
+timed('glued particles', () => splitReferences("Smith, J. (2020). Foo.\n" + "della".repeat(40) + " x\nJones, K. (2019). Other."));
+timed('50k spaces in a line', () => splitReferences("x\n" + " ".repeat(50000) + "y\na" + " ".repeat(50000) + "b"), 300);
+timed('50k spaces, blank mode', () => splitByMode("a" + " ".repeat(50000) + "\n\nb" + " ".repeat(50000), 'blank'), 300);
+t('particles still recognised', "van der Maaten, L., & Hinton, G. (2008). Visualizing data using t-SNE. Journal of Machine Learning Research, 9, 2579-2605.\nde la Cruz, A. (2010). Title of work here. Geology, 38, 1-10.\nd’Arcy, W. (1999). Another title here. Nature, 400, 1-2.", 3);
+const eq = (label, got, want) => { if (JSON.stringify(got) === JSON.stringify(want)) pass++; else { fail++; console.log('FAIL', label, JSON.stringify(got), '!=', JSON.stringify(want)); } };
+eq('lines mode keeps the 10. of bare DOIs', splitByMode("10.1038/nature12373\n10.1000/x\n1. Smith J. 2020. Title. J 1:2.", 'lines'), ["10.1038/nature12373", "10.1000/x", "Smith J. 2020. Title. J 1:2."]);
+eq('numbered mode survives a gap', splitByMode("1. Smith, J. (2020). A title here. Journal, 1, 2.\n3. Jones, K. (2019). Second title. Journal, 2, 3.\n4. Brown, L. (2018). Third title. Journal, 3, 4.\n1998. Not an item, a wrapped year", 'numbered').length, 3);
+eq('blank mode joins wrapped lines', splitByMode("Smith, J. (2020). A title\n  that wraps. Journal, 1, 2.\n\nJones, K. (2019). B. Journal, 2, 3.", 'blank'), ["Smith, J. (2020). A title that wraps. Journal, 1, 2.", "Jones, K. (2019). B. Journal, 2, 3."]);
+console.log(pass + ' passed, ' + fail + ' failed');

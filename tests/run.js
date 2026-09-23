@@ -5,7 +5,7 @@ var files = fs.readdirSync(dir).filter(function (f) { return /\.test\.js$/.test(
 files.forEach(function (f) {
   var t0 = Date.now(), res = cp.spawnSync(process.execPath, [path.join(dir, f)], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   var out = (res.stdout || '') + (res.stderr || '');
-  var m = out.match(/(\d+) passed, (\d+) failed\s*$/m);
+  var all = out.match(/(\d+) passed, (\d+) failed\s*$/gm), m = all && all[all.length - 1].match(/(\d+) passed, (\d+) failed/); // the last count line is the suite total
   var ok = res.status === 0 && (!m || m[2] === '0');
   if (m) total += Number(m[1]) + Number(m[2]);
   console.log((ok ? 'ok   ' : 'FAIL ') + f + (m ? '  ' + m[1] + ' passed, ' + m[2] + ' failed' : '') + '  (' + (Date.now() - t0) + ' ms)');

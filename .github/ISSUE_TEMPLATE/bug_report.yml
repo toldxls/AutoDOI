@@ -29,7 +29,7 @@ body:
     id: errors
     attributes:
       label: Error details
-      description: Filled in automatically when you use a Report button on the page. Leave as is.
+      description: Filled in automatically when you use a Report it / Report this link on the page. Leave as is.
       render: text
   - type: dropdown
     id: where

@@ -38,7 +38,7 @@ eq(titles(m.records), ['A', 'B'], '1 two bib entries on one line');
 eq(P.detect('Follow us:\n@nature (2020) Twitter\nSmith J. 2020. A paper.'), null, 'detect @nature (2020)');
 eq(P.detect('%0 of patients responded (Smith 2020)\nJones 2019. Title.'), null, 'detect %0 of patients');
 eq(P.detect('Tyler, K. 2019. Title. J 3:4.\nTY - something\n'), null, 'detect TY - prose');
-eq(P.detect('Contact: j.smith@uni.edu (corresponding)\nDoe A. 2019.'), null, 'detect email');
+eq(P.detect('Contact: j.smith@example.org (corresponding)\nDoe A. 2019.'), null, 'detect email');
 eq(P.detect('In the text we write\n@article{key, ...} is BibTeX syntax.'), null, 'detect @article{key, ...} prose');
 eq(P.parseMixed('Follow us:\n@nature (2020) Twitter').plain, ['Follow us:\n@nature (2020) Twitter'], 'undetected lines stay plain');
 eq(P.detect('TY  - JOUR\nER  - '), 'ris', 'detect TY+ER (2 tags)');
