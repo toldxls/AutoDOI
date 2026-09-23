@@ -165,7 +165,14 @@
     rdquo: '”', hellip: '…', le: '≤', ge: '≥', rarr: '→', harr: '↔', auml: 'ä', ouml: 'ö', uuml: 'ü', Auml: 'Ä', Ouml: 'Ö',
     Uuml: 'Ü', szlig: 'ß', aacute: 'á', eacute: 'é', iacute: 'í', oacute: 'ó', uacute: 'ú', agrave: 'à', egrave: 'è',
     ntilde: 'ñ', ccedil: 'ç', Aring: 'Å', aring: 'å', oslash: 'ø', Oslash: 'Ø' };
+  // Some publishers deposit special characters as spelled-out placeholders: "Zn4Si2O7(OH)2{middle dot}H2O"
+  var PLACEHOLDERS = { 'middle dot': '\u00B7', 'bullet': '\u2022', 'times': '\u00D7', 'degree': '\u00B0', 'degrees': '\u00B0', 'plus minus': '\u00B1',
+    'plus or minus': '\u00B1', 'minus': '\u2212', 'en dash': '\u2013', 'em dash': '\u2014', 'prime': '\u2032', 'double prime': '\u2033', 'alpha': '\u03B1',
+    'beta': '\u03B2', 'gamma': '\u03B3', 'delta': '\u03B4', 'Delta': '\u0394', 'epsilon': '\u03B5', 'mu': '\u03BC', 'micro': '\u00B5', 'sigma': '\u03C3',
+    'Sigma': '\u03A3', 'lambda': '\u03BB', 'pi': '\u03C0', 'theta': '\u03B8', 'omega': '\u03C9', 'Omega': '\u03A9', 'approximately': '\u2248',
+    'less than or equal to': '\u2264', 'greater than or equal to': '\u2265', 'square': '\u25A1', 'box': '\u25A1', 'right arrow': '\u2192', 'rightarrow': '\u2192' };
   function decodeEntities(s) {
+    s = s.replace(/\{([A-Za-z][A-Za-z ]{1,24})\}/g, function (all, w) { return Object.prototype.hasOwnProperty.call(PLACEHOLDERS, w) ? PLACEHOLDERS[w] : all; });
     s = s.replace(/&amp;(?=(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z]+);)/g, '&');     // double-encoded "&amp;delta;"
     return s.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[A-Za-z]+);/g, function (all, e) {
       if (e.charAt(0) !== '#') return Object.prototype.hasOwnProperty.call(ENTITIES, e) ? ENTITIES[e] : all;
@@ -266,8 +273,12 @@
         if (!ELEM[sym]) { if (sym.length === 2 && ELEM[sym.charAt(0)]) sym = sym.charAt(0); else return null; }
         toks.push({ t: 'el', v: sym }); i += sym.length; continue;
       }
+      // "Fe3+2(H2O)4", "Fe2+3Al2Si3O12": a metal's oxidation state written inside the formula, always followed by a count or bracket
+      if (last && last.t === 'el' && (last.v.length === 2 || /^[VUWYK]$/.test(last.v)) && (m = rest.match(/^(\d[+\u2212])(?=\d|[(\[])/))) {
+        toks.push({ t: 'ox', v: m[1] }); i += m[1].length; continue;
+      }
       if ((m = rest.match(/^\d+(?:\.\d+)?/))) {
-        if (!last || (last.t !== 'el' && last.t !== 'close')) return null;
+        if (!last || (last.t !== 'el' && last.t !== 'close' && last.t !== 'ox')) return null;
         toks.push({ t: 'n', v: m[0] }); i += m[0].length; continue;
       }
       var c = rest.charAt(0);
@@ -278,7 +289,7 @@
     }
     return depth === 0 && toks.length ? toks : null;
   }
-  function renderTokens(toks) { return toks.map(function (k) { return k.t === 'n' ? sub(k.v) : k.v; }).join(''); }
+  function renderTokens(toks) { return toks.map(function (k) { return k.t === 'n' ? sub(k.v) : k.t === 'ox' ? sup(k.v.replace('-', '\u2212')) : k.v; }).join(''); }
 
   // Simple molecules and ions written only with one-letter elements (SH2, HSP70, NOS2, C3H, U2OS are genes and cell lines)
   var SIMPLE = {};
@@ -309,6 +320,7 @@
         groups++;
         if (k.v === '1' || (k.v.indexOf('.') === -1 && Number(k.v) >= 100)) return false; // formulas never write 1; 9001 is not a count
       } else if (k.t === 'open') paren = true;
+      else if (k.t === 'ox') { paren = true; continue; }           // an explicit oxidation state is unmistakably chemistry
       str += k.t === 'comma' ? ',' : k.v;
     }
     if (str === 'O3') return true;                                    // ozone, the one common single-element formula
@@ -698,6 +710,8 @@
       authorsOthers: !!m['author-others'], // BibTeX "and others": the list was truncated at the source
       editors: (m.editor || []).map(person),
       year: dp[0] ? String(dp[0]) : '',
+      years: ['issued', 'published-print', 'published-online', 'published'].map(function (k) { var d = m[k] && m[k]['date-parts'] && m[k]['date-parts'][0]; return d && d[0] ? String(d[0]) : ''; })
+        .filter(function (y, i, a) { return y && a.indexOf(y) === i; }), // print and online years can differ; references may cite either
       month: month,
       day: month ? validDay(dp[2]) : 0,
       volume: clean(m.volume || ''),

@@ -419,7 +419,14 @@
     rdquo: '”', hellip: '…', le: '≤', ge: '≥', rarr: '→', harr: '↔', auml: 'ä', ouml: 'ö', uuml: 'ü', Auml: 'Ä', Ouml: 'Ö',
     Uuml: 'Ü', szlig: 'ß', aacute: 'á', eacute: 'é', iacute: 'í', oacute: 'ó', uacute: 'ú', agrave: 'à', egrave: 'è',
     ntilde: 'ñ', ccedil: 'ç', Aring: 'Å', aring: 'å', oslash: 'ø', Oslash: 'Ø' };
+  // Some publishers deposit special characters as spelled-out placeholders: "Zn4Si2O7(OH)2{middle dot}H2O"
+  var PLACEHOLDERS = { 'middle dot': '\u00B7', 'bullet': '\u2022', 'times': '\u00D7', 'degree': '\u00B0', 'degrees': '\u00B0', 'plus minus': '\u00B1',
+    'plus or minus': '\u00B1', 'minus': '\u2212', 'en dash': '\u2013', 'em dash': '\u2014', 'prime': '\u2032', 'double prime': '\u2033', 'alpha': '\u03B1',
+    'beta': '\u03B2', 'gamma': '\u03B3', 'delta': '\u03B4', 'Delta': '\u0394', 'epsilon': '\u03B5', 'mu': '\u03BC', 'micro': '\u00B5', 'sigma': '\u03C3',
+    'Sigma': '\u03A3', 'lambda': '\u03BB', 'pi': '\u03C0', 'theta': '\u03B8', 'omega': '\u03C9', 'Omega': '\u03A9', 'approximately': '\u2248',
+    'less than or equal to': '\u2264', 'greater than or equal to': '\u2265', 'square': '\u25A1', 'box': '\u25A1', 'right arrow': '\u2192', 'rightarrow': '\u2192' };
   function decodeEntities(s) {
+    s = s.replace(/\{([A-Za-z][A-Za-z ]{1,24})\}/g, function (all, w) { return Object.prototype.hasOwnProperty.call(PLACEHOLDERS, w) ? PLACEHOLDERS[w] : all; });
     s = s.replace(/&amp;(?=(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z]+);)/g, '&');     // double-encoded "&amp;delta;"
     return s.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[A-Za-z]+);/g, function (all, e) {
       if (e.charAt(0) !== '#') return Object.prototype.hasOwnProperty.call(ENTITIES, e) ? ENTITIES[e] : all;
@@ -520,8 +527,12 @@
         if (!ELEM[sym]) { if (sym.length === 2 && ELEM[sym.charAt(0)]) sym = sym.charAt(0); else return null; }
         toks.push({ t: 'el', v: sym }); i += sym.length; continue;
       }
+      // "Fe3+2(H2O)4", "Fe2+3Al2Si3O12": a metal's oxidation state written inside the formula, always followed by a count or bracket
+      if (last && last.t === 'el' && (last.v.length === 2 || /^[VUWYK]$/.test(last.v)) && (m = rest.match(/^(\d[+\u2212])(?=\d|[(\[])/))) {
+        toks.push({ t: 'ox', v: m[1] }); i += m[1].length; continue;
+      }
       if ((m = rest.match(/^\d+(?:\.\d+)?/))) {
-        if (!last || (last.t !== 'el' && last.t !== 'close')) return null;
+        if (!last || (last.t !== 'el' && last.t !== 'close' && last.t !== 'ox')) return null;
         toks.push({ t: 'n', v: m[0] }); i += m[0].length; continue;
       }
       var c = rest.charAt(0);
@@ -532,7 +543,7 @@
     }
     return depth === 0 && toks.length ? toks : null;
   }
-  function renderTokens(toks) { return toks.map(function (k) { return k.t === 'n' ? sub(k.v) : k.v; }).join(''); }
+  function renderTokens(toks) { return toks.map(function (k) { return k.t === 'n' ? sub(k.v) : k.t === 'ox' ? sup(k.v.replace('-', '\u2212')) : k.v; }).join(''); }
 
   // Simple molecules and ions written only with one-letter elements (SH2, HSP70, NOS2, C3H, U2OS are genes and cell lines)
   var SIMPLE = {};
@@ -563,6 +574,7 @@
         groups++;
         if (k.v === '1' || (k.v.indexOf('.') === -1 && Number(k.v) >= 100)) return false; // formulas never write 1; 9001 is not a count
       } else if (k.t === 'open') paren = true;
+      else if (k.t === 'ox') { paren = true; continue; }           // an explicit oxidation state is unmistakably chemistry
       str += k.t === 'comma' ? ',' : k.v;
     }
     if (str === 'O3') return true;                                    // ozone, the one common single-element formula
@@ -952,6 +964,8 @@
       authorsOthers: !!m['author-others'], // BibTeX "and others": the list was truncated at the source
       editors: (m.editor || []).map(person),
       year: dp[0] ? String(dp[0]) : '',
+      years: ['issued', 'published-print', 'published-online', 'published'].map(function (k) { var d = m[k] && m[k]['date-parts'] && m[k]['date-parts'][0]; return d && d[0] ? String(d[0]) : ''; })
+        .filter(function (y, i, a) { return y && a.indexOf(y) === i; }), // print and online years can differ; references may cite either
       month: month,
       day: month ? validDay(dp[2]) : 0,
       volume: clean(m.volume || ''),
@@ -3745,12 +3759,14 @@
     sel.value = styleState.mode === 'csl' ? 'csl:' + styleState.csl.name : styleState.mode;
   }
   function setStyle(mode, cslStyle) {
+    if (styleState.mode !== mode || (cslStyle && styleState.csl !== cslStyle)) $('style-status').textContent = '';
     styleState.mode = mode; styleState.csl = cslStyle || null;
     if (mode === 'csl') {
       recents = [cslStyle].concat(recents.filter(function (r) { return r.name !== cslStyle.name; })).slice(0, 12);
       store.set('cslrecent', JSON.stringify(recents));
     }
     store.set('style', mode === 'csl' ? 'csl:' + cslStyle.name : mode);
+    if (mode === 'csl' && rebuildBatch) rebuildBatch(); // the reference-list menu gains the new journal style
     fillStyleSelect();
     if (typeof updateBookmarklet === 'function') updateBookmarklet();
     if (currentRecord && !currentChip && typeof setUrl === 'function') setUrl(currentRecord.doi || currentRecord.isbn || ''); // the example card carries a chip
@@ -3878,7 +3894,7 @@
       DOI: r.doi || undefined, URL: r.url || undefined, ISSN: r.issn || undefined, ISBN: r.isbn || undefined };
     if (r.year) it.issued = { 'date-parts': [[Number(r.year)].concat(r.month ? [r.month] : []).concat(r.day ? [r.day] : [])] };
     if (A.kind(r) === 'preprint') { // repository as publisher reads best across styles ("[Preprint]. arXiv", "Preprint, bioRxiv")
-      it.genre = 'Preprint'; it.publisher = r.institution || r.container || r.publisher || undefined; delete it['container-title'];
+      it.genre = 'Preprint'; it.publisher = r.institution || r.container || r.publisher || undefined; delete it['container-title']; delete it['container-title-short'];
       if (asContainer) it['container-title'] = it.publisher; // for styles that expect a journal slot (GSA/Geology)
     }
     Object.keys(it).forEach(function (k) { if (it[k] === undefined) delete it[k]; });
@@ -4052,7 +4068,9 @@
     var title = el('p', 'title');
     renderTitleTokens(title, r);
     left.appendChild(title);
-    if (r.titleTokens) left.appendChild(el('div', 'case-hint', 'Highlighted words were lowercased; click one to restore it, or click a capitalised word to lowercase it. Choices are remembered.'));
+    if (r.titleTokens) left.appendChild(el('div', 'case-hint', caseState.mode === 'title'
+      ? 'Highlighted words were changed; click one to restore it. Choices are remembered.'
+      : 'Highlighted words were lowercased; click one to restore it, or click a capitalised word to lowercase it. Choices are remembered.'));
     var meta = el('div', 'meta');
     meta.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + ' · '));
     var code = el('code', '', r.doi); meta.appendChild(code);
@@ -4225,7 +4243,14 @@
     var qs = {}, ts = {}; q.forEach(function (w) { qs[w] = 1; }); t.forEach(function (w) { ts[w] = 1; });
     var qHit = Object.keys(qs).filter(function (w) { return ts[w]; }).length / Object.keys(qs).length;
     var tHit = Object.keys(ts).filter(function (w) { return qs[w]; }).length / Object.keys(ts).length;
-    return Math.min(qHit, tHit);
+    var score = Math.min(qHit, tHit);
+    if (score >= 0.95) { // same words: also require the same order, so "Is Attention All You Need?" is not "Attention is all you need"
+      var dp = [], i, j;
+      for (i = 0; i <= q.length; i++) { dp.push([]); for (j = 0; j <= t.length; j++) dp[i].push(i && j ? (q[i - 1] === t[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1])) : 0); }
+      var lcs = dp[q.length][t.length] / Math.max(q.length, t.length);
+      if (lcs < 0.95) score = Math.min(score, 0.9);
+    }
+    return score;
   }
   // A reference that names a year which the record does not match (allowing one year for online-first) is suspect
   function yearConflict(refText, rec) {
@@ -4237,8 +4262,8 @@
     var ys = [], m, re = /(^|[\s(\[,;/])(1[5-9]\d{2}|20\d{2})[a-z]?(?=$|[\s).,;:\]/])/g;
     while ((m = re.exec(t))) ys.push(Number(m[2]));
     if (!ys.length) return false;
-    var y = Number(rec.year);
-    return !ys.some(function (x) { return Math.abs(x - y) <= 2; }); // online-first can precede print by a year or two
+    var recYears = (rec.years && rec.years.length ? rec.years : [rec.year]).map(Number);
+    return !ys.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 2; }); }); // print and online years both count
   }
   function setUrl(q) { // keep the address bar in step, so reload and bookmarks show the current reference
     try {
@@ -4346,27 +4371,52 @@
     return parts.map(function (x) { return x.trim(); }).filter(Boolean);
   }
   // A line that ends mid-reference: trailing comma/colon/dash, or an initial or journal abbreviation ("et al.", "Res.", "U.S.A.")
-  var ABBR_END = /(^|[\s(.])([A-Za-z]{1,2}|al|Acad|Am|Amer|Ann|Assoc|Biol|Bull|Can|Chem|Col|Comp|Dept|Ecol|Environ|Evol|Fm|Geogr|Geol|Geophys|Hist|Inst|Int|Intl|Lett|Mag|Mem|Mineral|Mus|Nat|Natl|Palaeontol|Paleontol|Petrol|Phys|Proc|Publ|Res|Rev|Sci|Ser|Soc|Spec|Suppl|Surv|Trans|Univ|Vert|Vol|Zool|ed|eds|Eds|vol|no|pp|et al)\.$/;
-  function unfinished(line) { return /[,;:–\-&]$/.test(line) || !/[.)\]”"?!]$/.test(line) || ABBR_END.test(line); }
+  var ABBR_END = /(^|[\s(.])([A-Za-z]|al|Jr|Sr|St|Co|Mt|Ft|Dr|cf|vs|sp|Acad|Am|Amer|Ann|Assoc|Biol|Bull|Can|Chem|Col|Comp|Dept|Ecol|Environ|Evol|Fm|Geogr|Geol|Geophys|Hist|Inst|Int|Intl|Lett|Mag|Mem|Mineral|Mus|Nat|Natl|Palaeontol|Paleontol|Petrol|Phys|Proc|Publ|Res|Rev|Sci|Ser|Soc|Spec|Suppl|Surv|Trans|Univ|Vert|Vol|Zool|ed|eds|Eds|vol|no|pp|et al)\.$/;
+  var DOI_URL_END = /(https?:\/\/\S+|doi:\s*\S+|10\.\d{4,9}\/\S+)$/i;
+  var AUTHOR_START = new RegExp('^(' + PARTICLES + ')?[' + UC + '][' + WC + ']+(,\\s+[' + UC + ']|\\s+[' + UC + ']{1,3}[,.\\s]|\\s+(and|&)\\s)' + // Smith, J. / Smith JA, / Smith and
+    '|^([' + UC + ']\\.\\s?){1,3}[' + UC + '][' + WC + ']+[,\\s]');                                                                       // J. A. Smith,
+  function hasEndPunct(line) { return /[.)\]”"?!]$/.test(line) && !ABBR_END.test(line); }
+  // Does the text read like a whole reference? It ends with a DOI/URL, or with a page / article number and a full stop.
+  function complete(chunk) {
+    if (DOI_URL_END.test(chunk)) return true;
+    // "Smith, J. (2019)." / "Smith, J. 2019." is only the author-date start unless volume or pages came before the year
+    var yearTail = /[(\s]((1[5-9]|20)\d{2}[a-z]?)\)?\.?$/;
+    if (yearTail.test(chunk) && !/\d/.test(chunk.replace(yearTail, ''))) return false;
+    return hasEndPunct(chunk) && /\d[\])]?\.$|\d\s*\(\d{4}\)\.$/.test(chunk) && chunk.length > 20;
+  }
   function splitReferences(text) {
-    var t = String(text || '').replace(/\r\n?/g, '\n').trim();
+    var t = String(text || '').replace(/\r\n?/g, '\n').replace(/^\s*\n/, '').replace(/\s+$/, '');
+    var rawLines = t.split('\n');
     var hasBlank = /\n\s*\n/.test(t);
     var NUM = /^(\[\d{1,3}\]|\d{1,3}[.)])\s/;
-    var numbered = t.split('\n').filter(function (l) { return NUM.test(l.trim()); }).length >= 2; // a numbered list: only numbers start items
+    var numbered = rawLines.filter(function (l) { return NUM.test(l.trim()); }).length >= 2; // a numbered list: only numbers start items
+    // Hanging indent: continuation lines are indented, first lines are not
+    var nonEmpty = rawLines.filter(function (l) { return l.trim(); });
+    var indented = nonEmpty.filter(function (l) { return /^[ \t]+\S/.test(l); }).length;
+    var hanging = !numbered && indented >= 1 && indented < nonEmpty.length && !/^[ \t]/.test(nonEmpty[0]);
     var refs = [], cur = '';
     var flush = function () { if (cur) refs.push(cur); cur = ''; };
-    t.split('\n').forEach(function (raw) {
+    rawLines.forEach(function (raw) {
       var l = raw.trim();
       if (!l) { flush(); return; }
-      if (!cur) { if (ID_LINE.test(l)) refs.push(l); else cur = l; return; }
-      if (numbered) { if (NUM.test(l)) { flush(); cur = l; } else cur += ' ' + l; return; }
-      if (/[,;:–\-]$/.test(cur)) { cur += ' ' + l; return; }           // "Nature Communications, 10," + "4567891."
-      if (ID_LINE.test(l)) { flush(); refs.push(l); return; }
-      if (unfinished(cur) && !(START.test(l) && !ABBR_END.test(cur) && /[.)\]]$/.test(cur))) { cur += ' ' + l; return; }
-      // The previous line is finished: a new reference starts, unless blank lines separate the references
-      // and this line does not look like one (then it is a wrapped tail).
-      if (hasBlank && !START.test(l)) { cur += ' ' + l; return; }
-      flush(); cur = l;
+      if (!cur) { cur = l; return; }
+      var isDoiLine = /^((https?:\/\/)?(dx\.)?doi\.org\/|doi:|10\.\d{4,9}\/|https?:\/\/|(available|retrieved)\s+(at|from|online)\b|url:|\[online\])/i.test(l);
+      if (numbered) { if (NUM.test(l)) { flush(); cur = l; } else cur += (/-$/.test(cur) && isDoiLine ? '' : ' ') + l; return; }
+      if (hanging) { if (/^[ \t]/.test(raw)) cur += ' ' + l; else { flush(); cur = l; } return; }
+      if (ID_LINE.test(cur)) { flush(); cur = l; return; }                  // a list of bare identifiers
+      if (isDoiLine && !/10\.\d{4,9}\//.test(cur) && (/^(https?:|doi:|available|retrieved|url:|\[online)/i.test(l) || !complete(cur))) { cur += ' ' + l; return; } // a wrapped DOI belongs to the reference above
+      if (DOI_URL_END.test(cur) && !isDoiLine && !/^[a-z0-9]/.test(l)) { flush(); cur = l; return; } // a reference that ends with its DOI is finished
+      if (!/10\.\d{4,9}\//.test(cur) && /(doi\.org\/|doi:\s*|\b)10\.\d{4,9}\/\S+\.?$/.test(l) && !START.test(l) && !AUTHOR_START.test(l) && l.length < 90) { cur += ' ' + l; return; }
+      if (ID_LINE.test(l) && complete(cur)) { flush(); cur = l; return; }
+      if (/[,;:–\-&]$/.test(cur) || !hasEndPunct(cur)) { cur += ' ' + l; return; } // mid-sentence wrap
+      if (/^[a-z(\d]/.test(l) && !START.test(l) && !ID_LINE.test(l)) { cur += ' ' + l; return; } // "p. 147-64.", "(pp. 1-2)", "in Proceedings" continue
+      // a short line with no year and no author after a complete-looking reference is its publisher / place tail
+      if (complete(cur) && !START.test(l) && !AUTHOR_START.test(l) && l.length < 70 && !/\b(1[5-9]|20)\d{2}\b/.test(l)) { cur += ' ' + l; return; }
+      if (complete(cur) && (START.test(l) || AUTHOR_START.test(l) || !hasBlank)) { flush(); cur = l; return; }
+      // the text above is not obviously complete (a book, an online-first article): split only on a clear author opening
+      var strongAuthor = new RegExp('^(' + PARTICLES + ')?[' + UC + '][' + WC + ']+(\\s[' + UC + '][' + WC + ']+)?(,\\s+[' + UC + ']\\.|,\\s+[' + UC + '][' + WC + ']+([,.]\\s|\\s+[' + UC + ']\\.)|\\s+[' + UC + ']{1,3},)|^([' + UC + ']\\.\\s?){1,3}[' + UC + '][' + WC + ']+,');
+      if (!hasBlank && (strongAuthor.test(l) || /^(\[\d{1,3}\]|\d{1,3}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s/.test(l)) && !/\(\d{4}[a-z]?\)\.?$/.test(cur) && cur.length > 20) { flush(); cur = l; return; }
+      cur += ' ' + l;
     });
     flush();
     var out = [];
@@ -4415,7 +4465,7 @@
     Promise.all(list.map(function (f) { return P && P.decodeBytes && f.arrayBuffer ? f.arrayBuffer().then(P.decodeBytes) : f.text(); })).then(function (texts) {
       var ta = $('export-input');
       ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + texts.join('\n\n');
-      $('export-go').click();
+      $('form-export').dispatchEvent(new Event('submit', { cancelable: true })); // also works while a batch is running
     }, function (e) { logError('file-read', e); $('export-status').textContent = 'Could not read that file: ' + e.message; });
   }
   $('export-file').addEventListener('click', function () { $('export-file-input').click(); });
@@ -4471,7 +4521,7 @@
       var label = via === 'doi' ? 'From DOI' : via === 'isbn' ? 'From ISBN' : via === 'file' ? 'From ' + fileLabel(src) + ' file' :
         via === 'year' ? 'Year differs' : via === 'untitled' ? 'No title in file' :
         via === 'openalex' ? (level === 'good' ? 'Good match · OpenAlex' : 'Check match · OpenAlex') : via === 'fixed' ? 'Fixed' :
-        level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : 'Weak match';
+        level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : via === 'none' ? 'No good match' : 'Weak match';
       var c = el('span', 'chip ' + level, label);
       if (via === 'year') c.title = 'The reference names a different year from this record; probably the wrong paper. Left out unless you tick it.';
       return c;
@@ -4565,7 +4615,7 @@
         } else {
           var direct = res.via === 'doi' || res.via === 'isbn';
           var level = direct ? 'good' : res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
-          var via = res.via;
+          var via = !direct && res.conf < 0.3 ? 'none' : res.via;
           if (!direct && yearConflict(it.text, res.record)) { level = 'bad'; via = 'year'; }
           setRow(row, res.record, level, via);
           if (level !== 'good') addFixRow(row);
