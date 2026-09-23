@@ -4,7 +4,7 @@ Turn a DOI into a reference, find a DOI from a title, and convert pasted referen
 
 ## Use it
 
-**No install.** Open the live page: **https://toldxls.github.io/AutoDOI/** and bookmark it. Everything runs in your browser; the only network calls go to api.crossref.org and doi.org.
+**No install.** Open the live page: **https://toldxls.github.io/AutoDOI/** and bookmark it. Everything runs in your browser; nothing is stored on a server. The page talks directly to public scholarly APIs: Crossref and doi.org (metadata), OpenAlex (second search), Europe PMC (PubMed IDs), Open Library (ISBNs), the NLM Catalog (journal abbreviations), and GitHub / jsDelivr (journal style files, the citation engine, abbreviation lists). Only the identifiers or text you look up are sent.
 
 **Offline copy.** Download `index.html` (Code → Download ZIP, or the raw file) and double-click it. It is a single self-contained file.
 
@@ -70,7 +70,7 @@ MIT. See `LICENSE`.
 
 The **Titles** control beside the style menu converts article titles to *Sentence case* (APA and most science journals) or *Title Case* (MLA, Chicago). A word is lowercased only when it is a common English word; anything unknown, such as *Tyrannosaurus*, *Cretaceous* or *Morrison*, keeps its capitals, along with the capitalised words next to it, so "Late Cretaceous Hell Creek Formation" survives intact. Acronyms and mixed-case terms (DNA, NumPy, mRNA, pH) are never touched. Lowercased words are highlighted in the heading: click one to restore it, or click a capitalised word to force it lowercase. Those choices are remembered in your browser and apply to the batch tab's reference list and exports too.
 
-Known limits: place names that are also ordinary words (Reading, Bath, Mobile) and all-common runs such as "Natural History Museum" get lowercased unless you click them.
+Titles that are already in sentence case are left untouched. About 300 multi-word names (United States, Gulf of Mexico, Burgess Shale, Natural History Museum, …) and name patterns such as "X Formation", "X Basin" or "X Island" keep their capitals, and species epithets are lowercased after a genus (Tyrannosaurus rex). Known limits: all-caps titles are not converted, and unfamiliar technical words (new taxon or compound names) keep their capitals; click them to lowercase.
 
 ### Chemical formulas, isotopes and taxa in titles
 

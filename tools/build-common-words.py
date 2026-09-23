@@ -27,7 +27,10 @@ Recipe (deterministic; every choice below is data-driven or listed in this file)
       capped.  Without it the remaining words are ordered by length, then
       alphabetically (a much poorer ranking; a warning is printed).
   (d) Curated adjustments, all visible below:
-        FUNCTION_WORDS  always included (articles, prepositions, ... "new").
+        FUNCTION_WORDS  always included (articles, prepositions, ... "new",
+                        pronouns, and "no"/"he"/"am", which would otherwise
+                        be dropped as element symbols; sentencecase.js decides
+                        from context when "No"/"He"/"As"/"In" are elements).
         RESCUE          common words that web2 happens to list capitalised for
                         an obscure reason ("The", "Case", "State", "Fauna",
                         "Gene", "Fauna") and which we want back.
@@ -44,12 +47,12 @@ Recipe (deterministic; every choice below is data-driven or listed in this file)
   -ing, -ed and -ly endings at lookup time and re-checks the stem, so
   "placentals" -> "placental", "scoping" -> "scope", "mammals" -> "mammal".
 
-  Size cap: the whole .js file is kept at or under MAX_KB (about 300 KB).
+  Size cap: the whole .js file is kept at or under MAX_KB (default 305 KB).
   Words are admitted in rank order (function words + supplement first, then
   the frequency list, then dictionary words by web count) until the budget is
   spent, then written alphabetically so diffs are stable.
 
-Usage:  python3 tools/build-common-words.py [--max-kb 300] [--offline]
+Usage:  python3 tools/build-common-words.py [--max-kb 305] [--offline]
 """
 import argparse
 import os
@@ -75,6 +78,7 @@ has have had do does did not if than then when where how what which who whom
 whose why it we you they us them can could should would will shall might must
 so yet both either neither each every all any some such more most less least
 very only also non per
+no he she him her his am using
 """.split())
 
 # Common words that web2 also lists with a capital for an obscure reason.
@@ -93,6 +97,7 @@ mosaic spike gill peg chin fur gum serpent sedan husky sanity cola triumph
 advent rotary stern rogue demon boxer graves piper muse nanny natal
 sergeant mister shrine cadet aides allies angles scripture utopia odyssey
 zipper attic gothic italic wealthy fahrenheit doppler heroin rand mercury
+south eastern red
 """.split())
 
 # Modern / scientific vocabulary absent from the 1934 web2 word list.
@@ -138,6 +143,16 @@ premolar premolars molar molars dentition dentitions vertebra vertebrae
 vertebral cranial postcranial postcranium braincase endocast endocasts
 osteoderm osteoderms integument integumentary feather feathers feathered
 plumage melanosome melanosomes pigmentation coloration colouration
+school schools internet online email website blog smartphone app healthcare
+interoperability cybersecurity blockchain microplastic multitask wideband
+heterojunction bifunctional electrocatalyst electrocatalytic photocatalytic
+chemoselective nonadiabatic spaceflight backscatter seawater geoscience
+groundwater karst hydroclimate nanowire phospholipid baseline checklist
+decapod echinoderm brachiopod bryozoan gastropod crinoid ammonoid conodont
+graptolite radiolarian ostracod nautiloid belemnite echinoid ophiuroid
+blastoid rodent ungulate teleost lungfish coelacanth wasp millipede annelid
+mollusc gymnosperm foraminifer coccolith archaea anglerfish elytron taxa
+osteology nonmarine
 """.split())
 
 # Words that web2 lists only in lowercase but which are overwhelmingly used
@@ -147,7 +162,7 @@ pacific arctic antarctic mediterranean quaternary tertiary earth gaussian
 bayesian boolean cartesian euclidean newton darwin wallace mendel einstein
 markov fourier laplace linnean linnaean smithsonian
 bolivia brazil chad chile china finland gambia mali mozambique panama
-zimbabwe berlin dover york hong titan
+zimbabwe berlin dover york hong titan hubble python java
 """.split())
 
 # Two-letter chemical element symbols (lowercased). Excluded unless they are
@@ -187,7 +202,7 @@ def fetch(url, timeout=30):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--max-kb', type=int, default=300, help='cap on the output file size (KB, 1024 bytes)')
+    ap.add_argument('--max-kb', type=int, default=305, help='cap on the output file size (KB, 1024 bytes)')
     ap.add_argument('--offline', action='store_true', help='do not download anything; dictionary only')
     ap.add_argument('--out', default=OUT)
     args = ap.parse_args()

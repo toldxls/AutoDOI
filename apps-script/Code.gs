@@ -198,8 +198,10 @@ function recordFromCrossref_(doi, res) {
 function prefetchRecords_(dois, deadline) {
   var todo = []; var seen = {};
   dois.forEach(function (d) { var k = d.toLowerCase(); if (!seen[k] && cacheGet_('doi:' + k) === null) { seen[k] = true; todo.push(d); } });
-  for (var i = 0; i < todo.length && Date.now() < deadline; i += 20) {
-    var chunk = todo.slice(i, i + 20);
+  // Crossref's public pool allows only a few concurrent requests: fetch in small parallel groups, pausing between them
+  for (var i = 0; i < todo.length && Date.now() < deadline; i += 4) {
+    if (i) Utilities.sleep(POLITE_EMAIL ? 250 : 1000);
+    var chunk = todo.slice(i, i + 4);
     var responses;
     try { responses = UrlFetchApp.fetchAll(chunk.map(function (d) { return { url: crossrefUrl_(d), muteHttpExceptions: true }; })); }
     catch (e) { return; }
