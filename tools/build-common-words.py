@@ -90,7 +90,7 @@ bare therapeutic medieval renaissance bat delicious trio zen alpine maritime
 penny male female lesbian spring son vote kit grant guy hunter fauna flora marsh
 cliff herb mole mosquito cactus citrus tuna cannabis aerosol anemia tolerant
 mosaic spike gill peg chin fur gum serpent sedan husky sanity cola triumph
-advent rotary stern rogue demon titan boxer graves piper muse nanny natal
+advent rotary stern rogue demon boxer graves piper muse nanny natal
 sergeant mister shrine cadet aides allies angles scripture utopia odyssey
 zipper attic gothic italic wealthy fahrenheit doppler heroin rand mercury
 """.split())
@@ -146,6 +146,8 @@ EXCLUDE = set("""
 pacific arctic antarctic mediterranean quaternary tertiary earth gaussian
 bayesian boolean cartesian euclidean newton darwin wallace mendel einstein
 markov fourier laplace linnean linnaean smithsonian
+bolivia brazil chad chile china finland gambia mali mozambique panama
+zimbabwe berlin dover york hong titan
 """.split())
 
 # Two-letter chemical element symbols (lowercased). Excluded unless they are
