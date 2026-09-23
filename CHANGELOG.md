@@ -4,6 +4,9 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 
 ## Unreleased
 
+- Browser suite now also covers a journal style rendered through citeproc (search, pick, deep link), RIS and BibTeX file import, Title Case conversion, the Settings panel, and every flow in dark mode as well as light. The citation engine, one style and the locale are fetched once into a local cache; everything else stays mocked.
+- `tests/sheets-menu.test.js` runs the Google Sheets menu and custom functions against stubbed Apps Script services: menu registration, Drive export files in EndNote and RIS form, alert text, misses, and the `DOI_CITE`, `FIND_DOI`, `REF_TO_DOI` and `REF_TO_RIS` formulas.
+
 ## 1.1.0 - 2026-09-23
 
 - The page shows its version in the footer, and bug reports carry the version and browser even when no error was logged.

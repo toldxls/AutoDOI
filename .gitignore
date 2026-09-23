@@ -2,3 +2,4 @@
 Ref styles/
 node_modules/
 tests/browser/out/
+tests/browser/cache/
