@@ -98,6 +98,11 @@
   #csl-box { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
   #csl-box[hidden] { display: none; }
   .hit.style { cursor: pointer; padding: 9px 14px; }
+  .note { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .note code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .fixrow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .fixrow input { flex: 1 1 260px; padding: 6px 10px; font-size: 13px; font-family: var(--sans); }
+  .chip.info { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
   .hit.style:hover, .hit.style:focus-visible { border-color: var(--accent); }
   .bookmarklet { display: inline-block; padding: 5px 10px; border: 1px dashed var(--accent); border-radius: 6px; color: var(--accent); text-decoration: none; font-weight: 500; cursor: grab; }
   @media (max-width: 640px) { .cite { grid-template-columns: 1fr; gap: 8px; } .cite .actions { justify-content: flex-start; } }
@@ -152,7 +157,7 @@
 
   <!-- ===== 1. DOI -> reference ===== -->
   <section class="panel" id="panel-cite" role="tabpanel" aria-labelledby="tab-cite">
-    <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, or any text containing one. Show every built-in style, pick one, or search 10,000 journal styles. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
+    <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, an ISBN, or any text containing one. Show every built-in style, pick one, or search 10,000 journal styles. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
     <form class="bar" id="form-cite">
       <input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI">
       <button class="btn primary" type="submit" id="doi-go">Look up</button>
@@ -160,6 +165,7 @@
     <div class="toolbar">
       <span class="field" style="margin:0">Style</span>
       <select id="style-select" aria-label="Output style"></select>
+      <button class="btn small" type="button" id="copy-link" title="Copy a link that opens this reference in this style">Copy link</button>
       <span class="status" id="style-status" style="margin:0" role="status" aria-live="polite"></span>
     </div>
     <div id="csl-box" hidden>
@@ -272,6 +278,81 @@
     return null;
   }
 
+  // ISBN-10 or ISBN-13 in free text ("ISBN 978-0-521-38707-1", "0521387078"), returned as bare digits, checksum verified
+  function extractIsbn(text) {
+    var t = String(text || '');
+    var m = t.match(/\b(?:ISBN(?:-1[03])?:?\s*)?((?:97[89][\s-]?)?\d[\d\s-]{8,15}[\dXx])\b/);
+    if (!m) return null;
+    var d = m[1].replace(/[\s-]/g, '').toUpperCase();
+    if (d.length === 13 && /^\d{13}$/.test(d)) {
+      var sum = 0; for (var i = 0; i < 12; i++) sum += Number(d[i]) * (i % 2 ? 3 : 1);
+      return (10 - sum % 10) % 10 === Number(d[12]) ? d : null;
+    }
+    if (d.length === 10 && /^\d{9}[\dX]$/.test(d)) {
+      var s10 = 0; for (var j = 0; j < 9; j++) s10 += Number(d[j]) * (10 - j);
+      s10 += d[9] === 'X' ? 10 : Number(d[9]);
+      return s10 % 11 === 0 ? d : null;
+    }
+    return null;
+  }
+
+  // "Georg Kucsko" / "Peter C. Maurer" / "van der Walt, Stéfan" -> {family, given}
+  function splitName(full) {
+    var n = clean(full);
+    if (!n) return null;
+    if (n.indexOf(',') !== -1) { var parts = n.split(','); return { family: parts[0].trim(), given: parts.slice(1).join(',').trim() }; }
+    var toks = n.split(/\s+/);
+    if (toks.length === 1) return { name: n };
+    var fam = [toks.pop()];
+    while (toks.length > 1 && /^(van|von|de|del|della|der|den|da|di|du|la|le|los|las|dos|das|ter|ten|af|av|zu|zur|y|e)$/i.test(toks[toks.length - 1])) fam.unshift(toks.pop());
+    return { family: fam.join(' '), given: toks.join(' ') };
+  }
+
+  // OpenAlex work -> Crossref-message-like object for normalize()
+  function fromOpenAlex(w) {
+    var loc = w.primary_location || (w.locations && w.locations[0]) || {};
+    var src = loc.source || {};
+    var typeMap = { article: src.type === 'journal' || !src.type ? 'journal-article' : 'journal-article', preprint: 'posted-content', 'book-chapter': 'book-chapter',
+      book: 'book', dissertation: 'dissertation', dataset: 'dataset', report: 'report', 'paratext': 'other', 'peer-review': 'other', 'reference-entry': 'book-chapter' };
+    var type = typeMap[w.type] || 'other';
+    if (w.type === 'article' && src.type === 'repository') type = 'posted-content';
+    if (w.type === 'article' && (src.type === 'conference' || /proceedings/i.test(src.display_name || ''))) type = 'proceedings-article';
+    var b = w.biblio || {};
+    var doi = (w.doi || (w.ids && w.ids.doi) || '').replace(/^https?:\/\/(dx\.)?doi\.org\//i, '');
+    var date = (w.publication_date || String(w.publication_year || '')).split('-').map(Number).filter(Boolean);
+    var m = {
+      type: type, DOI: doi, URL: doi ? 'https://doi.org/' + doi : (loc.landing_page_url || w.id),
+      title: [w.title || w.display_name || ''],
+      author: (w.authorships || []).map(function (a) { return splitName((a.author && a.author.display_name) || a.raw_author_name || '') || { name: '' }; }).filter(function (a) { return a.family || a.name; }),
+      'container-title': src.display_name ? [src.display_name] : [],
+      volume: b.volume || '', issue: b.issue || '',
+      page: b.first_page ? (b.last_page && b.last_page !== b.first_page ? b.first_page + '-' + b.last_page : b.first_page) : '',
+      issued: { 'date-parts': [date.length ? date : []] },
+      publisher: src.host_organization_name || '',
+      ISSN: src.issn_l ? [src.issn_l] : [],
+      source: 'openalex'
+    };
+    if (type === 'posted-content' && src.display_name) { m.institution = [{ name: src.display_name }]; m['container-title'] = []; }
+    return m;
+  }
+
+  // Open Library search.json doc -> Crossref-message-like book object
+  function fromOpenLibrary(doc, isbn) {
+    var year = doc.first_publish_year || (doc.publish_year && Math.min.apply(null, doc.publish_year)) || '';
+    return {
+      type: 'book',
+      title: [doc.title + (doc.subtitle ? ': ' + doc.subtitle : '')],
+      author: (doc.author_name || []).map(function (n) { return splitName(n) || { name: n }; }),
+      publisher: (doc.publisher || [])[0] || '',
+      'publisher-location': (doc.publish_place || [])[0] || '',
+      issued: { 'date-parts': [year ? [Number(year)] : []] },
+      ISBN: [isbn || (doc.isbn || [])[0] || ''],
+      'number-of-pages': doc.number_of_pages_median ? String(doc.number_of_pages_median) : '',
+      URL: doc.key ? 'https://openlibrary.org' + doc.key : '',
+      source: 'openlibrary'
+    };
+  }
+
   function first(v) { return Array.isArray(v) ? v[0] : v; }
 
   function clean(s) {
@@ -350,6 +431,13 @@
 
   /* ---------- normalize ---------- */
 
+  function relDoi(rel, key) {
+    var list = rel && rel[key];
+    if (!Array.isArray(list)) return '';
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i]['id-type'] === 'doi' && list[i].id) return String(list[i].id);
+    return '';
+  }
+
   function normalize(m) {
     var dp = datePartsOf(m);
     var type = m.type || 'other';
@@ -392,6 +480,9 @@
       abstract: cleanAbstract(m.abstract || ''),
       language: clean(m.language || ''),
       event: clean((m.event && m.event.name) || ''),
+      publishedDoi: relDoi(m.relation, 'is-preprint-of'),
+      preprintDoi: relDoi(m.relation, 'has-preprint'),
+      source: m.source || 'crossref',
       score: m.score
     };
     if (r.subtitle && r.title && r.title.indexOf(r.subtitle) === -1) {
@@ -1021,6 +1112,10 @@
     extractDoi: extractDoi,
     toDoi: toDoi,
     extractPmid: extractPmid,
+    extractIsbn: extractIsbn,
+    splitName: splitName,
+    fromOpenAlex: fromOpenAlex,
+    fromOpenLibrary: fromOpenLibrary,
     normalize: normalize,
     kind: kind,
     format: format,
@@ -1118,15 +1213,26 @@
   }
 
   /* ---------- network ---------- */
-  var SELECT = 'DOI,URL,title,subtitle,author,editor,container-title,short-container-title,issued,published-print,published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event';
+  var SELECT = 'DOI,URL,title,subtitle,author,editor,container-title,short-container-title,issued,published-print,published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event,relation';
 
-  // fetch that retries once on 429 / 5xx (Crossref's public pool rate-limits bursts)
+  // Crossref's public pool allows about one request per second per client: serialise and space its calls
+  var crChain = Promise.resolve();
+  function spaced(fn, ms) {
+    var p = crChain.then(fn);
+    crChain = p.catch(function () {}).then(function () { return new Promise(function (r) { setTimeout(r, ms); }); });
+    return p;
+  }
+  // fetch that retries once on 429 / 5xx or a network-level failure; Crossref calls go through the spaced queue
   async function fetchRetry(url, opts) {
-    var res = await fetch(url, opts);
+    var isCrossref = /api\.crossref\.org/.test(url);
+    var doFetch = function () { return isCrossref ? spaced(function () { return fetch(url, opts); }, ($('polite-email').value.trim() ? 250 : 1050)) : fetch(url, opts); };
+    var res;
+    try { res = await doFetch(); }
+    catch (e) { await new Promise(function (r) { setTimeout(r, 1500); }); res = await doFetch(); }
     if (res.status === 429 || res.status >= 500) {
       var wait = Math.min(5000, (Number(res.headers.get('Retry-After')) || 1.5) * 1000);
       await new Promise(function (r) { setTimeout(r, wait); });
-      res = await fetch(url, opts);
+      res = await doFetch();
     }
     return res;
   }
@@ -1135,9 +1241,97 @@
     if (res.ok) return A.normalize((await res.json()).message);
     if (res.status !== 404) throw new Error('Crossref returned ' + res.status);
     // Not a Crossref DOI (DataCite, mEDRA, ...): ask doi.org for CSL JSON
-    var alt = await fetch('https://doi.org/' + doi, { headers: { Accept: 'application/vnd.citationstyles.csl+json' } });
-    if (!alt.ok) throw new Error('DOI not found at Crossref or doi.org (' + alt.status + ')');
-    return A.normalize(await alt.json());
+    var alt = await fetch('https://doi.org/' + doi.split('/').map(encodeURIComponent).join('/'), { headers: { Accept: 'application/vnd.citationstyles.csl+json' } });
+    if (alt.ok && /json/.test(alt.headers.get('Content-Type') || '')) return A.normalize(await alt.json());
+    try { return await openAlexByDoi(doi); } // last resort: OpenAlex knows some DOIs the resolvers do not
+    catch (e) { throw new Error('DOI not found at Crossref, doi.org or OpenAlex (' + alt.status + ')'); }
+  }
+
+  /* ---------- journal abbreviations: NLM Catalog first, JabRef lists as fallback ---------- */
+  var abbrCache = {}; try { abbrCache = JSON.parse(store.get('abbr') || '{}'); } catch (e) { abbrCache = {}; }
+  var nlmChain = Promise.resolve();
+  function nlmFetch(url) { // NCBI allows ~3 requests/s without a key: serialise and space them
+    var p = nlmChain.then(function () { return fetch(url).then(function (r) { return r.json(); }); });
+    nlmChain = p.catch(function () {}).then(function () { return new Promise(function (r) { setTimeout(r, 350); }); });
+    return p;
+  }
+  var jabref = null;
+  async function loadJabref() {
+    if (jabref) return jabref;
+    var base = 'https://raw.githubusercontent.com/JabRef/abbrv.jabref.org/main/journals/';
+    var texts = await Promise.all(['journal_abbreviations_general.csv', 'journal_abbreviations_geology_physics.csv'].map(function (f) {
+      return fetch(base + f).then(function (r) { return r.ok ? r.text() : ''; }).catch(function () { return ''; });
+    }));
+    var map = {};
+    texts.forEach(function (t) { t.split('\n').forEach(function (line) {
+      var parts = line.split(';'); if (parts.length >= 2 && parts[0] && parts[1]) { var k = parts[0].trim().toLowerCase(); if (!map[k]) map[k] = parts[1].trim(); }
+    }); });
+    jabref = map; return map;
+  }
+  async function abbreviate(journal) {
+    var key = journal.toLowerCase().replace(/^the\s+/, '').replace(/[.\s]+$/, '');
+    if (abbrCache[key] !== undefined) return abbrCache[key];
+    var abbr = '';
+    try {
+      var es = await nlmFetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nlmcatalog&retmode=json&term=' + encodeURIComponent('"' + journal + '"[Title]'));
+      var ids = (es.esearchresult && es.esearchresult.idlist) || [];
+      if (ids.length) {
+        var sm = await nlmFetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=nlmcatalog&retmode=json&id=' + ids.slice(0, 5).join(','));
+        for (var i = 0; i < ids.length && !abbr; i++) {
+          var rec = sm.result && sm.result[ids[i]];
+          if (!rec || !rec.medlineta) continue;
+          var full = ((rec.titlemainlist && rec.titlemainlist[0] && rec.titlemainlist[0].title) || '').replace(/[.\s]+$/, '').toLowerCase().replace(/^the\s+/, '');
+          if (full === key) abbr = rec.medlineta;
+        }
+      }
+    } catch (e) { /* fall back */ }
+    if (!abbr) { try { var jr = await loadJabref(); abbr = jr[journal.toLowerCase()] || jr[key] || ''; } catch (e) { abbr = ''; } }
+    abbrCache[key] = abbr; store.set('abbr', JSON.stringify(abbrCache));
+    return abbr;
+  }
+  function needsAbbr(r) { return A.kind(r) === 'journal' && r.container && (!r.shortContainer || r.shortContainer.toLowerCase() === r.container.toLowerCase()); }
+  async function enrichAbbr(records) {
+    var changed = false;
+    await Promise.all(records.filter(needsAbbr).map(function (r) {
+      return abbreviate(r.container).then(function (a) { if (a && a.toLowerCase() !== r.container.toLowerCase()) { r.shortContainer = a; changed = true; } });
+    }));
+    return changed;
+  }
+
+  /* ---------- OpenAlex: second search backend (theses, EarthArXiv, DataCite, grey literature) ---------- */
+  var OA_SELECT = 'id,doi,title,display_name,authorships,publication_year,publication_date,biblio,primary_location,type,ids';
+  async function openAlexSearch(text, rows) {
+    var res = await fetchRetry(polite('https://api.openalex.org/works?per-page=' + rows + '&select=' + OA_SELECT + '&search=' + encodeURIComponent(text)));
+    if (!res.ok) throw new Error('OpenAlex returned ' + res.status);
+    return ((await res.json()).results || []).map(function (w) { return A.normalize(A.fromOpenAlex(w)); });
+  }
+  async function openAlexByDoi(doi) {
+    var res = await fetch(polite('https://api.openalex.org/works/https://doi.org/' + doi + '?select=' + OA_SELECT));
+    if (!res.ok) throw new Error('OpenAlex returned ' + res.status);
+    return A.normalize(A.fromOpenAlex(await res.json()));
+  }
+
+  /* ---------- ISBN: Open Library for the book record, Crossref for a DOI when the book has one ---------- */
+  async function lookupIsbn(isbn) {
+    var ol = null, cr = null;
+    try {
+      var d = await (await fetch('https://openlibrary.org/search.json?isbn=' + isbn + '&fields=key,title,subtitle,author_name,publisher,first_publish_year,publish_year,publish_place,number_of_pages_median,isbn')).json();
+      if (d.docs && d.docs.length) ol = A.normalize(A.fromOpenLibrary(d.docs[0], isbn));
+    } catch (e) { /* try Crossref */ }
+    try {
+      var c = await (await fetchRetry(polite('https://api.crossref.org/works?rows=5&filter=isbn:' + isbn + '&select=' + SELECT))).json();
+      var book = (c.message.items || []).filter(function (i) { return /^(book|monograph|edited-book|reference-book)$/.test(i.type); })[0];
+      if (book) cr = A.normalize(book);
+    } catch (e) { /* ok */ }
+    if (!ol && !cr) throw new Error('No book found for ISBN ' + isbn + ' at Open Library or Crossref.');
+    var r = cr || ol;
+    if (cr && ol) {
+      ['place', 'numPages', 'edition'].forEach(function (k) { if (!r[k] && ol[k]) r[k] = ol[k]; });
+      if (!r.authors.length) { r.authors = ol.authors; r.editors = r.editors.length ? r.editors : ol.editors; }
+      if (!r.year) r.year = ol.year;
+    }
+    if (!r.isbn) r.isbn = isbn;
+    return r;
   }
 
   async function pmidToDoi(pm) {
@@ -1227,6 +1421,7 @@
     }
     store.set('style', mode === 'csl' ? 'csl:' + cslStyle.name : mode);
     fillStyleSelect();
+    if (typeof updateBookmarklet === 'function') updateBookmarklet();
     if (currentRecord) showCitation(currentRecord, currentChip);
   }
   $('style-select').addEventListener('change', function () {
@@ -1356,7 +1551,11 @@
   }
   function htmlToText(html) { var d = document.createElement('div'); d.innerHTML = html; return d.textContent; }
   async function cslRender(style, records) {
-    await Promise.all([ensureCiteproc(), getLocale(), getStyleXml(style.name, 0, !!style.dep)]);
+    await Promise.all([ensureCiteproc(), getLocale(), getStyleXml(style.name, 0, style.dep === undefined ? false : !!style.dep)]);
+    if (style.title === style.name) { // came from a ?style= link: pick up the real title and remember it
+      var tm = csl.xml[style.name].match(/<title>([^<]+)<\/title>/);
+      if (tm) { style.title = htmlToText(tm[1]).trim(); if (styleState.csl && styleState.csl.name === style.name) setStyle('csl', style); }
+    }
     var items = {}, ids = [];
     records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1)); items[it.id] = it; ids.push(it.id); });
     var eng = new window.CSL.Engine({ retrieveLocale: function () { return csl.locale; }, retrieveItem: function (id) { return items[id]; } }, csl.xml[style.name]);
@@ -1398,12 +1597,25 @@
     head.appendChild(left);
     var side = el('div', 'actions'); side.style.display = 'flex'; side.style.gap = '6px'; side.style.alignItems = 'center';
     if (opts.chip) side.appendChild(opts.chip);
+    if (A.kind(r) === 'journal' && !r.volume && !r.pages && r.year) { var ip = el('span', 'chip info', 'Online first'); ip.title = 'No volume or pages yet: cite as in press / early view'; side.appendChild(ip); }
+    if (r.source === 'openalex' || r.source === 'openlibrary') side.appendChild(el('span', 'chip', 'via ' + (r.source === 'openalex' ? 'OpenAlex' : 'Open Library')));
     var rep = el('a', 'btn small', 'Report'); rep.target = '_blank'; rep.rel = 'noopener'; rep.title = 'Report a problem with this reference on GitHub';
     rep.href = issueUrl('bug_report.yml', { doi: r.doi, style: currentStyleLabel(), where: 'Web page', errors: errorReport(), title: '[Bug] ' + (r.doi || r.title) });
     rep.style.textDecoration = 'none';
     side.appendChild(rep);
     head.appendChild(side);
     box.appendChild(head);
+    if (r.publishedDoi && opts.onSwap) {
+      var pubNote = el('div', 'note'); pubNote.style.padding = '10px 18px'; pubNote.style.borderBottom = '1px solid var(--line)';
+      pubNote.appendChild(document.createTextNode('This is a preprint. Published version: '));
+      pubNote.appendChild(el('code', '', r.publishedDoi));
+      pubNote.appendChild(button('Use published version', 'primary', function () { opts.onSwap(r.publishedDoi); }));
+      box.appendChild(pubNote);
+    } else if (r.preprintDoi) {
+      var preNote = el('div', 'note'); preNote.style.padding = '10px 18px'; preNote.style.borderBottom = '1px solid var(--line)';
+      preNote.appendChild(document.createTextNode('A preprint of this article exists: ')); preNote.appendChild(el('code', '', r.preprintDoi));
+      box.appendChild(preNote);
+    }
 
     A.STYLES.filter(function (s) { return !opts.styles || opts.styles.indexOf(s.id) !== -1; }).forEach(function (s) {
       var row = el('div', 'cite');
@@ -1504,8 +1716,12 @@
     currentRecord = r; currentChip = chip || null;
     var out = $('doi-result'); out.innerHTML = '';
     var only = styleState.mode === 'all' ? null : styleState.mode === 'csl' ? [] : [styleState.mode];
-    var box = renderRecord(r, { chip: chip, styles: only });
+    var box = renderRecord(r, { chip: chip, styles: only, onSwap: function (doi) { $('doi-input').value = doi; lookup(doi); } });
     out.appendChild(box);
+    if (needsAbbr(r) && !r.abbrTried) {
+      r.abbrTried = true;
+      enrichAbbr([r]).then(function (changed) { if (changed && currentRecord === r) showCitation(r, chip); });
+    }
     if (styleState.mode === 'csl') {
       var row = el('div', 'cite'), t = el('div', 'text', 'Rendering…');
       row.appendChild(el('div', 'style', styleState.csl.title)); row.appendChild(t); box.appendChild(row);
@@ -1531,10 +1747,18 @@
     try {
       var doi = A.toDoi(text);
       if (!doi) {
+        var isbn = A.extractIsbn(text);
+        if (isbn) {
+          status.textContent = 'Looking up ISBN ' + isbn + '…';
+          var book = await lookupIsbn(isbn);
+          if (seq !== lookupSeq) return;
+          $('doi-input').value = isbn; showCitation(book); status.textContent = book.doi ? '' : 'No DOI for this book; record from Open Library.';
+          return;
+        }
         var pm = A.extractPmid(text);
         if (pm) { status.textContent = 'Resolving ' + pm.id + ' through Europe PMC…'; doi = await pmidToDoi(pm); }
       }
-      if (!doi) { status.textContent = 'No DOI, arXiv ID or PubMed ID found in that text. A DOI looks like 10.1234/abc123.'; status.className = 'status err'; return; }
+      if (!doi) { status.textContent = 'No DOI, arXiv ID, PubMed ID or ISBN found in that text. A DOI looks like 10.1234/abc123.'; status.className = 'status err'; return; }
       $('doi-input').value = doi;
       status.textContent = 'Looking up ' + doi + '…';
       var r = await fetchRecord(doi);
@@ -1558,8 +1782,12 @@
     status.textContent = 'Searching Crossref…'; $('find-go').disabled = true;
     try {
       var hits = await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6);
-      if (!hits.length) { status.textContent = 'No matches. Try fewer words from the title.'; return; }
-      status.textContent = hits.length + ' best matches, most likely first.';
+      var viaOA = false;
+      if (!hits.length || Math.max.apply(null, hits.map(function (r) { return A.matchConfidence(title, r, { titleOnly: true }); })) < 0.5) {
+        try { var oa = await openAlexSearch(title + (journal ? ' ' + journal : ''), 5); if (oa.length) { hits = hits.concat(oa); viaOA = true; } } catch (e) { /* Crossref results only */ }
+      }
+      if (!hits.length) { status.textContent = 'No matches at Crossref or OpenAlex. Try fewer words from the title.'; return; }
+      status.textContent = hits.length + ' best matches, most likely first' + (viaOA ? ' (Crossref and OpenAlex)' : '') + '.';
       hits.forEach(function (r) { r.conf = A.matchConfidence(title + ' ' + journal, r, { titleOnly: true }); });
       hits.sort(function (a, b) { return b.conf - a.conf; });
       hits.forEach(function (r) {
@@ -1613,14 +1841,29 @@
     if (doi) {
       try { var r = await fetchRecord(doi); return { record: r, conf: 1, via: 'doi' }; } catch (e) { /* fall through to search */ }
     }
-    var hits = await search({ 'query.bibliographic': refText }, 3);
-    if (!hits.length) return { record: null, conf: 0 };
-    var best = hits[0], bestConf = A.matchConfidence(refText, hits[0]);
-    for (var i = 1; i < hits.length; i++) {
-      var c = A.matchConfidence(refText, hits[i]);
-      if (c > bestConf + 0.2) { best = hits[i]; bestConf = c; }
+    var isbn = A.extractIsbn(refText);
+    if (isbn) { try { var b = await lookupIsbn(isbn); return { record: b, conf: 1, via: 'isbn' }; } catch (e) { /* search */ } }
+    var best = null, bestConf = 0, via = 'search';
+    var pick = function (hits) {
+      hits.forEach(function (h) { var c = A.matchConfidence(refText, h); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
+    };
+    var errors = [];
+    try { pick(await search({ 'query.bibliographic': refText }, 3)); } catch (e) { errors.push('Crossref: ' + e.message); }
+    if (!best || bestConf < 0.5) { // second opinion from OpenAlex
+      try {
+        var oa = await openAlexSearch(refText, 3), before = bestConf;
+        pick(oa);
+        if (best && bestConf > before && best.source === 'openalex') {
+          via = 'openalex';
+          if (best.doi) { try { var full = await fetchRecord(best.doi); full.source = 'openalex'; best = full; } catch (e) { /* keep the OpenAlex record */ } }
+        }
+      } catch (e) { errors.push('OpenAlex: ' + e.message); }
     }
-    return { record: best, conf: bestConf, via: 'search' };
+    if (!best) {
+      if (errors.length === 2) throw new Error('Both lookups failed (' + errors.join('; ') + '). Wait a moment and use the fix box.');
+      return { record: null, conf: 0 };
+    }
+    return { record: best, conf: bestConf, via: via };
   }
 
   $('export-input').addEventListener('keydown', function (ev) {
@@ -1633,54 +1876,101 @@
     status.className = 'status'; list.innerHTML = ''; out.innerHTML = '';
     if (!refs.length) { status.textContent = 'Paste at least one reference.'; status.className = 'status err'; return; }
     $('export-go').disabled = true;
-    var found = [];
-    for (var i = 0; i < refs.length; i++) {
-      status.textContent = 'Matching ' + (i + 1) + ' of ' + refs.length + '…';
-      var m = el('div', 'match');
-      m.appendChild(el('div', 'in', refs[i]));
-      list.appendChild(m);
-      try {
-        var res = await resolve(refs[i]);
-        var o = el('div', 'out');
-        if (!res.record) {
-          m.classList.add('bad');
-          o.appendChild(el('span', 'chip bad', 'No match'));
-          o.appendChild(el('span', 't', 'Crossref found nothing close. Try the "Find a DOI" tab with just the title.'));
-        } else {
-          var level = res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
-          m.classList.add(level);
-          o.appendChild(el('span', 'chip ' + level, res.via === 'doi' ? 'From DOI' : level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : 'Weak match'));
-          o.appendChild(el('span', 't', res.record.title));
-          o.appendChild(el('code', '', res.record.doi));
-          (function (rec, node) {
-            var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level !== 'bad'; inc.id = 'inc-' + i;
-            var lab = document.createElement('label'); lab.htmlFor = inc.id; lab.textContent = 'Include'; lab.style.fontSize = '13px';
-            lab.style.display = 'inline-flex'; lab.style.gap = '4px'; lab.style.alignItems = 'center'; lab.insertBefore(inc, lab.firstChild);
-            node.appendChild(lab);
-            found.push({ rec: rec, box: inc });
-          })(res.record, o);
-        }
-        m.appendChild(o);
-      } catch (e) {
-        logError('batch', e);
-        m.classList.add('bad');
-        var oe = el('div', 'out'); oe.appendChild(el('span', 'chip bad', 'Error')); oe.appendChild(el('span', 't', e.message)); m.appendChild(oe);
-      }
-      if (i < refs.length - 1) await new Promise(function (r) { setTimeout(r, 120); });
+    var rows = []; // { rec, box, node, out, idx }
+    var byDoi = {};
+
+    function chipFor(level, via) {
+      var label = via === 'doi' ? 'From DOI' : via === 'isbn' ? 'From ISBN' : via === 'openalex' ? (level === 'good' ? 'Good match · OpenAlex' : 'Check match · OpenAlex') : via === 'fixed' ? 'Fixed' :
+        level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : 'Weak match';
+      return el('span', 'chip ' + level, label);
     }
-    $('export-go').disabled = false;
-    status.textContent = found.length + ' of ' + refs.length + ' matched.';
     function build() {
       out.innerHTML = '';
-      var seenDoi = {};
-      var recs = found.filter(function (f) { return f.box.checked; }).map(function (f) { return f.rec; })
-        .filter(function (r) { var k = (r.doi || r.title).toLowerCase(); if (seenDoi[k]) return false; seenDoi[k] = true; return true; });
+      var seen = {};
+      var recs = rows.filter(function (f) { return f.rec && f.box.checked; }).map(function (f) { return f.rec; })
+        .filter(function (r) { var k = (r.doi || r.title).toLowerCase(); if (seen[k]) return false; seen[k] = true; return true; });
       if (!recs.length) return;
       out.appendChild(el('div', 'section-label', 'Export · ' + recs.length + ' record' + (recs.length > 1 ? 's' : '')));
       renderRefList(out, recs);
       renderExports(out, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
     }
-    found.forEach(function (f) { f.box.addEventListener('change', build); });
+    function setRow(row, rec, level, via) {
+      row.node.className = 'match ' + level;
+      var o = row.out; o.innerHTML = '';
+      o.appendChild(chipFor(level, via));
+      o.appendChild(el('span', 't', rec.title));
+      o.appendChild(el('code', '', rec.doi || rec.isbn || ''));
+      var key = (rec.doi || rec.title).toLowerCase();
+      var dupOf = byDoi[key];
+      if (dupOf !== undefined && dupOf !== row.idx) {
+        var dchip = el('span', 'chip warn', 'Duplicate of #' + (dupOf + 1)); dchip.title = 'Same record as an earlier line; left out of the export'; o.appendChild(dchip);
+      } else byDoi[key] = row.idx;
+      var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level !== 'bad' && !(dupOf !== undefined && dupOf !== row.idx); inc.id = 'inc-' + row.idx;
+      var lab = document.createElement('label'); lab.htmlFor = inc.id; lab.textContent = 'Include'; lab.style.fontSize = '13px';
+      lab.style.display = 'inline-flex'; lab.style.gap = '4px'; lab.style.alignItems = 'center'; lab.insertBefore(inc, lab.firstChild);
+      o.appendChild(lab);
+      inc.addEventListener('change', build);
+      row.rec = rec; row.box = inc;
+      if (rec.publishedDoi) {
+        var pn = el('div', 'note'); pn.style.marginTop = '6px';
+        pn.appendChild(document.createTextNode('Preprint; published version: ')); pn.appendChild(el('code', '', rec.publishedDoi));
+        pn.appendChild(button('Swap', '', function (b) {
+          b.disabled = true;
+          fetchRecord(rec.publishedDoi).then(function (full) { setRow(row, full, 'good', 'doi'); build(); }, function (e) { b.disabled = false; b.textContent = e.message; });
+        }));
+        o.appendChild(pn);
+      }
+    }
+    function addFixRow(row) { // let the user rescue a weak or missing match without leaving the tab
+      var fr = el('div', 'fixrow');
+      var inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'Paste the right DOI, or retype just the title to search again'; inp.setAttribute('aria-label', 'Fix this reference');
+      var go = button('Fix', 'primary', async function (b) {
+        var v = inp.value.trim(); if (!v) return;
+        b.disabled = true; b.textContent = 'Searching…';
+        try {
+          var res = await resolve(v);
+          if (!res.record) throw new Error('Still nothing. Try fewer words.');
+          setRow(row, res.record, 'good', res.via === 'doi' || res.via === 'isbn' ? res.via : 'fixed');
+          fr.remove(); build();
+        } catch (e) { b.disabled = false; b.textContent = 'Fix'; inp.setCustomValidity(e.message); inp.reportValidity(); setTimeout(function () { inp.setCustomValidity(''); }, 2500); }
+      });
+      inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); go.click(); } });
+      fr.appendChild(inp); fr.appendChild(go); row.node.appendChild(fr);
+    }
+
+    for (var i = 0; i < refs.length; i++) {
+      status.textContent = 'Matching ' + (i + 1) + ' of ' + refs.length + '…';
+      var m = el('div', 'match');
+      m.appendChild(el('div', 'in', refs[i]));
+      var o = el('div', 'out'); m.appendChild(o);
+      list.appendChild(m);
+      var row = { rec: null, box: { checked: false }, node: m, out: o, idx: i };
+      rows.push(row);
+      try {
+        var res = await resolve(refs[i]);
+        if (!res.record) {
+          m.classList.add('bad');
+          o.appendChild(el('span', 'chip bad', 'No match'));
+          o.appendChild(el('span', 't', 'Nothing close at Crossref or OpenAlex. Paste a DOI or the bare title below.'));
+          addFixRow(row);
+        } else {
+          var level = res.via === 'doi' || res.via === 'isbn' ? 'good' : res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
+          setRow(row, res.record, level, res.via);
+          if (level !== 'good') addFixRow(row);
+        }
+      } catch (e) {
+        logError('batch', e);
+        m.classList.add('bad');
+        o.appendChild(el('span', 'chip bad', 'Error')); o.appendChild(el('span', 't', e.message));
+        addFixRow(row);
+      }
+
+    }
+    var matched = rows.filter(function (f) { return f.rec; });
+    status.textContent = matched.length + ' of ' + refs.length + ' matched. Looking up journal abbreviations…';
+    try { await enrichAbbr(matched.map(function (f) { return f.rec; })); } catch (e) { /* abbreviations are optional */ }
+    $('export-go').disabled = false;
+    status.textContent = matched.length + ' of ' + refs.length + ' matched.';
     build();
   });
 
@@ -1694,12 +1984,33 @@
   })();
   var base = location.href.split(/[?#]/)[0];
   $('qexample').textContent = base + '?q=10.1038/nature12373';
-  $('bookmarklet').href = "javascript:(function(){var m=document.querySelector('meta[name=\"citation_doi\"],meta[name=\"dc.identifier\"],meta[name=\"DC.Identifier\"],meta[name=\"prism.doi\"]');" +
-    "var t=m?m.content:(document.body.innerText.match(/10\\.\\d{4,9}\\/[^\\s\"'<>]+/)||[location.href])[0];" +
-    "location.href=" + JSON.stringify(base + '?q=') + "+encodeURIComponent(t);})();";
   $('bookmarklet').addEventListener('click', function (ev) { ev.preventDefault(); });
 
-  var q = new URLSearchParams(location.search).get('q') || new URLSearchParams(location.search).get('doi');
+  function styleParam() { return styleState.mode === 'csl' ? 'csl:' + styleState.csl.name : styleState.mode; }
+  function updateBookmarklet() {
+    var target = base + '?style=' + encodeURIComponent(styleParam()) + '&q=';
+    $('bookmarklet').href = "javascript:(function(){var m=document.querySelector('meta[name=\"citation_doi\"],meta[name=\"dc.identifier\"],meta[name=\"DC.Identifier\"],meta[name=\"prism.doi\"]');" +
+      "var t=m?m.content:(document.body.innerText.match(/10\\.\\d{4,9}\\/[^\\s\"'<>]+/)||[location.href])[0];" +
+      "location.href=" + JSON.stringify(target) + "+encodeURIComponent(t);})();";
+  }
+  updateBookmarklet();
+  $('copy-link').addEventListener('click', function () {
+    var id = currentRecord ? (currentRecord.doi || currentRecord.isbn || '') : $('doi-input').value.trim();
+    var link = base + '?q=' + encodeURIComponent(id) + (styleState.mode !== 'all' ? '&style=' + encodeURIComponent(styleParam()) : '');
+    copyPlain($('copy-link'), link);
+  });
+
+  var params = new URLSearchParams(location.search);
+  var styleQ = params.get('style');
+  if (styleQ) {
+    if (styleQ.indexOf('csl:') === 0) {
+      var nm = styleQ.slice(4).replace(/[^a-z0-9\-]/gi, '');
+      var known = recentByName(nm);
+      styleState.mode = 'csl'; styleState.csl = known || { name: nm, title: nm, dep: undefined };
+    } else if (styleQ === 'all' || A.STYLES.some(function (st) { return st.id === styleQ; })) { styleState.mode = styleQ; styleState.csl = null; }
+    fillStyleSelect();
+  }
+  var q = params.get('q') || params.get('doi');
   if (q) {
     $('doi-input').value = q; showTab('cite'); lookup(q);
   } else {

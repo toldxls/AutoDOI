@@ -48,6 +48,81 @@
     return null;
   }
 
+  // ISBN-10 or ISBN-13 in free text ("ISBN 978-0-521-38707-1", "0521387078"), returned as bare digits, checksum verified
+  function extractIsbn(text) {
+    var t = String(text || '');
+    var m = t.match(/\b(?:ISBN(?:-1[03])?:?\s*)?((?:97[89][\s-]?)?\d[\d\s-]{8,15}[\dXx])\b/);
+    if (!m) return null;
+    var d = m[1].replace(/[\s-]/g, '').toUpperCase();
+    if (d.length === 13 && /^\d{13}$/.test(d)) {
+      var sum = 0; for (var i = 0; i < 12; i++) sum += Number(d[i]) * (i % 2 ? 3 : 1);
+      return (10 - sum % 10) % 10 === Number(d[12]) ? d : null;
+    }
+    if (d.length === 10 && /^\d{9}[\dX]$/.test(d)) {
+      var s10 = 0; for (var j = 0; j < 9; j++) s10 += Number(d[j]) * (10 - j);
+      s10 += d[9] === 'X' ? 10 : Number(d[9]);
+      return s10 % 11 === 0 ? d : null;
+    }
+    return null;
+  }
+
+  // "Georg Kucsko" / "Peter C. Maurer" / "van der Walt, Stéfan" -> {family, given}
+  function splitName(full) {
+    var n = clean(full);
+    if (!n) return null;
+    if (n.indexOf(',') !== -1) { var parts = n.split(','); return { family: parts[0].trim(), given: parts.slice(1).join(',').trim() }; }
+    var toks = n.split(/\s+/);
+    if (toks.length === 1) return { name: n };
+    var fam = [toks.pop()];
+    while (toks.length > 1 && /^(van|von|de|del|della|der|den|da|di|du|la|le|los|las|dos|das|ter|ten|af|av|zu|zur|y|e)$/i.test(toks[toks.length - 1])) fam.unshift(toks.pop());
+    return { family: fam.join(' '), given: toks.join(' ') };
+  }
+
+  // OpenAlex work -> Crossref-message-like object for normalize()
+  function fromOpenAlex(w) {
+    var loc = w.primary_location || (w.locations && w.locations[0]) || {};
+    var src = loc.source || {};
+    var typeMap = { article: src.type === 'journal' || !src.type ? 'journal-article' : 'journal-article', preprint: 'posted-content', 'book-chapter': 'book-chapter',
+      book: 'book', dissertation: 'dissertation', dataset: 'dataset', report: 'report', 'paratext': 'other', 'peer-review': 'other', 'reference-entry': 'book-chapter' };
+    var type = typeMap[w.type] || 'other';
+    if (w.type === 'article' && src.type === 'repository') type = 'posted-content';
+    if (w.type === 'article' && (src.type === 'conference' || /proceedings/i.test(src.display_name || ''))) type = 'proceedings-article';
+    var b = w.biblio || {};
+    var doi = (w.doi || (w.ids && w.ids.doi) || '').replace(/^https?:\/\/(dx\.)?doi\.org\//i, '');
+    var date = (w.publication_date || String(w.publication_year || '')).split('-').map(Number).filter(Boolean);
+    var m = {
+      type: type, DOI: doi, URL: doi ? 'https://doi.org/' + doi : (loc.landing_page_url || w.id),
+      title: [w.title || w.display_name || ''],
+      author: (w.authorships || []).map(function (a) { return splitName((a.author && a.author.display_name) || a.raw_author_name || '') || { name: '' }; }).filter(function (a) { return a.family || a.name; }),
+      'container-title': src.display_name ? [src.display_name] : [],
+      volume: b.volume || '', issue: b.issue || '',
+      page: b.first_page ? (b.last_page && b.last_page !== b.first_page ? b.first_page + '-' + b.last_page : b.first_page) : '',
+      issued: { 'date-parts': [date.length ? date : []] },
+      publisher: src.host_organization_name || '',
+      ISSN: src.issn_l ? [src.issn_l] : [],
+      source: 'openalex'
+    };
+    if (type === 'posted-content' && src.display_name) { m.institution = [{ name: src.display_name }]; m['container-title'] = []; }
+    return m;
+  }
+
+  // Open Library search.json doc -> Crossref-message-like book object
+  function fromOpenLibrary(doc, isbn) {
+    var year = doc.first_publish_year || (doc.publish_year && Math.min.apply(null, doc.publish_year)) || '';
+    return {
+      type: 'book',
+      title: [doc.title + (doc.subtitle ? ': ' + doc.subtitle : '')],
+      author: (doc.author_name || []).map(function (n) { return splitName(n) || { name: n }; }),
+      publisher: (doc.publisher || [])[0] || '',
+      'publisher-location': (doc.publish_place || [])[0] || '',
+      issued: { 'date-parts': [year ? [Number(year)] : []] },
+      ISBN: [isbn || (doc.isbn || [])[0] || ''],
+      'number-of-pages': doc.number_of_pages_median ? String(doc.number_of_pages_median) : '',
+      URL: doc.key ? 'https://openlibrary.org' + doc.key : '',
+      source: 'openlibrary'
+    };
+  }
+
   function first(v) { return Array.isArray(v) ? v[0] : v; }
 
   function clean(s) {
@@ -126,6 +201,13 @@
 
   /* ---------- normalize ---------- */
 
+  function relDoi(rel, key) {
+    var list = rel && rel[key];
+    if (!Array.isArray(list)) return '';
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i]['id-type'] === 'doi' && list[i].id) return String(list[i].id);
+    return '';
+  }
+
   function normalize(m) {
     var dp = datePartsOf(m);
     var type = m.type || 'other';
@@ -168,6 +250,9 @@
       abstract: cleanAbstract(m.abstract || ''),
       language: clean(m.language || ''),
       event: clean((m.event && m.event.name) || ''),
+      publishedDoi: relDoi(m.relation, 'is-preprint-of'),
+      preprintDoi: relDoi(m.relation, 'has-preprint'),
+      source: m.source || 'crossref',
       score: m.score
     };
     if (r.subtitle && r.title && r.title.indexOf(r.subtitle) === -1) {
@@ -797,6 +882,10 @@
     extractDoi: extractDoi,
     toDoi: toDoi,
     extractPmid: extractPmid,
+    extractIsbn: extractIsbn,
+    splitName: splitName,
+    fromOpenAlex: fromOpenAlex,
+    fromOpenLibrary: fromOpenLibrary,
     normalize: normalize,
     kind: kind,
     format: format,
