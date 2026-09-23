@@ -33,10 +33,10 @@
   var BREAKERS = SMALL_WORDS + ' is are was were be been its their our this that these those';
 
   // Punctuation after which the next word starts a new "sentence" (APA subtitle rule).
-  var SENTENCE_END = /[:?!—–]$/;          // colon, ?, !, em dash, en dash
-  var OPENERS = /[(\[{"“‘'«]$/;       // opening bracket / quote (must touch the word)
-  var JOINERS = /[-\/‐‑]/;                 // split hyphenated words on these
-  var JOINER_SPLIT = /([-\/‐‑])/;
+  var SENTENCE_END = /[:?!\u2014\u2013]$/;          // colon, ?, !, em dash, en dash
+  var OPENERS = /[(\[{"\u201C\u2018'\u00AB]$/;       // opening bracket / quote (must touch the word)
+  var JOINERS = /[-\/\u2010\u2011]/;                 // split hyphenated words on these
+  var JOINER_SPLIT = /([-\/\u2010\u2011])/;
 
   /* ---------- tiny Set shim (Apps Script legacy runtime has no Set) ---------- */
 
@@ -67,27 +67,23 @@
   var FUNCTION_SET = wordsFrom(FUNCTION_WORDS);
   var SMALL_SET = wordsFrom(SMALL_WORDS);
   var BREAKER_SET = wordsFrom(BREAKERS);
-  wordsFrom(null); // do not leave the shared cache pointing at a constant
 
   function resolveWords(opts) {
     var src = opts && opts.words;
     if (src === undefined && typeof root.AutoDOI_COMMON_WORDS === 'string') src = root.AutoDOI_COMMON_WORDS;
     var set = wordsFrom(src);
     // the function words are always "common", whatever list the caller passed
-    if (!set.has('the')) {
-      var merged = makeSet(), fw = FUNCTION_WORDS.split(' '), k;
-      for (k = 0; k < fw.length; k++) merged.add(fw[k]);
-      if (set.forEach) set.forEach(function (w) { merged.add(w); });
-      return merged;
-    }
-    return set;
+    if (set.has('the')) return set;
+    return { has: function (k) { return set.has(k) || FUNCTION_SET.has(k); } };
   }
 
   function resolveProtect(opts) {
     var p = opts && opts.protect;
     if (!p) return null;
     if (isSetLike(p)) return p;
-    return wordsFrom(p); // array or string
+    var list = typeof p === 'string' ? p.split(/\s+/) : p, set = makeSet(); // exact case, no lowercasing
+    for (var i = 0; i < list.length; i++) if (list[i]) set.add(String(list[i]));
+    return set;
   }
 
   /* ---------- character helpers ---------- */
@@ -96,7 +92,7 @@
   function isDigit(c) { return c >= '0' && c <= '9'; }
   function isLetter(c) {
     if (c.toLowerCase() !== c.toUpperCase()) return true;               // cased letters (Latin, Greek, Cyrillic...)
-    return /[ªºƻǀ-ǃʔ]/.test(c);            // a few caseless letters
+    return /[\u00AA\u00BA\u01BB\u01C0-\u01C3\u0294]/.test(c);            // a few caseless letters
   }
   function isWordChar(c) { return isLetter(c) || isDigit(c); }
   function isUpper(c) { return isLetter(c) && c === c.toUpperCase() && c !== c.toLowerCase(); }
@@ -121,7 +117,7 @@
         while (j < n) {
           var d = s.charAt(j);
           if (isWordChar(d)) { j++; continue; }
-          if ((JOINERS.test(d) || d === "'" || d === '’' || d === '.') && j + 1 < n && isWordChar(s.charAt(j + 1))) { j++; continue; }
+          if ((JOINERS.test(d) || d === "'" || d === '\u2019' || d === '.') && j + 1 < n && isWordChar(s.charAt(j + 1))) { j++; continue; }
           break;
         }
         toks.push({ text: s.slice(i, j), changed: false, kind: 'word' });
@@ -138,14 +134,14 @@
 
   // Lowercase lookup key for one hyphen part: drops a possessive 's and inner periods.
   function lookupKey(part) {
-    return part.toLowerCase().replace(/['’]s?$/, '').replace(/\./g, '');
+    return part.toLowerCase().replace(/['\u2019]s?$/, '').replace(/\./g, '');
   }
 
   // Is `key` (already lowercase) a common word? Falls back to stripping regular
   // -s/-es/-ies, -ing, -ed and -ly endings so that the stored list need not contain
   // inflections ("placentals" -> "placental", "scoping" -> "scope").
   function isCommon(key, words) {
-    if (!key || !/^[a-zß-ÿĀ-ɏ]+$/.test(key)) return false;
+    if (!key || !/^[a-z\u00DF-\u00FF\u0100-\u024F]+$/.test(key)) return false;
     if (words.has(key)) return true;
     if (key.length < 4) return false;
     var stems = [], b;
@@ -246,7 +242,7 @@
     return j === i - 1 && OPENERS.test(toks[j].text);
   }
 
-  function isDoubleQuote(t) { return /^["“”]+$/.test(t); }
+  function isDoubleQuote(t) { return /^["\u201C\u201D]+$/.test(t); }
 
   /* ---------- sentence case ---------- */
 
@@ -255,11 +251,14 @@
     var toks = tokenize(title), infos = [], i;
     var run = [], runAnchored = false, seenWord = false, inQuote = false;
 
+    // run: indices of consecutive capitalised word tokens (candidates, anchors and the
+    // sentence-start word, which keeps its first part). When the run holds no anchor every
+    // candidate part in it is lowercased; otherwise the whole run is left as it was.
     function flush() {
       if (run.length && !runAnchored) {
         for (var r = 0; r < run.length; r++) {
-          var t = toks[run[r]];
-          var txt = lowerParts(infos[run[r]], false);
+          var t = toks[run[r].i];
+          var txt = lowerParts(infos[run[r].i], run[r].keepFirst);
           if (txt !== t.text) { t.text = txt; t.changed = true; }
         }
       }
@@ -283,17 +282,21 @@
 
       if (start) {
         flush();
-        if (info.whole === 'anchor' && info.cls[0] === 'protected') { run.push(i); runAnchored = true; continue; }
-        // keep the first part capitalised (capitalise it if it is a plain lowercase word),
-        // lowercase any further common hyphen parts
-        var txt = lowerParts(info, true);
-        if (info.cls[0] === 'lower' && !(protect && protect.has(info.parts[0]))) txt = capitalise(txt);
-        if (txt !== tok.text) { tok.text = txt; tok.changed = true; }
+        // The first word stays capitalised (and a plain lowercase first word is capitalised).
+        // Being first tells us nothing about whether it is a proper noun, so it does not
+        // anchor the run that follows it unless the user protected it; its further hyphen
+        // parts are treated like any other candidate in that run ("Nanometre-Scale" ->
+        // "Nanometre-scale", but "Early-Middle Jurassic" keeps "Middle").
+        if (info.cls[0] === 'lower' && !(protect && protect.has(info.parts[0]))) {
+          tok.text = capitalise(tok.text); tok.changed = true;
+        }
+        if (info.whole === 'anchor' && info.cls[0] === 'protected') runAnchored = true;
+        if (info.whole !== 'neutral' && info.whole !== 'breaker') run.push({ i: i, keepFirst: true });
         continue;
       }
 
-      if (info.whole === 'anchor') { run.push(i); runAnchored = true; }
-      else if (info.whole === 'candidate') { run.push(i); }
+      if (info.whole === 'anchor') { run.push({ i: i, keepFirst: false }); runAnchored = true; }
+      else if (info.whole === 'candidate') { run.push({ i: i, keepFirst: false }); }
       else if (info.whole === 'breaker') {
         flush();
         var low = tok.text.toLowerCase();

@@ -15,6 +15,8 @@ Turn a DOI into a reference, find a DOI from a title, and convert pasted referen
 | `index.html` | The web tool, single file, with `citations.js` inlined by `build.sh`. |
 | `citations.js` | The formatting library: the only place citation rules live. |
 | `parsers.js` | Reads RIS, EndNote tagged and BibTeX files into records the library can format. |
+| `sentencecase.js` | Sentence case and Title Case conversion that keeps taxa, places and acronyms capitalised. |
+| `data/common-words.js` | 35,000 common English words that are safe to lowercase; loaded only when you turn on title conversion. Rebuilt by `tools/build-common-words.py`. |
 | `build.sh` | Re-inlines `citations.js` into `index.html` and refreshes the Apps Script copy. |
 | `data/styles-index.json` | Name and title of every CSL style, from Zotero's style index. Loaded only when you open the style search. |
 | `data/endnote-shortlist.json` | CSL styles whose titles match the `.ens` files in an EndNote 21 Styles folder. |
@@ -64,13 +66,18 @@ Use the **Report a bug** and **Request a journal style** links at the bottom of 
 
 MIT. See `LICENSE`.
 
+### Title capitalisation
+
+The **Titles** control beside the style menu converts article titles to *Sentence case* (APA and most science journals) or *Title Case* (MLA, Chicago). A word is lowercased only when it is a common English word; anything unknown, such as *Tyrannosaurus*, *Cretaceous* or *Morrison*, keeps its capitals, along with the capitalised words next to it, so "Late Cretaceous Hell Creek Formation" survives intact. Acronyms and mixed-case terms (DNA, NumPy, mRNA, pH) are never touched. Lowercased words are highlighted in the heading: click one to restore it, or click a capitalised word to force it lowercase. Those choices are remembered in your browser and apply to the batch tab's reference list and exports too.
+
+Known limits: place names that are also ordinary words (Reading, Bath, Mobile) and all-common runs such as "Natural History Museum" get lowercased unless you click them.
+
 ## EndNote `.ens` styles
 
 EndNote's own style files are a proprietary binary format that nothing outside EndNote can read, so they cannot be loaded here directly. The Citation Style Language repository covers most of the same journals under the same names; the search box finds them and the EndNote checkbox shows which ones overlap. A journal missing from both can be added as a hand-written style in `citations.js`, as Annals of Carnegie Museum was.
 
 ## Caveats
 
-- Titles are output as deposited by the publisher. APA wants sentence case and MLA title case, so some titles need a manual tweak.
 - Reference matching is a search, not parsing. Always check the match chip before importing; a reference with no Crossref or OpenAlex record will return the nearest wrong paper, so use the fix box or untick it.
 - Journal abbreviations come from the NLM Catalog, which covers biomedical and many general journals well but not every geoscience title; the JabRef general and geology lists fill some gaps. Where neither knows the journal, the full title is used.
 - Crossref's public pool occasionally rate-limits bursts. The Sheets version caches; the web tool paces batch requests.
