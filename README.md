@@ -22,6 +22,9 @@ Turn a DOI into a reference, find a DOI from a title, and convert pasted referen
 | `data/endnote-shortlist.json` | CSL styles whose titles match the `.ens` files in an EndNote 21 Styles folder. |
 | `tools/build-style-index.py` | Regenerates both data files. Pass your EndNote Styles folder to refresh the shortlist. |
 | `apps-script/Code.gs` + `apps-script/Citations.gs` | The same logic as Google Sheets custom functions plus an export menu. |
+| `tools/bump-csl-pin.sh` | Moves the pinned Citation Style Language commits in `index.html` forward and refreshes the style index. |
+| `tests/` | Unit suites (`node tests/run.js`) and the browser suite (`tests/browser/ui.test.js`). |
+| `CHANGELOG.md` | What changed in each version. The version is shown in the page footer. |
 
 After editing `citations.js`, run `./build.sh`; it updates both `index.html` and `apps-script/Citations.gs`.
 
@@ -60,18 +63,22 @@ Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faste
 
 ## Bugs and missing styles
 
-Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Below each result, a **Report it** link carries the DOI and style into the bug form so you only have to say what is wrong (the button on the result itself, **View article**, opens the publisher's page through doi.org). When a lookup or a style fails, the error message gets a **Report this** link. The page keeps the last few error messages in memory and adds them, with your browser's version string, to the form's *Error details* field; nothing is sent anywhere unless you open a report. There is no analytics or tracking.
+Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Below each result, a **Report it** link carries the DOI and style into the bug form so you only have to say what is wrong (the button on the result itself, **View article**, opens the publisher's page through doi.org). When a lookup or a style fails, the error message gets a **Report this** link. The page keeps the last few error messages in memory and adds them, with the AutoDOI version and your browser's version string, to the form's *Version and error details* field; nothing is sent anywhere unless you open a report. There is no analytics or tracking.
 
 ## Development
 
 No dependencies: plain JavaScript files and Node for the tests.
 
 ```
-./build.sh          # re-inline citations.js, parsers.js and sentencecase.js into index.html; refresh apps-script/Citations.gs
-node tests/run.js   # all test suites (or: npm test)
+./build.sh              # re-inline citations.js, parsers.js and sentencecase.js into index.html; refresh apps-script/Citations.gs
+npm test                # all unit suites, smoke checks, syntax and version checks; no dependencies
+npm install && npx playwright install chromium
+npm run test:browser    # the page in headless Chromium, offline with mocked APIs, plus axe accessibility checks
 ```
 
-The `tests/` folder holds unit suites for the library, parsers and title-case engine, smoke checks for every style and the Sheets script, and a splitter benchmark with minimum accuracy thresholds, run against real Crossref records and 85 real papers' printed reference lists in `tests/fixtures/`. GitHub Actions runs everything on each push and fails if `index.html` was not rebuilt after a library change.
+The `tests/` folder holds unit suites for the library, parsers and title-case engine, smoke checks for every style and the Sheets script, a syntax and consistency suite, and a splitter benchmark with minimum accuracy thresholds, run against real Crossref records and 85 real papers' printed reference lists in `tests/fixtures/`. `tests/browser/ui.test.js` drives the built page: tabs, deep links, a lookup, the DOI finder, reference matching, the error path and its bug-report link, and axe on every tab in light and dark mode. GitHub Actions runs all of it on each push, fails if `index.html` was not rebuilt after a library change, and deploys the page to GitHub Pages only when everything passed.
+
+Journal styles and the citation locale are loaded from pinned commits of the Citation Style Language repositories, so a style cannot change under you between visits. `./tools/bump-csl-pin.sh` moves the pins to the current upstream and refreshes the style index; commit both. See `CONTRIBUTING.md` for where things live and how versions are bumped.
 
 ## License
 
@@ -93,7 +100,7 @@ EndNote's own style files are a proprietary binary format that nothing outside E
 
 ## Accessibility
 
-The page passes the axe-core accessibility checks (landmarks, headings, labels, contrast, keyboard access) in every tab, and the tabs follow the ARIA tabs keyboard pattern.
+The page passes the axe-core accessibility checks (landmarks, headings, labels, contrast, keyboard access) in every tab, in light and dark mode; the browser test suite runs them in CI so they stay passing. The tabs follow the ARIA tabs keyboard pattern.
 
 ## Security and privacy
 

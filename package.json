@@ -1,11 +1,26 @@
 {
   "name": "autodoi",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "DOI to reference formats, DOI finder, and reference-list conversion to EndNote/RIS/BibTeX, in the browser",
   "license": "MIT",
+  "homepage": "https://toldxls.github.io/AutoDOI/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/toldxls/AutoDOI.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "sh build.sh",
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "test:browser": "node tests/browser/ui.test.js",
+    "test:all": "node tests/run.js && node tests/browser/ui.test.js",
+    "bump-csl": "sh tools/bump-csl-pin.sh"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "playwright": "^1.63.0"
   }
 }

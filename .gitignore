@@ -1,2 +1,4 @@
 .DS_Store
 Ref styles/
+node_modules/
+tests/browser/out/

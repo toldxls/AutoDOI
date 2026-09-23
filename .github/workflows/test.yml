@@ -2,17 +2,63 @@ name: tests
 on:
   push:
   pull_request:
+
 jobs:
   test:
+    name: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
       - name: index.html and apps-script/Citations.gs are rebuilt from the library sources
         run: |
           sh build.sh
           git diff --exit-code -- index.html apps-script/Citations.gs || (echo "Run ./build.sh and commit the result" && exit 1)
-      - name: Test suites
+      - name: Unit suites, smoke checks, syntax and version consistency
         run: node tests/run.js
+
+  browser:
+    name: browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Page smoke tests and axe accessibility checks (offline, APIs mocked)
+        run: npm run test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-test-output
+          path: tests/browser/out/
+          if-no-files-found: ignore
+
+  # The page reaches GitHub Pages only after both jobs pass on main, so a broken push never deploys.
+  deploy:
+    name: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, browser]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

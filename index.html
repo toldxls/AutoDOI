@@ -5,13 +5,14 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
 <meta name="description" content="Turn a DOI into APA, MLA, Chicago, Harvard, Vancouver, IEEE, BibTeX, RIS and EndNote; find a DOI from a title; convert pasted references to EndNote.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;1,400&display=swap">
 <style>
   :root {
     --ground: #F5F6F3; --surface: #FFFFFF; --ink: #1C2128; --muted: #5F6B78; --line: #D6DBE0;
     --accent: #1E5EB8; --accent-ink: #FFFFFF; --accent-soft: #E4EDFA;
-    --good: #2F7D4F; --warn: #A8690D; --bad: #B3403A; --good-soft: #E3F1E8; --warn-soft: #FBEEDB; --bad-soft: #F8E4E2;
+    --good: #276B43; --warn: #8A5509; --bad: #A83A34; --good-soft: #E3F1E8; --warn-soft: #FBEEDB; --bad-soft: #F8E4E2; /* ≥ 5:1 on their soft backgrounds */
     --code-bg: #F0F2F5; --shadow: 0 1px 2px rgba(20, 30, 40, .06), 0 6px 20px rgba(20, 30, 40, .05);
     --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
@@ -284,7 +285,8 @@
   <p class="feedback">
     <a id="link-bug" href="https://github.com/toldxls/AutoDOI/issues/new?template=bug_report.yml" target="_blank" rel="noopener">Report a bug</a> ·
     <a id="link-style" href="https://github.com/toldxls/AutoDOI/issues/new?template=style_request.yml" target="_blank" rel="noopener">Request a journal style</a> ·
-    <a href="https://github.com/toldxls/AutoDOI" target="_blank" rel="noopener">Source on GitHub</a>
+    <a href="https://github.com/toldxls/AutoDOI" target="_blank" rel="noopener">Source on GitHub</a> ·
+    <a href="https://github.com/toldxls/AutoDOI/blob/main/CHANGELOG.md" target="_blank" rel="noopener" title="What changed in each version">AutoDOI <span id="app-version"></span></a>
   </p>
   <p class="fineprint">Titles are shown as the publisher deposited them unless you choose Sentence case or Title Case above; unknown words such as taxa and place names keep their capitals, and you can click any word in the heading to override. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server. Journal styles come from the <a href="https://citationstyles.org/">Citation Style Language</a> project (CC BY-SA 3.0) and are rendered in your browser by <a href="https://github.com/Juris-M/citeproc-js">citeproc-js</a>.</p>
   </footer>
@@ -4539,12 +4541,13 @@
     updateReportLinks();
   }
   function errorReport() {
-    if (!errorLog.length) return '';
-    return errorLog.slice(-5).map(function (e) { return e.t + '  ' + e.cat + (e.extra ? ' [' + e.extra + ']' : '') + ': ' + e.msg; }).join('\n') +
-      '\n\nBrowser: ' + navigator.userAgent;
+    var tail = 'AutoDOI ' + APP_VERSION + '\nBrowser: ' + navigator.userAgent;
+    if (!errorLog.length) return tail;
+    return errorLog.slice(-5).map(function (e) { return e.t + '  ' + e.cat + (e.extra ? ' [' + e.extra + ']' : '') + ': ' + e.msg; }).join('\n') + '\n\n' + tail;
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
+  var APP_VERSION = '1.1.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -4570,6 +4573,7 @@
     return st ? st.label : styleState.mode;
   }
 
+  $('app-version').textContent = 'v' + APP_VERSION;
   window.addEventListener('error', function (ev) { logError('uncaught', ev.error || ev.message); });
   window.addEventListener('unhandledrejection', function (ev) { logError('unhandled', ev.reason); });
 
@@ -4929,6 +4933,7 @@
     if (styleState.mode === 'csl' && !recentByName(styleState.csl.name)) add('csl:' + styleState.csl.name, styleState.csl.title || styleState.csl.name);
     add('search', 'Search 10,000 journal styles…');
     sel.value = styleState.mode === 'csl' ? 'csl:' + styleState.csl.name : styleState.mode;
+    updateReportLinks();
   }
   function setStyle(mode, cslStyle) {
     if (styleState.mode !== mode || (cslStyle && styleState.csl !== cslStyle)) $('style-status').textContent = '';
@@ -4964,8 +4969,11 @@
 
   /* ---------- Citation Style Language styles via citeproc-js ---------- */
   var csl = { index: null, mine: null, locale: null, xml: {}, loading: null };
-  var CSL_REPO = 'https://raw.githubusercontent.com/citation-style-language/styles/master/';
-  var CSL_LOCALE = 'https://raw.githubusercontent.com/citation-style-language/locales/master/locales-en-US.xml';
+  // Styles and the locale are pinned to upstream commits so a reference renders the same way next month; tools/bump-csl-pin.sh moves the pins
+  var CSL_STYLES_COMMIT = '8947960dc3c5133a873d77342c77c67300a2bc18'; // citation-style-language/styles, 2026-09-23
+  var CSL_LOCALES_COMMIT = 'a89adece41013402236e2c9020972d7e931fbab8'; // citation-style-language/locales, 2026-09-10
+  var CSL_REPO = 'https://raw.githubusercontent.com/citation-style-language/styles/' + CSL_STYLES_COMMIT + '/';
+  var CSL_LOCALE = 'https://raw.githubusercontent.com/citation-style-language/locales/' + CSL_LOCALES_COMMIT + '/locales-en-US.xml';
   var CITEPROC = 'https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js';
 
   async function fetchText(url) { var res = await fetch(url); if (!res.ok) throw new Error('Could not load ' + url.split('/').pop() + ' (' + res.status + ')'); return res.text(); }
@@ -6055,6 +6063,7 @@
     $('doi-input').value = q; showTab('cite'); lookup(q);
   } else {
     $('doi-input').value = SAMPLE.doi;
+    SAMPLE.abbrTried = true; // static example: no abbreviation lookup on page load
     showCitation(SAMPLE, el('span', 'chip', 'Example'));
   }
 })();

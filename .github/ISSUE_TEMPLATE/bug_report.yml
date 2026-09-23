@@ -28,8 +28,8 @@ body:
   - type: textarea
     id: errors
     attributes:
-      label: Error details
-      description: Filled in automatically when you use a Report it / Report this link on the page. Leave as is.
+      label: Version and error details
+      description: Filled in automatically (AutoDOI version, browser, recent errors) when you use a Report it / Report this link on the page. Leave as is.
       render: text
   - type: dropdown
     id: where
