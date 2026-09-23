@@ -64,6 +64,11 @@
   input[type="text"].mono { font-family: var(--mono); font-size: 14px; }
   textarea { font-family: var(--serif); font-size: 15px; line-height: 1.55; min-height: 140px; resize: vertical; }
   .split-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .report-line { margin: 18px 0 0; font-size: 13px; color: var(--muted); }
+  .report-line a, a.doi-link { color: var(--accent); }
+  a.doi-link { text-decoration: none; }
+  a.doi-link:hover, a.title-link:hover { text-decoration: underline; }
+  a.title-link { color: inherit; text-decoration: none; }
   .linkish { appearance: none; border: 0; background: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; }
   .split-bar select { font-size: 13px; padding: 3px 6px; }
   #split-count { font-weight: 500; color: var(--ink); }
@@ -5002,6 +5007,21 @@
     });
   }
 
+  // Where to read the work: its DOI (which forwards to the publisher's page), else its own URL, else the book's ISBN record
+  function articleHref(r) {
+    if (r.doi) return 'https://doi.org/' + r.doi.split('/').map(encodeURIComponent).join('/');
+    if (r.url && /^https?:\/\//i.test(r.url)) return r.url;
+    if (r.isbn) return 'https://openlibrary.org/isbn/' + encodeURIComponent(r.isbn);
+    return '';
+  }
+  function articleLabel(r) { var k = A.kind(r); return k === 'book' ? 'View book' : k === 'journal' || k === 'chapter' || k === 'proceedings' || k === 'preprint' ? 'View article' : 'View record'; }
+  function outLink(r, cls, text) {
+    var href = articleHref(r); if (!href) return null;
+    var a = el('a', cls || '', text === undefined ? articleLabel(r) + ' \u2197' : text); a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.title = r.doi ? 'Opens the publisher\'s page for this ' + (A.kind(r) === 'book' ? 'book' : 'work') + ' (via doi.org)' : 'Opens this record';
+    return a;
+  }
+
   /* ---------- rendering ---------- */
   function el(tag, cls, text) {
     var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e;
@@ -5040,10 +5060,8 @@
     if (A.kind(r) === 'journal' && !r.volume && !r.pages && r.year) { var ip = el('span', 'chip info', 'Online first'); ip.title = 'No volume or pages yet: cite as in press / early view'; side.appendChild(ip); }
     if (r.source === 'openalex' || r.source === 'openlibrary') side.appendChild(el('span', 'chip', 'via ' + (r.source === 'openalex' ? 'OpenAlex' : 'Open Library')));
     if (r.namesUnsure) { var nu = el('span', 'chip warn', 'Check authors / editors'); nu.title = 'Open Library lists these names without saying whether they are authors or editors.'; side.appendChild(nu); }
-    var rep = el('a', 'btn small', 'Report'); rep.target = '_blank'; rep.rel = 'noopener'; rep.title = 'Report a problem with this reference on GitHub';
-    rep.href = issueUrl('bug_report.yml', { doi: r.doi, style: currentStyleLabel(), where: 'Web page', errors: errorReport(), title: '[Bug] ' + (r.doi || r.title) });
-    rep.style.textDecoration = 'none';
-    side.appendChild(rep);
+    var view = outLink(r, 'btn small');
+    if (view) { view.style.textDecoration = 'none'; side.appendChild(view); }
     head.appendChild(side);
     box.appendChild(head);
     if (r.publishedDoi && opts.onSwap) {
@@ -5200,6 +5218,12 @@
     }
     out.appendChild(el('div', 'section-label', 'Export formats'));
     renderExports(out, [r], fileBase(r));
+    var rl = el('p', 'report-line');
+    rl.appendChild(document.createTextNode('Something wrong with this reference? '));
+    var rep = el('a', '', 'Report it'); rep.target = '_blank'; rep.rel = 'noopener'; rep.title = 'Opens a prefilled bug report on GitHub';
+    rep.href = issueUrl('bug_report.yml', { doi: r.doi, style: currentStyleLabel(), where: 'Web page', errors: errorReport(), title: '[Bug] ' + (r.doi || r.title) });
+    rl.appendChild(rep);
+    out.appendChild(rl);
   }
 
   function words(s) {
@@ -5311,7 +5335,9 @@
         var conf = r.conf;
         var h = el('div', 'hit');
         var left = el('div');
-        left.appendChild(el('div', 't', r.title || '(untitled)'));
+        var tdiv = el('div', 't');
+        var tl = outLink(r, 'title-link', r.title || '(untitled)'); tdiv.appendChild(tl || document.createTextNode(r.title || '(untitled)'));
+        left.appendChild(tdiv);
         var m = el('div', 'm');
         m.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + ' · '));
         m.appendChild(el('code', '', r.doi));
@@ -5624,7 +5650,8 @@
       var o = row.out; o.innerHTML = '';
       o.appendChild(chipFor(level, via, src));
       o.appendChild(el('span', 't', rec.title || '(untitled record)'));
-      o.appendChild(el('code', '', rec.doi || rec.isbn || ''));
+      var dl = (rec.doi || rec.isbn) ? outLink(rec, 'doi-link', '') : null;
+      if (dl) { dl.appendChild(el('code', '', rec.doi || rec.isbn)); o.appendChild(dl); } else o.appendChild(el('code', '', ''));
       row.dupChip = el('span', 'chip warn', ''); row.dupChip.hidden = true; row.dupChip.title = 'Same record as an earlier ticked line; left out of the export';
       o.appendChild(row.dupChip);
       var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level === 'good'; inc.id = 'inc-' + mySeq + '-' + row.idx; // amber "check" rows wait for you to tick them
