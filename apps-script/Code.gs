@@ -134,11 +134,14 @@ function exportSelectionRis() { exportSelection_('ris', 'ris'); }
 function exportSelection_(style, ext) {
   var ui = SpreadsheetApp.getUi();
   var values = SpreadsheetApp.getActiveRange().getValues();
-  var out = [], missed = [];
+  var out = [], missed = [], skipped = 0;
+  var deadline = Date.now() + 5 * 60 * 1000; // stay under the 6-minute limit and still write the file
   values.forEach(function (row) {
     row.forEach(function (v) {
       var t = String(v === null || v === undefined ? '' : v).trim();
       if (!t) return;
+      if (Date.now() > deadline) { skipped++; return; }
+      Utilities.sleep(POLITE_EMAIL ? 150 : 600); // pace Crossref
       try {
         var rec = resolve_(t, typeof v === 'number');
         if (rec) out.push(AutoDOI.format(rec, style)); else missed.push(t);
@@ -150,6 +153,7 @@ function exportSelection_(style, ext) {
   var file = DriveApp.createFile(name, out.join(style === 'ris' ? '' : '\n'), 'text/plain');
   var msg = out.length + ' record(s) written to ' + name + '\n' + file.getUrl();
   if (missed.length) msg += '\n\nNot matched:\n' + missed.join('\n');
+  if (skipped) msg += '\n\n' + skipped + ' cell(s) were not processed before the time limit; select them and export again.';
   ui.alert(msg);
 }
 
@@ -222,7 +226,9 @@ function fetchRecord_(doi) {
       headers: { Accept: 'application/vnd.citationstyles.csl+json' }, followRedirects: true, muteHttpExceptions: true
     });
     if (alt.getResponseCode() === 200 && isJson_(alt)) return AutoDOI.normalize(JSON.parse(alt.getContentText()));
-    return { notFound: true, status: alt.getResponseCode() === 200 ? 'no metadata' : alt.getResponseCode() };
+    var code = alt.getResponseCode();
+    if (code !== 200 && code !== 404) throw new Error('doi.org returned ' + code + '; try again later'); // transient: never cached
+    return { notFound: true, status: code === 200 ? 'no metadata' : code };
   });
 }
 

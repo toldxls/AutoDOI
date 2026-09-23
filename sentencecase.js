@@ -17,8 +17,18 @@
  *   - name prefixes directly before a kept word ("Late Cretaceous", "Northern Qilian").
  * Other capitalised common words next to an unknown word are lowercased
  * ("Late Cretaceous Dinosaur Faunas" -> "Late Cretaceous dinosaur faunas").
+ * Words the list does not know are still lowercased when their form marks them as
+ * technical vocabulary (isTechWord: "Komatiites", "Petrogenesis", "Tholeiitic",
+ * "Harpetid", "Metabasalts", "Tamoxifen"), unless the list marks them as a known
+ * place or person ("^name") or they are eras, higher taxa (-idae, -oidea) or curated
+ * proper adjectives. The list may also carry "!name" entries (surnames / places such
+ * as "Potts", "Dolores" whose -s/-ed/-ing stem is a common word; never stemmed).
  * Anything the converter is unsure about is left as it was, so a UI can show each
  * token and let the user flip it.
+ *
+ *   AutoDOICase.fromAllCaps(title, words) -> an ALL-CAPS title in title case with
+ *   acronyms, Roman numerals, units and chemical formulas restored (length preserved),
+ *   ready for toSentenceCase / toTitleCase.
  *
  *   var res = AutoDOICase.toSentenceCase(title, { words: AutoDOI_COMMON_WORDS, protect: mySet });
  *   res.text    -> converted string
@@ -37,11 +47,12 @@
   // Words kept lowercase in headline (MLA/Chicago) style unless first, last or after a colon:
   // articles, coordinating conjunctions and prepositions. Verbs and pronouns ARE capitalised
   // in headline style, so they are not in this list.
-  var SMALL_WORDS = 'a an the of in on and or for with from to by at as but nor via vs versus into onto over under between among within without during after before through toward towards upon about across along around against';
+  var BASE_SMALL = 'a an the of in on and or for with from to by at as but nor via vs versus into onto over under between among within without during after before through toward towards upon about across along around against';
+  var SMALL_WORDS = BASE_SMALL + ' below near beyond despite except inside outside past since throughout until';
 
   // Words that in sentence case are always lowercased mid-title and that end a run of
   // capitalised words. "new" is deliberately absent ("New Zealand", "New South Wales").
-  var BREAKERS = SMALL_WORDS + ' is are was were be been its their our this that these those';
+  var BREAKERS = BASE_SMALL + ' is are was were be been its their our this that these those';
 
   // Name-forming head nouns: kept capitalised directly after a kept word (unknown,
   // protected, phrase or another kept head): "Deccan Traps", "Hell Creek Formation".
@@ -54,7 +65,9 @@
     'batholith dome hill hills peak peaks mount strait channel sound fjord lagoon reef atoll delta estuary ' +
     'falls springs well mine bed beds horizon stage series system epoch period seaway seamount monument ' +
     'forest reserve refuge award medal prize lecture republic kingdom territory district oscillation gyre ' +
-    'shield platform massif arch embayment trough volcano caldera highlands lowlands fold thrust';
+    'shield platform massif arch embayment trough volcano caldera highlands lowlands fold thrust ' +
+    'tongue spur depression furrow crater craters bluff bluffs ranch inlet volcanics intrusion dyke dike swarm press land ' +
+    'ophiolite troctolite syncline anticline foredeep centre harbour harbor';
   // Heads that only follow a geological time name ("Jurassic System", "Cretaceous Period")
   // or a fault/rift ("Dead Sea Fault System").
   var TIME_HEADS = 'system series stage epoch period';
@@ -68,11 +81,13 @@
     'mesoproterozoic paleoproterozoic palaeoproterozoic neoarchean mesoarchean paleoarchean eoarchean';
   // "X + head" pairs kept as a name when X is a capitalised common word in the input
   // ("Mud Hill", "Red Sea", "Vale Formation", "Royal Society").
-  var X_HEADS = 'shale sandstone limestone mudstone formation member group basin island islands sea ocean gulf ' +
+  var X_HEADS = 'shale sandstone limestone mudstone formation member basin island islands sea ocean gulf ' +
     'bay river lake mountain mountains plateau museum society university creek hill hills canyon glacier ' +
-    'seamount islet park monument peninsula award medal prize';
+    'seamount islet park monument peninsula award medal prize county mine crater falls inlet quarry bluff bluffs ' +
+    'strait straits forest depression reef city harbour harbor';
   // X_HEADS that stay a name even when a common word follows ("Mud Hill locality").
-  var X_HEADS_FREE = 'museum society university creek hill hills islet seamount monument award medal prize';
+  var X_HEADS_FREE = 'museum society university creek hill hills islet seamount monument award medal prize ' +
+    'county crater falls inlet quarry canyon bluffs city river rivers';
   // X words that never form such a name ("Large Sea surface", "Star Formation", "Crown Group").
   var X_STOP = 'large small big deep shallow open high low global local regional marine coastal inland modern ' +
     'ancient entire whole same other many several various different continental oceanic volcanic barrier heat ' +
@@ -83,8 +98,28 @@
     'future past present early late middle young old hot cold warm cool dry wet wide narrow long short ' +
     'star planet galaxy pattern bone biofilm crown stem sister control age study working functional focus peer ' +
     'blood ethnic treatment support taxonomic end family team crew faculty black oil gas organic tight carbonate ' +
-    'siliceous tidewater outlet piedmont cirque submarine wind theme car industrial science technology ' +
-    'first second third final total single double multiple novel simple complex new';
+    'siliceous tidewater outlet piedmont cirque submarine theme car industrial science technology ' +
+    'one two three four five six seven eight nine ten several few gravel sand bedrock mixed solar ' +
+    'first second third final total single double multiple novel simple complex new impact boreal rain ' +
+    'primary secondary deciduous evergreen montane cloud kelp mangrove patch fringing inner acid ' +
+    'open slot mining abandoned active historic';
+  // Name openers: the capitalised word after them is part of the name ("Mount Baker",
+  // "Cape Cod", "Fort Union", "San Rafael", "Lac des Iles").
+  var OPENER_WORDS = 'mount mt cape fort port saint san santa lac monte cerro isla sierra';
+  // Adjective + head pairs that form a name head after a kept word ("McMurdo Volcanic
+  // Group", "Sudbury Igneous Complex", "Powdermill Nature Reserve").
+  var COMPOUND_HEADS = {
+    volcanic: 'group complex field province suite arc zone', igneous: 'complex province suite',
+    plutonic: 'complex suite', intrusive: 'complex suite', metamorphic: 'complex core', crystalline: 'complex',
+    nature: 'reserve park', hydrothermal: 'field', greenstone: 'belt', fold: 'belt', shear: 'zone',
+    suture: 'zone', granite: 'province suite', ophiolite: 'complex', ultramafic: 'complex', layered: 'intrusion',
+    mining: 'district', provincial: 'park', wildlife: 'refuge reserve', marine: 'reserve park', gold: 'field'
+  };
+  // Institution heads that take "of" + a capitalised name ("Museum of Comparative Zoology").
+  // Geographic heads that take "of" + a capitalised name ("Isle of Pines", "Sea of Cortez")
+  var GEO_OF_WORDS = 'isle island islands gulf bay sea strait straits cape lake lakes valley';
+  var INSTITUTION_WORDS = 'museum institute university academy society college school survey department ' +
+    'ministry bureau council foundation commission association laboratory observatory center centre';
   // Words kept capitalised directly before a kept word ("Late Cretaceous", "Northern Qilian",
   // "Royal Tyrrell", "Mount Scott", "Upper-Lower Jurassic").
   var PREFIX_WORDS = 'late early middle upper lower north south east west northern southern eastern western ' +
@@ -110,7 +145,7 @@
   // Units that must never anchor a run ("500 Ma old rocks").
   var UNITS = 'myr gyr kyr kya mya';
   // Hyphen prefixes that are lowercase-able when capitalised ("Re-Evaluation", "Bi-Copter").
-  var HYPHEN_PREFIXES = 're bi co de un ex pre pro sub non mid tri uni semi anti multi post';
+  var HYPHEN_PREFIXES = 're bi co de un ex pre pro sub non mid tri uni semi anti multi post neo paleo palaeo meso proto meta ortho para';
 
   // Plural proper names whose -s/-es stripping would hit a common word
   // ("Andes" -> "and", "Paris" -> "pari", "Wales" -> "wale"). Never common.
@@ -125,7 +160,7 @@
   // ("Joseph Banks", "H. G. Wells", "Ethiopian Highlands").
   var AMBIG_PLURALS = 'waters banks fields brooks wells downs fens ' +
     'keys dolomites lakes rhodes sands woods hills';
-  var NOT_GENUS = 'santa costa baja alta sierra serra bahia isla punta playa villa nueva nova terra tierra ' +
+  var NOT_GENUS = 'santa costa baja alta sierra serra bahia isla punta playa villa nueva nova terra tierra monte buena casa ' +
     'maria anna rita sofia julia laura lucia elena eva emma olga vera nina sara lisa diana gloria';
 
   // Multi-word proper names (canonical capitalisation), "|"-separated.
@@ -199,9 +234,16 @@
     'World Health Organization|European Union|European Space Agency|International Space Station|' +
     'Hubble Space Telescope|James Webb Space Telescope|Deep Sea Drilling Project|Ocean Drilling Program|' +
     'Integrated Ocean Drilling Program|International Ocean Discovery Program|Paleobiology Database|' +
-    'Penrose Medal|Nobel Prize|Open University|' +
+    'Penrose Medal|Nobel Prize|Open University|Museum of Comparative Zoology|Museum of Paleontology|' +
+    'West Indies|British West Indies|Grand Cayman|Massif Central|Lost City|Petrified Forest|Swift Current|' +
+    'Hot Springs|Fish Canyon|Canadian Cordillera|North American Cordillera|Lower Silesia|' +
+    'Upper Silesia|Vaca Muerta|Sierra Madre Occidental|Sierra Madre Oriental|' +
+    'International Commission on Zoological Nomenclature|International Code of Zoological Nomenclature|' +
+    'International Commission on Stratigraphy|International Union of Geological Sciences|' +
+    'International Mineralogical Association|International Code of Nomenclature|' +
     // Latin phrases written lowercase in sentence case
-    'in situ|in vitro|in vivo|in silico|ex situ|ex vivo|de novo|a priori|a posteriori|per se|et al'
+    'in situ|in vitro|in vivo|in silico|ex situ|ex vivo|de novo|a priori|a posteriori|per se|et al|' +
+    'rare earth|rare earths|rare earth element|rare earth elements'
   ].join('');
 
   // Punctuation after which the next word starts a new "sentence" (APA subtitle rule).
@@ -212,9 +254,11 @@
   var JOINER_SPLIT = /([-\/‐‑])/;
   var TAG_RE = /^<\/?[A-Za-z][^<>]*>/;               // raw HTML tag -> punctuation
   var ENTITY_RE = /^&(#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/;
-  var GENUS_END = /(a|e|us|um|is|es|on|an|ops|ys|x|os|as|ites|ma|ium|oides|mys|don|pus|er)$/;
+  var GENUS_END = /(a|e|us|um|is|es|on|ops|ys|x|os|as|ites|ma|ium|oides|mys|don|pus|er)$/;
   var EPITHET_END = /(us|a|um|i|ae|is|ex)$/;
   var GENUS_O = { homo: 1, vibrio: 1, danio: 1, bubo: 1, falco: 1, buteo: 1 };
+  // family / order / superfamily names are capitalised even when a word list has them
+  var HIGHER_TAXON_RE = /(idae|aceae|oidea|oidae|inae|formes|opoda|ineae|mycetes|phyceae|opsida)$/;
 
   /* ---------- tiny Set shim (Apps Script legacy runtime has no Set) ---------- */
 
@@ -237,7 +281,19 @@
     if (typeof src === 'string' && src === cacheStr) return cacheSet;
     var list = typeof src === 'string' ? src.split(/\s+/) : src;
     var set = makeSet();
-    for (var i = 0; i < list.length; i++) if (list[i]) set.add(String(list[i]).toLowerCase());
+    if (list[0] === '~fc1') {
+      // front-coded list (tools/build-common-words.py): each entry is <n><rest>, where the
+      // digit/letter n (0-9, A-Z = 10-35) counts the characters shared with the previous word
+      var prev = '';
+      for (var f = 1; f < list.length; f++) {
+        var e = list[f]; if (!e) continue;
+        var n = parseInt(e.charAt(0), 36);
+        prev = prev.slice(0, n) + e.slice(1);
+        set.add(prev);
+      }
+    } else {
+      for (var i = 0; i < list.length; i++) if (list[i]) set.add(String(list[i]).toLowerCase());
+    }
     if (typeof src === 'string') { cacheStr = src; cacheSet = set; }
     return set;
   }
@@ -267,6 +323,21 @@
   var PROPER_PLURAL_SET = setOf(PROPER_PLURALS);
   var AMBIG_PLURAL_SET = setOf(AMBIG_PLURALS);
   var NOT_GENUS_SET = setOf(NOT_GENUS);
+  var OPENER_SET = setOf(OPENER_WORDS);
+  var INSTITUTION_SET = setOf(INSTITUTION_WORDS);
+  var GEO_OF_SET = setOf(GEO_OF_WORDS);
+  var COMPOUND_SET = (function () {
+    var o = {};
+    for (var k in COMPOUND_HEADS) if (Object.prototype.hasOwnProperty.call(COMPOUND_HEADS, k)) o[k] = setOf(COMPOUND_HEADS[k]);
+    return o;
+  })();
+  var LITHO_HEAD_SET = setOf('complex suite intrusion pluton batholith dyke dike sill swarm');
+  function compoundHead(mod, head) {
+    if (!mod || !head) return false;
+    if (Object.prototype.hasOwnProperty.call(COMPOUND_SET, mod) && COMPOUND_SET[mod].has(singular(head))) return true;
+    // rock name + intrusion head after a name ("Wajilitage Carbonatite Complex", "Skaergaard Layered Intrusion")
+    return LITHO_HEAD_SET.has(singular(head)) && /(ite|ites|olite|gabbro|basalt|alkaline|ophiolite|granitoid|layered|anorthosite)$/.test(mod);
+  }
 
   // phrase index: first word (lowercase) -> [{ low: [...], canon: [...] }], longest first
   var PHRASE_INDEX = (function () {
@@ -393,6 +464,8 @@
     if (PROPER_PLURAL_SET.has(key)) return false;
     if (words.has(key)) return true;
     if (key.length < 4) return false;
+    // "!potts", "!hans", "!dolores": a surname / place whose stem is a common word
+    if (words.has('!' + key)) return false;
     var stems = [], b;
     if (key.length > 4 && /ies$/.test(key)) stems.push(key.slice(0, -3) + 'y');
     if (/[^s]s$/.test(key)) {
@@ -419,6 +492,76 @@
     return false;
   }
 
+  /* ---------- technical vocabulary by morphology ---------- */
+
+  // A word the list does not know is kept capitalised (it may be a name), unless its
+  // form marks it as technical common vocabulary: mineral and rock names (-ite, -lith,
+  // -cryst), process nouns (-genesis, -ism, -osis, -ation, -metry), adjectives (-ic,
+  // -ical, -itic, -ous), taxon-derived common nouns (-id, -oid, -odont, -saur, -morph,
+  // -iform), drugs and enzymes (-mab, -tinib, -azole, -ase), or a scientific prefix
+  // before a common word ("Metabasalts", "Polymetamorphism", "Micromammals").
+  // Known names (^marker in the word list, eras, curated proper adjectives) never are.
+  var TECH_RE = new RegExp('(' + [
+    'genesis', 'genetic', 'genic', 'isms?', 'olog(y|ies|ical|ic|ically)', 'osis', 'oses', 'itis',
+    'ations?', 'i[sz]ations?', 'metry', 'metric', 'graph(y|ic|ical)', 'ivity', 'phytes?', 'cytes?',
+    'blasts?', 'blastic', 'plasty', 'ectom(y|ies)', 'oids?', 'oidal', 'odonts?', 'saurs?', 'saurians?',
+    'morphs?', 'morphic', 'iforms?', 'pterygians?', 'odontians?', 'ischians?', 'ichthyans?',
+    'mabs?', 'nibs?', 'azoles?', 'o?xifen', 'mycins?', 'cillins?', 'statins?', 'olol', 'prils?',
+    'sartans?', 'oxacins?', 'cyclines?', 'prazoles?', 'dipines?', 'platins?', 'rubicins?', 'profen',
+    'amines?', 'amides?', 'oxamines?', 'ases', 'inases?', 'erases?', 'drases?', 'lases?', 'tases?',
+    'onates?', 'ylates?', 'oates?', 'peptides?', 'capsids?', 'somes?', 'liths?', 'lithic', 'crysts?',
+    'crystic', 'ites', 'ite', 'itic', 'otic', 'atic', 'ical', 'ic', 'ous', 'ids?', 'yls?',
+    'less', 'ness', 'ities', 'ity', 'therap(y|ies)', 'azines?', 'idines?', 'osines?', 'yrins?', 'inols?', 'anols?', 'idates?',
+    '(di|tri|tetra|penta|hexa|hepta|octa|oligo|poly|mono|iso|homo|hetero|dodeca)mers?'
+  ].join('|') + ')$');
+  // "-ic"/"-ite"/"-id"/"-ism" words that are proper (capitalised in APA)
+  var PROPER_TECH = setOf('atlantic pacific arctic antarctic baltic adriatic asiatic semitic hamitic hellenic ' +
+    'olympic arabic islamic celtic germanic nordic icelandic pontic balearic hispanic slavic gaelic coptic ' +
+    'amharic turkic vedic cyrillic homeric socratic hippocratic hesperic aeolic doric ionic attic punic ' +
+    'jurassic triassic liassic israelite canaanite mennonite luddite hittite jacobite moabite levite ' +
+    'marguerite abbasid fatimid ayyubid safavid timurid perseid perseids leonid leonids geminid geminids ' +
+    'orionid orionids quadrantid quadrantids lyrid lyrids taurid taurids draconid draconids ' +
+    'darwinism lamarckism marxism buddhism hinduism judaism calvinism taoism confucianism catholicism ' +
+    'protestantism lysenkoism stalinism maoism thatcherism victorian edwardian ' +
+    'mosaic gothic byzantine betic subbetic penibetic taconic reunion laramide intertrappean');
+  var TECH_PREFIX_RE = /^(anti|auto|bio|chemo|counter|cryo|electro|endo|epi|exo|extra|geo|hemi|hetero|hydro|hyper|hypo|immuno|inter|intra|iso|leuco|leuko|macro|magneto|mega|melano|meso|meta|micro|milli|mono|multi|nano|neo|non|ortho|palaeo|paleo|para|peri|petro|photo|pico|poly|post|pre|proto|pseudo|pyro|radio|semi|sub|super|supra|tetra|thermo|trans|tri|ultra|under|over|uni|de|re|un|nucleo|aza|di)(.+)$/;
+
+  function techSuffixOk(key, suf, words) {
+    if (/^(ness|less)$/.test(suf)) {                 // only on a common stem ("Encoderless")
+      var st = key.slice(0, -4);
+      return st.length >= 4 && (isCommon(st, words) || isCommon(st + 'e', words));
+    }
+    if (/^(ity|ities)$/.test(suf)) {                 // "Radiosensitivity", "Nonuniformity"
+      var b = key.replace(/it(y|ies)$/, '');
+      return b.length >= 5 && (isTechWord(b, words) || isTechWord(b + 'e', words));
+    }
+    if ((suf === 'ic' || suf === 'ous') && key.length < 7) return false;
+    if (/^ids?$/.test(suf) && (key.length < 7 || (/[aeiou]{2}ids?$/.test(key) && !/(iid|eid)s?$/.test(key)))) return false;
+    if (/^yls?$/.test(suf) && key.length < 8) return false;
+    if (/^somes?$/.test(suf) && key.length < 9) return false;
+    return true;
+  }
+
+  // key: lowercase part. True when the capitalised word is technical common vocabulary.
+  function isTechWord(key, words) {
+    if (!key || key.length < 6 || !/^[a-zß-ÿĀ-ɏ]+$/.test(key)) return false;
+    if (words.has('^' + key) || words.has('!' + key) || PROPER_TECH.has(key) || PROPER_PLURAL_SET.has(key) ||
+        GEO_TIME_SET.has(key) || NOT_GENUS_SET.has(key)) return false;
+    if (/zoic$/.test(key) || /idae$/.test(key) || /inae$/.test(key) || /ini$/.test(key) || /oidea$/.test(key)) return false;
+    if (/(vic|cic|zic|jic)$/.test(key)) return false;                  // Slavic surnames (Petrovic, Kovacic)
+    var m = TECH_RE.exec(key);
+    if (m && techSuffixOk(key, m[1], words)) return true;
+    // scientific prefix + a common (or technical) word of 5+ letters
+    var p = TECH_PREFIX_RE.exec(key);
+    if (p && p[2].length >= 5 && !/(a|us|um|ia|is|ops|odon|saurus|ella|ina)$/.test(p[2])) {
+      var rest = p[2];
+      if (isCommon(rest, words) || (rest.charAt(0) === 'o' && isCommon(rest.slice(1), words))) return true;
+      var p2 = TECH_PREFIX_RE.exec(rest);
+      if (p2 && p2[2].length >= 5 && isCommon(p2[2], words)) return true;
+    }
+    return false;
+  }
+
   function singular(key) { return key.length > 3 && /[^s]s$/.test(key) ? key.slice(0, -1) : key; }
   function inSet(set, key) { return set.has(key) || set.has(singular(key)); }
 
@@ -441,24 +584,29 @@
     if (hasUpper(rest)) return /^(Mc|Mac)[A-Z][a-z]/.test(part) || /^O['’][A-Z][a-z]/.test(part) ? 'unknown' : 'fixed';
     var key = lookupKey(part);
     if (BREAKER_SET.has(key)) return 'breaker';
+    if (key.length >= 7 && HIGHER_TAXON_RE.test(key)) return 'unknown';       // Sphaeriidae, Trilliaceae, Tettigonoidea
     if (isCommon(key, words)) return 'candidate';
     if (part.length <= 2 || UNIT_SET.has(key)) return 'fixed';
+    if (isTechWord(key, words)) return 'tech';
     return 'unknown';
   }
 
   // Splits a word token into parts + separators and classifies each part.
   function analyse(text, words, protect) {
     var pieces = text.split(JOINER_SPLIT), parts = [], cls = [], i;
+    var tech = false;
     for (i = 0; i < pieces.length; i += 2) {
       parts.push(pieces[i]);
-      cls.push(classifyPart(pieces[i], words, protect));
+      var c = classifyPart(pieces[i], words, protect);
+      if (c === 'tech') { c = 'candidate'; tech = true; }   // technical vocabulary: lowercased like a list word
+      cls.push(c);
     }
     // "Re-Evaluation", "Bi-Copter": a short capitalised prefix before a real word part
-    if (parts.length > 1 && cls[0] === 'fixed' && isUpper(parts[0].charAt(0)) && !hasUpper(parts[0].slice(1)) &&
+    if (parts.length > 1 && (cls[0] === 'fixed' || cls[0] === 'unknown') && isUpper(parts[0].charAt(0)) && !hasUpper(parts[0].slice(1)) &&
         HPREFIX_SET.has(parts[0].toLowerCase()) && parts[1].length > 2 && (cls[1] === 'candidate' || cls[1] === 'unknown' || cls[1] === 'lower')) {
       cls[0] = 'candidate';
     }
-    var info = { pieces: pieces, parts: parts, cls: cls, whole: 'neutral' };
+    var info = { pieces: pieces, parts: parts, cls: cls, whole: 'neutral', tech: tech };
     wholeClass(info);
     return info;
   }
@@ -643,6 +791,7 @@
     var toks = tokenize(title), infos = [], meta = [], i;
     var phrase = matchPhrases(toks);
     var run = [], seenWord = false, inQuote = false;
+    var instChain = 0;       // "Museum of Comparative Zoology": 1 = institution head seen, 2 = inside its "of" name
 
     function entryKey(e) { var ps = e.info.parts; return lookupKey(ps[ps.length - 1]); }
 
@@ -657,6 +806,9 @@
         via[r] = kept[r] ? 'a' : '';
       }
       function single(e) { return e.info.parts.length === 1; }
+      // a run right after "the" or punctuation reads as a name ("the Hare Fiord Formation",
+      // "(Heath Formation"); after "of", "in", "and" as a process ("of ... Reaction Rim Formation")
+      var pth = prevSolid(toks, run[0].i), afterThe = pth < 0 || toks[pth].kind !== 'word' || /^the$/i.test(toks[pth].text);
       function allPrefix(e) {
         for (var k = 0; k < e.info.parts.length; k++) {
           if (e.info.cls[k] !== 'candidate' || !PREFIX_SET.has(lookupKey(e.info.parts[k]))) return false;
@@ -679,13 +831,31 @@
           var k = e.key;
           // A: head noun after a kept word
           if (r > 0 && k && isHeadKey(k) && kept[r - 1] && headAllowed(run[r - 1], e)) { kept[r] = true; via[r] = 'h'; changed = true; continue; }
+          // A2: adjective + head after a kept word ("McMurdo Volcanic Group", "Sudbury Igneous Complex")
+          if (r > 0 && r + 1 < n && kept[r - 1] && !isGeoTime(run[r - 1].key || '') && single(e) && single(run[r + 1]) && compoundHead(k, run[r + 1].key)) {
+            kept[r] = true; via[r] = 'h';
+            if (!kept[r + 1]) { kept[r + 1] = true; via[r + 1] = 'h'; }
+            changed = true; continue;
+          }
           // B: name prefix before a kept word ("Late Cretaceous", "Early-Middle Jurassic")
           if (r + 1 < n && kept[r + 1] && allPrefix(e)) { kept[r] = true; via[r] = 'p'; changed = true; continue; }
           // "Gulf of Guinea", "University of Utah": head + of + name
-          if (r === n - 1 && k && e.ofName && inSet(X_HEAD_SET, k)) { kept[r] = true; via[r] = 'h'; changed = true; continue; }
+          if (r === n - 1 && k && e.ofName && (inSet(X_HEAD_SET, k) || INSTITUTION_SET.has(k))) { kept[r] = true; via[r] = 'h'; changed = true; continue; }
+          // D: name opener + the capitalised word after it ("Mount Baker", "Cape Cod", "Lac Des Iles")
+          if (r + 1 < n && single(e) && k && OPENER_SET.has(k) && single(run[r + 1]) && run[r + 1].info.cls[0] !== 'breaker') {
+            kept[r] = true; via[r] = 'p';
+            if (!kept[r + 1]) { kept[r + 1] = true; via[r + 1] = 'h'; }
+            changed = true; continue;
+          }
           if (e.start || !single(e) || !k || X_STOP_SET.has(k)) continue;
-          // C: capitalised X + name head ("Mud Hill", "Red Sea", "Vale Formation")
-          if (r + 1 < n && !isHeadKey(k) && single(run[r + 1]) && inSet(X_HEAD_SET, run[r + 1].key || '')) {
+          // C: capitalised X + name head ("Mud Hill", "Red Sea", "Vale Formation"); a
+          // stratigraphic head only when nothing lowercased precedes X in the run
+          // ("Ocean Island Basalt Formation" is basalt formation, not a named unit)
+          if (r + 1 < n && !isHeadKey(k) && single(run[r + 1]) && inSet(X_HEAD_SET, run[r + 1].key || '') &&
+              !(/^(formation|formations|member|members)$/.test(run[r + 1].key) && (
+                (r > 0 && !kept[r - 1] && run[r - 1].key && isHeadKey(run[r - 1].key)) ||
+                /(ite|ites|oid|oids|basalt|basalts|gabbro)$/.test(k) ||
+                !(afterThe || (r > 0 && (kept[r - 1] || PREFIX_SET.has(run[r - 1].key || '')))) ))) {
             var hk = run[r + 1].key, freeOk = inSet(X_FREE_SET, hk);
             if (!freeOk) {
               var nx = r + 2 < n ? run[r + 2] : null;
@@ -706,8 +876,8 @@
       // species epithet after an unknown genus: "Tyrannosaurus Rex" -> "Tyrannosaurus rex"
       for (r = 0; r + 1 < n; r++) {
         var g = run[r], s = run[r + 1];
-        if ((g.anchor || (g.key === 'homo' && single(g))) && !g.phrase && s.anchor && !s.phrase && single(g) && single(s) && (g.key === 'homo' || looksLikeGenus(g.info.parts[0], g.info.cls[0])) &&
-            looksLikeEpithet(s.info.parts[0], s.info.cls[0]) && !(r + 2 < n && run[r + 2].key && isHeadKey(run[r + 2].key))) {
+        if ((g.anchor || (g.key === 'homo' && single(g))) && !g.phrase && s.anchor && !s.phrase && single(g) && single(s) && (g.key === 'homo' || looksLikeGenus(g.info.parts[0], g.info.cls[0], words)) &&
+            looksLikeEpithet(s.info.parts[0], s.info.cls[0], words) && !(r + 2 < n && run[r + 2].key && isHeadKey(run[r + 2].key))) {
           s.epithet = true;
           if (!kept[r]) { kept[r] = true; via[r] = 'g'; }
         }
@@ -730,6 +900,7 @@
       if (tok.kind === 'space') continue;
       if (tok.kind === 'punct') {
         flush();
+        instChain = 0;
         if (isDoubleQuote(tok.text)) inQuote = !inQuote;   // text inside double quotes is left alone
         continue;
       }
@@ -751,12 +922,36 @@
       var info = analyse(tok.text, words, protect);
       // a lowercase first word is capitalised first and then classified like any
       // capitalised word, so a second pass sees exactly the same thing
-      if (start && info.cls[0] === 'lower' && !(protect && protect.has(info.parts[0]))) {
+      if (start && info.cls[0] === 'lower' && !(protect && protect.has(info.parts[0])) && !isGreek(tok.text.charAt(0))) {
         var cap0 = capitalise(tok.text);
         if (cap0 !== tok.text) { tok.text = cap0; tok.changed = true; info = analyse(tok.text, words, protect); }
       }
+      // a geological period / epoch written lowercase ("Ordovician/silurian boundary")
+      {
+        var gtFix = false;
+        for (var gq = 0; gq < info.parts.length; gq++) {
+          var gp = info.parts[gq];
+          if (info.cls[gq] === 'lower' && GEO_TIME_SET.has(gp) && gp !== 'tertiary' && gp !== 'quaternary') gtFix = true;
+        }
+        if (gtFix) {
+          var gpcs = tok.text.split(JOINER_SPLIT);
+          for (var gz = 0; gz < gpcs.length; gz += 2) {
+            if (GEO_TIME_SET.has(gpcs[gz]) && gpcs[gz] !== 'tertiary' && gpcs[gz] !== 'quaternary') gpcs[gz] = capitalise(gpcs[gz]);
+          }
+          var gtxt = gpcs.join('');
+          if (gtxt !== tok.text && gtxt.length === tok.text.length) { tok.text = gtxt; tok.changed = true; info = analyse(tok.text, words, protect); }
+        }
+      }
       infos[i] = info;
       var ph = phrase[i];
+      // words of an institution's "of" name keep their capitals ("Museum of Comparative Zoology")
+      if (instChain === 2) {
+        if (isUpper(tok.text.charAt(0)) && hasLower(tok.text) && !BREAKER_SET.has(lookupKey(tok.text))) {
+          for (var ic = 0; ic < info.cls.length; ic++) if (info.cls[ic] === 'candidate') info.cls[ic] = 'unknown';
+          wholeClass(info);
+        } else if (!/^(of|and|the|for|&)$/i.test(tok.text)) instChain = 0;
+      }
+      if (instChain === 1) instChain = /^of$/i.test(tok.text) ? 2 : 0;
       // "St. Helens", "Mt. Everest": abbreviated name prefixes stay as they are
       if (info.parts.length === 1 && info.cls[0] === 'candidate' && i + 1 < toks.length && toks[i + 1].text === '.' &&
           ABBREV_SET.has(lookupKey(tok.text)) && tok.text.length <= 4) {
@@ -784,13 +979,21 @@
         wholeClass(info);
       }
       // "Homo erectus": the genus Homo is also a common word
-      if (info.parts.length === 1 && info.cls[0] === 'candidate' && lookupKey(tok.text) === 'homo' && i + 2 < toks.length &&
+      // any common-looking Latin word before a lowercase epithet is a genus ("Aconaemys fuscus")
+      if (info.parts.length === 1 && info.cls[0] === 'candidate' && i + 2 < toks.length &&
           toks[i + 1].text === ' ' && toks[i + 2].kind === 'word' && EPITHET_END.test(toks[i + 2].text) &&
-          !isUpper(toks[i + 2].text.charAt(0))) {
+          !isUpper(toks[i + 2].text.charAt(0)) && /^[a-z]+$/.test(toks[i + 2].text) &&
+          (lookupKey(tok.text) === 'homo' || (GENUS_END.test(lookupKey(tok.text)) && tok.text.length >= 5 &&
+           !isCommon(toks[i + 2].text, words) && toks[i + 2].text.length >= 4 && !BREAKER_SET.has(toks[i + 2].text)))) {
         info.cls[0] = 'unknown'; wholeClass(info);
       }
-      // a capitalised word right after an initial is a surname: "J. Smith", "H. G. Wells"
+      // a capitalised word right after an initial is a surname: "J. Smith", "H. G. Wells";
+      // after "St." / "Mt." / "Ft." it is a name: "St. Just", "Mt. Shasta"
       var pw = prevSolid(toks, i);
+      if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].text === '.' &&
+          pw > 0 && toks[pw - 1].kind === 'word' && /^(St|Mt|Ft|Pt|Ste)$/.test(toks[pw - 1].text)) {
+        info.cls[0] = 'unknown'; wholeClass(info);
+      }
       if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].text === '.' &&
           pw > 0 && toks[pw - 1].kind === 'word' && toks[pw - 1].text.length === 1 && isUpper(toks[pw - 1].text)) {
         info.cls[0] = 'unknown'; wholeClass(info);
@@ -827,6 +1030,11 @@
         if (o2 === o1 + 2 && toks[o2].kind === 'word') {
           var oc = classifyPart(toks[o2].text.split(JOINER_SPLIT)[0], words, protect);
           ofName = oc === 'unknown' || oc === 'protected' || !!phrase[o2];
+          var ik = lookupKey(tok.text);
+          if ((INSTITUTION_SET.has(ik) || GEO_OF_SET.has(ik)) && info.parts.length === 1 && isUpper(tok.text.charAt(0)) && hasLower(tok.text) &&
+              isUpper(toks[o2].text.charAt(0)) && hasLower(toks[o2].text) && !BREAKER_SET.has(lookupKey(toks[o2].text))) {
+            ofName = true; instChain = 1;
+          }
         }
       }
 
@@ -859,18 +1067,23 @@
     return { toks: toks, meta: meta };
   }
 
-  function looksLikeGenus(word, cls) {
+  // A capitalised unknown word that may be a Latin genus / species epithet. Known places
+  // and people (^name in the word list: "Patagonia", "Vaca", "Puga") are neither.
+  function looksLikeGenus(word, cls, words) {
     if (cls !== 'unknown') return false;
     var key = word.toLowerCase();
     if (word.length < 4 || !/^[A-Z][a-z]+$/.test(word)) return false;
     if (isGeoTime(key) || NOT_GENUS_SET.has(key) || isHeadKey(key) || PROPER_PLURAL_SET.has(key)) return false;
+    if (words && words.has('^' + key)) return false;
     return GENUS_END.test(key) || !!GENUS_O[key];
   }
-  function looksLikeEpithet(word, cls) {
+  function looksLikeEpithet(word, cls, words) {
     if (cls !== 'unknown') return false;
     var key = word.toLowerCase();
     if (word.length < 3 || !/^[A-Z][a-z]+$/.test(word)) return false;
     if (isGeoTime(key) || isHeadKey(key) || PROPER_PLURAL_SET.has(key)) return false;
+    if (words && words.has('^' + key)) return false;
+    if (HIGHER_TAXON_RE.test(key) || /(ales|ida|oda|ia|acea|phyta|zoa|morpha)$/.test(key)) return false;   // Sphaeriidae, Mammalia
     return EPITHET_END.test(key);
   }
 
@@ -891,11 +1104,52 @@
 
   /* ---------- title case (MLA / Chicago headline style) ---------- */
 
+  // Latin phrases kept lowercase in headline style ("in situ", "in vitro", "et al.")
+  var LATIN_PAIRS = { 'in situ': 1, 'in vitro': 1, 'in vivo': 1, 'in silico': 1, 'ex situ': 1, 'ex vivo': 1,
+    'de novo': 1, 'a priori': 1, 'a posteriori': 1, 'per se': 1, 'et al': 1, 'in utero': 1, 'in ovo': 1 };
+  // taxonomic abbreviations that stay lowercase before their full stop ("n. sp.", "gen. nov.")
+  var TAXON_ABBREV = setOf('sp spp ssp subsp var gen nov n comb cf aff nr fam sensu');
+  function isGreek(c) { return /[Ͱ-Ͽἀ-῿]/.test(c); }
+
   function toTitleCase(title, opts) {
     var protect = resolveProtect(opts);
     var small = opts && opts.small ? wordsFrom(opts.small) : SMALL_SET;
+    var hasList = hasWordList(opts), words = hasList ? resolveWords(opts) : null;
     var toks = tokenize(title), i, lastWord = -1, seenWord = false, inQuote = false;
     for (i = toks.length - 1; i >= 0; i--) if (toks[i].kind === 'word') { lastWord = i; break; }
+    function wordAt(j) { return j >= 0 && j < toks.length && toks[j].kind === 'word' ? toks[j].text : null; }
+    function nextWordIdx(j) { var q = nextSolid(toks, j); return q === j + 2 && toks[j + 1].text === ' ' && toks[q].kind === 'word' ? q : -1; }
+    function prevWordIdx(j) { var q = prevSolid(toks, j); return q >= 0 && q === j - 2 && toks[j - 1].text === ' ' && toks[q].kind === 'word' ? q : -1; }
+    var keepLow = [];                         // token index -> leave exactly as it is
+
+    for (i = 0; i < toks.length; i++) {
+      if (toks[i].kind !== 'word') continue;
+      var t = toks[i].text, lk = t.toLowerCase(), nw = nextWordIdx(i), pw = prevWordIdx(i);
+      // Latin phrases: "in situ", "in-situ"
+      if (nw >= 0 && LATIN_PAIRS[lk + ' ' + toks[nw].text.toLowerCase()] && !hasUpper(toks[nw].text)) { keepLow[i] = 'first'; keepLow[nw] = true; }
+      if (/^[a-z]+-[a-z]+$/.test(t) && LATIN_PAIRS[t.replace('-', ' ')]) keepLow[i] = 'first';
+      // species epithet after a genus: "Escherichia coli", "Tyrannosaurus rex", "Homo sapiens"
+      if (pw >= 0 && /^[a-z]{3,}$/.test(t) && !small.has(t) && /^[A-Z][a-z]{2,}$/.test(toks[pw].text)) {
+        var gk = toks[pw].text.toLowerCase();
+        // the genus: a capitalised Latin-looking word that is not a known place / person;
+        // a common word ("Virus", "Data") only counts when capitalised mid-sentence
+        var genusLike = !small.has(gk) && !BREAKER_SET.has(gk) && !FUNCTION_SET.has(gk) && (!!GENUS_O[gk] || (GENUS_END.test(gk) && !(words && words.has('^' + gk)) && !isGeoTime(gk) &&
+          !NOT_GENUS_SET.has(gk) && !isHeadKey(gk) && (!words || !isCommon(gk, words) || !isSentenceStart(toks, pw, pw > 0 && prevSolid(toks, pw) >= 0))));
+        var epithetLike = !isHeadKey(t) && (/(i|ii|ae|ensis|oides|us|um|ex)$/.test(t) || (GENUS_O[gk] && EPITHET_END.test(t + '')) ||
+          (GENUS_O[gk] && /(ens|is|a)$/.test(t)) ||
+          (/(a|is|ans|ens|er)$/.test(t) && (!words || !isCommon(t, words))));
+        if (genusLike && epithetLike) keepLow[i] = true;
+      }
+      // "n. sp.", "gen. nov.", "var."
+      if (/^[a-z]+$/.test(t) && TAXON_ABBREV.has(t) && i + 1 < toks.length && toks[i + 1].text.charAt(0) === '.' && seenWord) keepLow[i] = true;
+      // "dI/dt", "C/N", "and/or": a ratio or pairing with a short part is left alone
+      if (t.indexOf('/') > 0) {
+        var sp = t.split('/');
+        for (var q = 0; q < sp.length; q++) if (sp[q].length <= 2) { keepLow[i] = true; break; }
+      }
+      seenWord = true;
+    }
+    seenWord = false;
 
     for (i = 0; i < toks.length; i++) {
       var tok = toks[i];
@@ -905,14 +1159,22 @@
       seenWord = true;
       if (inQuote) continue;
       if (protect && protect.has(tok.text)) continue;
+      if (keepLow[i] === true) continue;
 
       var pieces = tok.text.split(JOINER_SPLIT), out = '', k = 0;
+      var nextTxt = wordAt(nextWordIdx(i));
       for (var p = 0; p < pieces.length; p++) {
         if (p % 2 === 1) { out += pieces[p]; continue; }
         var part = pieces[p], firstPart = (k === 0); k++;
         if (!part || (protect && protect.has(part)) || hasDigit(part) || hasUpper(part.slice(1))) { out += part; continue; }
         var key = lookupKey(part);
         var edge = start || i === lastWord;
+        if (keepLow[i] === 'first' && !(start && firstPart)) { out += part; continue; }
+        if (isGreek(part.charAt(0))) { out += part; continue; }            // "ε-Iron", not "Ε-Iron"
+        // an initial before a full stop ("M. A. Geyh") is not the article
+        if (part.length === 1 && pieces.length === 1 && i + 1 < toks.length && toks[i + 1].text.charAt(0) === '.') { out += capitalise(part); continue; }
+        // "up to" is a compound preposition
+        if (key === 'up' && pieces.length === 1 && nextTxt && nextTxt.toLowerCase() === 'to' && !edge) { out += safeLower(part); continue; }
         if (small.has(key) && !(edge && firstPart)) out += safeLower(part);
         else out += capitalise(part);
       }
@@ -932,10 +1194,36 @@
   // the converter would lowercase it, so capitals that belong to names ("Southern
   // Thailand", "Hell Creek Formation", "Late Cretaceous") do not make a sentence-case
   // title look like title case. Without a list every eligible word is counted.
+  // An all-caps title may still contain a few mixed-case chemical symbols, units or
+  // acronyms ("U Pb", "Fe-Ti", "Ti4+", "MnV2O6", "IgG", "mRNA"). Words with digits and
+  // short (<= 4 letters) mixed-case words are ignored; the rest must be upper case,
+  // allowing one short lowercase word per eight upper-case words ("et", "in").
+  function isMostlyUpper(s) {
+    var toks = tokenize(s), up = 0, low = 0, lowLong = 0;
+    for (var i = 0; i < toks.length; i++) {
+      if (toks[i].kind !== 'word') continue;
+      var parts = toks[i].text.split(JOINER_SPLIT);
+      for (var k = 0; k < parts.length; k += 2) {
+        var p = parts[k].replace(/['’.]/g, '');
+        if (!p || hasDigit(p)) continue;
+        var letters = 0;
+        for (var c = 0; c < p.length; c++) if (isLetter(p.charAt(c))) letters++;
+        if (letters < 2) continue;
+        var hl = hasLower(p), hu = hasUpper(p);
+        if (!hl) { up++; continue; }
+        if (hu && p.length <= 4) continue;                  // Pb, IgG, mRNA, Ma
+        low++;
+        if (p.length > 3 || hu) lowLong++;
+      }
+    }
+    return up >= 3 && lowLong === 0 && low * 8 <= up;
+  }
+
   function detectCase(title, opts) {
     var s = String(title == null ? '' : title);
     var bare = s.replace(/<\/?[A-Za-z][^<>]*>|&(#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]*);/g, ' ');
     if (/[A-Z]/.test(bare) && !/[a-z]/.test(bare)) return 'upper';
+    if (isMostlyUpper(bare)) return 'upper';
     var cap = 0, low = 0, i;
     if (hasWordList(opts)) {
       var words = resolveWords(opts);
@@ -949,7 +1237,7 @@
         // a capitalised function word the converter lowercases ("of The Society") is a
         // title-case signal; a lowercase one says nothing (headline style lowercases it too)
         if (BREAKER_SET.has(key)) { if (isUpper(part.charAt(0)) && res.toks[i].text !== m.orig) cap++; continue; }
-        if (key === 'new' || !isCommon(key, words)) continue;
+        if (key === 'new' || !(isCommon(key, words) || isTechWord(key, words))) continue;
         if (isUpper(part.charAt(0))) {
           var now = res.toks[i].text.split(JOINER_SPLIT)[0];
           if (now !== part) cap++;           // the converter lowercases it: a title-case capital
@@ -979,6 +1267,217 @@
     return 'mixed';
   }
 
+  /* ---------- all-caps pre-pass ---------- */
+
+  var ALL_ELEMENTS = 'H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se ' +
+    'Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu ' +
+    'Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr';
+  var EL_BY_UPPER = (function () {
+    var o = {}, l = ALL_ELEMENTS.split(' ');
+    for (var i = 0; i < l.length; i++) o[l[i].toUpperCase()] = l[i];
+    return o;
+  })();
+  // two-letter symbols that are unlikely readings when a lighter parse exists (CO2 is C + O2)
+  var RARE_EL = setOf('No Co Ho Po Cs Sc Os Hf Np Pa Er Pm Cd Es Am Cf Bk Fm Md Lr Tc Pr Tm Tb Dy Ac Fr Ra Rn At', true);
+  // common geochemical elements: no-digit oxides / salts ("MGO", "NACL", "FEOOH") and
+  // element chains ("FE-TI") are restored only from these
+  var GEOCHEM_EL = setOf('Mg Si Al Fe Mn Ca Na Cl Ti Cr Ni Cu Zn Pb Sr Ba Zr Rb Nd Sm Hf Lu Au Ag Pt Pd Hg Sn Sb ' +
+    'Mo Nb Ta Li Ce La Eu Yb Gd Ar He Ne Kr Xe Ga Ge Se Te Br Bi Cs Th Re Os Be', true);
+  // a lone two-letter symbol ("U PB DATING", "FE AND MG")
+  var OXIDE_EL = setOf('Mg Fe Ca Mn Ni Zn Cu Pb Sn Ba Sr Cr Ti Na', true);          // MGO, FEOOH, NACL
+  var LONE_EL = setOf('FE MG MN PB ZN CU SR ND RB SM TI ZR NB CR NI AU AG PT LI SI AL YB EU CE LU HF NA', true);
+  // units after a number ("3.5 GA", "25 GPA", "100 MYR") and other fixed spellings
+  var UNIT_CASE = { GA: 'Ga', MA: 'Ma', KA: 'ka', GPA: 'GPa', MPA: 'MPa', KPA: 'kPa', KBAR: 'kbar', MYR: 'Myr',
+    GYR: 'Gyr', KYR: 'kyr', NM: 'nm', KM: 'km', CM: 'cm', MM: 'mm', KEV: 'keV', MEV: 'MeV', GEV: 'GeV', HZ: 'Hz',
+    KHZ: 'kHz', MHZ: 'MHz', GHZ: 'GHz', KDA: 'kDa', MG: 'mg', ML: 'mL', KG: 'kg', MOL: 'mol', MMOL: 'mmol', KV: 'kV',
+    MW: 'MW', KW: 'kW', PPM: 'ppm', PPB: 'ppb', WT: 'wt' };
+  var FIXED_CASE = { PH: 'pH', MRNA: 'mRNA', TRNA: 'tRNA', RRNA: 'rRNA', MTDNA: 'mtDNA', CDNA: 'cDNA', SIRNA: 'siRNA',
+    MIRNA: 'miRNA', IGG: 'IgG', IGM: 'IgM', IGE: 'IgE', IGA: 'IgA' };
+  // acronyms kept upper case (besides vowel-less and unpronounceable tokens)
+  var ACRONYMS = setOf('DNA RNA USA USGS NASA NOAA IPCC XANES EXAFS SEM TEM EPMA ICP MS IOCG REE HREE LREE MREE ' +
+    'MORB OIB UHP HP LT HT UHT MAR EPR PGE PGM IMA MSA GSA CMS AAPG SEPM NMR XRD XRF SIMS TIMS ICPMS SHRIMP EBSD ' +
+    'HRTEM FTIR IR UV NIR ESR EELS AFM STM CT MRI PET HIV AIDS HTLV HPV COVID SARS MERS USSR UK UN NE NW SE SW ' +
+    'GPS GIS AMNH CMNH FMNH USNM NHMUK MNHN IODP ODP DSDP LIDAR CRISPR IUCN UNEP ICZN NSF NERC BGS GSC CNRS MOR ' +
+    'UCMP YPM NMNH BMNH IVPP ZPAL MCZ UALVP TMP LIP LIPS TTG MASH AFC EMP IDA ISBN ESA JAXA CSIRO NIH BMJ ' +
+    'HER2 BRCA TNF HLA IGG IGM IGE ACE AMP ATP ADP GTP NADH NADPH PCR ELISA NASA SEDEX VMS MVT BIF BIFS OH ' +
+    'LA-ICPMS LA-MC-ICP-MS', true);
+  // short words that are ordinary words or names, never acronyms
+  var SHORT_WORDS = setOf('os rex gen nov sp spp ssp var cf aff et al de du la le von van der den nad pod ole tim');
+  // name particles and Latin words written lowercase mid-title ("Domasov nad Bystrici", "os palatinum")
+  var SHORT_LOWER = setOf('nad pod de du von van der den del della dos das di os rex');
+  var MED_FORMULA_BLOCK = /^(CD\d+|CA\d+|PM\d+(\.\d+)?|HBA1C|HER\d|BRCA\d|IL\d+|H\dN\d|ACE\d|COX\d|P\d+|B\d+|K\d+|T\d+)$/;
+  var ROMAN_RE = /^(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
+  var PAIR_OK = /^(HN|CZ|SZ|LC|RZ|ZH|KH|TZ|DZ|ST|SH|CH|TH|TR|PR|BR|CR|GR|FR|DR|BL|CL|FL|GL|PL|SL|SP|SC|SK|SM|SN|SW|ND|NT|NG|NK|MP|LL|SS|RT|RD|RN|RM|RS|RK|RG|RL|RC|RB|RP|RV|LD|LT|LK|LM|LP|LS|LV|CK|CT|PT|FT|WH|WR|PH|GH|KN|TT|PP|MM|NN|RR|FF|DD|GG|ZZ|CC|BB|NS|NC|NZ|MB|MS|TS|DS|PS|KS|GS|BS|LF|WN|WL|WS|WT|WK|XT|TZ|SQ|TL|DG)$/;
+
+  // "SIO2" -> "SiO2", "40AR" -> "40Ar", "0.5H2O" -> "0.5H2O", "MNV2O6" -> "MnV2O6"; null if no parse.
+  // Fewest symbols wins; a rare two-letter reading costs extra, so "CO2" is C + O2.
+  function parseFormula(p) {
+    var m = /^([\d.]*)([A-Z0-9.]*)$/.exec(p);
+    if (!m || !m[2] || !/^[A-Z]/.test(m[2])) return null;
+    var s = m[2], n = s.length, best = [];
+    best[n] = { score: 0, text: '', segs: 0, two: 0, rare: 0, els: [] };
+    for (var i = n - 1; i >= 0; i--) {
+      best[i] = null;
+      for (var L = 1; L <= 2; L++) {
+        if (i + L > n || !/^[A-Z]+$/.test(s.slice(i, i + L))) break;
+        var sym = EL_BY_UPPER[s.slice(i, i + L)];
+        if (!sym) continue;
+        var j = i + L;
+        while (j < n && /[\d.]/.test(s.charAt(j))) j++;
+        var rest = best[j];
+        if (!rest) continue;
+        var rare = RARE_EL.has(sym) ? 1 : 0;
+        var sc = rest.score + 10 + rare * 15 - (L === 2 ? 1 : 0);
+        if (!best[i] || sc < best[i].score) {
+          best[i] = { score: sc, text: sym + s.slice(i + L, j) + rest.text, segs: rest.segs + 1,
+            two: rest.two + (L === 2 ? 1 : 0), rare: rest.rare + rare, els: [sym].concat(rest.els) };
+        }
+      }
+    }
+    if (!best[0]) return null;
+    var r = best[0];
+    return { text: m[1] + r.text, segs: r.segs, two: r.two, rare: r.rare, els: r.els, digits: /\d/.test(s) };
+  }
+  function allGeochem(els) {
+    for (var i = 0; i < els.length; i++) if (els[i].length === 2 && !GEOCHEM_EL.has(els[i])) return false;
+    return true;
+  }
+  // Could an upper-case letter string be read as a word? ("ALTAI" yes; "MORB", "IOCG", "HREE" no)
+  function pronounceable(w) {
+    var u = w.replace(/Y/g, 'I'), runs = u.split(/[AEIOU]+/);
+    if (!/[AEIOU]/.test(u)) return false;
+    for (var i = 0; i < runs.length; i++) {
+      var r = runs[i];
+      if (i === runs.length - 1 && r.length >= 2 && /S$/.test(r) && (r.length === 2 || PAIR_OK.test(r.slice(0, -1)) || /^(LP|RM|LM|RK|MB|MP)$/.test(r.slice(0, -1)))) continue;
+      if (r.length >= 3 && !/^(STR|SCH|SPR|SPL|SCR|THR|CHR|PHR|SHR|NCH|RCH|LCH|TCH|NST|NGS|NDS|NTS|RST|RTH|NTH|MPT|NGL|RTS|RDS|LDS|NKS|MPS|CKS)$/.test(r)) return false;
+      if (r.length === 2 && !PAIR_OK.test(r)) return false;
+      if (i === 0 && r.length === 2 && /^(NG|NK|NT|ND|MP|CK|LL|SS|RT|RD|RN|RM|RS|LD|LT|FT|PT|CT|NS|NC|MS|TS|DS|PS|KS|GS|BS)$/.test(r)) return false;
+    }
+    return true;
+  }
+  // "WORD" -> "Word"; "O'NEIL" -> "O'Neil"; "DARWIN'S" -> "Darwin's"; "MCMURDO" -> "McMurdo"
+  function titleWord(p) {
+    var out = mapChar(p.charAt(0), true), up = false;
+    for (var i = 1; i < p.length; i++) {
+      var c = p.charAt(i);
+      if (up) { out += mapChar(c, true); up = false; continue; }
+      out += mapChar(c, false);
+      if ((c === "'" || c === '’') && i === 1 && i + 2 < p.length) up = true;
+    }
+    if (/^MC[B-DF-HJ-NP-TV-Z][A-Z]/.test(p)) out = 'Mc' + mapChar(p.charAt(2), true) + out.slice(3);
+    return out.length === p.length ? out : p;
+  }
+  function isShortName(core) {        // CVC / VCV three-letter words: TIM, NAD, OLE, SUR, ITU, MAY
+    return core.length === 3 && /^([^AEIOU][AEIOU][^AEIOU]|[AEIOU][^AEIOU][AEIOU])$/.test(core);
+  }
+
+  // One upper-case part of an all-caps word -> { text, kind }.
+  function capsPart(p, ctx, words) {
+    var core = p.replace(/['’]S$/, '').replace(/['’.]/g, ''), key = core.toLowerCase(), f;
+    if (!/[A-Z]/.test(p) || /[a-zß-ÿ]/.test(p)) return { text: p, kind: 'other' };       // Pb, IgG: already cased
+    if (ctx.afterNumber && Object.prototype.hasOwnProperty.call(UNIT_CASE, p)) return { text: UNIT_CASE[p], kind: 'unit' };
+    if (Object.prototype.hasOwnProperty.call(FIXED_CASE, p)) return { text: FIXED_CASE[p], kind: 'fixed' };
+    if (ctx.chain) return { text: ctx.chainText, kind: 'formula' };
+    if (hasDigit(p)) {
+      f = /^[A-Z0-9.]+$/.test(p) && !MED_FORMULA_BLOCK.test(p) && !ACRONYMS.has(p) ? parseFormula(p) : null;
+      if (f && (f.segs > 1 || f.els[0].length === 1 || GEOCHEM_EL.has(f.els[0]))) return { text: f.text, kind: 'formula' };
+      return { text: p, kind: 'code' };
+    }
+    if (p.length >= 2 && ROMAN_RE.test(p)) return { text: p, kind: 'roman' };
+    if (ctx.prefix && HPREFIX_SET.has(key)) return { text: titleWord(p), kind: 'word' };          // RE-ASSESSMENT
+    if (SHORT_LOWER.has(key) && !ctx.start) return { text: safeLower(p), kind: 'word' };
+    if (ACRONYMS.has(p)) return { text: p, kind: 'acronym' };
+    if (ctx.dot && !ctx.start && (TAXON_ABBREV.has(key) || ABBREV_SET.has(key))) {
+      return { text: TAXON_ABBREV.has(key) ? safeLower(p) : titleWord(p), kind: 'abbrev' };   // "GEN. NOV." -> "gen. nov."
+    }
+    if (ctx.quoted && !ctx.start && (isCommon(key, words) || isTechWord(key, words))) return { text: safeLower(p), kind: 'word' };
+    if (SHORT_WORDS.has(key) || isCommon(key, words) || isTechWord(key, words) || PROPER_PLURAL_SET.has(key) ||
+        words.has('^' + key)) return { text: titleWord(p), kind: 'word' };
+    if (p.length === 2 && LONE_EL.has(p)) return { text: EL_BY_UPPER[p], kind: 'formula' };
+    if (/^[A-Z]{3,5}$/.test(p)) {                                                // MGO, NACL, FEOOH
+      f = parseFormula(p);
+      if (f && f.rare === 0 && OXIDE_EL.has(f.els[0]) && (/^[A-Z][a-z](O|OH|OOH|Cl)$/.test(f.text))) {
+        return { text: f.text, kind: 'formula' };
+      }
+    }
+    if (/^[A-Z]+$/.test(core)) {
+      if (core.length <= 2) return { text: p, kind: 'acronym' };
+      if (core.length === 3 && !isShortName(core)) return { text: p, kind: 'acronym' };
+      if (core.length >= 4 && core.length <= 5 && !pronounceable(core)) return { text: p, kind: 'acronym' };
+      if (core.length > 5 && !/[AEIOUY]/.test(core)) return { text: p, kind: 'acronym' };
+    }
+    return { text: titleWord(p), kind: 'word' };
+  }
+
+  // Title-cases an ALL-CAPS title so that the sentence-case converter can work on it:
+  // ordinary words become "Word"; acronyms (DNA, USGS, MORB, XANES, LA-ICP-MS), Roman
+  // numerals (II, VIII, XXII) and chemical formulas (SiO2, MgO-SiO2, Fe-Ti, 40Ar/39Ar,
+  // WO3·0.5H2O, Na2O) are restored; short names and Latin words are ordinary words (Ole,
+  // Tim, Nad, Os, Rex, "gen. nov."); a species epithet after a genus is lowercased
+  // ("SENSUITROCHUS FERRERI" -> "Sensuitrochus ferreri"). The length never changes, and
+  // tokens that already contain lowercase letters (Pb, IgG) are left alone.
+  function fromAllCaps(title, wordsSrc) {
+    var s = String(title == null ? '' : title);
+    var words = resolveWords({ words: wordsSrc });
+    var toks = tokenize(s), i, k, info = [], seen = false, quoted = false, qStart = false;
+    for (i = 0; i < toks.length; i++) {
+      var tok = toks[i];
+      if (tok.kind === 'punct' && /["“”]/.test(tok.text)) {
+        // a quoted title inside an all-caps title is written in sentence case directly, because
+        // the converter leaves quoted text alone
+        var opens = /[“]/.test(tok.text) || (/"/.test(tok.text) && !quoted);
+        if (/[”]/.test(tok.text) || (/"/.test(tok.text) && quoted)) quoted = false; else if (opens) { quoted = true; qStart = true; }
+        continue;
+      }
+      if (tok.kind !== 'word') continue;
+      var start = isSentenceStart(toks, i, seen) || qStart; seen = true; qStart = false;
+      var pv = prevSolid(toks, i), afterNumber = pv >= 0 && pv === i - 2 && /^[\d.,]+$/.test(toks[pv].text);
+      if (ACRONYMS.has(tok.text)) continue;                                      // LA-ICP-MS
+      var pieces = tok.text.split(JOINER_SPLIT), parts = [];
+      for (k = 0; k < pieces.length; k += 2) parts.push(pieces[k]);
+      // element / formula chain: FE-TI, PB-ZN, U-TH-PB, MGO-SIO2, 40AR/39AR
+      var chain = parts.length > 1, ftext = [], nform = 0;
+      for (k = 0; k < parts.length && chain; k++) {
+        var pk = parts[k];
+        if (/[a-zß-ÿ]/.test(pk)) { var fz = parseFormula(pk.toUpperCase()); if (fz && fz.text === pk) { ftext.push(pk); nform++; continue; } chain = false; break; }
+        if (/^[\d.]+$/.test(pk)) { ftext.push(pk); continue; }
+        var f = /^[A-Z0-9.]+$/.test(pk) && !ACRONYMS.has(pk) && !MED_FORMULA_BLOCK.test(pk) ? parseFormula(pk) : null;
+        if (!f || f.segs > 4 || f.rare > 0 && !f.digits || !allGeochem(f.els) || (!f.digits && f.segs > 1 && f.els[0].length === 1 && f.two === 0) ||
+            (!f.digits && f.segs > 2)) { chain = false; break; }
+        ftext.push(f.text); nform++;
+      }
+      if (chain && nform < 2) chain = false;
+      var dot = i + 1 < toks.length && toks[i + 1].text.charAt(0) === '.';
+      var outParts = [];
+      for (k = 0; k < parts.length; k++) {
+        var r = capsPart(parts[k], { chain: chain, chainText: chain ? ftext[k] : null, dot: dot && k === parts.length - 1,
+          start: start && k === 0, prefix: k === 0 && parts.length > 1, quoted: quoted, afterNumber: afterNumber && k === 0 }, words);
+        if (r.text.length !== parts[k].length) r = { text: parts[k], kind: 'other' };
+        outParts.push(r);
+      }
+      var txt = '';
+      for (k = 0; k < pieces.length; k++) txt += k % 2 ? pieces[k] : outParts[k / 2].text;
+      if (txt.length === tok.text.length && txt !== tok.text) { tok.text = txt; tok.changed = true; }
+      info[i] = outParts;
+    }
+    // species epithet after a genus: "SENSUITROCHUS FERRERI" -> "Sensuitrochus ferreri"
+    for (i = 0; i < toks.length; i++) {
+      if (!info[i] || info[i].length !== 1) continue;
+      var j = nextSolid(toks, i);
+      if (j !== i + 2 || toks[i + 1].text !== ' ' || !info[j] || info[j].length !== 1) continue;
+      var g = toks[i].text, e = toks[j].text;
+      if (!/^[A-Z][a-z]{3,}$/.test(g) || !/^[A-Z][a-z]{2,}$/.test(e)) continue;
+      var gk = g.toLowerCase(), ek = e.toLowerCase();
+      if (isCommon(gk, words) || isTechWord(gk, words) || isCommon(ek, words) || isTechWord(ek, words)) continue;
+      if (!looksLikeGenus(g, 'unknown', words) || !looksLikeEpithet(e, 'unknown', words)) continue;
+      var h = nextSolid(toks, j);
+      if (h === j + 2 && toks[h].kind === 'word' && isHeadKey(lookupKey(toks[h].text))) continue;
+      var le = safeLower(e);
+      if (le.length === e.length) { toks[j].text = le; toks[j].changed = true; }
+    }
+    return joinTokens(toks);
+  }
+
   /* ---------- misc ---------- */
 
   function joinTokens(toks) {
@@ -994,7 +1493,7 @@
     if (!/^[A-Z][a-z]+$/.test(w)) return false;
     var set = resolveWords({ words: words });
     if (isCommon(lookupKey(w), set)) return false;
-    return looksLikeGenus(w, 'unknown');
+    return looksLikeGenus(w, 'unknown', set);
   }
 
   var api = {
@@ -1002,6 +1501,7 @@
     toSentenceCaseSafe: toSentenceCaseSafe,
     toTitleCase: toTitleCase,
     detectCase: detectCase,
+    fromAllCaps: fromAllCaps,
     wordsFrom: wordsFrom,
     tokenize: tokenize,
     isCommon: function (word, words) { return isCommon(lookupKey(String(word)), resolveWords({ words: words })); },

@@ -17,13 +17,16 @@
     if (!text) return null;
     var m = String(text).match(DOI_RE);
     if (!m) return null;
-    var doi = m[0].replace(/[.,;:]+$/, '').replace(/[<>]+$/, '');
+    var doi = m[0].replace(/[.,;:]+$/, '').replace(/[<>]+$/, '')
+      .replace(/\/(full|abstract|pdf|epdf|epub|fulltext|html|meta|summary|references|figures|supplemental|suppl_file)(\/.*)?$/i, ''); // publisher landing-page suffixes
     // drop a trailing ")" or "]" only if it is unbalanced
     while (/[)\]]$/.test(doi)) {
       var open = (doi.match(/[(\[]/g) || []).length;
       var close = (doi.match(/[)\]]/g) || []).length;
       if (close > open) doi = doi.slice(0, -1); else break;
     }
+    // bioRxiv / medRxiv landing pages: 10.1101/2020.03.24.20042937v3.full -> 10.1101/2020.03.24.20042937
+    if (/^10\.1101\//.test(doi)) doi = doi.replace(/(?:v\d+)?(?:\.(?:full|abstract|full-text|supplementary-material|article-info|article-metrics)(?:\.pdf(?:\+html)?)?)?$/i, '');
     return doi;
   }
 
@@ -177,7 +180,7 @@
     return s.replace(/&(#\d+|#[xX][0-9a-fA-F]+|[A-Za-z]+);/g, function (all, e) {
       if (e.charAt(0) !== '#') return Object.prototype.hasOwnProperty.call(ENTITIES, e) ? ENTITIES[e] : all;
       var n = /^#[xX]/.test(e) ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
-      if (!(n > 0) || n > 0x10FFFF || (n >= 0xD800 && n <= 0xDFFF) || (n >= 0xE000 && n <= 0xE006)) return '';
+      if (!(n > 0) || n > 0x10FFFF || (n >= 0xD800 && n <= 0xDFFF) || (n >= 0xE000 && n <= 0xF8FF) || n >= 0xF0000) return '';
       if (n > 0xFFFF) { n -= 0x10000; return String.fromCharCode(0xD800 + (n >> 10), 0xDC00 + (n & 0x3FF)); }
       return String.fromCharCode(n);
     });
@@ -185,14 +188,23 @@
   // Tags removed, entities decoded, whitespace collapsed; private-use formatting markers removed unless keepMarks
   function cleanText(s, keepMarks) {
     if (s === undefined || s === null) return '';
-    var t = decodeEntities(String(s).replace(/<[^>]+>/g, ''));
+    var t = String(s);
+    if (t.indexOf('lt;') !== -1) { t = t.replace(ENCODED_TAG, '<$1>'); ENCODED_TAG.lastIndex = 0; } // "&lt;i&gt;" is markup, not text
+    t = decodeEntities(t.replace(/<[^<>]*>/g, ''))
+      .replace(/[\u200B\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')  // zero-width space, bidi controls (ZWJ/ZWNJ are spelling)
+      .replace(/[\uE007-\uF8FF]|[\uDB80-\uDBFF][\uDC00-\uDFFF]/g, ''); // publisher private-use glyphs (Elsevier U+E5F8) have no meaning here
     if (!keepMarks) t = t.replace(PUA_RE, '');
     return t.replace(/\s+/g, ' ').trim();
   }
   function clean(s) { return cleanText(s, false); }
 
   // Library-catalogue records (BHL, MARC) leave trailing " :", " ,", " ;" on places and publishers
-  function trimPunct(s) { return String(s || '').replace(/[\s,:;\/]+$/, '').trim(); }
+  // (a backwards scan: the regex /[\s,:;\/]+$/ is quadratic on long runs of ", " that do not reach the end)
+  function trimPunct(s) {
+    var t = String(s || ''), i = t.length;
+    while (i > 0 && /[\s,:;\/]/.test(t.charAt(i - 1))) i--;
+    return t.slice(0, i).trim();
+  }
 
   function cleanAbstract(s) {
     if (!s) return '';
@@ -252,6 +264,7 @@
     var a = Number(mass), z = ELEM[sym];
     return a >= z && a <= 2.7 * z + 3;
   }
+  var LABELLED = { C: 1, N: 1, O: 1, S: 1, Cl: 1, Tc: 1, Fe: 1, Zn: 1, Cu: 1, Mo: 1, Sr: 1, Ca: 1, P: 1 }; // tracer-labelled species
   function isotope(p) { // 40Ar, 18O, 87Sr, 3He, 206Pb, 99mTc
     var m = p.match(/^(\d{1,3})(m?)([A-Z][a-z]?)$/);
     return m && isIsotope(m[1], m[2], m[3]) ? sup(m[1] + m[2]) + m[3] : null;
@@ -263,23 +276,32 @@
   }
 
   // Formula text split into elements, counts, brackets; null when it is not formula-shaped
+  // Counts: 2, 0.5, solid-solution variables "x", "2x", "δ" and expressions "1−x", "3-δ", "1+x"
+  var VAR_COUNT = /^(?:\d+(?:\.\d+)?[−+-]\d*(?:\.\d+)?[xyδ]|\d*(?:\.\d+)?[xyδ](?:[−+-]\d+(?:\.\d+)?)?)(?![a-z])/;
   function formulaTokens(s) {
     var toks = [], i = 0, depth = 0, m, last;
     while (i < s.length) {
       var rest = s.slice(i);
       last = toks[toks.length - 1];
+      if (rest.charAt(0) === '□') { toks.push({ t: 'el', v: '□' }); i++; continue; } // vacancy: □Ca2Mg5Si8O22(OH)2
       if ((m = rest.match(/^[A-Z][a-z]?/))) {
         var sym = m[0];
         if (!ELEM[sym]) { if (sym.length === 2 && ELEM[sym.charAt(0)]) sym = sym.charAt(0); else return null; }
         toks.push({ t: 'el', v: sym }); i += sym.length; continue;
       }
-      // "Fe3+2(H2O)4", "Fe2+3Al2Si3O12": a metal's oxidation state written inside the formula, always followed by a count or bracket
-      if (last && last.t === 'el' && (last.v.length === 2 || /^[VUWYK]$/.test(last.v)) && (m = rest.match(/^(\d[+\u2212])(?=\d|[(\[])/))) {
+      var metal = last && last.t === 'el' && (last.v.length === 2 || /^[VUWYK]$/.test(last.v));
+      // "Fe3+2(H2O)4", "Fe2+3Al2Si3O12", "(Mg,Fe2+)2SiO4", "(Fe3+,Al)2O3": a metal's oxidation state inside the formula,
+      // followed by a count, a bracket, or (inside a site list) a comma or the closing bracket
+      if (metal && (m = rest.match(depth > 0 ? /^(\d[+−])(?=\d|[(\[,)\]])/ : /^(\d[+−])(?=\d|[(\[])/))) {
         toks.push({ t: 'ox', v: m[1] }); i += m[1].length; continue;
       }
-      if ((m = rest.match(/^\d+(?:\.\d+)?/))) {
+      // IMA order, count before charge: "PbFe22+V23+(PO4)3(OH)3" -> PbFe₂²⁺V₂³⁺(PO₄)₃(OH)₃
+      if (metal && (m = rest.match(/^(\d)(\d[+−])(?=[A-Z(\[,)\]□])/))) {
+        toks.push({ t: 'n', v: m[1] }); toks.push({ t: 'ox', v: m[2] }); i += m[0].length; continue;
+      }
+      if ((m = rest.match(/^\d+(?:\.\d+)?(?![−+-]\d*(?:\.\d+)?[xyδ](?![a-z]))/)) || (m = rest.match(VAR_COUNT))) {
         if (!last || (last.t !== 'el' && last.t !== 'close' && last.t !== 'ox')) return null;
-        toks.push({ t: 'n', v: m[0] }); i += m[0].length; continue;
+        toks.push({ t: 'n', v: m[0].replace('-', '−') }); i += m[0].length; continue;
       }
       var c = rest.charAt(0);
       if (c === '(' || c === '[') { toks.push({ t: 'open', v: c }); depth++; i++; continue; }
@@ -310,7 +332,7 @@
 
   // Is this uncharged token list a chemical formula?
   function acceptNeutral(toks, loose) {
-    var elems = 0, groups = 0, two = false, paren = false, str = '';
+    var elems = 0, groups = 0, two = false, paren = false, str = '', expr = false, loneLast = false;
     for (var i = 0; i < toks.length; i++) {
       var k = toks[i];
       if (k.t === 'el') {
@@ -319,10 +341,15 @@
       } else if (k.t === 'n') {
         groups++;
         if (k.v === '1' || (k.v.indexOf('.') === -1 && Number(k.v) >= 100)) return false; // formulas never write 1; 9001 is not a count
+        if (/[xyδ]/.test(k.v)) {                                   // solid solution: Fe1−xS, MgxFe1−xSiO3, (NH4)xWO3
+          if (/[\u2212+]/.test(k.v)) expr = true;
+          else if (i === toks.length - 1 && toks[i - 1].t !== 'close') loneLast = true; // NOx, SOx, CHx: not a formula count
+        }
       } else if (k.t === 'open') paren = true;
       else if (k.t === 'ox') { paren = true; continue; }           // an explicit oxidation state is unmistakably chemistry
       str += k.t === 'comma' ? ',' : k.v;
     }
+    if (loneLast && !expr) return false;
     if (str === 'O3') return true;                                    // ozone, the one common single-element formula
     if (elems < 2 || !groups || NOT_FORMULA.test(str)) return false;
     if (paren || two || loose || SIMPLE[str]) return true;
@@ -368,28 +395,52 @@
     if (cn) { pre = sup('[' + cn[1] + ']'); p = p.slice(cn[0].length); }
     var greek = /^[δΔεμΣ]/.test(p);
     if (greek) { pre += p.charAt(0); p = p.slice(1); }             // δ18O, Σ
-    var iso = isotope(p) || (greek && !cn ? isotopeQualified(p) : null);
+    var iso = isotope(p) || (greek && !cn ? isotopeQualified(p) || isotopeStandard(p) : null);
     if (iso) return coef + pre + iso;
     var f = parseFormula(p, loose);
     if (f) return coef + pre + f;
-    return cn && /^[A-Z]/.test(p) ? coef + pre + p : null;
+    if (cn) return /^[A-Z]/.test(p) ? coef + pre + p : null;
+    var m;
+    // initial ratio "86Sri" (87Sr/86Sri) -> ⁸⁶Srᵢ
+    if (!greek && (m = p.match(/^(\d{1,3}[A-Z][a-z])i$/)) && (iso = isotope(m[1]))) return coef + iso + sub('i');
+    // isotopically labelled species: "13CO2", "15NH4+", "99TcO4−". Listed tracer isotopes only: "2H2O" is two
+    // waters and "20Na2O–80SiO2" a glass composition
+    if (!greek && (m = p.match(/^(\d{2,3})(m?)([A-Z][a-z]?)([A-Z(\[\d].*)$/)) && ISOTOPES[m[1] + m[2] + m[3]] && LABELLED[m[3]] &&
+      (f = parseFormula(m[3] + m[4], false) || parseFormula(m[3] + m[4], true))) return coef + sup(m[1] + m[2]) + f;
+    // a variable of a gas or component: fO2, pCO2, XCO2, aH2O, fH2O
+    if (!greek && !coef && (m = p.match(/^([fpa]|X)([A-Z].*)$/))) {
+      f = /^(?:H2|O2|N2|Cl2|F2)$/.test(m[2]) ? m[2].replace(/\d$/, function (d) { return sub(d); }) : parseFormula(m[2], false);
+      if (f && !/[\uE002]/.test(f)) return m[1] + f;
+    }
+    return null;
+  }
+  // δ18OVSMOW, δ13CPDB, δ34SVCDT: a reference standard written after the isotope
+  function isotopeStandard(p) {
+    var m = p.match(/^(\d{1,3})([A-Z][a-z]?)(V?SMOW|V?PDB|V?CDT|SLAP|AIR|NBS\d*|SRM\d*|NIST\d*)$/);
+    if (m && isIsotope(m[1], '', m[2])) return sup(m[1]) + m[2] + m[3];
+    return null;
   }
 
   function countOf(x, re) { return (x.match(re) || []).length; }
   // A piece left by splitting a word: strips brackets that belong to the neighbours ("(H2O", "CO2)") and
   // trailing labels such as "(i)" or a crystal face "(110)" before trying it as a formula
   function convertPiece(piece, allowCoef, loose) {
-    var lead = '', trail = '', core = piece;
-    while (/^[(\[]/.test(core) && countOf(core, /[(\[]/g) > countOf(core, /[)\]]/g)) { lead += core.charAt(0); core = core.slice(1); }
-    var tr;
-    while ((tr = core.match(/[)\]][a-z]{0,3}$/)) && countOf(core, /[)\]]/g) > countOf(core, /[(\[]/g)) { trail = tr[0] + trail; core = core.slice(0, -tr[0].length); } // "86Sr)i"
+    // counted once, peeled by index (no rescans: linear in the piece)
+    var o = countOf(piece, /[(\[]/g), c = countOf(piece, /[)\]]/g), a = 0, b = piece.length, tr;
+    while (a < b && /[(\[]/.test(piece.charAt(a)) && o > c) { a++; o--; }
+    var lead = piece.slice(0, a), core = piece.slice(a, b), trail = '';
+    while (c > o && (tr = core.match(/[)\]][a-z]{0,3}$/))) { trail = tr[0] + trail; core = core.slice(0, -tr[0].length); c--; } // "86Sr)i"
     var lab = core.match(/^(.+?)(\((?:[a-z]{1,4}|\d{1,4})\))$/);
     if (lab) { core = lab[1]; trail = lab[2] + trail; }
+    var star = core.match(/^(.+?)(\*+)$/);                      // radiogenic 207Pb*
+    if (star) { core = star[1]; trail = star[2] + trail; }
     var r = formulaPiece(core, allowCoef, loose);
     return r === null ? null : lead + r + trail;
   }
 
+  var MAX_FORMULA_WORD = 200;                  // longer tokens are never formulas; also bounds the work per token
   function formulaWord(w) {
+    if (!w || w.length > MAX_FORMULA_WORD) return null;
     var lead = '', trail = '', core = w, changed = true;
     var opens = function (x) { return countOf(x, /[(\[{]/g); }, closes = function (x) { return countOf(x, /[)\]}]/g); };
     while (changed) {
@@ -412,7 +463,7 @@
       return r === null ? piece : (any = true, r);
     };
     var hyphens = function (h, allowCoef, loose) {        // "Fe2+-bearing", "40Ar-39Ar", "δ15N-NO3−"
-      return h.split(/(-(?=[A-Za-z]|\d{1,3}m?[A-Z]))/).map(function (piece, i) { return i % 2 ? piece : conv(piece, allowCoef, loose); }).join('');
+      return h.split(/(-(?=[A-Za-zδΔε]|\d{1,3}m?[A-Z]))/).map(function (piece, i) { return i % 2 ? piece : conv(piece, allowCoef, loose); }).join('');
     };
     var hydrate = function (x) {                           // CaSO4·0.5H2O, ·nH2O
       var parts = x.split(/([·•⋅])/), loose = parts.length > 1;
@@ -433,7 +484,10 @@
       }
       return hydrate(x);
     };
-    var out = core.split(/([\/–—@])/).map(function (part, i) { return i % 2 ? part : plus(part); }).join('');
+    // "Fe1-xS", "Fe1–xO": the dash of a solid-solution count is a minus, not a separator
+    core = core.replace(/(\d)[-–](?=[xyδ](?:[A-Z(\[)\],\u25A1]|$))/g, '$1\u2212');
+    // separators: "/", en/em dash, "--" ("KAlSiO4--Mg2SiO4"), a minus between formulas ("Al2O3−SiO2")
+    var out = core.split(/(--+|[\/–—@]|\u2212(?=[A-Z(\[\u25A1]))/).map(function (part, i) { return i % 2 ? part : plus(part); }).join('');
     return any ? lead + out + trail : null;
   }
 
@@ -451,22 +505,32 @@
     return formulaWord(next) !== null && formulaWord(body) !== null;
   }
 
+  var GAS_CONTEXT = /\b(?:gas|gases|gaseous|fluids?|fugacity|pressures?|atmospheres?|atmospheric|oxygen|hydrogen|nitrogen|chlorine|fluorine|degassing|outgassing|combustion|adsorption|electrolysis|evolution reaction)\b/i;
   function autoFormulas(s) {
     if (!s) return s;
     // "(Mg, Fe)SiO3": keep the element list together while splitting words
     s = s.replace(/\((?:[A-Z][a-z]?,\s+)+[A-Z][a-z]?\)/g, function (g) { return g.replace(/,\s+/g, ',' + KEEP_SP); });
-    var words = s.split(/(\s+)/);
+    var words = s.split(/(\s+)/), converted = false;
     for (var i = 0; i < words.length; i += 2) {
       var w = words[i];
-      if (!w || HAS_MARK.test(w)) continue;
+      if (!w || w.length > MAX_FORMULA_WORD || HAS_MARK.test(w)) continue;
       var sm = w.match(/^(.*[A-Za-z0-9)\]+−])([-+])([,;:)\]}"'”’]*)$/);
       if (sm && signIsJoiner(sm[1], sm[2], sm[3], words, i)) {
         var fj = formulaWord(sm[1]);
         words[i] = (fj === null ? sm[1] : fj) + sm[2] + sm[3];
+        if (fj !== null) converted = true;
         continue;
       }
       var f = formulaWord(w);
-      if (f !== null) words[i] = f;
+      if (f !== null) { words[i] = f; converted = true; }
+    }
+    // Diatomic gases (H2, O2, N2, Cl2, F2) look like gene names, grades and generations ("F2 hybrids"); converted only
+    // beside another formula or in a gas context
+    if (converted || GAS_CONTEXT.test(s)) {
+      for (var j = 0; j < words.length; j += 2) {
+        var g = words[j].match(/^([("'\u201C\u2018\[]*)(H|O|N|Cl|F)(2)(-[a-z]+)?([)"'\u201D\u2019\],.;:]*)$/);
+        if (g) words[j] = g[1] + g[2] + sub(g[3]) + (g[4] || '') + g[5];
+      }
     }
     return words.join('').replace(//g, ' ');
   }
@@ -534,17 +598,16 @@
 
   // Drop unmatched or improperly nested markers so every output format stays well formed
   function balanceMarks(s) {
-    var OPEN = { '': '', '': '', '': '' }, stack = [], drop = {}, i, c, k;
+    var OPEN = { '': '', '': '', '': '' }, stack = [], drop = {}, live = {}, i, c, k;
     for (i = 0; i < s.length; i++) {
       c = s.charAt(i);
       if (OPEN[c]) {
-        var nested = false;
-        for (k = 0; k < stack.length; k++) if (!stack[k].dropped && stack[k].c === c) nested = true; // <sub> inside <sub>
+        var nested = live[c] > 0;                                   // <sub> inside <sub> (a count, not a stack scan: linear)
         stack.push({ c: c, i: i, dropped: nested });
-        if (nested) drop[i] = true;
+        if (nested) drop[i] = true; else live[c] = 1;
       } else if (c === '' || c === '' || c === '') {
         var top = stack[stack.length - 1];
-        if (top && OPEN[top.c] === c) { stack.pop(); if (top.dropped) drop[i] = true; } else drop[i] = true;
+        if (top && OPEN[top.c] === c) { stack.pop(); if (top.dropped) drop[i] = true; else live[top.c] = 0; } else drop[i] = true;
       }
     }
     for (k = 0; k < stack.length; k++) drop[stack[k].i] = true;
@@ -556,18 +619,108 @@
   }
 
   // Deposited title HTML -> plain text with markers
+  // Markup names that may arrive entity-encoded ("&lt;inline-formula&gt;&lt;tex-math …&gt;$\alpha$&lt;/tex-math&gt;")
+  var ENCODED_TAG = /&(?:amp;)?lt;(\/?(?:[A-Za-z][\w.-]*:)?(?:i|b|em|strong|sub|sup|inf|sc|scp|u|italic|bold|span|math|mi|mo|mn|msub|msup|msubsup|mrow|mtext|mmultiscripts|mprescripts|none|inline-formula|disp-formula|tex-math|alternatives|named-content|styled-content|roman|monospace|br|p|title|sec)\b(?:\s(?:(?!&(?:amp;)?gt;)[^<>]){0,300})?\/?)&(?:amp;)?gt;/g;
+  var TEX_SYMBOLS = { times: '×', cdot: '·', pm: '±', mp: '∓', leq: '≤', le: '≤', geq: '≥', ge: '≥', neq: '≠', ne: '≠', approx: '≈', sim: '∼',
+    simeq: '≃', infty: '∞', rightarrow: '→', to: '→', leftarrow: '←', leftrightarrow: '↔', rightleftharpoons: '⇌', prime: '′', circ: '∘', degree: '°',
+    partial: '∂', nabla: '∇', sum: '∑', prod: '∏', int: '∫', propto: '∝', ell: 'ℓ', hbar: 'ℏ', AA: 'Å', ast: '*', star: '⋆', bullet: '•',
+    ldots: '…', cdots: '⋯', dots: '…', varphi: 'φ', vartheta: 'ϑ', varepsilon: 'ε', varrho: 'ϱ', varsigma: 'ς', upmu: 'μ', textmu: 'µ',
+    square: '□', Box: '□', langle: '⟨', rangle: '⟩', vert: '|', mid: '|', parallel: '∥', perp: '⊥', in: '∈', subset: '⊂', cup: '∪', cap: '∩' };
+  // LaTeX from <tex-math> -> text with sub/superscript markers: "$\alpha$" -> α, "$\mathrm{Fe}_{2}$" -> Fe₂
+  function texToMarks(tex) {
+    var t = String(tex).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+    var body = t.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+    if (body) t = body[1];
+    t = t.replace(/\\(?:documentclass|usepackage)(?:\[[^\]]*\])?\{[^}]*\}/g, '')
+      .replace(/\$\$?|\\[()\[\]]/g, '')
+      .replace(/\\(?:mathrm|mathit|mathbf|mathsf|mathtt|mathnormal|text|textrm|textit|textbf|operatorname|mbox|rm|it|bf|boldsymbol|bm|mathup|up)\s*(?=\{)/g, '')
+      .replace(/\^\s*\{?\s*\\circ\s*\}?/g, '°')
+      .replace(/\\([%&_#$ ])/g, '$1')
+      .replace(/\\[,;:!]|\\q?quad\b|~/g, ' ')
+      .replace(/\\(?:left|right|big|Big|bigg|Bigg)\b\s*/g, '')
+      .replace(/\\([A-Za-z]+)\s*/g, function (all, w) {
+        if (Object.prototype.hasOwnProperty.call(TEX_SYMBOLS, w)) return TEX_SYMBOLS[w];
+        if (Object.prototype.hasOwnProperty.call(ENTITIES, w) && /^[A-Za-z]+$/.test(w) && ENTITIES[w].length === 1 && /[Ͱ-Ͽ]/.test(ENTITIES[w])) return ENTITIES[w];
+        return '';
+      });
+    var script = function (x) {                        // x_{12}, x^{2+}, x_2, x^+ (innermost groups first)
+      var guard = 0, prev;
+      do {
+        prev = x;
+        x = x.replace(/([_^])\s*(?:\{([^{}]*)\}|([^\s{}_^]))/g, function (all, op, grp, one) {
+          var v = grp !== undefined ? grp : one;
+          return op === '_' ? sub(v) : sup(v);
+        });
+      } while (x !== prev && guard++ < 10);
+      return x;
+    };
+    return script(t).replace(/[{}]/g, '');
+  }
+
+  // Can the text after a pretty-printed "</sub>\n   " continue the formula? ("S", "TiSi", "(OH)", ")", ", Ca")
+  var ENGLISH_ELEM = { In: 1, As: 1, At: 1, No: 1, Be: 1, He: 1, I: 1, Am: 1, Ho: 1, Es: 1, Pa: 1, Po: 1, Os: 1, U: 1, Y: 1, W: 1 };
+  function continuesFormula(next) {
+    if (/^(?:[)\],;:.]|<\/?(?:sub|sup|inf|i|em)\b|\([A-Z□])/.test(next)) return true;
+    var m = next.match(/^((?:[A-Z][a-z]?)+)(?=[\s\d()\[\],<+−·-]|$)/);
+    if (!m) return false;
+    var els = m[1].match(/[A-Z][a-z]?/g);
+    for (var i = 0; i < els.length; i++) if (!ELEM[els[i]]) return false;
+    return !(els.length === 1 && ENGLISH_ELEM[els[0]] && /^\s/.test(next.slice(m[1].length)));
+  }
+
+  // Replace each <name …>body</name> (any namespace prefix) by fn(body); scans forward only, so unclosed or
+  // repeated tags cost linear time
+  function replaceElements(s, name, fn) {
+    var open = new RegExp('<((?:[\\w.-]+:)?' + name + ')\\b[^<>]*>', 'g'), out = '', last = 0, m;
+    while ((m = open.exec(s))) {
+      var closeTag = '</' + m[1] + '>', end = s.indexOf(closeTag, open.lastIndex);
+      if (end === -1) break;
+      var inner = s.slice(open.lastIndex, end), nested = inner.indexOf('<' + m[1]);
+      if (nested !== -1) { open.lastIndex = m.index + 1; continue; } // innermost first: the nested one is handled on its own
+      out += s.slice(last, m.index) + fn(inner);
+      last = end + closeTag.length; open.lastIndex = last;
+    }
+    return last ? out + s.slice(last) : s;
+  }
+
+  // Deposited title HTML -> plain text with markers
   function markup(html) {
     if (html === undefined || html === null) return '';
     var s = String(html).replace(PUA_RE, '');                   // user text cannot inject markers
-    if (/<(?:mml:)?math\b/.test(s)) s = mathmlToMarks(s);
-    // JATS line breaks around scripts: "MgSiO\n  <sub>3</sub>" -> MgSiO₃, "on\n  <sup>23</sup>\n  Na" -> on ²³Na
-    s = s.replace(/\s*\n\s*(<(?:sub|inf)\b[^>]*>)/gi, '$1')
-      .replace(/(\s*\n\s*)?(<sup\b[^>]*>)([^<]*)(<\/sup>)(\s*\n\s*)?/gi, function (all, before, open, body, close, after, at, str) {
-        if (!before && !after) return all;
-        var next = str.slice(at + all.length), el = next.match(/^[A-Z][a-z]?(?![a-z])/);
-        if (/^\s*\d{1,3}m?\s*$/.test(body) && el && ELEM[el[0]]) return (before ? ' ' : '') + open + body + close; // prescript isotope
-        return open + body + close + (after ? ' ' : '');
+    // tags deposited entity-encoded: decode them first so they are processed, not printed
+    if (ENCODED_TAG.test(s)) {
+      ENCODED_TAG.lastIndex = 0;
+      s = s.replace(ENCODED_TAG, function (all, inner) { return '<' + inner.replace(/&(?:amp;)?quot;/g, '"').replace(/&(?:amp;)?apos;/g, "'") + '>'; });
+    }
+    ENCODED_TAG.lastIndex = 0;
+    if (/<(?:[\w.-]+:)?(?:tex-math|inline-formula|alternatives)\b/.test(s)) {
+      // <alternatives> holding MathML and LaTeX: keep one rendering
+      s = replaceElements(s, 'alternatives', function (body) {
+        return /<(?:mml:)?math\b/.test(body) ? replaceElements(body, 'tex-math', function () { return ''; }) : body;
       });
+      s = replaceElements(s, 'inline-formula', function (body) { return body.replace(/^\s+|\s+$/g, ''); });
+      s = replaceElements(s, 'tex-math', texToMarks);
+    }
+    if (/<(?:mml:)?math\b/.test(s)) s = mathmlToMarks(s);
+    // Whitespace runs holding a line break become one "\n" first (linear; keeps the tag rules below cheap)
+    s = s.replace(/\s+/g, function (w) { return w.indexOf('\n') === -1 ? w : '\n'; });
+    // JATS line breaks around scripts: "MgSiO\n  <sub>3</sub>" -> MgSiO₃, "on\n  <sup>23</sup>\n  Na" -> on ²³Na,
+    // "Fe\n  <sub>3</sub>\n  S" -> Fe₃S; a newline before ordinary words stays a space ("H<sub>2</sub>\n  and")
+    s = s.replace(/\n(<(?:sub|inf)\b[^<>]*>)/gi, '$1')
+      .replace(/(<\/(?:sub|inf)>)\n/gi, function (all, close, at, str) {
+        return continuesFormula(str.substr(at + all.length, 40)) ? close : close + ' ';
+      })
+      .replace(/(\n)?(<sup\b[^<>]*>)([^<]*)(<\/sup>)(\n)?/gi, function (all, before, open, body, close, after, at, str) {
+        if (!before && !after) return all;
+        var next = str.substr(at + all.length, 40), el = next.match(/^[A-Z][a-z]?(?![a-z])/);
+        if (/^\s*\d{1,3}m?\s*$/.test(body) && el && ELEM[el[0]]) return (before ? ' ' : '') + open + body + close; // prescript isotope
+        return open + body + close + (after && !continuesFormula(next) ? ' ' : '');
+      });
+    // deposits drop the spaces around italics: "of<i>Trypanites</i>in" -> "of Trypanites in", "Cenozoic:<i>Capisocysta</i>",
+    // "<i>Valvata</i>(Gastropoda)" (italic words of 3+ letters; "p<i>K</i>a" is notation)
+    var L = 'A-Za-z\\u00C0-\\u024F';
+    s = s.replace(new RegExp('([' + L + ':;,]?)(<(i|em)\\b[^>]*>)([' + L + '][^<]+[' + L + '])(</\\3>)([' + L + '(]?)', 'g'),
+      function (all, a, open, tag, body, close, b) { return a + (a ? ' ' : '') + open + body + close + (b ? ' ' : '') + b; });
     s = s.replace(/<(sub|inf)\b[^>]*>/gi, SUBO).replace(/<\/(sub|inf)>/gi, SUBC)
       .replace(/<sup\b[^>]*>/gi, SUPO).replace(/<\/sup>/gi, SUPC)
       .replace(/<(i|em)\b[^>]*>/gi, ITO).replace(/<\/(i|em)>/gi, ITC);
@@ -580,15 +733,19 @@
     return autoFormulas(marked);
   }
 
-  var SUB_MAP = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋', '−': '₋', '=': '₌', '(': '₍', ')': '₎', '.': '.', ',': ',', ' ': ' ' };
+  var SUB_MAP = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋', '−': '₋', '=': '₌', '(': '₍', ')': '₎', '.': '.', ',': ',', ' ': ' ', 'x': '\u2093', 'n': '\u2099', 'i': '\u1D62' };
   var SUP_MAP = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '−': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', '[': '[', ']': ']', 'n': 'ⁿ', 'i': 'ⁱ', 'm': 'ᵐ' };
   // Characters with a Unicode sub/superscript form are converted; anything else stays as written (P<sub>CO2</sub> -> PCO₂)
+  // Letters convert only when every letter of the text has a form ("1−x" -> ₁₋ₓ); "max" stays "max", "1−y" -> ₁₋y
   function unicodeScript(text, map) {
-    return text.split('').map(function (c) { return map[c] !== undefined ? map[c] : c; }).join('');
+    var letters = String(text).match(/[A-Za-z]/g) || [], allLetters = true;
+    for (var i = 0; i < letters.length; i++) if (map[letters[i]] === undefined) allLetters = false;
+    return text.split('').map(function (c) { return map[c] !== undefined && (allLetters || !/[A-Za-z]/.test(c)) ? map[c] : c; }).join('');
   }
   function marksToText(s) {
-    return String(s).replace(/([^]*)/g, function (a, t) { return unicodeScript(t, SUB_MAP); })
-      .replace(/([^]*)/g, function (a, t) { return unicodeScript(t, SUP_MAP); })
+    // the body excludes both markers, so an unclosed run costs one scan, not one per marker (linear)
+    return String(s).replace(/\uE000([^\uE000\uE001]*)\uE001/g, function (a, t) { return unicodeScript(t, SUB_MAP); })
+      .replace(/\uE002([^\uE002\uE003]*)\uE003/g, function (a, t) { return unicodeScript(t, SUP_MAP); })
       .replace(MARKS_RE, '');
   }
   function marksToHtml(escaped, inItalic) {
@@ -634,11 +791,19 @@
 
   // DataCite splits "The Turing Way Community" into given "The Turing Way", family "Community"
   var ORG_FAMILY = /^(?:Community|Consortium|Collaboration|Team|Group|Project|Society|Committee|Association|Initiative|Network|Institute|Organi[sz]ation|Council)$/;
+  var SUFFIX_TAIL = /^(.*?\S)[\s,]+(Jr\.?|Sr\.?|II|III|IV)$/;
   function person(p) {
     var fam = clean(p.family);
     if (fam) {
-      var given = clean(p.given);
+      var given = clean(p.given), suffix = clean(p.suffix || '');
+      // "StephanieM." / "GeorgeR." deposited without the space before the middle initial
+      given = given.replace(/([a-z\u00DF-\u00F6\u00F8-\u00FF])([A-Z])\.(?=[\s.A-Z]|$)/g, '$1 $2.');
+      // "R., Jr." / "R. Jr.": the suffix ended up in the given name
+      var st = given.match(SUFFIX_TAIL);
+      if (st && !suffix) { given = st[1].replace(/[\s,]+$/, ''); suffix = st[2]; }
       if (given && (/^The\s/.test(given) || ORG_FAMILY.test(fam))) return { family: given + ' ' + fam, given: '', suffix: '', literal: true };
+      // no given name: a single-field name (organisation, mononym, "The pandas development team")
+      if (!given && !suffix) return { family: fam.replace(/,,/g, ','), given: '', suffix: '', literal: true };
       // "SMITH, JOHN" deposited in capitals: title-case the given name too, but leave initials ("J.D.", "PC") alone
       if (isCaps(fam) && isCaps(given)) {
         given = given.split(/\s+/).map(function (tok) {
@@ -647,9 +812,9 @@
           return uncaps(tok);                                   // "IAN", "JOHN"
         }).join(' ');
       }
-      return { family: uncaps(fam), given: given, suffix: clean(p.suffix || ''), literal: false };
+      return { family: uncaps(fam), given: given, suffix: suffix, literal: false };
     }
-    var name = clean(p.name || p.literal || p.given || '');
+    var name = clean(p.name || p.literal || p.given || '').replace(/,,/g, ','); // EndNote doubles commas inside single-field names
     return { family: name, given: '', suffix: '', literal: true };
   }
 
@@ -676,10 +841,41 @@
   function monthName(list, m) { return m >= 1 && m <= 12 ? list[m - 1] : ''; }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
 
+  // First non-empty entry of a Crossref text list (title [""] is common for non-Latin records)
+  function firstText(v) {
+    var list = Array.isArray(v) ? v : [v];
+    for (var i = 0; i < list.length; i++) if (list[i] !== undefined && list[i] !== null && clean(list[i])) return list[i];
+    return '';
+  }
+  // "0", "None", "null": placeholders deposited where no edition exists
+  function validEdition(e) {
+    var t = clean(e === undefined || e === null ? '' : e);
+    return /^(?:0+|none|null|undefined|n\/?a|-)$/i.test(t) ? '' : t;
+  }
+  // "Dakota and Nebraska : Including" (MARC/BHL spacing) -> "Dakota and Nebraska: Including"
+  function colonSpace(s) { return String(s || '').replace(/\s+:(?=\s)/g, ':'); }
+  // Library places: "[Chicago]" -> "Chicago"; "[S.l.]" (no place) -> ""
+  function cleanPlace(s) {
+    var t = trimPunct(s).replace(/^\[([^\[\]]*)\]$/, '$1').trim();
+    return /^(?:s\.\s?l\.?|sine loco|n\.\s?p\.?)$/i.test(t) ? '' : t;
+  }
+  // "Proceedings of the Linnean Society of New South Wales." -> no final full stop, unless it closes an abbreviation ("J. Geol.")
+  function cleanContainer(s) {
+    var t = trimPunct(colonSpace(clean(s)));
+    return /[^.]\.$/.test(t) && t.indexOf('.') === t.length - 1 ? t.slice(0, -1) : t;
+  }
+  function samePages(p) { // "263-263" -> "263"
+    var m = p.match(/^\s*(\S+?)\s*[-\u2010-\u2015]+\s*(\S+)\s*$/);
+    return m && m[1] === m[2] ? m[1] : p;
+  }
+  // Preprint servers whose DOIs are registered by a hosting service (California Digital Library)
+  var PREPRINT_PREFIX = { '10.31223': 'EarthArXiv', '10.32942': 'EcoEvoRxiv' };
+
+  function hasName(p) { return !!(p.family || p.given); }
   function normalize(m) {
     var dp = datePartsOf(m);
     var type = m.type || 'other';
-    var page = clean(m.page || '');
+    var page = samePages(clean(m.page || ''));
     var isPart = /chapter|section|book-part|proceedings-article|paper-conference/.test(type);
     // Crossref lists a chapter's series first and the book last: ["Use R!", "ggplot2"]
     var ct = m['container-title'];
@@ -690,25 +886,29 @@
     var acc = m.accessed && m.accessed['date-parts'] && m.accessed['date-parts'][0];
     var accMonth = validMonth(acc && acc[1]);
     var month = validMonth(dp[1]);
-    var tm = trimPunct(markup(first(m.title)));
+    var titleSrc = firstText(m.title) || firstText(m['original-title']) || firstText(m['short-title']);
+    var subSrc = firstText(m.subtitle);
+    if (!titleSrc && subSrc) { titleSrc = subSrc; subSrc = ''; }
+    var tm = colonSpace(trimPunct(markup(titleSrc)));
     var r = {
       type: type,
       doi: m.DOI || m.doi || '',
       url: m.URL || (m.DOI ? 'https://doi.org/' + m.DOI : ''),
       title: trimPunct(stripMarks(tm)),
       titleMarked: tm,
-      subtitle: stripMarks(markup(first(m.subtitle))),
-      container: trimPunct(clean(container)),
-      series: trimPunct(clean(series)),
+      subtitle: stripMarks(markup(subSrc)),
+      container: cleanContainer(container),
+      series: cleanContainer(series),
+      number: clean(m.number || m['collection-number'] || ''),
       shortContainer: clean(first(m['short-container-title'])),
       institution: clean(Array.isArray(inst) ? (inst[0] && inst[0].name) : (inst && inst.name) || inst || ''),
-      edition: clean(m.edition || m['edition-number'] || ''),
+      edition: validEdition(m.edition) || validEdition(m['edition-number']),
       numPages: clean(m['number-of-pages'] || ''),
       genre: clean(m.genre || first(m.degree) || ''),
       accessed: acc ? { year: acc[0], month: accMonth, day: accMonth ? validDay(acc[2]) : 0 } : null,
-      authors: (m.author || []).map(person),
+      authors: (m.author || []).map(person).filter(hasName),
       authorsOthers: !!m['author-others'], // BibTeX "and others": the list was truncated at the source
-      editors: (m.editor || []).map(person),
+      editors: (m.editor || []).map(person).filter(hasName),
       year: dp[0] ? String(dp[0]) : '',
       years: ['issued', 'published-print', 'published-online', 'published'].map(function (k) { var d = m[k] && m[k]['date-parts'] && m[k]['date-parts'][0]; return d && d[0] ? String(d[0]) : ''; })
         .filter(function (y, i, a) { return y && a.indexOf(y) === i; }), // print and online years can differ; references may cite either
@@ -719,7 +919,7 @@
       pages: page,
       articleNumber: clean(m['article-number'] || ''),
       publisher: trimPunct(clean(m.publisher || '')),
-      place: trimPunct(clean(m['publisher-location'] || m['publisher-place'] || '')),
+      place: cleanPlace(clean(m['publisher-location'] || m['publisher-place'] || '')),
       issn: clean(first(m.ISSN) || ''),
       isbn: clean(first(m.ISBN) || ''),
       abstract: cleanAbstract(m.abstract || ''),
@@ -730,9 +930,20 @@
       source: m.source || 'crossref',
       score: m.score
     };
+    if (m.raw) r.raw = m.raw;
+    if (/^(?:book|monograph|edited-book|reference-book)$/.test(type) && r.container && !r.series) { r.series = r.container; r.container = ''; } // a book's container-title is its series                  // tags as read from an RIS / EndNote file, re-emitted by the exporters
     if (r.subtitle && r.title && r.title.indexOf(r.subtitle) === -1) {
       r.title = r.title + ': ' + r.subtitle;
-      r.titleMarked = r.titleMarked + ': ' + markup(first(m.subtitle));
+      r.titleMarked = r.titleMarked + ': ' + markup(subSrc);
+    }
+    if (/^\d{4}$/.test(r.volume) && r.year && r.years.concat(r.year).indexOf(r.volume) !== -1) { // Fieldiana: volume "2010", issue "52"
+      r.volume = r.issue; r.issue = '';
+    }
+    if (/^(?:posted-content|preprint)$/.test(type) && !r.container) {
+      var pre = PREPRINT_PREFIX[String(r.doi).split('/')[0].toLowerCase()];
+      if (pre) r.institution = pre;
+      else if (!r.institution && /Center for Open Science/i.test(r.publisher) && m['group-title']) r.institution = clean(m['group-title']);
+      else if (!r.institution && /California Digital Library/i.test(r.publisher) && m['group-title']) r.institution = clean(m['group-title']);
     }
     if (!HAS_MARK.test(r.titleMarked) || stripMarks(r.titleMarked) !== r.title) delete r.titleMarked; // only keep real markup
     r.isArticleNumber = false;
@@ -743,15 +954,27 @@
 
   function kind(r) {
     var t = r.type;
-    if (t === 'journal-article' || (!t && r.container)) return 'journal';
-    if (t === 'book-chapter' || t === 'book-section' || t === 'book-part' || t === 'chapter') return 'chapter';
+    if (t === 'other' && r.raw && typeof r.raw === 'object') { // imported file: a type AutoDOI has no Crossref name for
+      var raw = r.raw, rt = String(first(raw.TY || raw['0'] || raw.entrytype) || '').toLowerCase();
+      if (raw.entrytype === 'misc' && raw.fields && /^\{?standard\}?$/i.test(String(raw.fields.note || '').trim())) rt = 'standard';
+      if (/^(?:elec|web page|online|www|webpage|electronic)$/.test(rt)) return 'web';
+      if (/^(?:stand|standard)$/.test(rt)) return 'standard';
+      if (/^(?:encyc|dict|encyclopedia|dictionary|inreference)$/.test(rt)) return 'chapter';
+    }
+    if (t === 'journal-article' || t === 'article-journal' || t === 'article-magazine' || t === 'article-newspaper' || (!t && r.container)) return 'journal';
+    if (t === 'article') return r.container ? 'journal' : 'preprint';  // DataCite/CSL "article": a preprint only without a journal
+    // reference entries (encyclopedia, dictionary) are formatted like chapters; RIS/EndNote keep their own type
+    if (t === 'book-chapter' || t === 'book-section' || t === 'book-part' || t === 'chapter' || t === 'reference-entry' ||
+      t === 'entry-encyclopedia' || t === 'entry-dictionary' || t === 'entry') return 'chapter';
     if (t === 'book' || t === 'monograph' || t === 'edited-book' || t === 'reference-book') return 'book';
     if (t === 'proceedings-article' || t === 'paper-conference') return 'proceedings';
-    if (t === 'posted-content' || t === 'preprint' || t === 'article') return 'preprint';
+    if (t === 'posted-content' || t === 'preprint') return 'preprint';
     if (t === 'dataset') return 'dataset';
     if (t === 'software') return 'software';
     if (t === 'dissertation' || t === 'thesis') return 'thesis';
-    if (t === 'report') return 'report';
+    if (t === 'report' || t === 'report-component' || t === 'report-series') return 'report';
+    if (t === 'standard') return 'standard';
+    if (t === 'webpage' || t === 'post-weblog' || t === 'web-page' || t === 'post') return 'web';
     if (r.container && r.volume) return 'journal';
     return 'generic';
   }
@@ -760,6 +983,10 @@
 
   function initials(given, opts) {
     opts = opts || {};
+    if (!given) return '';
+    // nicknames are not initials: "Aswathi (Asha)", 'Robert "Bob"', "William ‘Bill’"
+    given = given.replace(/\s*(?:\([^()]*\)|"[^"]*"|\u201C[^\u201D]*\u201D)\s*/g, ' ')
+      .replace(/(^|\s)(?:'[^'\s][^']*'|\u2018[^\u2019]*\u2019)(?=\s|$)/g, '$1').trim();
     if (!given) return '';
     // "J.-P." stays one token; "P.C." becomes two
     var tokens = given.replace(/\.(?![\-\u2010\u2011])/g, '. ').split(/\s+/).filter(Boolean);
@@ -834,6 +1061,8 @@
   function I(s) { return s ? '<i>' + esc(s, true) + '</i>' : ''; }
   function Idot(s) { return s ? I(s) + (endsPunct(s) ? '' : '.') : ''; } // italic title, no ".?." doubling
   function T(s) { return esc(s); }
+  // Full stop after an HTML fragment unless its text already ends with one ("<i>Wiley, Inc.</i>", "Politics?")
+  function htmlDot(h) { return endsPunct(String(h).replace(/<[^>]*>/g, '')) ? h : h + '.'; }
   function hostOf(r) { return r.container || r.institution || r.publisher; } // preprint server, repository, publisher
   // publisher shown after the host only when it is a distinct entity (a book's publisher), not the repository owner
   function showPublisher(r, k) { return k !== 'journal' && !!r.publisher && !(r.institution && !r.container) && r.publisher !== hostOf(r); }
@@ -884,7 +1113,7 @@
       else out.push(T(dot(r.title)), year, inPart);
       if (r.publisher) out.push(T(dot(r.publisher)));
     } else if (k === 'book') {
-      var ed = r.edition ? ' (' + T(editionLabel(r.edition, 'apa')) + ')' : '';
+      var ed = validEdition(r.edition) ? ' (' + T(editionLabel(r.edition, 'apa')) + ')' : '';
       if (n) out.push(T(dot(names)), year, I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''));
       else out.push(I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''), year);
       if (r.publisher) out.push(T(dot(r.publisher)));
@@ -895,7 +1124,7 @@
         var deg = /m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
         label = T(deg + (host ? ', ' + host : '')); host = '';
       }
-      var titlePart = I(r.title) + (label ? ' [' + label + ']' : '') + (label || !endsPunct(r.title) ? '.' : '');
+      var titlePart = (I(r.title) + (label ? ' [' + label + ']' : '')) ? I(r.title) + (label ? (r.title ? ' ' : '') + '[' + label + ']' : '') + (label || !endsPunct(r.title) ? '.' : '') : '';
       if (n) out.push(T(dot(names)), year, titlePart);
       else out.push(titlePart, year);
       if (host) out.push(T(dot(host)));
@@ -940,7 +1169,7 @@
     }
     if (link) contParts.push(T(link));
     if (contParts.length) out.push(contParts.join(', ') + '.');
-    return out.join(' ');
+    return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
   function chicago(r) {
@@ -969,9 +1198,9 @@
       s += r.year ? ' (' + T(r.year) + ')' : '';
       if (r.pages) s += ': ' + T(pageRange(r.pages));
       s = s.replace(/^[\s,]+/, '');
-      if (s) out.push(s + '.');
+      if (s) out.push(htmlDot(s));
     } else if (k === 'book') {
-      out.push(Idot(r.title + (r.edition ? '. ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : '')));
+      out.push(Idot(validEdition(r.edition) ? dot(r.title) + ' ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : r.title)); // no "Politics?. 2nd ed"
       var pub = [r.place, r.publisher].filter(Boolean).join(': ');
       out.push(T(dot([pub, r.year].filter(Boolean).join(', '))));
     } else if (k === 'chapter' || k === 'proceedings') {
@@ -979,7 +1208,7 @@
       var inp = r.container ? 'In ' + I(r.container) : '';
       if (r.editors.length) inp += (inp ? ', edited by ' : 'Edited by ') + T(joinAnd(r.editors.map(nameFullFirst), 'and', r.editors.length > 2));
       if (r.pages) inp += (inp ? ', ' : '') + T(pageRange(r.pages));
-      if (inp) out.push(inp + '.');
+      if (inp) out.push(htmlDot(inp));
       var pub2 = [r.place, r.publisher].filter(Boolean).join(': ');
       out.push(T(dot([pub2, r.year].filter(Boolean).join(', '))));
     } else {
@@ -988,7 +1217,7 @@
       if (host) out.push(T(dot(host)));
     }
     if (link) out.push(T(link) + '.');
-    return out.join(' ');
+    return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
   function harvard(r) {
@@ -1008,16 +1237,16 @@
     else out.push(year);
     var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
-      out.push(Idot(r.title + (r.edition ? '. ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : '')));
+      out.push(Idot(validEdition(r.edition) ? dot(r.title) + ' ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : r.title)); // no "Politics?. 2nd ed"
       if (placePub) out.push(T(dot(placePub)));
     } else if (k === 'chapter' || k === 'proceedings') {
       // Cite Them Right: 'Title', in Editor, A. and Editor, B. (eds.) Book. Place: Publisher, pp. x–y.
       if (r.container) {
-        var inb = 'in ' + (r.editors.length ? T(hlist(r.editors)) + (r.editors.length > 1 ? ' (eds.) ' : ' (ed.) ') : '') + I(r.container) + '.';
+        var inb = 'in ' + (r.editors.length ? T(hlist(r.editors)) + (r.editors.length > 1 ? ' (eds.) ' : ' (ed.) ') : '') + Idot(r.container);
         out.push('‘' + T(r.title) + '’, ' + inb);
       } else out.push('‘' + T(r.title) + '’.');
       var tail = [placePub, r.pages ? T(pp(r.pages)) : ''].filter(Boolean).join(', ');
-      if (tail) out.push(T(tail) + '.');
+      if (tail) out.push(T(dot(tail)));
     } else {
       var parts = ['‘' + T(r.title) + '’'];
       if (r.container) parts.push(I(r.container));
@@ -1025,10 +1254,10 @@
       if (r.volume || r.issue) parts.push(T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : ''));
       if (showPublisher(r, k)) parts.push(T(r.publisher));
       if (r.pages) parts.push(T(pp(r.pages)));
-      out.push(parts.join(', ') + '.');
+      out.push(htmlDot(parts.join(', ')));
     }
     if (link) out.push('Available at: ' + T(link) + '.');
-    return out.join(' ');
+    return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
   function vancouver(r, num) {
@@ -1044,10 +1273,10 @@
     if (k === 'journal') {
       var s = T(dot(r.shortContainer || r.container));
       var tail = (r.year || '') + (r.volume ? ';' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '') : '') + (r.pages ? ':' + T(nlmPages(r.pages)) : '');
-      if (tail) s += ' ' + tail.replace(/^;/, '');
-      out.push(s + (endsPunct(s) && !tail ? '' : '.'));
+      if (tail) s += (s ? ' ' : '') + tail.replace(/^;/, '');
+      if (s) out.push(s + (endsPunct(s) && !tail ? '' : '.'));   // no journal name, no volume: nothing to add
     } else if (k === 'book') {
-      if (r.edition) out.push(T(editionLabel(r.edition, 'apa')));
+      if (validEdition(r.edition)) out.push(T(editionLabel(r.edition, 'apa')));
       if (placePubYear) out.push(T(dot(placePubYear)));
     } else if (k === 'chapter' || k === 'proceedings') {
       // Citing Medicine: In: Editor A, Editor B, editors. Book. Place: Publisher; year. p. 10-20.
@@ -1061,7 +1290,7 @@
       if (tailG) out.push(T(dot(tailG)));
     }
     if (r.doi) out.push('doi:' + T(r.doi));
-    return out.join(' ');
+    return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
   function ieee(r, num) {
@@ -1079,8 +1308,8 @@
     var link = doiLink(r);
     var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
-      out.push(I(r.title) + (r.edition ? ', ' + T(editionLabel(r.edition, 'apa')) : (endsPunct(r.title) ? '' : '.')));
-      out.push(T([placePub, r.year].filter(Boolean).join(', ')) + (r.doi ? ', doi: ' + T(r.doi) + '.' : '.'));
+      out.push(I(r.title) + (validEdition(r.edition) ? ', ' + T(editionLabel(r.edition, 'apa')) : (endsPunct(r.title) ? '' : '.')));
+      out.push(r.doi ? T([placePub, r.year].filter(Boolean).join(', ')) + ', doi: ' + T(r.doi) + '.' : htmlDot(T([placePub, r.year].filter(Boolean).join(', '))));
     } else if (k === 'chapter' || k === 'proceedings') {
       // “Title,” in Book, A. Ed and B. Ed, Eds. City: Publisher, year, pp. x–y, doi: …
       var edsI = r.editors.length ? ', ' + T(joinAnd(r.editors.map(nameInitFirst), 'and', r.editors.length > 2)) + (r.editors.length > 1 ? ', Eds.' : ', Ed.') : '';
@@ -1091,7 +1320,7 @@
       if (r.pages) restC.push(T(pp(r.pages)));
       if (r.doi) restC.push('doi: ' + T(r.doi));
       var tailC = T(placePub) + (placePub && restC.length ? ', ' : '') + restC.join(', ');
-      out.push(r.container ? head + (edsI ? ' ' : '. ') + tailC + '.' : head + (tailC ? ' ' + tailC + '.' : ''));
+      out.push(r.container ? (tailC ? head + (edsI || endsPunct(r.container) ? ' ' : '. ') + htmlDot(tailC) : htmlDot(head)) : head + (tailC ? ' ' + htmlDot(tailC) : ''));
     } else {
       var parts = ['“' + T(r.title) + ',”'];
       var rest = [];
@@ -1103,10 +1332,10 @@
       if (showPublisher(r, k)) rest.push(T(r.publisher));
       if (r.year) rest.push(mon + T(r.year));
       if (r.doi) rest.push('doi: ' + T(r.doi));
-      out.push(parts.join(' ') + (rest.length ? ' ' + rest.join(', ') : '') + '.');
+      out.push(htmlDot(parts.join(' ') + (rest.length ? ' ' + rest.join(', ') : '')));
     }
     if (!r.doi && link) out.push('[Online]. Available: ' + T(link));
-    return out.join(' ');
+    return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
   // Annals of Carnegie Museum / Bulletin of Carnegie Museum of Natural History.
@@ -1150,11 +1379,12 @@
       var s = T(r.container);
       if (r.volume) s += ', ' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '');
       if (pages) s += (r.volume ? ':' : ', ') + T(pages);
-      out.push(s + '.');
+      s = s.replace(/^, /, '');
+      if (s) out.push(htmlDot(s));
     } else if (k === 'book') {
       // Samways, M.J. 1994. Insect Conservation Biology. Chapman and Hall, London. 380 pp.
       // Ostle, B., and R.W. Mensing. 1975. Statistics in Research, Third Edition. Iowa State University Press, Ames, Iowa.
-      out.push(T(dot(r.title + (r.edition ? ', ' + editionLabel(r.edition, 'carnegie') : ''))));
+      out.push(T(dot(r.title + (validEdition(r.edition) ? ', ' + editionLabel(r.edition, 'carnegie') : ''))));
       if (pubPlace) out.push(T(dot(pubPlace)));
       if (/^\d+$/.test(r.numPages)) out.push(T(r.numPages) + ' pp.');
     } else if (k === 'chapter' || k === 'proceedings') {
@@ -1176,15 +1406,23 @@
       var repo = hostOf(r);
       if (repo) out.push(T(repo) + ' preprint.');
       if (r.doi || r.url) out.push('Available from ' + T(doiLink(r)));
-    } else { // dataset, software, report, web resource: Title [cited 16 July 2008]. Available from URL
-      var host = hostOf(r);
-      var when = r.accessed || (function () { var d = new Date(); return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() }; })();
-      var whenMonth = monthName(MONTHS, when.month);
-      out.push(T(r.title) + ' [cited ' + (whenMonth && validDay(when.day) ? when.day + ' ' : '') + (whenMonth ? whenMonth + ' ' : '') + when.year + '].');
+    } else if (k === 'report' || (k !== 'web' && !r.doi && !r.url)) {
+      // printed reports like books, keeping the series and number:
+      // U.S. Geological Survey. 2023. Mineral commodity summaries 2023. U.S. Geological Survey, Reston, Virginia. 210 pp.
+      out.push(T(dot(r.title)));
+      var ser = [r.series || (k === 'report' ? r.container : ''), r.number].filter(Boolean).join(' ');
+      if (ser) out.push(T(dot(ser)));
+      var rp = [r.publisher || r.institution, r.place].filter(Boolean).join(', ');
+      if (rp) out.push(T(dot(rp)));
+      if (/^\d+$/.test(r.numPages)) out.push(T(r.numPages) + ' pp.');
+    } else { // web resource, dataset, software: Title [cited 16 July 2008]. Available from URL
+      // "[cited …]" only with a recorded access date; today's date would be invented
+      var host = hostOf(r), when = r.accessed, whenMonth = when ? monthName(MONTHS, when.month) : '';
+      out.push(when && when.year ? T(r.title) + ' [cited ' + (whenMonth && validDay(when.day) ? when.day + ' ' : '') + (whenMonth ? whenMonth + ' ' : '') + when.year + '].' : T(dot(r.title)));
       if (host) out.push(T(dot(host)));
       if (r.doi || r.url) out.push('Available from ' + T(doiLink(r)));
     }
-    return out.join(' ');
+    return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
   // In-text form for the Carnegie style: (Wible 2000), (Wible and Rawlins 2001), (Wible et al. 2002)
@@ -1196,18 +1434,66 @@
 
   /* ---------- machine formats (plain text) ---------- */
 
+  // ASCII form for keys: "Çelik" -> "Celik", "Bartók" -> "Bartok", "Øster" -> "Oster"
+  var ASCII_LETTERS = { 'ß': 'ss', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'ø': 'o', 'Ø': 'O', 'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D',
+    'ð': 'd', 'Ð': 'D', 'þ': 'th', 'Þ': 'Th', 'ı': 'i' };
+  function toAscii(s) {
+    var t = String(s || '').replace(/[ßæÆœŒøØłŁđĐðÐþÞı]/g, function (c) { return ASCII_LETTERS[c]; });
+    if (t.normalize) t = t.normalize('NFD');
+    return t.replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]/g, '');
+  }
   function bibKey(r) {
-    var fam = (r.authors.length ? r.authors[0].family : (r.container || '')).replace(/[^A-Za-z0-9]/g, '') || 'ref';
-    var word = (r.title.match(/[A-Za-z]{3,}/g) || []).filter(function (w) {
+    var words = (toAsciiWords(r.title)).filter(function (w) {
       return !/^(the|and|for|with|from|into|over|under|that|this|are|was|were|its|our|their)$/i.test(w);
-    })[0] || '';
-    return fam + (r.year || '') + word.replace(/[^A-Za-z0-9]/g, '');
+    });
+    var who = r.authors.length ? r.authors : r.editors;
+    var fam = who.length ? toAscii(who[0].family) : '';
+    if (!fam) return (words[0] ? words[0].charAt(0).toUpperCase() + words[0].slice(1) : 'ref') + (r.year || '') + (words[1] || ''); // no author: title word
+    return fam + (r.year || '') + (words[0] || '');
+  }
+  function toAsciiWords(t) {
+    return String(t || '').split(/[\s\-\u2010-\u2015\/]+/).map(toAscii).filter(function (w) { return /[A-Za-z]{3,}/.test(w); });
   }
   var BIB_ESC = { '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}',
     '&': '\\&', '%': '\\%', '$': '\\$', '#': '\\#', '_': '\\_' };
   function bibEsc(s) { return String(s).replace(/[\\{}~^&%$#_]/g, function (c) { return BIB_ESC[c]; }); }
   // braces keep "World Health Organization" as one name; escaped first so the braces survive
-  function bibName(p) { return p.literal ? '{' + bibEsc(p.family) + '}' : bibEsc(nameLastFull(p)); }
+  // BibTeX's three-part form puts the suffix second: "King, Jr., Martin Luther"
+  function bibName(p) {
+    if (p.literal) return '{' + bibEsc(p.family) + '}';
+    if (!p.suffix) return bibEsc(nameLastFull(p));
+    return bibEsc(p.family + ', ' + p.suffix + ',' + (p.given ? ' ' + p.given : ''));
+  }
+  // RIS / EndNote single-field name (EndNote convention): a trailing comma marks it, and commas inside
+  // it are doubled so EndNote does not split it there: "USDOE,, Washington,, DC (United States),"
+  function taggedName(p) { return p.literal ? p.family.replace(/,/g, ',,') + ',' : nameLastFull(p); }
+
+  // Brace-protect title words so sentence-casing .bst styles keep their capitals (Zotero's practice): every word
+  // with a capital letter except a plain capitalised first word ("The"), plus words carrying \textsubscript etc.
+  // (script arguments are already braced, so a first word such as "Fe\textsuperscript{3+}" needs nothing).
+  // A word starting with a command gets double braces: BibTeX treats "{\cmd …}" as a special character and
+  // would change the case inside it.
+  function bibProtect(t) {
+    var words = [], depth = 0, cur = '';
+    for (var i = 0; i < t.length; i++) {
+      var c = t.charAt(i);
+      if (c === '{' && t.charAt(i - 1) !== '\\') depth++;
+      else if (c === '}' && t.charAt(i - 1) !== '\\') depth--;
+      if (/\s/.test(c) && depth === 0) { if (cur) words.push(cur); words.push(c); cur = ''; } else cur += c;
+    }
+    if (cur) words.push(cur);
+    var firstWord = true;
+    return words.map(function (w) {
+      if (/^\s$/.test(w)) return w;
+      var isFirst = firstWord; firstWord = false;
+      var plain = w.replace(/\\[a-zA-Z]+/g, '');                    // letters of commands are not text
+      var caps = plain !== plain.toLowerCase();
+      if (!caps && !/\\text(?:sub|super)script/.test(w)) return w;
+      var rest = plain.replace(/^[^A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF]*./, '');
+      if (isFirst && rest === rest.toLowerCase()) return w;    // "The", "Fe\textsuperscript{3+}": a first capital is kept anyway
+      return w.charAt(0) === '\\' ? '{{' + w + '}}' : '{' + w + '}';
+    }).join('');
+  }
 
   function bibtex(r) {
     var k = kind(r);
@@ -1215,14 +1501,16 @@
       thesis: 'phdthesis', report: 'techreport' }[k] || 'misc';
     var f = [];
     var add = function (key, val, raw) { if (val) f.push('  ' + key + ' = ' + (raw === 'bare' ? val : '{' + (raw ? val : bibEsc(val)) + '}')); };
-    f.push('  title = {' + marksToLatex(bibEsc(r.title)) + '}');
+    f.push('  title = {' + bibProtect(marksToLatex(bibEsc(r.title))) + '}');
     add('author', r.authors.map(bibName).join(' and '), true);
     add('editor', r.editors.map(bibName).join(' and '), true);
     if (k === 'journal') add('journal', r.container);
     else if (k === 'chapter' || k === 'proceedings') add('booktitle', r.container);
+    else if (k === 'book') { if (r.container && r.container !== r.series) add('series', r.container); } // a book's container is its series
     else if (r.container) add('howpublished', r.container);
     add('series', r.series);
-    add('edition', r.edition);
+    if (k === 'report' && r.number) add('number', r.number);
+    add('edition', validEdition(r.edition));
     add('volume', r.volume);
     add('number', r.issue);
     add('pages', r.pages ? enDash(r.pages).replace('–', '--') : '');
@@ -1239,23 +1527,40 @@
     if (k === 'preprint') add('note', 'Preprint');
     if (k === 'dataset') add('note', 'Dataset');
     if (k === 'software') add('note', 'Software');
+    if (k === 'standard') add('note', 'Standard');
     return '@' + type + '{' + bibKey(r) + ',\n' + f.join(',\n') + '\n}';
+  }
+
+  // Values of the given tags from the record's imported file (r.raw), when it came from that format
+  function rawTags(r, src, tags, src2, tags2) {
+    var out = [], raw = r.raw;
+    if (!raw || typeof raw !== 'object') return out;
+    var take = function (list) {
+      list.forEach(function (t) {
+        var v = raw[t];
+        (Array.isArray(v) ? v : v ? [v] : []).forEach(function (x) { x = clean(x); if (x && out.indexOf(x) === -1) out.push(x); });
+      });
+    };
+    if (r.source === src) take(tags);
+    else if (src2 && r.source === src2) take(tags2);
+    return out;
   }
 
   function ris(r) {
     var k = kind(r);
     var type = { journal: 'JOUR', chapter: 'CHAP', book: 'BOOK', proceedings: 'CONF', preprint: 'UNPB',
-      dataset: 'DATA', software: 'COMP', thesis: 'THES', report: 'RPRT' }[k] || 'GEN';
+      dataset: 'DATA', software: 'COMP', thesis: 'THES', report: 'RPRT', standard: 'STAND', web: 'ELEC' }[k] || 'GEN';
+    if (/^(?:reference-entry|entry-encyclopedia|entry)$/.test(r.type)) type = 'ENCYC';
+    if (r.type === 'entry-dictionary') type = 'DICT';
     var L = [];
     var add = function (tag, val) { if (val) L.push(tag + '  - ' + val); };
     add('TY', type);
-    var risName = function (p) { return p.literal ? p.family + ',' : nameLastFull(p); }; // trailing comma = single-field name
-    r.authors.forEach(function (p) { add('AU', risName(p)); });
-    r.editors.forEach(function (p) { add('ED', risName(p)); });
+    r.authors.forEach(function (p) { add('AU', taggedName(p)); });
+    r.editors.forEach(function (p) { add('ED', taggedName(p)); });
     add('TI', marksToText(r.title));
     add('T2', r.container);
     add('T3', r.series);
-    add('ET', r.edition);
+    add('ET', validEdition(r.edition));
     if (r.shortContainer && r.shortContainer !== r.container) add('JO', r.shortContainer);
     add('VL', r.volume);
     add('IS', r.issue);
@@ -1268,9 +1573,14 @@
     add('CY', r.place);
     add('SN', r.issn || r.isbn);
     add('DO', r.doi);
-    add('UR', doiLink(r));
+    var urls = rawTags(r, 'ris', ['UR']);
+    (urls.length ? urls : [doiLink(r)]).forEach(function (u) { add('UR', u); }); // a file's own links are kept
     add('LA', r.language);
     add('AB', r.abstract);
+    // tags AutoDOI does not model, carried over from an imported RIS / EndNote record
+    rawTags(r, 'ris', ['KW'], 'enw', ['K']).forEach(function (v) { add('KW', v); });
+    rawTags(r, 'ris', ['N1'], 'enw', ['Z']).forEach(function (v) { add('N1', v); });
+    ['AN', 'L1', 'L2', 'Y2', 'M3', 'DB', 'CN'].forEach(function (t) { rawTags(r, 'ris', [t]).forEach(function (v) { add(t, v); }); });
     L.push('ER  - ');
     return L.join('\r\n') + '\r\n';
   }
@@ -1278,18 +1588,20 @@
   function endnote(r) {
     var k = kind(r);
     var type = { journal: 'Journal Article', chapter: 'Book Section', book: 'Book', proceedings: 'Conference Paper',
-      preprint: 'Unpublished Work', dataset: 'Dataset', software: 'Computer Program', thesis: 'Thesis', report: 'Report' }[k] || 'Generic';
+      preprint: 'Unpublished Work', dataset: 'Dataset', software: 'Computer Program', thesis: 'Thesis', report: 'Report',
+      standard: 'Standard', web: 'Web Page' }[k] || 'Generic';
+    if (/^(?:reference-entry|entry-encyclopedia|entry)$/.test(r.type)) type = 'Encyclopedia';
+    if (r.type === 'entry-dictionary') type = 'Dictionary';
     var L = [];
     var add = function (tag, val) { if (val) L.push(tag + ' ' + val); };
     add('%0', type);
-    var enName = function (p) { return p.literal ? p.family + ',' : nameLastFull(p); };
-    r.authors.forEach(function (p) { add('%A', enName(p)); });
-    r.editors.forEach(function (p) { add('%E', enName(p)); });
+    r.authors.forEach(function (p) { add('%A', taggedName(p)); });
+    r.editors.forEach(function (p) { add('%E', taggedName(p)); });
     add('%T', marksToText(r.title));
     if (k === 'journal') add('%J', r.container);
     else add('%B', r.container);
     add('%S', r.series);
-    add('%7', r.edition);
+    add('%7', validEdition(r.edition));
     add('%V', r.volume);
     add('%N', r.issue);
     add('%P', r.pages ? enDash(r.pages).replace('–', '-') : '');
@@ -1299,9 +1611,14 @@
     add('%C', r.place);
     add('%@', r.issn || r.isbn);
     add('%R', r.doi);
-    add('%U', doiLink(r));
+    var urls = rawTags(r, 'enw', ['U']);
+    (urls.length ? urls : [doiLink(r)]).forEach(function (u) { add('%U', u); });
     add('%G', r.language);
     add('%X', r.abstract);
+    rawTags(r, 'enw', ['K'], 'ris', ['KW']).forEach(function (v) { add('%K', v); });
+    var notes = rawTags(r, 'enw', ['Z'], 'ris', ['N1']);
+    if (notes.length) add('%Z', notes.join('; '));                // %Z is a single field
+    ['M', 'L', 'F', '1', '2', '3', '4'].forEach(function (t) { var v = rawTags(r, 'enw', [t]); if (v.length) add('%' + t, v.join('; ')); });
     return L.join('\n') + '\n';
   }
 
@@ -1357,9 +1674,16 @@
     var hit = tt.filter(function (w) { return hay.indexOf(' ' + w + ' ') !== -1; }).length;
     var score = hit / tt.length;
     if (opts.titleOnly) return Math.max(0, Math.min(1, score)); // the Find tab has no year or author to check
-    var yearsInRef = (String(refText).match(/\b(19|20)\d{2}\b/g) || []);
-    if (r.year && yearsInRef.length && yearsInRef.indexOf(r.year) === -1) score -= 0.35; // a different year is a different record
-    else if (r.year && hay.indexOf(' ' + r.year + ' ') === -1) score -= 0.15;
+    var yearsInRef = (String(refText).match(/\b(1[5-9]|20)\d{2}\b/g) || []).map(Number);
+    var recYears = (r.years && r.years.length ? r.years : (r.year ? [r.year] : [])).map(Number);
+    if (recYears.length && yearsInRef.length) {
+      var near = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
+      if (!near) score -= 0.35;                                                          // a different year is a different record
+      else if (!yearsInRef.some(function (x) { return recYears.indexOf(x) !== -1; })) score -= 0.05; // online vs print year
+    } else if (recYears.length) score -= 0.15;
+    // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
+    var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction)\b/i;
+    if ((NOTICE.test(r.title) || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
     if (r.authors.length) {
       var fam = tokens(r.authors[0].family)[0];
       if (fam && hay.indexOf(' ' + fam + ' ') === -1) score -= 0.15;
@@ -1384,7 +1708,7 @@
     titleHtml: titleHtml,
     titleText: function (r) { return marksToText(displayTitle(r)); },
     toScript: function (t, kind) { return unicodeScript(String(t), kind === 'sup' ? SUP_MAP : SUB_MAP); },
-    autoFormulas: function (s) { return marksToText(autoFormulas(s)); },
+    autoFormulas: function (s) { return marksToText(autoFormulas(String(s === undefined || s === null ? '' : s).replace(PUA_RE, ''))); }, // plain text in: no markers
     inText: function (record, styleId) {
       var r = record.authors ? record : normalize(record);
       for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r);

@@ -78,10 +78,13 @@
   }
   // RIS / EndNote: "Family, Given, Suffix" | "Family, Given" | "Organisation," (trailing comma = single field)
   // | "Smith JA" (Vancouver: family + initials) | "J.A. Smith"
+  // Words that make an author an organisation even without EndNote's trailing comma ("U.S. Geological Survey")
+  var ORG_WORDS = /\b(Survey|Museum|Society|Institute|Institution|University|College|Academy|Association|Organi[sz]ation|Commission|Committee|Council|Agency|Department|Ministry|Office|Bureau|Service|Center|Centre|Laboratory|Foundation|Consortium|Collaboration|Group|Team|Project|Program(me)?|Database|Network|Board|Authority|Corporation|Company|Inc|Ltd|GmbH|Press)\b/;
   function nameFromTagged(s) {
     s = trim(s);
     if (!s) return null;
     if (/,\s*$/.test(s)) return { name: trim(s.replace(/,\s*$/, '')) };
+    if (ORG_WORDS.test(s) && (s.indexOf(',') === -1 || ORG_WORDS.test(s.split(',')[0]))) return { name: s }; // "History, C.M. of N." never
     var parts = s.split(',').map(trim);
     if (parts.length === 1) {
       var toks = s.split(/\s+/), ini = toks[toks.length - 1], fam = toks.slice(0, -1).join(' ');
@@ -141,6 +144,7 @@
     set('abstract', f.abstract); set('language', f.language); set('edition', f.edition); set('genre', f.genre);
     set('number-of-pages', f.numPages);
     if (f.institution) m.institution = [{ name: f.institution }];
+    if (f.protectWords && f.protectWords.length) m['protect-words'] = f.protectWords;
     if (f.event) m.event = { name: f.event };
     if (!trim(String(f.title || '').replace(/<[^>]*>/g, ''))) m.untitled = true;
     return m;
@@ -225,6 +229,7 @@
     var m1 = g('M1');
     if (!f.issue && f.type === 'journal-article' && m1.length <= 6 && /^[A-Za-z]?\d+[A-Za-z]?([-–\/]\d+)?$/.test(m1)) f.issue = m1;
     var sp = g('SP').replace(/\s*[-–—]+\s*/g, '-'), ep = g('EP');
+    if (/^(BOOK|EBOOK|EDBOOK|THES|RPRT)$/.test(ty) && /^\d+(\s*pp?\.?)?$/.test(sp) && !ep) { f.numPages = sp.replace(/\D/g, ''); sp = ''; } // "SP - 237" on a book = 237 pages
     f.pages = sp && ep && ep !== sp && !/\d-\S/.test(sp) ? sp + '-' + ep : (sp || ep);
     var py = parseDate(g('PY')), da = parseDate(g('DA'));
     if (!py.y) f.date = da.y ? da : parseDate(g('Y1')); // Y1 is deprecated: DA wins over it
@@ -565,6 +570,8 @@
     f.authors = bibNames(fl.author); f.editors = bibNames(fl.editor);
     f.authorOthers = bibOthers(fl.author); f.editorOthers = bibOthers(fl.editor);
     f.title = gh('title'); f.subtitle = gh('subtitle');
+    f.protectWords = (String(fl.title || '').match(/\{([^{}\\$]+)\}/g) || []).map(function (w) { return deLatex(w.slice(1, -1)); })
+      .join(' ').split(/\s+/).filter(function (w) { return /[A-Z]/.test(w); });
     var how = g('howpublished'), howUrl = /^(\\url\{)?https?:\/\//i.test(trim(fl.howpublished || ''));
     f.container = g('journal') || g('journaltitle') || (f.type !== 'book' ? g('booktitle') : '') || (!howUrl ? how : '');
     f.shortContainer = g('shortjournal'); f.series = g('series');
