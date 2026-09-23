@@ -1,0 +1,24 @@
+var ROOT = require('path').resolve(__dirname, '..');
+var FIX = require('path').join(__dirname, 'fixtures');
+// Exercise map_/cellAt_/flatten_/idToDoi_ shape logic with stubbed Apps Script services.
+const fs = require('fs'); const vm = require('vm');
+const ctx = { console, Date, JSON, Math, String, Array, Object, RegExp, Error, encodeURIComponent };
+ctx.globalThis = ctx;
+ctx.CacheService = { getScriptCache: () => ({ get: () => null, put: () => {} }) };
+ctx.Utilities = { base64Encode: s => Buffer.from(String(s)).toString('base64'), computeDigest: (a, s) => s, DigestAlgorithm: {}, Charset: {} };
+ctx.UrlFetchApp = { fetch: () => { throw new Error('network disabled in test'); }, fetchAll: () => { throw new Error('network disabled'); } };
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(require('path').join(ROOT, 'apps-script/Citations.gs'), 'utf8'), ctx);
+vm.runInContext(fs.readFileSync(require('path').join(ROOT, 'apps-script/Code.gs'), 'utf8'), ctx);
+const t = (label, v) => console.log(label, JSON.stringify(v));
+t('map scalar', ctx.map_('x', s => s + '!'));
+t('map range', ctx.map_([['a', ''], [2, 'b']], (s, r, c, n) => s + r + c + (n ? 'N' : '')));
+t('map width5 scalar', ctx.map_('x', s => [s, 'T'], 5));
+t('map width5 range mixed', ctx.map_([['a'], ['']], (s) => s ? [s, 'T', 'J', '2020', 0.9] : '', 5));
+t('cellAt scalar', ctx.cellAt_('Nature', 3, 0));
+t('cellAt range', [ctx.cellAt_([['Nature'], ['Science']], 1, 0), ctx.cellAt_([['Nature'], ['Science']], 7, 0)]);
+t('idToDoi number', ctx.idToDoi_('2019', true));
+t('idToDoi bare digits', ctx.idToDoi_('23903748', false));
+t('idToDoi doi', ctx.idToDoi_('https://doi.org/10.1038/nature12373', false));
+t('doiOrgUrl', ctx.doiOrgUrl_('10.1002/(SICI)1097-4571(199501)46:1<21::AID-ASI3>3.0.CO;2-Z'));
+t('DOI_CITE empty/none', ctx.DOI_CITE([[''], ['hello']], 'apa'));

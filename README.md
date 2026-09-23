@@ -62,6 +62,17 @@ Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faste
 
 Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Each reference also has a **Report** button that carries the DOI and style into the bug form so you only have to say what is wrong. When a lookup or a style fails, the error message gets a **Report this** link. The page keeps the last few error messages in memory and adds them to the form's *Error details* field; nothing is sent anywhere unless you open a report. There is no analytics or tracking.
 
+## Development
+
+No dependencies: plain JavaScript files and Node for the tests.
+
+```
+./build.sh          # re-inline citations.js, parsers.js and sentencecase.js into index.html; refresh apps-script/Citations.gs
+node tests/run.js   # all test suites (or: npm test)
+```
+
+The `tests/` folder holds unit suites for the library, parsers and title-case engine, smoke checks for every style and the Sheets script, and a splitter benchmark with minimum accuracy thresholds, run against real Crossref records and 85 real papers' printed reference lists in `tests/fixtures/`. GitHub Actions runs everything on each push and fails if `index.html` was not rebuilt after a library change.
+
 ## License
 
 MIT. See `LICENSE`.
