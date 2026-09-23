@@ -1,0 +1,31 @@
+name: Missing journal style
+description: Ask for a reference format that is not in the built-in list and not found in the style search.
+title: "[Style] "
+labels: [style-request]
+body:
+  - type: input
+    id: journal
+    attributes:
+      label: Journal or publisher
+      placeholder: Annals of Carnegie Museum
+    validations:
+      required: true
+  - type: input
+    id: guide
+    attributes:
+      label: Link to the author guidelines or style PDF
+      placeholder: https://…
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example references in that style
+      description: Three or four from a recent article, covering a journal article, a book and a book chapter if possible.
+    validations:
+      required: true
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the "Search 10,000 journal styles" box and it is not there under any name.
+          required: true

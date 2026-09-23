@@ -129,7 +129,10 @@
   details.settings summary { cursor: pointer; }
   details.settings .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   details.settings input { max-width: 320px; padding: 6px 10px; font-size: 13px; }
-  footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; max-width: 65ch; }
+  .feedback { margin: 28px 0 0; font-size: 13px; color: var(--muted); }
+  .feedback a { color: var(--accent); text-decoration: none; }
+  .feedback a:hover { text-decoration: underline; }
+  footer { margin-top: 12px; color: var(--muted); font-size: 12.5px; max-width: 65ch; }
   @media (prefers-reduced-motion: no-preference) { .btn { transition: border-color .15s, color .15s; } }
 </style>
 
@@ -209,6 +212,11 @@
     <div class="row"><span>Link directly to a lookup with <code>?q=</code>, for example <code id="qexample"></code>.</span></div>
   </details>
 
+  <p class="feedback">
+    <a id="link-bug" href="https://github.com/toldxls/AutoDOI/issues/new?template=bug_report.yml" target="_blank" rel="noopener">Report a bug</a> ·
+    <a id="link-style" href="https://github.com/toldxls/AutoDOI/issues/new?template=style_request.yml" target="_blank" rel="noopener">Request a journal style</a> ·
+    <a href="https://github.com/toldxls/AutoDOI" target="_blank" rel="noopener">Source on GitHub</a>
+  </p>
   <footer>Article titles are shown as the publisher deposited them, so APA's sentence-case rule and MLA's title case may need a manual touch. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server. Journal styles come from the <a href="https://citationstyles.org/">Citation Style Language</a> project (CC BY-SA 3.0) and are rendered in your browser by <a href="https://github.com/Juris-M/citeproc-js">citeproc-js</a>.</footer>
 </div>
 
@@ -916,6 +924,33 @@
     set: function (k, v) { try { localStorage.setItem('autodoi.' + k, v); } catch (e) {} }
   };
 
+  /* ---------- optional usage counter (GoatCounter; nothing loads while the endpoint is blank) ---------- */
+  var ANALYTICS_ENDPOINT = ''; // e.g. 'https://autodoi.goatcounter.com/count' — see README
+  var track = function () {};
+  if (ANALYTICS_ENDPOINT) {
+    window.goatcounter = { endpoint: ANALYTICS_ENDPOINT, no_onload: true, allow_local: false };
+    var gc = document.createElement('script'); gc.async = true; gc.src = 'https://gc.zgo.at/count.js';
+    gc.onload = function () {
+      window.goatcounter.count({ path: location.pathname }); // never the query string: it can hold a DOI
+      track = function (name) { window.goatcounter.count({ path: 'event/' + name, title: name, event: true }); };
+    };
+    document.head.appendChild(gc);
+  }
+
+  /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
+  var REPO = 'https://github.com/toldxls/AutoDOI';
+  function issueUrl(template, fields) {
+    var url = REPO + '/issues/new?template=' + template;
+    Object.keys(fields).forEach(function (k) { if (fields[k]) url += '&' + k + '=' + encodeURIComponent(fields[k]); });
+    return url;
+  }
+  function currentStyleLabel() {
+    if (styleState.mode === 'csl') return styleState.csl.title;
+    if (styleState.mode === 'all') return '';
+    var st = A.STYLES.filter(function (x) { return x.id === styleState.mode; })[0];
+    return st ? st.label : styleState.mode;
+  }
+
   /* ---------- tabs ---------- */
   var TABS = ['cite', 'find', 'export'];
   function showTab(name) {
@@ -986,10 +1021,12 @@
     var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); return ok;
   }
   function copyPlain(btn, text) {
+    track('copy');
     var p = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(text) : Promise.reject();
     p.then(function () { flash(btn, 'Copied'); }, function () { flash(btn, fallbackCopy(text) ? 'Copied' : 'Select and copy'); });
   }
   function copyRich(btn, html, text) {
+    track('copy-rich');
     if (navigator.clipboard && window.ClipboardItem) {
       try {
         var item = new ClipboardItem({
@@ -1006,6 +1043,7 @@
   /* ---------- downloads ---------- */
   var canDownload = true;
   function download(name, text) {
+    track('download-' + name.split('.').pop());
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -1032,6 +1070,7 @@
   }
   function setStyle(mode, cslStyle) {
     styleState.mode = mode; styleState.csl = cslStyle || null;
+    track('style-' + (mode === 'csl' ? 'csl' : mode));
     if (mode === 'csl') {
       recents = [cslStyle].concat(recents.filter(function (r) { return r.name !== cslStyle.name; })).slice(0, 12);
       store.set('cslrecent', JSON.stringify(recents));
@@ -1110,7 +1149,10 @@
     if (words.length && !hits.length) box.appendChild(el('div', 'status', 'No style with that name. Try one word from the journal title.'));
     else if (hits.length > 30) box.appendChild(el('div', 'status', hits.length + ' matches; showing the first 30. Add another word to narrow it.'));
   }
-  $('csl-search').addEventListener('input', runSearch);
+  $('csl-search').addEventListener('input', function () {
+    runSearch();
+    $('link-style').href = issueUrl('style_request.yml', { journal: $('csl-search').value.trim(), title: '[Style] ' + $('csl-search').value.trim() });
+  });
   $('csl-mine').addEventListener('change', runSearch);
 
   async function getStyleXml(name, depth) {
@@ -1185,7 +1227,13 @@
     var code = el('code', '', r.doi); meta.appendChild(code);
     left.appendChild(meta);
     head.appendChild(left);
-    if (opts.chip) head.appendChild(opts.chip);
+    var side = el('div', 'actions'); side.style.display = 'flex'; side.style.gap = '6px'; side.style.alignItems = 'center';
+    if (opts.chip) side.appendChild(opts.chip);
+    var rep = el('a', 'btn small', 'Report'); rep.target = '_blank'; rep.rel = 'noopener'; rep.title = 'Report a problem with this reference on GitHub';
+    rep.href = issueUrl('bug_report.yml', { doi: r.doi, style: currentStyleLabel(), where: 'Web page', title: '[Bug] ' + (r.doi || r.title) });
+    rep.style.textDecoration = 'none';
+    side.appendChild(rep);
+    head.appendChild(side);
     box.appendChild(head);
 
     A.STYLES.filter(function (s) { return !opts.styles || opts.styles.indexOf(s.id) !== -1; }).forEach(function (s) {
@@ -1312,6 +1360,7 @@
       var r = await fetchRecord(doi);
       showCitation(r);
       status.textContent = '';
+      track('lookup');
     } catch (e) {
       status.textContent = e.message; status.className = 'status err';
     } finally { $('doi-go').disabled = false; }
@@ -1329,6 +1378,7 @@
     status.textContent = 'Searching Crossref…'; $('find-go').disabled = true;
     try {
       var hits = await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6);
+      track('find');
       if (!hits.length) { status.textContent = 'No matches. Try fewer words from the title.'; return; }
       status.textContent = hits.length + ' best matches, most likely first.';
       hits.forEach(function (r) { r.conf = A.matchConfidence(title + ' ' + journal, r); });
@@ -1429,6 +1479,7 @@
     }
     $('export-go').disabled = false;
     status.textContent = found.length + ' of ' + refs.length + ' matched.';
+    track('batch');
     function build() {
       out.innerHTML = '';
       var recs = found.filter(function (f) { return f.box.checked; }).map(function (f) { return f.rec; });

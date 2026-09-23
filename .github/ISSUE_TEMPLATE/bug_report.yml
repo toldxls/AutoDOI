@@ -1,0 +1,34 @@
+name: Bug report
+description: A reference came out wrong, a lookup failed, or something on the page misbehaved.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: input
+    id: doi
+    attributes:
+      label: DOI or identifier you used
+      placeholder: 10.1038/nature12373
+  - type: input
+    id: style
+    attributes:
+      label: Style
+      placeholder: APA 7th, Annals of Carnegie Museum, American Mineralogist…
+  - type: textarea
+    id: got
+    attributes:
+      label: What AutoDOI produced
+      description: Paste the reference exactly as it came out.
+  - type: textarea
+    id: expected
+    attributes:
+      label: What it should have been
+      description: The correct form, ideally with a link to the journal's author guidelines.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [Web page, Google Sheets, Both]
+    validations:
+      required: true
