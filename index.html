@@ -35,10 +35,13 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; } /* component display rules (chips, buttons) must not un-hide elements */
   body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; margin: 0; }
   .wrap { max-width: 900px; margin: 0 auto; padding-block: 28px 64px; padding-inline: 16px; }
 
   header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  h1.brand { margin: 0; font-size: 22px; line-height: 1.2; }
+  .fineprint { margin: 12px 0 0; }
   .brand { font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
   .brand span { color: var(--accent); }
   .tag { color: var(--muted); font-size: 13px; }
@@ -60,6 +63,12 @@
     border-radius: 6px; padding: 10px 12px; }
   input[type="text"].mono { font-family: var(--mono); font-size: 14px; }
   textarea { font-family: var(--serif); font-size: 15px; line-height: 1.55; min-height: 140px; resize: vertical; }
+  .split-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .split-bar select { font-size: 13px; padding: 3px 6px; }
+  #split-count { font-weight: 500; color: var(--ink); }
+  #split-details summary { cursor: pointer; }
+  #split-list { margin: 6px 0 0; padding-left: 22px; max-height: 260px; overflow: auto; font-family: var(--serif); font-size: 13.5px; color: var(--ink); }
+  #split-list li { margin: 2px 0; overflow-wrap: anywhere; }
   textarea.dropping { border-color: var(--accent); background: var(--accent-soft); }
   label.field { display: block; font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
 
@@ -159,10 +168,11 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand">Auto<span>DOI</span></div>
+    <h1 class="brand">Auto<span>DOI</span></h1>
     <div class="tag">Crossref and DataCite metadata, formatted for pasting</div>
   </header>
 
+  <main>
   <nav role="tablist" aria-label="Mode">
     <button role="tab" id="tab-cite" aria-selected="true" aria-controls="panel-cite">DOI → reference</button>
     <button role="tab" id="tab-find" aria-selected="false" aria-controls="panel-find">Find a DOI</button>
@@ -213,9 +223,21 @@
 
   <!-- ===== 3. Reference -> EndNote ===== -->
   <section class="panel" id="panel-export" role="tabpanel" aria-labelledby="tab-export" hidden>
-    <p class="lead">Paste one or more references in any style, one per line (or separated by blank lines if they wrap), or drop a <strong>.ris</strong>, <strong>.enw</strong> or <strong>.bib</strong> file exported from EndNote, Zotero or Mendeley. Pasted references are matched against Crossref; files are read directly, no lookup needed. Everything comes out as EndNote tagged, RIS, BibTeX, or a clean reference list in any style.</p>
+    <p class="lead">Paste one or more references in any style, or drop a <strong>.ris</strong>, <strong>.enw</strong> or <strong>.bib</strong> file exported from EndNote, Zotero or Mendeley. Pasted references are matched against Crossref; files are read directly, no lookup needed. Everything comes out as EndNote tagged, RIS, BibTeX, or a clean reference list in any style.</p>
     <form id="form-export">
       <textarea id="export-input" aria-label="References or file contents" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Vaswani A, et al. Attention is all you need. NeurIPS 2017."></textarea>
+      <div class="split-bar">
+        <span id="split-count" role="status" aria-live="polite"></span>
+        <label class="check" for="split-mode">Layout
+          <select id="split-mode">
+            <option value="auto">Detect automatically</option>
+            <option value="lines">One reference per line</option>
+            <option value="blank">Blank line between references</option>
+            <option value="numbered">Numbered list (1. / [1])</option>
+          </select>
+        </label>
+        <details id="split-details"><summary>Show how it was split</summary><ol id="split-list"></ol></details>
+      </div>
       <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
         <button class="btn primary" type="submit" id="export-go">Match and export</button>
         <button class="btn" type="button" id="export-stop" hidden>Stop</button>
@@ -245,12 +267,15 @@
     <div class="row"><span>Link directly to a lookup with <code>?q=</code>, for example <code id="qexample"></code>.</span></div>
   </details>
 
+  </main>
+  <footer>
   <p class="feedback">
     <a id="link-bug" href="https://github.com/toldxls/AutoDOI/issues/new?template=bug_report.yml" target="_blank" rel="noopener">Report a bug</a> ·
     <a id="link-style" href="https://github.com/toldxls/AutoDOI/issues/new?template=style_request.yml" target="_blank" rel="noopener">Request a journal style</a> ·
     <a href="https://github.com/toldxls/AutoDOI" target="_blank" rel="noopener">Source on GitHub</a>
   </p>
-  <footer>Titles are shown as the publisher deposited them unless you choose Sentence case or Title Case above; unknown words such as taxa and place names keep their capitals, and you can click any word in the heading to override. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server. Journal styles come from the <a href="https://citationstyles.org/">Citation Style Language</a> project (CC BY-SA 3.0) and are rendered in your browser by <a href="https://github.com/Juris-M/citeproc-js">citeproc-js</a>.</footer>
+  <p class="fineprint">Titles are shown as the publisher deposited them unless you choose Sentence case or Title Case above; unknown words such as taxa and place names keep their capitals, and you can click any word in the heading to override. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server. Journal styles come from the <a href="https://citationstyles.org/">Citation Style Language</a> project (CC BY-SA 3.0) and are rendered in your browser by <a href="https://github.com/Juris-M/citeproc-js">citeproc-js</a>.</p>
+  </footer>
 </div>
 
 <!-- citations.js (inlined by build.sh; edit citations.js, not this block) -->
@@ -5010,7 +5035,8 @@
     act.appendChild(button('Download .' + ext, '', function () { download(base + '.' + ext, text); }));
     head.appendChild(act);
     wrap.appendChild(head);
-    wrap.appendChild(el('pre', 'code', text));
+    var pre = el('pre', 'code', text); pre.tabIndex = 0; pre.setAttribute('role', 'region'); pre.setAttribute('aria-label', label + ' text'); // scrollable: reachable by keyboard
+    wrap.appendChild(pre);
     return wrap;
   }
 
@@ -5291,7 +5317,32 @@
     if (yearTail.test(chunk) && !/\d/.test(chunk.replace(yearTail, ''))) return /\.\s+\S[\s\S]{30,}[(\s](1[5-9]|20)\d{2}[a-z]?\)?\.$/.test(chunk) && /(https?:\/\/|www\.)/.test(chunk); // "…/tree/main (2022)." (Nature-style ending) is whole
     return hasEndPunct(chunk) && /\d[\])]?\.$|\d\s*\(\d{4}\)\.$/.test(chunk) && chunk.length > 20;
   }
-  function splitReferences(text) {
+  // An explicit layout chosen by the user removes all guessing
+  function splitByMode(text, mode) {
+    var t = String(text || '').replace(/\r\n?/g, '\n').trim();
+    var parts;
+    if (mode === 'blank') parts = t.split(/\n\s*\n+/).map(function (c) { return c.replace(/\s*\n\s*/g, ' '); });
+    else if (mode === 'numbered') {
+      parts = []; var next = null;
+      t.split('\n').forEach(function (raw) {
+        var l = raw.trim(); if (!l) return;
+        var mm = l.match(/^\[?(\d{1,4})[\].)]\s/), num = mm ? Number(mm[1]) : null;
+        if (!parts.length || (num !== null && (next === null || num === next))) { parts.push(l); if (num !== null) next = num + 1; } // "1998. Title" inside a wrap is not item 1998
+        else parts[parts.length - 1] += ' ' + l;
+      });
+    } else { // one per line; a line that is only a DOI/URL belongs to the reference above
+      parts = [];
+      t.split('\n').forEach(function (raw) {
+        var l = raw.trim(); if (!l) return;
+        if (parts.length && /^((https?:\/\/)?(dx\.)?doi\.org\/|doi:\s*10\.|10\.\d{4,9}\/|https?:\/\/)\S+\.?$/i.test(l) && !/10\.\d{4,9}\//.test(parts[parts.length - 1])) parts[parts.length - 1] += ' ' + l;
+        else parts.push(l);
+      });
+    }
+    return parts.map(function (l) { return l.replace(/^\s*(\[\d{1,4}\]|\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim(); })
+      .filter(function (l) { return l.length > 8 || ID_LINE.test(l); });
+  }
+  function splitReferences(text, mode) {
+    if (mode && mode !== 'auto') return splitByMode(text, mode);
     var t = String(text || '').replace(/\r\n?/g, '\n').replace(/(\S)[ \t]{2,}/g, '$1 ').replace(/^\s*\n/, '').replace(/\s+$/, '');
     var rawLines = t.split('\n');
     var hasBlank = /\n\s*\n/.test(t);
@@ -5395,6 +5446,7 @@
     Promise.all(list.map(function (f) { return P && P.decodeBytes && f.arrayBuffer ? f.arrayBuffer().then(P.decodeBytes) : f.text(); })).then(function (texts) {
       var ta = $('export-input');
       ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + texts.join('\n\n');
+      updateSplitPreview();
       $('form-export').dispatchEvent(new Event('submit', { cancelable: true })); // also works while a batch is running
     }, function (e) { logError('file-read', e); $('export-status').textContent = 'Could not read that file: ' + e.message; });
   }
@@ -5406,6 +5458,9 @@
     if (ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files.length) { ev.preventDefault(); readFiles(ev.dataTransfer.files); }
   });
 
+  $('export-input').addEventListener('input', function () { clearTimeout(previewTimer); previewTimer = setTimeout(updateSplitPreview, 250); });
+  (function () { var sm = store.get('splitmode'); if (sm && /^(auto|lines|blank|numbered)$/.test(sm)) $('split-mode').value = sm; })();
+  $('split-mode').addEventListener('change', function () { store.set('splitmode', this.value); updateSplitPreview(); });
   $('export-input').addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); $('export-go').click(); }
   });
@@ -5424,6 +5479,19 @@
   }
   function fileLabel(src) { return src === 'enw' ? 'EndNote' : src === 'ris' ? 'RIS' : src === 'bibtex' ? 'BibTeX' : 'file'; }
   // Split a paste into structured file records (RIS / EndNote / BibTeX, in any mix) and plain references, keeping order
+  function splitMode() { var el2 = document.getElementById('split-mode'); return el2 ? el2.value : 'auto'; }
+  // Live preview: how many references (and file records) the paste holds, before anything is looked up
+  var previewTimer = null;
+  function updateSplitPreview() {
+    var raw = $('export-input').value;
+    if (!raw.trim()) { $('split-count').textContent = ''; $('split-list').innerHTML = ''; return; }
+    var items = batchItems(raw);
+    var nFileRecs = items.filter(function (x) { return x.kind === 'rec'; }).length, nText = items.length - nFileRecs;
+    $('split-count').textContent = (nText ? nText + ' reference' + (nText === 1 ? '' : 's') : '') + (nText && nFileRecs ? ' + ' : '') +
+      (nFileRecs ? nFileRecs + ' file record' + (nFileRecs === 1 ? '' : 's') : '') + ' found';
+    var ol = $('split-list'); ol.innerHTML = '';
+    items.slice(0, 400).forEach(function (x) { ol.appendChild(el('li', '', x.kind === 'rec' ? '[file] ' + (x.rec.title || '(untitled record)') : x.text.slice(0, 220))); });
+  }
   function batchItems(rawText) {
     var items = [];
     var parsed = null;
@@ -5436,14 +5504,14 @@
           if (raw['protect-words']) nr.protectWords = raw['protect-words']; // {Big} {Bend}: keep their capitals in title-case conversion
           items.push({ kind: 'rec', rec: nr, src: raw.source, untitled: !!raw.untitled || !raw.title });
         }
-        else splitReferences(parsed.plain[o.index]).forEach(function (t) { items.push({ kind: 'text', text: t }); });
+        else splitReferences(parsed.plain[o.index], splitMode()).forEach(function (t) { items.push({ kind: 'text', text: t }); });
       });
       return items;
     }
     if (P && !P.parseMixed && P.detect && P.detect(rawText)) { // older parser without parseMixed
       try { P.parse(rawText).records.forEach(function (raw) { items.push({ kind: 'rec', rec: A.normalize(raw), src: raw.source, untitled: !raw.title }); }); return items; } catch (e) { logError('parse', e); }
     }
-    splitReferences(rawText).forEach(function (t) { items.push({ kind: 'text', text: t }); });
+    splitReferences(rawText, splitMode()).forEach(function (t) { items.push({ kind: 'text', text: t }); });
     return items;
   }
 
