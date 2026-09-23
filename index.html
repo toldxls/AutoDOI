@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AutoDOI</title>
+<meta name="description" content="Turn a DOI into APA, MLA, Chicago, Harvard, Vancouver, IEEE, BibTeX, RIS and EndNote; find a DOI from a title; convert pasted references to EndNote.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,wght@0,400;1,400&display=swap">
+<style>
+  :root {
+    --ground: #F5F6F3; --surface: #FFFFFF; --ink: #1C2128; --muted: #5F6B78; --line: #D6DBE0;
+    --accent: #1E5EB8; --accent-ink: #FFFFFF; --accent-soft: #E4EDFA;
+    --good: #2F7D4F; --warn: #A8690D; --bad: #B3403A; --good-soft: #E3F1E8; --warn-soft: #FBEEDB; --bad-soft: #F8E4E2;
+    --code-bg: #F0F2F5; --shadow: 0 1px 2px rgba(20, 30, 40, .06), 0 6px 20px rgba(20, 30, 40, .05);
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #14171B; --surface: #1C2127; --ink: #E6E9EC; --muted: #98A3AE; --line: #2C343D;
+      --accent: #7FAAF2; --accent-ink: #0F1A2B; --accent-soft: #1F2E44;
+      --good: #5DBB7F; --warn: #E0A44A; --bad: #E07B72; --good-soft: #1B2F24; --warn-soft: #34281A; --bad-soft: #3A2220;
+      --code-bg: #12161A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #14171B; --surface: #1C2127; --ink: #E6E9EC; --muted: #98A3AE; --line: #2C343D;
+    --accent: #7FAAF2; --accent-ink: #0F1A2B; --accent-soft: #1F2E44;
+    --good: #5DBB7F; --warn: #E0A44A; --bad: #E07B72; --good-soft: #1B2F24; --warn-soft: #34281A; --bad-soft: #3A2220;
+    --code-bg: #12161A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; margin: 0; }
+  .wrap { max-width: 900px; margin: 0 auto; padding-block: 28px 64px; padding-inline: 16px; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .brand { font-weight: 600; font-size: 22px; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent); }
+  .tag { color: var(--muted); font-size: 13px; }
+
+  nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 20px; overflow-x: auto; }
+  nav button { appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    padding: 10px 14px; font: inherit; font-weight: 500; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+  nav button:hover { color: var(--ink); }
+  nav button:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .panel[hidden] { display: none; }
+  .lead { color: var(--muted); margin: 0 0 14px; max-width: 65ch; }
+
+  form.bar { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
+  form.bar.two { grid-template-columns: 1fr 1fr auto; }
+  @media (max-width: 640px) { form.bar, form.bar.two { grid-template-columns: 1fr; } }
+  input[type="text"], textarea { width: 100%; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+    border-radius: 6px; padding: 10px 12px; }
+  input[type="text"].mono { font-family: var(--mono); font-size: 14px; }
+  textarea { font-family: var(--serif); font-size: 15px; line-height: 1.55; min-height: 140px; resize: vertical; }
+  label.field { display: block; font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+
+  .btn { appearance: none; font: inherit; font-weight: 500; border-radius: 6px; padding: 10px 16px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.small { padding: 5px 10px; font-size: 13px; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.copied { border-color: var(--good); color: var(--good); }
+
+  .status { font-size: 13px; color: var(--muted); min-height: 20px; margin: 10px 0 0; }
+  .status.err { color: var(--bad); }
+
+  .record { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+  .record-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap;
+    padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--accent-soft); }
+  .record-head .title { font-family: var(--serif); font-size: 17px; line-height: 1.35; margin: 0; }
+  .record-head .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .record-head .meta code { font-family: var(--mono); font-size: 12.5px; }
+  .chip { display: inline-block; font-size: 11.5px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+  .chip.good { background: var(--good-soft); color: var(--good); border-color: transparent; }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+
+  .cite { display: grid; grid-template-columns: 110px 1fr auto; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); align-items: start; }
+  .cite:last-child { border-bottom: 0; }
+  .cite .style { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
+  .cite .text { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; overflow-wrap: anywhere; }
+  .cite .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  @media (max-width: 640px) { .cite { grid-template-columns: 1fr; gap: 8px; } .cite .actions { justify-content: flex-start; } }
+
+  .section-label { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 24px 0 8px; }
+  pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.5; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 12px 14px; margin: 0; overflow-x: auto; white-space: pre; }
+  .export { margin-top: 12px; }
+  .export .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .export .head .actions { display: flex; gap: 6px; }
+
+  .results { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .hit { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; display: grid;
+    grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .hit .t { font-family: var(--serif); font-size: 15.5px; line-height: 1.4; }
+  .hit .m { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .hit .m code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  @media (max-width: 640px) { .hit { grid-template-columns: 1fr; } }
+
+  .matches { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .match { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; border-left: 4px solid var(--line); }
+  .match.good { border-left-color: var(--good); } .match.warn { border-left-color: var(--warn); } .match.bad { border-left-color: var(--bad); }
+  .match .in { font-family: var(--serif); color: var(--muted); font-size: 14px; }
+  .match .out { margin-top: 6px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .match .out .t { font-family: var(--serif); font-size: 15px; }
+  .match .out code { font-family: var(--mono); font-size: 12.5px; }
+
+  details.settings { margin-top: 36px; color: var(--muted); font-size: 13px; }
+  details.settings summary { cursor: pointer; }
+  details.settings .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  details.settings input { max-width: 320px; padding: 6px 10px; font-size: 13px; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; max-width: 65ch; }
+  @media (prefers-reduced-motion: no-preference) { .btn { transition: border-color .15s, color .15s; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Auto<span>DOI</span></div>
+    <div class="tag">Crossref and DataCite metadata, formatted for pasting</div>
+  </header>
+
+  <nav role="tablist" aria-label="Mode">
+    <button role="tab" id="tab-cite" aria-selected="true" aria-controls="panel-cite">DOI → reference</button>
+    <button role="tab" id="tab-find" aria-selected="false" aria-controls="panel-find">Find a DOI</button>
+    <button role="tab" id="tab-export" aria-selected="false" aria-controls="panel-export">Reference → EndNote</button>
+  </nav>
+
+  <!-- ===== 1. DOI -> reference ===== -->
+  <section class="panel" id="panel-cite" role="tabpanel" aria-labelledby="tab-cite">
+    <p class="lead">Paste a DOI, a doi.org link, or any text containing one. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
+    <form class="bar" id="form-cite">
+      <input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI">
+      <button class="btn primary" type="submit" id="doi-go">Look up</button>
+    </form>
+    <p class="status" id="doi-status"></p>
+    <div id="doi-result"></div>
+  </section>
+
+  <!-- ===== 2. Find a DOI ===== -->
+  <section class="panel" id="panel-find" role="tabpanel" aria-labelledby="tab-find" hidden>
+    <p class="lead">Paste a paper title and, if you have it, the journal name. The best matches come back with their DOIs; pick one to format it.</p>
+    <form class="bar two" id="form-find">
+      <div><label class="field" for="find-title">Title</label>
+        <input type="text" id="find-title" placeholder="Nanometre-scale thermometry in a living cell" autocomplete="off"></div>
+      <div><label class="field" for="find-journal">Journal (optional)</label>
+        <input type="text" id="find-journal" placeholder="Nature" autocomplete="off"></div>
+      <div><label class="field">&nbsp;</label><button class="btn primary" type="submit" id="find-go">Search</button></div>
+    </form>
+    <p class="status" id="find-status"></p>
+    <div class="results" id="find-results"></div>
+  </section>
+
+  <!-- ===== 3. Reference -> EndNote ===== -->
+  <section class="panel" id="panel-export" role="tabpanel" aria-labelledby="tab-export" hidden>
+    <p class="lead">Paste one or more references in any style, one per line. Each is matched against Crossref, then exported as EndNote tagged (.enw) and RIS. Check the match colour before importing.</p>
+    <form id="form-export">
+      <textarea id="export-input" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Vaswani A, et al. Attention is all you need. NeurIPS 2017."></textarea>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+        <button class="btn primary" type="submit" id="export-go">Match and export</button>
+        <span class="status" id="export-status" style="margin:0"></span>
+      </div>
+    </form>
+    <div class="matches" id="export-matches"></div>
+    <div id="export-output"></div>
+  </section>
+
+  <details class="settings">
+    <summary>Settings</summary>
+    <div class="row">
+      <label for="polite-email">Contact email for Crossref's polite pool (optional, faster and more reliable; stays in this browser)</label>
+      <input type="text" id="polite-email" placeholder="you@example.org" autocomplete="off">
+    </div>
+  </details>
+
+  <footer>Article titles are shown as the publisher deposited them, so APA's sentence-case rule and MLA's title case may need a manual touch. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server.</footer>
+</div>
+
+<!-- citations.js (inlined by build.sh; edit citations.js, not this block) -->
+<script>
+/*
+ * AutoDOI — shared citation library.
+ * Pure functions only (no DOM, no network) so the same file runs in the browser
+ * page (index.html) and in Google Apps Script (apps-script/Citations.gs).
+ *
+ * Input: a CSL-JSON-like record as returned by api.crossref.org (message object)
+ * or by doi.org content negotiation (application/vnd.citationstyles.csl+json).
+ */
+(function (root) {
+  'use strict';
+
+  var DOI_RE = /10\.\d{4,9}\/[^\s"'<>]+/i;
+
+  /* ---------- helpers ---------- */
+
+  function extractDoi(text) {
+    if (!text) return null;
+    var m = String(text).match(DOI_RE);
+    if (!m) return null;
+    var doi = m[0].replace(/[.,;:]+$/, '');
+    // drop a trailing ")" or "]" only if it is unbalanced
+    while (/[)\]]$/.test(doi)) {
+      var open = (doi.match(/[(\[]/g) || []).length;
+      var close = (doi.match(/[)\]]/g) || []).length;
+      if (close > open) doi = doi.slice(0, -1); else break;
+    }
+    return doi;
+  }
+
+  function first(v) { return Array.isArray(v) ? v[0] : v; }
+
+  function clean(s) {
+    if (s === undefined || s === null) return '';
+    return String(s)
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function stripTags(html) {
+    return String(html).replace(/<[^>]+>/g, '')
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  }
+
+  function datePartsOf(m) {
+    var keys = ['issued', 'published-print', 'published-online', 'published', 'created'];
+    for (var i = 0; i < keys.length; i++) {
+      var d = m[keys[i]];
+      if (d && d['date-parts'] && d['date-parts'][0] && d['date-parts'][0][0]) return d['date-parts'][0];
+    }
+    return [];
+  }
+
+  function person(p) {
+    if (p.family || p.given) {
+      return { family: clean(p.family), given: clean(p.given), literal: false };
+    }
+    var name = clean(p.name || p.literal || '');
+    return { family: name, given: '', literal: true };
+  }
+
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+  var MONTHS_ABBR = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.',
+    'Sep.', 'Oct.', 'Nov.', 'Dec.'];
+
+  /* ---------- normalize ---------- */
+
+  function normalize(m) {
+    var dp = datePartsOf(m);
+    var type = m.type || 'other';
+    var page = clean(m.page || '');
+    var r = {
+      type: type,
+      doi: m.DOI || m.doi || '',
+      url: m.URL || (m.DOI ? 'https://doi.org/' + m.DOI : ''),
+      title: clean(first(m.title)),
+      subtitle: clean(first(m.subtitle)),
+      container: clean(first(m['container-title'])),
+      shortContainer: clean(first(m['short-container-title'])),
+      authors: (m.author || []).map(person),
+      editors: (m.editor || []).map(person),
+      year: dp[0] ? String(dp[0]) : '',
+      month: dp[1] ? Number(dp[1]) : 0,
+      day: dp[2] ? Number(dp[2]) : 0,
+      volume: clean(m.volume || ''),
+      issue: clean(m.issue || ''),
+      pages: page,
+      articleNumber: clean(m['article-number'] || ''),
+      publisher: clean(m.publisher || ''),
+      place: clean(m['publisher-location'] || m['publisher-place'] || ''),
+      issn: clean(first(m.ISSN) || ''),
+      isbn: clean(first(m.ISBN) || ''),
+      abstract: clean(m.abstract || ''),
+      language: clean(m.language || ''),
+      event: clean((m.event && m.event.name) || ''),
+      score: m.score
+    };
+    if (r.subtitle && r.title && r.title.indexOf(r.subtitle) === -1) {
+      r.title = r.title + ': ' + r.subtitle;
+    }
+    if (r.title && !/[.?!]$/.test(r.title)) { /* keep as is; punctuation added per style */ }
+    if (!r.pages && r.articleNumber) r.pages = r.articleNumber;
+    return r;
+  }
+
+  function kind(r) {
+    var t = r.type;
+    if (t === 'journal-article' || (!t && r.container)) return 'journal';
+    if (t === 'book-chapter' || t === 'book-section' || t === 'book-part' || t === 'chapter') return 'chapter';
+    if (t === 'book' || t === 'monograph' || t === 'edited-book' || t === 'reference-book') return 'book';
+    if (t === 'proceedings-article' || t === 'paper-conference') return 'proceedings';
+    if (t === 'posted-content' || t === 'preprint' || t === 'article') return 'preprint';
+    if (t === 'dataset') return 'dataset';
+    if (t === 'software') return 'software';
+    if (t === 'dissertation' || t === 'thesis') return 'thesis';
+    if (t === 'report') return 'report';
+    if (r.container && r.volume) return 'journal';
+    return 'generic';
+  }
+
+  /* ---------- names ---------- */
+
+  function initials(given, opts) {
+    opts = opts || {};
+    if (!given) return '';
+    var tokens = given.replace(/\./g, '. ').split(/\s+/).filter(Boolean);
+    var out = [];
+    tokens.forEach(function (tok) {
+      tok = tok.replace(/\.$/, '');
+      if (!tok) return;
+      // "PC" style compressed initials
+      if (/^[A-Z]{2,3}$/.test(tok)) {
+        tok.split('').forEach(function (ch) { out.push(ch); });
+        return;
+      }
+      var parts = tok.split('-').map(function (p) { return p.charAt(0).toUpperCase(); });
+      out.push(parts.join(opts.dots === false ? '-' : '.-'));
+    });
+    if (opts.dots === false) return out.join('');
+    return out.map(function (x) { return x + '.'; }).join(opts.space === false ? '' : ' ');
+  }
+
+  function nameLastInit(p, sep) { // "Kucsko, G."
+    if (p.literal) return p.family;
+    var ini = initials(p.given);
+    return p.family + (ini ? (typeof sep === 'string' ? sep : ', ') + ini : '');
+  }
+  function nameLastFull(p) { // "Kucsko, Georg"
+    if (p.literal) return p.family;
+    return p.family + (p.given ? ', ' + p.given : '');
+  }
+  function nameFullFirst(p) { // "Georg Kucsko"
+    if (p.literal) return p.family;
+    return (p.given ? p.given + ' ' : '') + p.family;
+  }
+  function nameInitFirst(p) { // "G. Kucsko"
+    if (p.literal) return p.family;
+    var ini = initials(p.given);
+    return (ini ? ini + ' ' : '') + p.family;
+  }
+  function nameVancouver(p) { // "Kucsko G"
+    if (p.literal) return p.family;
+    var ini = initials(p.given, { dots: false });
+    return p.family + (ini ? ' ' + ini : '');
+  }
+
+  function joinAnd(list, and, oxford) {
+    if (list.length === 0) return '';
+    if (list.length === 1) return list[0];
+    if (list.length === 2) return list[0] + ' ' + and + ' ' + list[1];
+    return list.slice(0, -1).join(', ') + (oxford ? ',' : '') + ' ' + and + ' ' + list[list.length - 1];
+  }
+
+  /* ---------- pages ---------- */
+
+  function enDash(pages) { return pages.replace(/\s*[-–—]+\s*/g, '–'); }
+  function pageRange(pages) { var p = enDash(pages); return p; }
+  function isRange(pages) { return /[-–—]/.test(pages); }
+  function nlmPages(pages) { // 123-129 -> 123-9
+    var m = pages.match(/^(\d+)\s*[-–—]\s*(\d+)$/);
+    if (!m) return pages.replace(/\s*[-–—]+\s*/g, '-');
+    var a = m[1], b = m[2];
+    if (a.length !== b.length || Number(b) <= Number(a)) return a + '-' + b;
+    var i = 0;
+    while (i < a.length - 1 && a[i] === b[i]) i++;
+    return a + '-' + b.slice(i);
+  }
+
+  /* ---------- text styles (return HTML with <i>) ---------- */
+
+  function doiLink(r) { return r.doi ? 'https://doi.org/' + r.doi : r.url; }
+  function endsPunct(s) { return /[.?!]$/.test(s); }
+  function dot(s) { return s ? (endsPunct(s) ? s : s + '.') : ''; }
+  function I(s) { return s ? '<i>' + esc(s) + '</i>' : ''; }
+  function T(s) { return esc(s); }
+
+  function apa(r) {
+    var k = kind(r);
+    var n = r.authors.length;
+    var names;
+    if (n === 0) names = '';
+    else if (n === 1) names = nameLastInit(r.authors[0]);
+    else if (n === 2) names = nameLastInit(r.authors[0]) + ', & ' + nameLastInit(r.authors[1]);
+    else if (n <= 20) names = r.authors.slice(0, -1).map(nameLastInit).join(', ') + ', & ' + nameLastInit(r.authors[n - 1]);
+    else names = r.authors.slice(0, 19).map(nameLastInit).join(', ') + ', . . . ' + nameLastInit(r.authors[n - 1]);
+    var year = '(' + (r.year || 'n.d.') + ').';
+    var out = [];
+    var link = doiLink(r);
+    var vol = '';
+    if (r.volume) vol = I(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '');
+    else if (r.issue) vol = '(' + T(r.issue) + ')';
+
+    if (k === 'journal') {
+      var src = [I(r.container), vol, r.pages ? T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
+      if (n) out.push(T(dot(names)), year, T(dot(r.title)), src + '.');
+      else out.push(T(dot(r.title)), year, src + '.');
+    } else if (k === 'chapter' || k === 'proceedings') {
+      var eds = r.editors.map(nameInitFirst);
+      var inPart = 'In ' + (eds.length ? T(joinAnd(eds, '&', true)) + ' (' + (eds.length > 1 ? 'Eds.' : 'Ed.') + '), ' : '') +
+        I(r.container) + (r.pages ? ' (pp. ' + T(pageRange(r.pages)) + ')' : '') + '.';
+      if (n) out.push(T(dot(names)), year, T(dot(r.title)), inPart);
+      else out.push(T(dot(r.title)), year, inPart);
+      if (r.publisher) out.push(T(dot(r.publisher)));
+    } else if (k === 'book') {
+      if (n) out.push(T(dot(names)), year, I(r.title) + '.');
+      else out.push(I(r.title) + '.', year);
+      if (r.publisher) out.push(T(dot(r.publisher)));
+    } else {
+      var label = { preprint: 'Preprint', dataset: 'Data set', software: 'Computer software', thesis: 'Doctoral dissertation', report: 'Report' }[k];
+      var titlePart = I(r.title) + (label ? ' [' + label + ']' : '') + '.';
+      if (n) out.push(T(dot(names)), year, titlePart);
+      else out.push(titlePart, year);
+      var host = r.container || r.publisher;
+      if (host) out.push(T(dot(host)));
+    }
+    if (link) out.push(T(link));
+    return out.filter(Boolean).join(' ');
+  }
+
+  function mla(r) {
+    var k = kind(r);
+    var n = r.authors.length;
+    var names = '';
+    if (n === 1) names = nameLastFull(r.authors[0]);
+    else if (n === 2) names = nameLastFull(r.authors[0]) + ', and ' + nameFullFirst(r.authors[1]);
+    else if (n >= 3) names = nameLastFull(r.authors[0]) + ', et al';
+    var out = [];
+    if (names) out.push(T(dot(names)));
+    var quoted = '“' + T(dot(r.title)) + '”';
+    var link = doiLink(r);
+    var contParts = [];
+    if (k === 'book') {
+      out.push(I(r.title) + '.');
+      if (r.publisher) contParts.push(T(r.publisher));
+      if (r.year) contParts.push(T(r.year));
+    } else {
+      out.push(quoted);
+      if (r.container) contParts.push(I(r.container));
+      if (k === 'chapter' && r.editors.length) contParts.push('edited by ' + T(joinAnd(r.editors.map(nameFullFirst), 'and', false)));
+      if (r.volume) contParts.push('vol. ' + T(r.volume));
+      if (r.issue) contParts.push('no. ' + T(r.issue));
+      if (k !== 'journal' && r.publisher) contParts.push(T(r.publisher));
+      if (r.year) contParts.push(T(r.year));
+      if (r.pages) contParts.push((isRange(r.pages) ? 'pp. ' : 'p. ') + T(pageRange(r.pages)));
+    }
+    if (link) contParts.push(T(link));
+    if (contParts.length) out.push(contParts.join(', ') + '.');
+    return out.join(' ');
+  }
+
+  function chicago(r) {
+    var k = kind(r);
+    var n = r.authors.length;
+    var names = '';
+    if (n === 1) names = nameLastFull(r.authors[0]);
+    else if (n >= 2 && n <= 10) names = nameLastFull(r.authors[0]) + ', ' + joinAnd(r.authors.slice(1).map(nameFullFirst), 'and', n > 2);
+    else if (n > 10) names = nameLastFull(r.authors[0]) + ', ' + r.authors.slice(1, 7).map(nameFullFirst).join(', ') + ', et al';
+    var out = [];
+    if (names) out.push(T(dot(names)));
+    var link = doiLink(r);
+    if (k === 'journal') {
+      out.push('“' + T(dot(r.title)) + '”');
+      var s = I(r.container);
+      if (r.volume) s += ' ' + T(r.volume);
+      if (r.issue) s += ', no. ' + T(r.issue);
+      s += r.year ? ' (' + T(r.year) + ')' : '';
+      if (r.pages) s += ': ' + T(pageRange(r.pages));
+      out.push(s + '.');
+    } else if (k === 'book') {
+      out.push(I(r.title) + '.');
+      var pub = [r.place, r.publisher].filter(Boolean).join(': ');
+      out.push(T(dot([pub, r.year].filter(Boolean).join(', '))));
+    } else if (k === 'chapter' || k === 'proceedings') {
+      out.push('“' + T(dot(r.title)) + '”');
+      var inp = 'In ' + I(r.container);
+      if (r.editors.length) inp += ', edited by ' + T(joinAnd(r.editors.map(nameFullFirst), 'and', r.editors.length > 2));
+      if (r.pages) inp += ', ' + T(pageRange(r.pages));
+      out.push(inp + '.');
+      var pub2 = [r.place, r.publisher].filter(Boolean).join(': ');
+      out.push(T(dot([pub2, r.year].filter(Boolean).join(', '))));
+    } else {
+      out.push('“' + T(dot(r.title)) + '”');
+      var host = [r.container || r.publisher, r.year].filter(Boolean).join(', ');
+      if (host) out.push(T(dot(host)));
+    }
+    if (link) out.push(T(link) + '.');
+    return out.join(' ');
+  }
+
+  function harvard(r) {
+    var k = kind(r);
+    var n = r.authors.length;
+    var hn = function (p) { return p.literal ? p.family : p.family + (p.given ? ', ' + initials(p.given, { space: false }) : ''); };
+    var names = '';
+    if (n === 1) names = hn(r.authors[0]);
+    else if (n === 2 || n === 3) names = joinAnd(r.authors.map(hn), 'and', false);
+    else if (n > 3) names = hn(r.authors[0]) + ' et al.';
+    var out = [];
+    var year = '(' + (r.year || 'no date') + ')';
+    var link = doiLink(r);
+    if (names) out.push(T(names), year);
+    else out.push(year);
+    if (k === 'book') {
+      out.push(I(r.title) + '.');
+      if (r.publisher) out.push(T(dot([r.place, r.publisher].filter(Boolean).join(': '))));
+    } else {
+      var parts = ['‘' + T(r.title) + '’'];
+      if (r.container) parts.push(I(r.container));
+      if (r.volume) parts.push(T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : ''));
+      if (k !== 'journal' && r.publisher) parts.push(T(r.publisher));
+      if (r.pages) parts.push((isRange(r.pages) ? 'pp. ' : 'p. ') + T(pageRange(r.pages)));
+      out.push(parts.join(', ') + '.');
+    }
+    if (link) out.push('Available at: ' + T(link) + '.');
+    return out.join(' ');
+  }
+
+  function vancouver(r, num) {
+    var k = kind(r);
+    var n = r.authors.length;
+    var names = n > 6 ? r.authors.slice(0, 6).map(nameVancouver).join(', ') + ', et al' : r.authors.map(nameVancouver).join(', ');
+    var out = [];
+    if (num) out.push(String(num) + '.');
+    if (names) out.push(T(dot(names)));
+    out.push(T(dot(r.title)));
+    if (k === 'journal') {
+      var s = T(r.shortContainer || r.container) + '.';
+      s += ' ' + (r.year || '');
+      if (r.volume) s += ';' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '');
+      if (r.pages) s += ':' + T(nlmPages(r.pages));
+      out.push(s + '.');
+    } else if (k === 'book') {
+      out.push(T(dot([r.place, r.publisher].filter(Boolean).join(': ') + (r.year ? '; ' + r.year : ''))));
+    } else {
+      var host = [r.container, r.publisher].filter(Boolean).join('. ');
+      var tail = [host, r.year].filter(Boolean).join('; ');
+      if (tail) out.push(T(dot(tail)));
+    }
+    if (r.doi) out.push('doi:' + T(r.doi));
+    return out.join(' ');
+  }
+
+  function ieee(r, num) {
+    var k = kind(r);
+    var n = r.authors.length;
+    var names = '';
+    if (n > 6) names = nameInitFirst(r.authors[0]) + ' et al.';
+    else names = joinAnd(r.authors.map(nameInitFirst), 'and', n > 2);
+    var out = [];
+    if (num) out.push('[' + num + ']');
+    if (names) out.push(T(names) + ',');
+    var mon = r.month ? MONTHS_ABBR[r.month - 1] + ' ' : '';
+    var link = doiLink(r);
+    if (k === 'book') {
+      out.push(I(r.title) + '.');
+      var pub = [r.place, r.publisher].filter(Boolean).join(': ');
+      out.push(T(dot([pub, r.year].filter(Boolean).join(', '))));
+    } else {
+      var parts = ['“' + T(r.title) + ',”'];
+      var rest = [];
+      if (k === 'chapter' || k === 'proceedings') rest.push('in ' + I(r.container));
+      else if (r.container) rest.push(I(r.container));
+      if (r.volume) rest.push('vol. ' + T(r.volume));
+      if (r.issue) rest.push('no. ' + T(r.issue));
+      if (r.pages) rest.push((isRange(r.pages) ? 'pp. ' : 'p. ') + T(pageRange(r.pages)));
+      if (k !== 'journal' && r.publisher) rest.push(T(r.publisher));
+      if (r.year) rest.push(mon + T(r.year));
+      if (r.doi) rest.push('doi: ' + T(r.doi));
+      out.push(parts.join(' ') + (rest.length ? ' ' + rest.join(', ') : '') + '.');
+    }
+    if (!r.doi && link) out.push('[Online]. Available: ' + T(link));
+    return out.join(' ');
+  }
+
+  /* ---------- machine formats (plain text) ---------- */
+
+  function bibKey(r) {
+    var fam = r.authors.length ? r.authors[0].family : (r.container || 'ref');
+    var word = (r.title.match(/[A-Za-z]{3,}/g) || []).filter(function (w) {
+      return !/^(the|and|for|with|from|into|over|under|that|this|are|was|were|its|our|their)$/i.test(w);
+    })[0] || '';
+    return (fam + (r.year || '') + word).replace(/[^A-Za-z0-9]/g, '');
+  }
+  function bibEsc(s) { return String(s).replace(/([&%$#_])/g, '\\$1'); }
+
+  function bibtex(r) {
+    var k = kind(r);
+    var type = { journal: 'article', chapter: 'incollection', book: 'book', proceedings: 'inproceedings',
+      thesis: 'phdthesis', report: 'techreport' }[k] || 'misc';
+    var f = [];
+    var add = function (key, val) { if (val) f.push('  ' + key + ' = {' + bibEsc(val) + '}'); };
+    add('title', r.title);
+    add('author', r.authors.map(nameLastFull).join(' and '));
+    add('editor', r.editors.map(nameLastFull).join(' and '));
+    if (k === 'journal') add('journal', r.container);
+    else if (k === 'chapter' || k === 'proceedings') add('booktitle', r.container);
+    else if (r.container) add('howpublished', r.container);
+    add('volume', r.volume);
+    add('number', r.issue);
+    add('pages', r.pages ? enDash(r.pages).replace('–', '--') : '');
+    add('year', r.year);
+    if (r.month) add('month', MONTHS_ABBR[r.month - 1].replace('.', '').toLowerCase());
+    add('publisher', r.publisher);
+    add('address', r.place);
+    add('issn', r.issn);
+    add('isbn', r.isbn);
+    add('doi', r.doi);
+    add('url', doiLink(r));
+    if (k === 'preprint') add('note', 'Preprint');
+    if (k === 'dataset') add('note', 'Dataset');
+    if (k === 'software') add('note', 'Software');
+    return '@' + type + '{' + bibKey(r) + ',\n' + f.join(',\n') + '\n}';
+  }
+
+  function ris(r) {
+    var k = kind(r);
+    var type = { journal: 'JOUR', chapter: 'CHAP', book: 'BOOK', proceedings: 'CONF', preprint: 'UNPB',
+      dataset: 'DATA', software: 'COMP', thesis: 'THES', report: 'RPRT' }[k] || 'GEN';
+    var L = [];
+    var add = function (tag, val) { if (val) L.push(tag + '  - ' + val); };
+    add('TY', type);
+    r.authors.forEach(function (p) { add('AU', nameLastFull(p)); });
+    r.editors.forEach(function (p) { add('ED', nameLastFull(p)); });
+    add('TI', r.title);
+    add('T2', r.container);
+    if (r.shortContainer && r.shortContainer !== r.container) add('JO', r.shortContainer);
+    add('VL', r.volume);
+    add('IS', r.issue);
+    var pm = r.pages.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+    if (pm) { add('SP', pm[1]); add('EP', pm[2]); } else add('SP', r.pages);
+    add('PY', r.year);
+    if (r.year) add('DA', r.year + '/' + (r.month ? String(r.month).padStart(2, '0') : '') + '/' + (r.day ? String(r.day).padStart(2, '0') : '') + '/');
+    add('PB', r.publisher);
+    add('CY', r.place);
+    add('SN', r.issn || r.isbn);
+    add('DO', r.doi);
+    add('UR', doiLink(r));
+    add('LA', r.language);
+    add('AB', r.abstract);
+    L.push('ER  - ');
+    return L.join('\r\n') + '\r\n';
+  }
+
+  function endnote(r) {
+    var k = kind(r);
+    var type = { journal: 'Journal Article', chapter: 'Book Section', book: 'Book', proceedings: 'Conference Paper',
+      preprint: 'Unpublished Work', dataset: 'Dataset', software: 'Computer Program', thesis: 'Thesis', report: 'Report' }[k] || 'Generic';
+    var L = [];
+    var add = function (tag, val) { if (val) L.push(tag + ' ' + val); };
+    add('%0', type);
+    r.authors.forEach(function (p) { add('%A', nameLastFull(p)); });
+    r.editors.forEach(function (p) { add('%E', nameLastFull(p)); });
+    add('%T', r.title);
+    if (k === 'journal') add('%J', r.container);
+    else add('%B', r.container);
+    add('%V', r.volume);
+    add('%N', r.issue);
+    add('%P', r.pages ? enDash(r.pages).replace('–', '-') : '');
+    add('%D', r.year);
+    if (r.month) add('%8', MONTHS[r.month - 1] + (r.day ? ' ' + r.day : ''));
+    add('%I', r.publisher);
+    add('%C', r.place);
+    add('%@', r.issn || r.isbn);
+    add('%R', r.doi);
+    add('%U', doiLink(r));
+    add('%G', r.language);
+    add('%X', r.abstract);
+    return L.join('\n') + '\n';
+  }
+
+  /* ---------- registry ---------- */
+
+  var STYLES = [
+    { id: 'apa', label: 'APA 7th', fn: apa, rich: true },
+    { id: 'mla', label: 'MLA 9th', fn: mla, rich: true },
+    { id: 'chicago', label: 'Chicago 17th', fn: chicago, rich: true },
+    { id: 'harvard', label: 'Harvard', fn: harvard, rich: true },
+    { id: 'vancouver', label: 'Vancouver', fn: vancouver, rich: true },
+    { id: 'ieee', label: 'IEEE', fn: ieee, rich: true }
+  ];
+  var EXPORTS = [
+    { id: 'bibtex', label: 'BibTeX', fn: bibtex, ext: 'bib' },
+    { id: 'ris', label: 'RIS', fn: ris, ext: 'ris' },
+    { id: 'endnote', label: 'EndNote tagged', fn: endnote, ext: 'enw' }
+  ];
+
+  function format(record, styleId) {
+    var r = record.authors ? record : normalize(record);
+    var all = STYLES.concat(EXPORTS);
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === styleId) {
+        var out = all[i].fn(r);
+        return all[i].rich ? stripTags(out) : out;
+      }
+    }
+    throw new Error('Unknown style: ' + styleId);
+  }
+
+  function formatHtml(record, styleId) {
+    var r = record.authors ? record : normalize(record);
+    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r);
+    throw new Error('Unknown text style: ' + styleId);
+  }
+
+  /* ---------- matching confidence ---------- */
+
+  function tokens(s) {
+    return clean(s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+      .filter(function (w) { return w.length >= 3; });
+  }
+
+  // How well does a found record explain the reference text the user pasted? 0..1
+  function matchConfidence(refText, record) {
+    var r = record.authors ? record : normalize(record);
+    var hay = ' ' + tokens(refText).join(' ') + ' ';
+    var tt = tokens(r.title);
+    if (!tt.length) return 0;
+    var hit = tt.filter(function (w) { return hay.indexOf(' ' + w + ' ') !== -1; }).length;
+    var score = hit / tt.length;
+    var yearsInRef = (String(refText).match(/\b(19|20)\d{2}\b/g) || []);
+    if (r.year && yearsInRef.length && yearsInRef.indexOf(r.year) === -1) score -= 0.35; // a different year is a different record
+    else if (r.year && hay.indexOf(' ' + r.year + ' ') === -1) score -= 0.15;
+    if (r.authors.length) {
+      var fam = tokens(r.authors[0].family)[0];
+      if (fam && hay.indexOf(' ' + fam + ' ') === -1) score -= 0.15;
+    }
+    return Math.max(0, Math.min(1, score));
+  }
+
+  var api = {
+    extractDoi: extractDoi,
+    normalize: normalize,
+    kind: kind,
+    format: format,
+    formatHtml: formatHtml,
+    stripTags: stripTags,
+    matchConfidence: matchConfidence,
+    STYLES: STYLES,
+    EXPORTS: EXPORTS
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  root.AutoDOI = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<!-- /citations.js -->
+<script>
+(function () {
+  'use strict';
+  var A = window.AutoDOI;
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- persistence (per-browser conveniences only) ---------- */
+  var store = {
+    get: function (k) { try { return localStorage.getItem('autodoi.' + k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem('autodoi.' + k, v); } catch (e) {} }
+  };
+
+  /* ---------- tabs ---------- */
+  var TABS = ['cite', 'find', 'export'];
+  function showTab(name) {
+    if (TABS.indexOf(name) === -1) name = 'cite';
+    TABS.forEach(function (t) {
+      $('tab-' + t).setAttribute('aria-selected', t === name ? 'true' : 'false');
+      $('panel-' + t).hidden = t !== name;
+    });
+    store.set('tab', name);
+  }
+  TABS.forEach(function (t) { $('tab-' + t).addEventListener('click', function () { showTab(t); }); });
+  showTab((location.hash || '').replace('#', '') || store.get('tab') || 'cite');
+
+  /* ---------- settings ---------- */
+  $('polite-email').value = store.get('email') || '';
+  $('polite-email').addEventListener('change', function () { store.set('email', $('polite-email').value.trim()); });
+  function polite(url) {
+    var e = ($('polite-email').value || '').trim();
+    return e ? url + (url.indexOf('?') === -1 ? '?' : '&') + 'mailto=' + encodeURIComponent(e) : url;
+  }
+
+  /* ---------- network ---------- */
+  var SELECT = 'DOI,URL,title,subtitle,author,editor,container-title,short-container-title,issued,published-print,published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event';
+
+  async function fetchRecord(doi) {
+    var res = await fetch(polite('https://api.crossref.org/works/' + encodeURIComponent(doi)));
+    if (res.ok) return A.normalize((await res.json()).message);
+    if (res.status !== 404) throw new Error('Crossref returned ' + res.status);
+    // Not a Crossref DOI (DataCite, mEDRA, ...): ask doi.org for CSL JSON
+    var alt = await fetch('https://doi.org/' + doi, { headers: { Accept: 'application/vnd.citationstyles.csl+json' } });
+    if (!alt.ok) throw new Error('DOI not found at Crossref or doi.org (' + alt.status + ')');
+    return A.normalize(await alt.json());
+  }
+
+  async function search(params, rows) {
+    var url = 'https://api.crossref.org/works?rows=' + rows + '&select=' + SELECT;
+    Object.keys(params).forEach(function (k) { if (params[k]) url += '&' + k + '=' + encodeURIComponent(params[k]); });
+    var res = await fetch(polite(url));
+    if (!res.ok) throw new Error('Crossref returned ' + res.status);
+    return (await res.json()).message.items.map(A.normalize);
+  }
+
+  /* ---------- clipboard ---------- */
+  function flash(btn, label) {
+    var old = btn.textContent; btn.textContent = label; btn.classList.add('copied');
+    setTimeout(function () { btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed'; ta.style.top = '-1000px'; document.body.appendChild(ta); ta.select();
+    var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); return ok;
+  }
+  function copyPlain(btn, text) {
+    var p = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(text) : Promise.reject();
+    p.then(function () { flash(btn, 'Copied'); }, function () { flash(btn, fallbackCopy(text) ? 'Copied' : 'Select and copy'); });
+  }
+  function copyRich(btn, html, text) {
+    if (navigator.clipboard && window.ClipboardItem) {
+      try {
+        var item = new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([text], { type: 'text/plain' })
+        });
+        navigator.clipboard.write([item]).then(function () { flash(btn, 'Copied'); }, function () { copyPlain(btn, text); });
+        return;
+      } catch (e) {}
+    }
+    copyPlain(btn, text);
+  }
+
+  /* ---------- downloads ---------- */
+  var canDownload = true;
+  function download(name, text) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  }
+
+  /* ---------- rendering ---------- */
+  function el(tag, cls, text) {
+    var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e;
+  }
+  function button(label, cls, onClick) {
+    var b = el('button', 'btn small' + (cls ? ' ' + cls : ''), label); b.type = 'button'; b.addEventListener('click', function () { onClick(b); }); return b;
+  }
+  function authorsShort(r) {
+    var names = r.authors.map(function (p) { return p.family; });
+    if (names.length > 3) return names.slice(0, 3).join(', ') + ' et al.';
+    return names.join(', ');
+  }
+  function fileBase(r) {
+    return ((r.authors[0] && r.authors[0].family) || 'reference').replace(/[^A-Za-z0-9]/g, '') + (r.year || '');
+  }
+
+  function renderRecord(r, opts) {
+    opts = opts || {};
+    var box = el('div', 'record');
+    var head = el('div', 'record-head');
+    var left = el('div');
+    var title = el('p', 'title', r.title || '(untitled)');
+    left.appendChild(title);
+    var meta = el('div', 'meta');
+    meta.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + ' · '));
+    var code = el('code', '', r.doi); meta.appendChild(code);
+    left.appendChild(meta);
+    head.appendChild(left);
+    if (opts.chip) head.appendChild(opts.chip);
+    box.appendChild(head);
+
+    A.STYLES.forEach(function (s) {
+      var row = el('div', 'cite');
+      row.appendChild(el('div', 'style', s.label));
+      var html = A.formatHtml(r, s.id), text = A.stripTags(html);
+      var t = el('div', 'text'); t.innerHTML = html; row.appendChild(t);
+      var act = el('div', 'actions');
+      act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
+      act.appendChild(button('Rich', '', function (b) { copyRich(b, html, text); }));
+      row.appendChild(act);
+      box.appendChild(row);
+    });
+    return box;
+  }
+
+  function renderExport(label, ext, text, base) {
+    var wrap = el('div', 'export');
+    var head = el('div', 'head');
+    head.appendChild(el('span', 'section-label', label)).style.margin = '0';
+    var act = el('div', 'actions');
+    act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
+    if (canDownload) act.appendChild(button('Download .' + ext, '', function () { download(base + '.' + ext, text); }));
+    head.appendChild(act);
+    wrap.appendChild(head);
+    wrap.appendChild(el('pre', 'code', text));
+    return wrap;
+  }
+
+  function renderExports(container, records, base) {
+    A.EXPORTS.forEach(function (x) {
+      var text = records.map(function (r) { return A.format(r, x.id); }).join(x.id === 'bibtex' ? '\n\n' : (x.id === 'ris' ? '' : '\n'));
+      container.appendChild(renderExport(x.label + (records.length > 1 ? ' · ' + records.length + ' records' : ''), x.ext, text, base));
+    });
+  }
+
+  /* ---------- 1. DOI -> reference ---------- */
+  function showCitation(r, chip) {
+    var out = $('doi-result'); out.innerHTML = '';
+    out.appendChild(renderRecord(r, { chip: chip }));
+    out.appendChild(el('div', 'section-label', 'Export formats'));
+    renderExports(out, [r], fileBase(r));
+  }
+
+  async function lookup(text) {
+    var status = $('doi-status'); status.className = 'status';
+    var doi = A.extractDoi(text);
+    if (!doi) { status.textContent = 'No DOI found in that text. A DOI looks like 10.1234/abc123.'; status.className = 'status err'; return; }
+    $('doi-input').value = doi;
+    status.textContent = 'Looking up ' + doi + '…'; $('doi-go').disabled = true;
+    try {
+      var r = await fetchRecord(doi);
+      showCitation(r);
+      status.textContent = '';
+    } catch (e) {
+      status.textContent = e.message; status.className = 'status err';
+    } finally { $('doi-go').disabled = false; }
+  }
+  $('form-cite').addEventListener('submit', function (ev) { ev.preventDefault(); lookup($('doi-input').value); });
+  $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.extractDoi($('doi-input').value)) lookup($('doi-input').value); }, 0); });
+
+  /* ---------- 2. Find a DOI ---------- */
+  $('form-find').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var title = $('find-title').value.trim(), journal = $('find-journal').value.trim();
+    var status = $('find-status'), list = $('find-results');
+    status.className = 'status'; list.innerHTML = '';
+    if (!title) { status.textContent = 'Enter a title to search for.'; status.className = 'status err'; return; }
+    status.textContent = 'Searching Crossref…'; $('find-go').disabled = true;
+    try {
+      var hits = await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6);
+      if (!hits.length) { status.textContent = 'No matches. Try fewer words from the title.'; return; }
+      status.textContent = hits.length + ' best matches, most likely first.';
+      hits.forEach(function (r) { r.conf = A.matchConfidence(title + ' ' + journal, r); });
+      hits.sort(function (a, b) { return b.conf - a.conf; });
+      hits.forEach(function (r) {
+        var conf = r.conf;
+        var h = el('div', 'hit');
+        var left = el('div');
+        left.appendChild(el('div', 't', r.title || '(untitled)'));
+        var m = el('div', 'm');
+        m.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + ' · '));
+        m.appendChild(el('code', '', r.doi));
+        left.appendChild(m);
+        h.appendChild(left);
+        var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.flexWrap = 'wrap';
+        act.appendChild(el('span', 'chip ' + (conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : ''), conf >= 0.8 ? 'Title match' : conf >= 0.5 ? 'Partial' : 'Weak'));
+        act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
+        act.appendChild(button('Format', 'primary', function () {
+          $('doi-input').value = r.doi; showCitation(r); showTab('cite'); window.scrollTo({ top: 0 });
+        }));
+        h.appendChild(act);
+        list.appendChild(h);
+      });
+    } catch (e) { status.textContent = e.message; status.className = 'status err'; }
+    finally { $('find-go').disabled = false; }
+  });
+
+  /* ---------- 3. Reference -> EndNote ---------- */
+  function splitReferences(text) {
+    return text.split(/\n+/).map(function (l) {
+      return l.replace(/^\s*(\[\d+\]|\d+[.)]|[•\-–*])\s*/, '').trim();
+    }).filter(function (l) { return l.length > 8; });
+  }
+  async function resolve(refText) {
+    var doi = A.extractDoi(refText);
+    if (doi) {
+      try { var r = await fetchRecord(doi); return { record: r, conf: 1, via: 'doi' }; } catch (e) { /* fall through to search */ }
+    }
+    var hits = await search({ 'query.bibliographic': refText }, 3);
+    if (!hits.length) return { record: null, conf: 0 };
+    var best = hits[0], bestConf = A.matchConfidence(refText, hits[0]);
+    for (var i = 1; i < hits.length; i++) {
+      var c = A.matchConfidence(refText, hits[i]);
+      if (c > bestConf + 0.2) { best = hits[i]; bestConf = c; }
+    }
+    return { record: best, conf: bestConf, via: 'search' };
+  }
+
+  $('form-export').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var refs = splitReferences($('export-input').value);
+    var status = $('export-status'), list = $('export-matches'), out = $('export-output');
+    status.className = 'status'; list.innerHTML = ''; out.innerHTML = '';
+    if (!refs.length) { status.textContent = 'Paste at least one reference.'; status.className = 'status err'; return; }
+    $('export-go').disabled = true;
+    var found = [];
+    for (var i = 0; i < refs.length; i++) {
+      status.textContent = 'Matching ' + (i + 1) + ' of ' + refs.length + '…';
+      var m = el('div', 'match');
+      m.appendChild(el('div', 'in', refs[i]));
+      list.appendChild(m);
+      try {
+        var res = await resolve(refs[i]);
+        var o = el('div', 'out');
+        if (!res.record) {
+          m.classList.add('bad');
+          o.appendChild(el('span', 'chip bad', 'No match'));
+          o.appendChild(el('span', 't', 'Crossref found nothing close. Try the "Find a DOI" tab with just the title.'));
+        } else {
+          var level = res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
+          m.classList.add(level);
+          o.appendChild(el('span', 'chip ' + level, res.via === 'doi' ? 'From DOI' : level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : 'Weak match'));
+          o.appendChild(el('span', 't', res.record.title));
+          o.appendChild(el('code', '', res.record.doi));
+          (function (rec, node) {
+            var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level !== 'bad'; inc.id = 'inc-' + i;
+            var lab = document.createElement('label'); lab.htmlFor = inc.id; lab.textContent = 'Include'; lab.style.fontSize = '13px';
+            lab.style.display = 'inline-flex'; lab.style.gap = '4px'; lab.style.alignItems = 'center'; lab.insertBefore(inc, lab.firstChild);
+            node.appendChild(lab);
+            found.push({ rec: rec, box: inc });
+          })(res.record, o);
+        }
+        m.appendChild(o);
+      } catch (e) {
+        m.classList.add('bad');
+        var oe = el('div', 'out'); oe.appendChild(el('span', 'chip bad', 'Error')); oe.appendChild(el('span', 't', e.message)); m.appendChild(oe);
+      }
+      if (i < refs.length - 1) await new Promise(function (r) { setTimeout(r, 120); });
+    }
+    $('export-go').disabled = false;
+    status.textContent = found.length + ' of ' + refs.length + ' matched.';
+    function build() {
+      out.innerHTML = '';
+      var recs = found.filter(function (f) { return f.box.checked; }).map(function (f) { return f.rec; });
+      if (!recs.length) return;
+      out.appendChild(el('div', 'section-label', 'Export · ' + recs.length + ' record' + (recs.length > 1 ? 's' : '')));
+      renderExports(out, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
+    }
+    found.forEach(function (f) { f.box.addEventListener('change', build); });
+    build();
+  });
+
+  /* ---------- page at rest: an example record so the layout shows what it does ---------- */
+  var SAMPLE = {"type":"journal-article","doi":"10.1038/nature12373","url":"https://doi.org/10.1038/nature12373","title":"Nanometre-scale thermometry in a living cell","subtitle":"","container":"Nature","shortContainer":"Nature","authors":[{"family":"Kucsko","given":"G.","literal":false},{"family":"Maurer","given":"P. C.","literal":false},{"family":"Yao","given":"N. Y.","literal":false},{"family":"Kubo","given":"M.","literal":false},{"family":"Noh","given":"H. J.","literal":false},{"family":"Lo","given":"P. K.","literal":false},{"family":"Park","given":"H.","literal":false},{"family":"Lukin","given":"M. D.","literal":false}],"editors":[],"year":"2013","month":7,"day":31,"volume":"500","issue":"7460","pages":"54-58","articleNumber":"","publisher":"Springer Science and Business Media LLC","place":"","issn":"0028-0836","isbn":"","abstract":"","language":"en","event":""};
+  $('doi-input').value = SAMPLE.doi;
+  showCitation(SAMPLE, el('span', 'chip', 'Example'));
+})();
+</script>
+</body>
+</html>
