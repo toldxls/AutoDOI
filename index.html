@@ -226,6 +226,9 @@
       <input type="text" id="polite-email" placeholder="you@example.org" autocomplete="off">
     </div>
     <div class="row">
+      <label class="check" for="opt-formulas"><input type="checkbox" id="opt-formulas" checked> Format chemical formulas and isotopes in titles (Fe₂O₃, Fe³⁺, ⁴⁰Ar/³⁹Ar)</label>
+    </div>
+    <div class="row">
       <span>Bookmarklet: drag this to your bookmarks bar, then click it on any journal article page to cite it here.</span>
       <a class="bookmarklet" id="bookmarklet" href="#">Cite with AutoDOI</a>
     </div>
@@ -389,13 +392,240 @@
     return t;
   }
 
-  function esc(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  function esc(s, inItalic) {
+    var e = String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return HAS_MARK.test(e) ? marksToHtml(e, inItalic) : e;
   }
 
   function stripTags(html) {
-    return String(html).replace(/<[^>]+>/g, '')
+    return String(html)
+      .replace(/<sub>([^<]*)<\/sub>/g, function (a, t) { return marksToText(SUBO + t + SUBC); })
+      .replace(/<sup>([^<]*)<\/sup>/g, function (a, t) { return marksToText(SUPO + t + SUPC); })
+      .replace(/<[^>]+>/g, '')
       .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  }
+
+  /* ---------- chemical formulas, isotopes and italics in titles ----------
+   * Titles carry formatting as private-use markers so it survives case conversion and every style:
+   *   .. subscript, .. superscript, .. italic (e.g. taxa).
+   * Deposited <sub>/<sup>/<i> and MathML are honoured; plain "Fe2O3", "Fe3+", "40Ar/39Ar", "δ18O"
+   * are detected. HTML output turns markers into tags, plain text into Unicode (Fe₂O₃), BibTeX into LaTeX. */
+  var OPTIONS = { formulas: true };
+  var SUBO = '', SUBC = '', SUPO = '', SUPC = '', ITO = '', ITC = '';
+  var MARKS_RE = /[-]/g, HAS_MARK = /[-]/;
+  function stripMarks(s) { return String(s || '').replace(MARKS_RE, ''); }
+
+  var ELEM = {};
+  ('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc ' +
+   'Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po ' +
+   'At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr').split(' ').forEach(function (e, i) { ELEM[e] = i + 1; });
+
+  // MathML children at the top level of an element's content
+  function mmlChildren(xml) {
+    var out = [], depth = 0, start = -1, re = /<(\/?)mml:\w+[^>]*?(\/?)>/g, m;
+    while ((m = re.exec(xml))) {
+      if (m[2]) { if (depth === 0) out.push(m[0]); continue; }
+      if (!m[1]) { if (depth === 0) start = m.index; depth++; }
+      else { depth--; if (depth === 0 && start >= 0) { out.push(xml.slice(start, re.lastIndex)); start = -1; } }
+    }
+    return out;
+  }
+  function mmlText(x) { return String(x).replace(/<[^>]+>/g, ''); }
+  function mathmlToMarks(s) {
+    return s.replace(/<mml:math[\s\S]*?<\/mml:math>/g, function (math) {
+      math = math.replace(/>\s+</g, '><');
+      var inner = /<mml:(msub|msup|msubsup)>((?:(?!<mml:(?:msub|msup|msubsup)>)[\s\S])*?)<\/mml:\1>/;
+      var guard = 0;
+      while (inner.test(math) && guard++ < 50) {
+        math = math.replace(inner, function (all, kindName, body) {
+          var ch = mmlChildren(body).map(mmlText);
+          if (kindName === 'msub') return (ch[0] || '') + SUBO + (ch[1] || '') + SUBC;
+          if (kindName === 'msup') return (ch[0] || '') + SUPO + (ch[1] || '') + SUPC;
+          return (ch[0] || '') + SUBO + (ch[1] || '') + SUBC + SUPO + (ch[2] || '') + SUPC;
+        });
+      }
+      return mmlText(math);
+    });
+  }
+  // Deposited title HTML -> plain text with markers
+  function markup(html) {
+    if (html === undefined || html === null) return '';
+    var s = String(html);
+    if (/<mml:/.test(s)) s = mathmlToMarks(s);
+    s = s.replace(/<(sub|inf)\b[^>]*>/gi, SUBO).replace(/<\/(sub|inf)>/gi, SUBC)
+      .replace(/<sup\b[^>]*>/gi, SUPO).replace(/<\/sup>/gi, SUPC)
+      .replace(/<(i|em)\b[^>]*>/gi, ITO).replace(/<\/(i|em)>/gi, ITC);
+    s = clean(s).replace(/&delta;/gi, 'δ').replace(/&Delta;/g, 'Δ');
+    return s.replace(/||/g, '');
+  }
+
+  // One formula such as Mg2SiO4, (Mg,Fe)2SiO4, Ca3Zr2[Fe2SiO12], Fe3+, SO42−, NH4+ -> marked string, or null
+  function parseFormula(s) {
+    var i = 0, out = '', depth = 0, elems = 0, groups = 0, two = false, oh = false, paren = false, bad = false;
+    var lastCount = null; // {start, digits} of the most recent subscript, for charge handling
+    function count() {
+      var m = s.slice(i).match(/^\d+(?:\.\d+)?/);
+      if (!m) { lastCount = null; return; }
+      if (m[0] === '1' || (m[0].indexOf('.') === -1 && Number(m[0]) >= 100)) bad = true; // formulas never write 1; 9001 is not a count
+      lastCount = { start: out.length, digits: m[0] };
+      out += SUBO + m[0] + SUBC; groups++; i += m[0].length;
+    }
+    while (i < s.length) {
+      var rest = s.slice(i), m = rest.match(/^[A-Z][a-z]?/);
+      if (m) {
+        var sym = m[0];
+        if (!ELEM[sym]) { if (sym.length === 2 && ELEM[sym[0]]) sym = sym[0]; else return null; }
+        out += sym; i += sym.length; elems++;
+        if (sym.length === 2) two = true;
+        if (sym === 'O' || sym === 'H') oh = true;
+        count(); continue;
+      }
+      var c = rest[0];
+      if (c === '(' || c === '[') { out += c; depth++; paren = true; i++; lastCount = null; continue; }
+      if ((c === ')' || c === ']') && depth > 0) { out += c; depth--; i++; count(); continue; }
+      if (c === ',' && depth > 0) { out += ','; i++; if (s[i] === '') { out += ' '; i++; } continue; }
+      break;
+    }
+    if (depth !== 0 || !elems) return null;
+    var rest2 = s.slice(i), charge = '';
+    if (rest2) {
+      var cm = rest2.match(/^([+−]{1,2}|-{1,2})$/);
+      if (!cm) return null;
+      var sign = cm[1];
+      if (sign[0] === '-' && !lastCount) return null; // "Mg-" is a suspended hyphen ("Mg- and Fe-rich"), not a charge
+      if (lastCount && lastCount.start + SUBO.length + lastCount.digits.length + SUBC.length === out.length) {
+        var d = lastCount.digits, head = out.slice(0, lastCount.start);
+        if (elems === 1 && d.indexOf('.') === -1 && d.length === 1) { out = head + SUPO + d + sign.replace(/-/g, '−') + SUPC; groups--; }
+        else if (d.length >= 2 && d.indexOf('.') === -1) { out = head + SUBO + d.slice(0, -1) + SUBC + SUPO + d.slice(-1) + sign.replace(/-/g, '−') + SUPC; }
+        else out += SUPO + sign.replace(/-/g, '−') + SUPC;
+      } else out += SUPO + sign.replace(/-/g, '−') + SUPC;
+      charge = sign;
+    }
+    if (bad && !charge) return null;
+    if (/^H\d{1,2}N\d{1,2}$/.test(s)) return null;                 // influenza subtypes
+    if (charge) {
+      if (/^[BC]\+*$/.test(s.replace(/[+−-]/g, '+'))) return null; // B+, C++ (grades, languages)
+      return out;
+    }
+    if (elems < 2 || !groups) return null;
+    if (!(groups >= 2 || two || oh || paren)) return null;          // "IPCC5", "W3C" are not formulas
+    return out;
+  }
+
+  function isotope(p) { // 40Ar, 18O, 87Sr, 3He, 206Pb, optionally charged
+    var m = p.match(/^(\d{1,3})([A-Z][a-z]?)$/);
+    if (!m || !ELEM[m[2]]) return null;
+    var a = Number(m[1]), z = ELEM[m[2]];
+    if (a < z || a > 2.7 * z + 3) return null;                      // 4K, 3C, 2F are not isotopes
+    if (m[2] === 'S' && (a < 32 || a > 36)) return null;            // 16S / 40S are rRNA and ribosomes
+    return SUPO + m[1] + SUPC + m[2];
+  }
+
+  function formulaPiece(p, allowCoef) {
+    if (!p) return null;
+    var coef = '';
+    if (allowCoef) { var cm = p.match(/^(\d+|[nx])(?=[A-Z(])/); if (cm) { coef = cm[1]; p = p.slice(coef.length); } }
+    var pre = '';
+    var cn = p.match(/^\[(\d{1,2})\]/);                           // mineral site coordination: [4]Fe3+
+    if (cn) { pre = SUPO + '[' + cn[1] + ']' + SUPC; p = p.slice(cn[0].length); }
+    if (/^[δΔεΣ]/.test(p)) { pre += p[0]; p = p.slice(1); }  // δ18O, Σ
+    var iso = isotope(p);
+    if (iso) return coef + pre + iso;
+    var f = parseFormula(p);
+    if (f) return coef + pre + f;
+    return pre && pre.indexOf(SUPO) !== -1 && /^[A-Z]/.test(p) ? coef + pre + p : null;
+  }
+
+  function formulaWord(w) {
+    var lead = '', trail = '', core = w, changed = true;
+    var opens = function (x) { return (x.match(/[(\[{]/g) || []).length; }, closes = function (x) { return (x.match(/[)\]}]/g) || []).length; };
+    while (changed) {
+      changed = false;
+      var lm = core.match(/^["'“‘]+/); if (lm) { lead += lm[0]; core = core.slice(lm[0].length); changed = true; }
+      var tm = core.match(/["'”’,.;:!?]+$/); if (tm) { trail = tm[0] + trail; core = core.slice(0, -tm[0].length); changed = true; }
+      if (/^[(\[{]/.test(core) && opens(core) > closes(core)) { lead += core[0]; core = core.slice(1); changed = true; }
+      if (/[)\]}]$/.test(core) && closes(core) > opens(core)) { trail = core.slice(-1) + trail; core = core.slice(0, -1); changed = true; }
+      var wrap = core.match(/^([(\[{])(.*)([)\]}])$/);
+      if (wrap && '([{'.indexOf(wrap[1]) === ')]}'.indexOf(wrap[3]) && opens(wrap[2]) === closes(wrap[2]) && !/^\d{1,2}$/.test(wrap[2])) {
+        lead += wrap[1]; trail = wrap[3] + trail; core = wrap[2]; changed = true;
+      }
+    }
+    if (!core || !/[A-Z]/.test(core) || /:\/\/|^doi:|^10\./i.test(core)) return null;
+    var any = false;
+    var ratio = core.split('/').map(function (part) {
+      var hyd = part.split(/([·•⋅])/).map(function (h, hi) {
+        if (hi % 2) return h;
+        return h.split(/(-(?=[A-Za-z]))/).map(function (piece, pi) {
+          if (pi % 2) return piece;
+          var r = formulaPiece(piece, hi > 0);
+          if (r !== null) { any = true; return r; }
+          return piece;
+        }).join('');
+      }).join('');
+      return hyd;
+    }).join('/');
+    return any ? lead + ratio + trail : null;
+  }
+
+  function autoFormulas(s) {
+    if (!s) return s;
+    // "(Mg, Fe)SiO3": keep the element list together while splitting words
+    s = s.replace(/\((?:[A-Z][a-z]?,\s+)+[A-Z][a-z]?\)/g, function (g) { return g.replace(/,\s+/g, ','); });
+    return s.split(/(\s+)/).map(function (w) {
+      if (!w || /^\s+$/.test(w) || HAS_MARK.test(w)) return w;
+      var f = formulaWord(w);
+      return f === null ? w : f;
+    }).join('').replace(//g, ' ');
+  }
+
+  // Carry deposited markers onto a title whose letters were re-cased (sentence case)
+  function transferMarks(marked, plain) {
+    if (stripMarks(marked).toLowerCase() !== String(plain).toLowerCase()) return plain;
+    var out = '', j = 0;
+    for (var i = 0; i < marked.length; i++) {
+      var ch = marked[i];
+      if (HAS_MARK.test(ch)) out += ch; else out += plain[j++];
+    }
+    return out;
+  }
+  function displayTitle(r) {
+    var t = r.title || '';
+    if (!OPTIONS.formulas) return t;
+    var marked = r.titleMarked ? transferMarks(r.titleMarked, t) : t;
+    return autoFormulas(marked);
+  }
+
+  var SUB_MAP = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋', '−': '₋', '=': '₌', '(': '₍', ')': '₎', '.': '.', ',': ',', ' ': ' ' };
+  var SUP_MAP = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '−': '⁻', '=': '⁼', '(': '⁽', ')': '⁾', '[': '[', ']': ']', 'n': 'ⁿ', 'i': 'ⁱ' };
+  // Characters with a Unicode sub/superscript form are converted; anything else stays as written (P<sub>CO2</sub> -> PCO₂)
+  function unicodeScript(text, map) {
+    return text.split('').map(function (c) { return map[c] !== undefined ? map[c] : c; }).join('');
+  }
+  function marksToText(s) {
+    return String(s).replace(/([^]*)/g, function (a, t) { return unicodeScript(t, SUB_MAP); })
+      .replace(/([^]*)/g, function (a, t) { return unicodeScript(t, SUP_MAP); })
+      .replace(MARKS_RE, '');
+  }
+  function marksToHtml(escaped, inItalic) {
+    return String(escaped).replace(//g, '<sub>').replace(//g, '</sub>')
+      .replace(//g, '<sup>').replace(//g, '</sup>')
+      .replace(//g, inItalic ? '<span style="font-style:normal">' : '<i>').replace(//g, inItalic ? '</span>' : '</i>');
+  }
+  function marksToLatex(escaped) {
+    return String(escaped).replace(//g, '\\textsubscript{').replace(//g, '\\textsuperscript{').replace(//g, '\\textit{')
+      .replace(/[]/g, '}');
+  }
+  // Title as HTML (for the page heading and citeproc input), e.g. "Fe<sub>2</sub>O<sub>3</sub>"
+  function titleHtml(r, raw) {
+    var t = displayTitle(r);
+    return marksToHtml(raw ? t : esc(t));
+  }
+  function withDisplayTitle(r) {
+    var t = displayTitle(r);
+    if (t === r.title) return r;
+    var copy = {}; Object.keys(r).forEach(function (k) { copy[k] = r[k]; });
+    copy.title = t;
+    return copy;
   }
 
   function datePartsOf(m) {
@@ -469,6 +699,7 @@
       doi: m.DOI || m.doi || '',
       url: m.URL || (m.DOI ? 'https://doi.org/' + m.DOI : ''),
       title: trimPunct(clean(first(m.title))),
+      titleMarked: trimPunct(markup(first(m.title))),
       subtitle: clean(first(m.subtitle)),
       container: trimPunct(clean(container)),
       series: trimPunct(clean(series)),
@@ -501,7 +732,9 @@
     };
     if (r.subtitle && r.title && r.title.indexOf(r.subtitle) === -1) {
       r.title = r.title + ': ' + r.subtitle;
+      r.titleMarked = r.titleMarked + ': ' + markup(first(m.subtitle));
     }
+    if (!HAS_MARK.test(r.titleMarked) || stripMarks(r.titleMarked) !== r.title) delete r.titleMarked; // only keep real markup
     r.isArticleNumber = false;
     if (r.articleNumber && (!r.pages || r.pages === r.articleNumber)) { r.pages = r.articleNumber; r.isArticleNumber = true; }
     if (r.pages && /^e\d+$/i.test(r.pages)) r.isArticleNumber = true;
@@ -596,9 +829,9 @@
   /* ---------- text styles (return HTML with <i>) ---------- */
 
   function doiLink(r) { return r.doi ? 'https://doi.org/' + r.doi : r.url; }
-  function endsPunct(s) { return /[.?!]$/.test(s); }
+  function endsPunct(s) { return /[.?!][\uE000-\uE005]*$/.test(s); }
   function dot(s) { return s ? (endsPunct(s) ? s : s + '.') : ''; }
-  function I(s) { return s ? '<i>' + esc(s) + '</i>' : ''; }
+  function I(s) { return s ? '<i>' + esc(s, true) + '</i>' : ''; }
   function Idot(s) { return s ? I(s) + (endsPunct(s) ? '' : '.') : ''; } // italic title, no ".?." doubling
   function T(s) { return esc(s); }
   function hostOf(r) { return r.container || r.institution || r.publisher; } // preprint server, repository, publisher
@@ -971,7 +1204,7 @@
       thesis: 'phdthesis', report: 'techreport' }[k] || 'misc';
     var f = [];
     var add = function (key, val, raw) { if (val) f.push('  ' + key + ' = ' + (raw === 'bare' ? val : '{' + (raw ? val : bibEsc(val)) + '}')); };
-    add('title', r.title);
+    f.push('  title = {' + marksToLatex(bibEsc(r.title)) + '}');
     add('author', r.authors.map(bibName).join(' and '), true);
     add('editor', r.editors.map(bibName).join(' and '), true);
     if (k === 'journal') add('journal', r.container);
@@ -1008,7 +1241,7 @@
     var risName = function (p) { return p.literal ? p.family + ',' : nameLastFull(p); }; // trailing comma = single-field name
     r.authors.forEach(function (p) { add('AU', risName(p)); });
     r.editors.forEach(function (p) { add('ED', risName(p)); });
-    add('TI', r.title);
+    add('TI', marksToText(r.title));
     add('T2', r.container);
     add('T3', r.series);
     add('ET', r.edition);
@@ -1040,7 +1273,7 @@
     var enName = function (p) { return p.literal ? p.family + ',' : nameLastFull(p); };
     r.authors.forEach(function (p) { add('%A', enName(p)); });
     r.editors.forEach(function (p) { add('%E', enName(p)); });
-    add('%T', r.title);
+    add('%T', marksToText(r.title));
     if (k === 'journal') add('%J', r.container);
     else add('%B', r.container);
     add('%S', r.series);
@@ -1078,7 +1311,7 @@
   ];
 
   function format(record, styleId, num) {
-    var r = record.authors ? record : normalize(record);
+    var r = withDisplayTitle(record.authors ? record : normalize(record));
     var all = STYLES.concat(EXPORTS);
     for (var i = 0; i < all.length; i++) {
       if (all[i].id === styleId) {
@@ -1090,7 +1323,7 @@
   }
 
   function formatHtml(record, styleId, num) {
-    var r = record.authors ? record : normalize(record);
+    var r = withDisplayTitle(record.authors ? record : normalize(record));
     for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, num);
     throw new Error('Unknown text style: ' + styleId);
   }
@@ -1098,7 +1331,7 @@
   /* ---------- matching confidence ---------- */
 
   function tokens(s) {
-    return clean(s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    return stripMarks(clean(s)).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
       .filter(function (w) { return w.length >= 3; });
   }
 
@@ -1135,6 +1368,11 @@
     format: format,
     formatHtml: formatHtml,
     stripTags: stripTags,
+    options: OPTIONS,
+    titleHtml: titleHtml,
+    titleText: function (r) { return marksToText(displayTitle(r)); },
+    toScript: function (t, kind) { return unicodeScript(String(t), kind === 'sup' ? SUP_MAP : SUB_MAP); },
+    autoFormulas: function (s) { return marksToText(autoFormulas(s)); },
     inText: function (record, styleId) {
       var r = record.authors ? record : normalize(record);
       for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r);
@@ -2028,6 +2266,13 @@
   window.addEventListener('error', function (ev) { logError('uncaught', ev.error || ev.message); });
   window.addEventListener('unhandledrejection', function (ev) { logError('unhandled', ev.reason); });
 
+  A.options.formulas = store.get('formulas') !== 'off';
+  $('opt-formulas').checked = A.options.formulas;
+  $('opt-formulas').addEventListener('change', function () {
+    A.options.formulas = this.checked; store.set('formulas', this.checked ? 'on' : 'off');
+    if (currentRecord) showCitation(currentRecord, currentChip);
+  });
+
   /* ---------- tabs ---------- */
   var TABS = ['cite', 'find', 'export'];
   function showTab(name) {
@@ -2371,7 +2616,7 @@
     dataset: 'dataset', software: 'software', thesis: 'thesis', report: 'report', generic: 'document' };
   function toCsl(r, id) {
     var name = function (p) { return p.literal ? { literal: p.family } : { family: p.family, given: p.given, suffix: p.suffix || undefined }; };
-    var it = { id: id, type: CSL_TYPES[A.kind(r)] || 'document', title: r.title, author: r.authors.map(name), editor: r.editors.map(name),
+    var it = { id: id, type: CSL_TYPES[A.kind(r)] || 'document', title: A.options.formulas ? A.titleHtml(r, true) : r.title, author: r.authors.map(name), editor: r.editors.map(name),
       'container-title': r.container || undefined, 'container-title-short': r.shortContainer || undefined,
       volume: r.volume || undefined, issue: r.issue || undefined, page: r.pages || undefined,
       publisher: r.publisher || undefined, 'publisher-place': r.place || undefined,
@@ -2386,7 +2631,11 @@
     var inner = right ? (left ? left.innerHTML.trim() + ' ' : '') + right.innerHTML.trim() : (d.querySelector('.csl-entry') || d).innerHTML.trim();
     return inner.replace(/\s+/g, ' ');
   }
-  function htmlToText(html) { var d = document.createElement('div'); d.innerHTML = html; return d.textContent; }
+  function htmlToText(html) {
+    var d = document.createElement('div'); d.innerHTML = html;
+    Array.prototype.forEach.call(d.querySelectorAll('sub, sup'), function (n) { n.textContent = A.toScript(n.textContent, n.tagName.toLowerCase()); });
+    return d.textContent;
+  }
   async function cslRender(style, records) {
     await Promise.all([ensureCiteproc(), getLocale(), getStyleXml(style.name, 0, style.dep === undefined ? false : !!style.dep)]);
     if (style.title === style.name) { // came from a ?style= link: pick up the real title and remember it
@@ -2455,7 +2704,7 @@
 
   // Clickable title: changed words can be protected (restored), kept capitals can be forced lowercase
   function renderTitleTokens(container, r) {
-    if (!r.titleTokens) { container.textContent = r.title || '(untitled)'; return; }
+    if (!r.titleTokens) { if (r.title) container.innerHTML = A.titleHtml(r); else container.textContent = '(untitled)'; return; }
     r.titleTokens.forEach(function (t) {
       if (t.kind !== 'word') { container.appendChild(document.createTextNode(t.text)); return; }
       var b = document.createElement('button'); b.type = 'button'; b.className = 'tok' + (t.changed ? ' changed' : (t.text !== t.text.toLowerCase() ? ' kept' : ''));

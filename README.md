@@ -72,6 +72,10 @@ The **Titles** control beside the style menu converts article titles to *Sentenc
 
 Known limits: place names that are also ordinary words (Reading, Bath, Mobile) and all-common runs such as "Natural History Museum" get lowercased unless you click them.
 
+### Chemical formulas, isotopes and taxa in titles
+
+Formulas in titles are set with real subscripts and superscripts: Mg₂SiO₄, (Mg,Fe)SiO₃, Ca₃Zr₂[Fe₂SiO₁₂], CaSO₄·2H₂O, Fe³⁺, SO₄²⁻, ⁴⁰Ar/³⁹Ar, δ¹⁸O, ^[4]Fe coordination. Markup the publisher deposited (`<sub>`, `<sup>`, `<i>` for taxa, MathML) is kept as well. Rich copy and journal styles use true sub/superscript formatting; plain copy, RIS and EndNote files use Unicode characters (Fe₂O₃); BibTeX uses `\textsubscript{}`. Detection only accepts valid element symbols and deliberately leaves alone things like H1N1, 16S rRNA, vitamin B12, 4K, CD4+ and "Mg- and Fe-rich". Turn it off under Settings if a title is misread, and report it with the Report button. The Sheets functions get the same Unicode output.
+
 ## EndNote `.ens` styles
 
 EndNote's own style files are a proprietary binary format that nothing outside EndNote can read, so they cannot be loaded here directly. The Citation Style Language repository covers most of the same journals under the same names; the search box finds them and the EndNote checkbox shows which ones overlap. A journal missing from both can be added as a hand-written style in `citations.js`, as Annals of Carnegie Museum was.
