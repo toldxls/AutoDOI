@@ -3414,7 +3414,8 @@
     var ctl = new AbortController();
     var timer = setTimeout(function () { ctl.abort(); }, FETCH_TIMEOUT_MS);
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; }); o.signal = ctl.signal;
-    return nativeFetch(url, o).then(function (res) { clearTimeout(timer); return res; }, function (e) {
+    // the timer keeps running: a body that stalls after the headers is aborted too (aborting a finished request is harmless)
+    return nativeFetch(url, o).then(function (res) { return res; }, function (e) {
       clearTimeout(timer);
       if (e && e.name === 'AbortError') throw new Error('No response from ' + String(url).split('/')[2] + ' after ' + FETCH_TIMEOUT_MS / 1000 + ' s');
       throw e;
@@ -3583,7 +3584,7 @@
     return '';
   }
   async function lookupAbbr(journal, issn) {
-    var key = nlmKey(journal), abbr = '';
+    var key = nlmKey(journal), abbr = '', failed = false;
     try {
       if (issn) {
         var byIssn = await nlmFetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nlmcatalog&retmode=json&term=' + encodeURIComponent(issn + '[issn]'));
@@ -3593,23 +3594,26 @@
         var es = await nlmFetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nlmcatalog&retmode=json&retmax=20&term=' + encodeURIComponent('"' + journal.replace(/^the\s+/i, '') + '"[Title]'));
         abbr = await nlmSummaryAbbr((es.esearchresult && es.esearchresult.idlist) || [], key);
       }
-    } catch (e) { /* fall back */ }
+    } catch (e) { failed = true; /* fall back */ }
     if (!abbr) {
       try {
         var jr = await loadJabref();
+        if (!Object.keys(jr).length) failed = true;
         abbr = (jr[journal.toLowerCase()] || jr[journal.toLowerCase().replace(/^the\s+/, '')] || '').replace(/\./g, '').replace(/\s+/g, ' ').trim(); // NLM/Vancouver form has no periods
-      } catch (e) { abbr = ''; }
+      } catch (e) { abbr = ''; failed = true; }
     }
-    return abbr;
+    return { abbr: abbr, failed: failed && !abbr };
   }
   function abbreviate(journal, issn) {
     var key = nlmKey(journal) + '|' + (issn || '');
     if (abbrCache[key] !== undefined) return Promise.resolve(abbrCache[key]);
     if (abbrPending[key]) return abbrPending[key];
-    abbrPending[key] = lookupAbbr(journal, issn).then(function (a) {
+    abbrPending[key] = lookupAbbr(journal, issn).then(function (res) {
       delete abbrPending[key];
-      abbrCache[key] = a;
+      var a = res.abbr;
+      if (res.failed) return a; // a network failure is not "no abbreviation": try again next time
       var keys = Object.keys(abbrCache); if (keys.length > 800) keys.slice(0, keys.length - 800).forEach(function (k) { delete abbrCache[k]; });
+      abbrCache[key] = a;
       store.set('abbr2', JSON.stringify(abbrCache));
       return a;
     }, function () { delete abbrPending[key]; return ''; });
@@ -3749,7 +3753,7 @@
     store.set('style', mode === 'csl' ? 'csl:' + cslStyle.name : mode);
     fillStyleSelect();
     if (typeof updateBookmarklet === 'function') updateBookmarklet();
-    if (currentRecord && typeof setUrl === 'function') setUrl(currentRecord.doi || currentRecord.isbn || '');
+    if (currentRecord && !currentChip && typeof setUrl === 'function') setUrl(currentRecord.doi || currentRecord.isbn || ''); // the example card carries a chip
     if (currentRecord) showCitation(currentRecord, currentChip);
   }
   $('style-select').addEventListener('change', function () {
@@ -3845,7 +3849,10 @@
     var first = CSL_REPO + (dep ? 'dependent/' : '') + encodeURIComponent(name) + '.csl';
     var second = CSL_REPO + (dep ? '' : 'dependent/') + encodeURIComponent(name) + '.csl';
     try { return await fetchText(first); }
-    catch (e) { return fetchText(second); } // the index flag can be stale; try the other folder
+    catch (e1) {
+      try { return await fetchText(second); } // the index flag can be stale; try the other folder
+      catch (e2) { throw /\(404\)/.test(e1.message) ? e2 : e1; } // report a timeout rather than a misleading 404
+    }
   }
   async function getStyleXml(name, depth, dep) {
     if (csl.xml[name]) return csl.xml[name];
@@ -3864,7 +3871,7 @@
     dataset: 'dataset', software: 'software', thesis: 'thesis', report: 'report', generic: 'document' };
   function toCsl(r, id, asContainer) {
     var name = function (p) { return p.literal ? { literal: p.family } : { family: p.family, given: p.given, suffix: p.suffix || undefined }; };
-    var it = { id: id, type: CSL_TYPES[A.kind(r)] || 'document', title: A.options.formulas ? A.titleHtml(r, true) : r.title, author: r.authors.map(name).concat(r.authorsOthers && r.authors.length ? [{ literal: 'others' }] : []), editor: r.editors.map(name),
+    var it = { id: id, type: CSL_TYPES[A.kind(r)] || 'document', title: A.options.formulas ? A.titleHtml(r, true) : r.title, author: r.authors.map(name).concat(r.authorsOthers && r.authors.length ? [{ literal: 'AUTODOIOTHERS' }] : []), editor: r.editors.map(name),
       'container-title': r.container || undefined, 'container-title-short': r.shortContainer || undefined,
       volume: r.volume || undefined, issue: r.issue || undefined, page: r.pages || undefined,
       publisher: r.publisher || undefined, 'publisher-place': r.place || undefined,
@@ -3900,20 +3907,23 @@
     eng.updateItems(ids);
     var bib = eng.makeBibliography();
     var entries = ((bib && bib[1]) || []).map(cslEntryHtml);
-    // Styles with an empty journal slot for preprints leave "title:, doi" — render those again with the repository as container
-    if (entries.some(function (e) { return /:\s*,|\.\s*,\s/.test(e.replace(/<[^>]+>/g, '')); }) && records.some(function (r) { return A.kind(r) === 'preprint'; })) {
+    // Styles with an empty journal slot for preprints leave "title:, doi" — render those entries again with the repository as container
+    var entryIds = (bib && bib[0] && bib[0].entry_ids) || [];
+    var byId = {}; records.forEach(function (r, i) { byId['ITEM-' + (i + 1)] = r; });
+    var broken = entries.map(function (e, i) { var id = [].concat(entryIds[i] || [])[0]; return !!(id && byId[id] && A.kind(byId[id]) === 'preprint' && /:\s*,/.test(e.replace(/<[^>]+>/g, ''))); });
+    if (broken.some(Boolean)) {
       var items2 = {};
       records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1), true); items2[it.id] = it; });
       var eng2 = new window.CSL.Engine({ retrieveLocale: function () { return csl.locale; }, retrieveItem: function (id) { return items2[id]; } }, csl.xml[style.name]);
       eng2.updateItems(ids);
       var bib2 = eng2.makeBibliography();
-      if (bib2 && bib2[1]) entries = bib2[1].map(cslEntryHtml);
+      if (bib2 && bib2[1]) entries = entries.map(function (e, i) { return broken[i] && bib2[1][i] ? cslEntryHtml(bib2[1][i]) : e; });
     }
-    // A source list cut short with "and others" comes out as "& others": print the style-neutral "et al."
-    if (records.some(function (r) { return r.authorsOthers; })) {
-      entries = entries.map(function (e) { return e.replace(/,?\s*(?:&#38;|&amp;|&|and)\s+others\b/g, ', et al.').replace(/et al\.\./g, 'et al.'); });
-    }
-    var inText = ''; try { inText = eng.makeCitationCluster(ids.map(function (id) { return { id: id }; })); } catch (e) { inText = ''; }
+    // A source list cut short with "and others": the sentinel author becomes "et al."
+    entries = entries.map(function (e) {
+      return e.replace(/[,;]?\s*(?:&#38;|&amp;|&|and)?\s*AUTODOIOTHERS\.?/g, ', et al.').replace(/et al\.\s*\./g, 'et al.').replace(/,\s*,\s*et al/g, ', et al');
+    });
+    var inText = ''; try { inText = eng.makeCitationCluster(ids.map(function (id) { return { id: id }; })).replace(/,?\s*(?:&#38;|&amp;|&|and)?\s*AUTODOIOTHERS/g, ' et al.'); } catch (e) { inText = ''; }
     return { entries: entries, inText: inText };
   }
 
@@ -4203,7 +4213,12 @@
     renderExports(out, [r], fileBase(r));
   }
 
-  function words(s) { return String(s || '').toLowerCase().replace(/[\uE000-\uE006]/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(function (w) { return w.length >= 2; }); }
+  function words(s) {
+    var t = String(s || '').toLowerCase().replace(/[\uE000-\uE006]/g, '');
+    if (t.normalize) t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    try { t = t.replace(new RegExp('[^\\p{L}\\p{N}\\s]', 'gu'), ' '); } catch (e) { t = t.replace(/[^a-z0-9\u0370-\u03ff\u0400-\u04ff\u4e00-\u9fff\s]/g, ' '); }
+    return t.split(/\s+/).filter(function (w) { return w.length >= 2 || /[^\x00-\x7f]/.test(w); });
+  }
   function titleSimilarity(query, title) {
     var q = words(query), t = words(title);
     if (!q.length || !t.length) return 0;
@@ -4214,10 +4229,16 @@
   }
   // A reference that names a year which the record does not match (allowing one year for online-first) is suspect
   function yearConflict(refText, rec) {
-    var ys = (String(refText).match(/\b(1[5-9]\d{2}|20\d{2})\b/g) || []).map(Number);
-    if (!ys.length || !rec.year) return false;
+    var t = String(refText);
+    if (!rec.year || /in press|n\.\s?d\.|forthcoming|accepted|early view|online first/i.test(t)) return false;
+    t = t.replace(/(retrieved|accessed|viewed|cited)\b[\s\S]*$/i, '')
+      .replace(/\d+\s*[-\u2013\u2014]\s*\d+/g, ' ')
+      .replace(/10\.\d{4,9}\/\S+/g, ' ');
+    var ys = [], m, re = /(^|[\s(\[,;/])(1[5-9]\d{2}|20\d{2})[a-z]?(?=$|[\s).,;:\]/])/g;
+    while ((m = re.exec(t))) ys.push(Number(m[2]));
+    if (!ys.length) return false;
     var y = Number(rec.year);
-    return !ys.some(function (x) { return Math.abs(x - y) <= 1; });
+    return !ys.some(function (x) { return Math.abs(x - y) <= 2; }); // online-first can precede print by a year or two
   }
   function setUrl(q) { // keep the address bar in step, so reload and bookmarks show the current reference
     try {
@@ -4225,7 +4246,7 @@
       history.replaceState(null, '', u);
     } catch (e) { /* file:// or sandbox */ }
   }
-  function clearResult() { currentRecord = null; currentChip = null; $('doi-result').innerHTML = ''; }
+  function clearResult() { currentRecord = null; currentChip = null; $('doi-result').innerHTML = ''; setUrl(''); }
 
   var lookupSeq = 0;
   async function lookup(text) {
@@ -4294,7 +4315,7 @@
         act.appendChild(el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : 'Weak'));
         act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
         act.appendChild(button('Format', 'primary', function () {
-          lookupSeq++; $('doi-input').value = r.doi; $('doi-status').textContent = ''; showCitation(r); setUrl(r.doi); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus();
+          lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = r.doi; $('doi-status').textContent = ''; showCitation(r); setUrl(r.doi); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus();
         }));
         h.appendChild(act);
         list.appendChild(h);
@@ -4324,24 +4345,28 @@
     parts.push(chunk.slice(from));
     return parts.map(function (x) { return x.trim(); }).filter(Boolean);
   }
+  // A line that ends mid-reference: trailing comma/colon/dash, or an initial or journal abbreviation ("et al.", "Res.", "U.S.A.")
+  var ABBR_END = /(^|[\s(.])([A-Za-z]{1,2}|al|Acad|Am|Amer|Ann|Assoc|Biol|Bull|Can|Chem|Col|Comp|Dept|Ecol|Environ|Evol|Fm|Geogr|Geol|Geophys|Hist|Inst|Int|Intl|Lett|Mag|Mem|Mineral|Mus|Nat|Natl|Palaeontol|Paleontol|Petrol|Phys|Proc|Publ|Res|Rev|Sci|Ser|Soc|Spec|Suppl|Surv|Trans|Univ|Vert|Vol|Zool|ed|eds|Eds|vol|no|pp|et al)\.$/;
+  function unfinished(line) { return /[,;:–\-&]$/.test(line) || !/[.)\]”"?!]$/.test(line) || ABBR_END.test(line); }
   function splitReferences(text) {
     var t = String(text || '').replace(/\r\n?/g, '\n').trim();
     var hasBlank = /\n\s*\n/.test(t);
-    var NUM = /^(\[\d+\]|\d+[.)])\s/;
+    var NUM = /^(\[\d{1,3}\]|\d{1,3}[.)])\s/;
     var numbered = t.split('\n').filter(function (l) { return NUM.test(l.trim()); }).length >= 2; // a numbered list: only numbers start items
     var refs = [], cur = '';
     var flush = function () { if (cur) refs.push(cur); cur = ''; };
     t.split('\n').forEach(function (raw) {
       var l = raw.trim();
       if (!l) { flush(); return; }
-      if (ID_LINE.test(l)) { flush(); refs.push(l); return; }
-      if (!cur) { cur = l; return; }
+      if (!cur) { if (ID_LINE.test(l)) refs.push(l); else cur = l; return; }
       if (numbered) { if (NUM.test(l)) { flush(); cur = l; } else cur += ' ' + l; return; }
-      if (START.test(l)) { flush(); cur = l; return; }
-      // Without blank lines between references, a line only continues the previous one when that line is
-      // clearly unfinished (no closing full stop) and this one reads like a wrapped tail.
-      var continues = hasBlank || (/^([a-z]|\d|[\u2013\-(]|pp?\.)/.test(l) && !/[.)\]\u201D"]$/.test(cur));
-      if (continues) cur += ' ' + l; else { flush(); cur = l; }
+      if (/[,;:–\-]$/.test(cur)) { cur += ' ' + l; return; }           // "Nature Communications, 10," + "4567891."
+      if (ID_LINE.test(l)) { flush(); refs.push(l); return; }
+      if (unfinished(cur) && !(START.test(l) && !ABBR_END.test(cur) && /[.)\]]$/.test(cur))) { cur += ' ' + l; return; }
+      // The previous line is finished: a new reference starts, unless blank lines separate the references
+      // and this line does not look like one (then it is a wrapped tail).
+      if (hasBlank && !START.test(l)) { cur += ' ' + l; return; }
+      flush(); cur = l;
     });
     flush();
     var out = [];
@@ -4349,7 +4374,7 @@
     return out.map(function (l) {
       l = l.trim();
       if (ID_LINE.test(l) || /^(https?:\/\/)?(dx\.)?doi\.org\/|^doi:|^10\.\d{4,9}\//i.test(l)) return l; // a bare identifier is not a numbered item
-      return l.replace(/^\s*(\[\d+\]|\d+[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim();
+      return l.replace(/^\s*(\[\d{1,3}\]|\d{1,3}[.)]|[•\-–—*·])\s*/, '').trim();
     }).filter(function (l) { return l.length > 8 || ID_LINE.test(l); });
   }
   async function resolve(refText) {
@@ -4407,7 +4432,7 @@
   var batchSeq = 0;
   function recKey(r) {
     if (r.doi) return 'doi:' + r.doi.toLowerCase();
-    return 't:' + words(r.title).join(' ') + '|' + (r.year || '') + '|' + ((r.authors[0] && r.authors[0].family) || '').toLowerCase();
+    return 't:' + (words(r.title).join(' ') || String(r.title || '').toLowerCase()) + '|' + (r.year || '') + '|' + ((r.authors[0] && r.authors[0].family) || '').toLowerCase();
   }
   function fileLabel(src) { return src === 'enw' ? 'EndNote' : src === 'ris' ? 'RIS' : src === 'bibtex' ? 'BibTeX' : 'file'; }
   // Split a paste into structured file records (RIS / EndNote / BibTeX, in any mix) and plain references, keeping order
