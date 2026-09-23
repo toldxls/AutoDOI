@@ -3486,11 +3486,19 @@
     if (TABS.indexOf(name) === -1) name = 'cite';
     TABS.forEach(function (t) {
       $('tab-' + t).setAttribute('aria-selected', t === name ? 'true' : 'false');
+      $('tab-' + t).tabIndex = t === name ? 0 : -1;
       $('panel-' + t).hidden = t !== name;
     });
     store.set('tab', name);
   }
-  TABS.forEach(function (t) { $('tab-' + t).addEventListener('click', function () { showTab(t); }); });
+  TABS.forEach(function (t, i) {
+    $('tab-' + t).addEventListener('click', function () { showTab(t); });
+    $('tab-' + t).addEventListener('keydown', function (ev) {
+      var j = ev.key === 'ArrowRight' ? i + 1 : ev.key === 'ArrowLeft' ? i - 1 : ev.key === 'Home' ? 0 : ev.key === 'End' ? TABS.length - 1 : null;
+      if (j === null) return;
+      ev.preventDefault(); j = (j + TABS.length) % TABS.length; showTab(TABS[j]); $('tab-' + TABS[j]).focus();
+    });
+  });
   (function () { var h = (location.hash || '').replace('#', ''); showTab(TABS.indexOf(h) !== -1 ? h : (store.get('tab') || 'cite')); })();
 
   /* ---------- settings ---------- */
@@ -3824,6 +3832,7 @@
       box.appendChild(d);
     });
     if (words.length && !hits.length) box.appendChild(el('div', 'status', 'No style with that name. Try one word from the journal title.'));
+    else if (!words.length && !hits.length) box.appendChild(el('div', 'status', 'Type part of a journal or style name, for example Geology or Palaeontology.'));
     else if (hits.length > 30) box.appendChild(el('div', 'status', hits.length + ' matches; showing the first 30. Add another word to narrow it.'));
   }
   $('csl-search').addEventListener('input', function () {
@@ -3853,14 +3862,18 @@
 
   var CSL_TYPES = { journal: 'article-journal', chapter: 'chapter', book: 'book', proceedings: 'paper-conference', preprint: 'article',
     dataset: 'dataset', software: 'software', thesis: 'thesis', report: 'report', generic: 'document' };
-  function toCsl(r, id) {
+  function toCsl(r, id, asContainer) {
     var name = function (p) { return p.literal ? { literal: p.family } : { family: p.family, given: p.given, suffix: p.suffix || undefined }; };
-    var it = { id: id, type: CSL_TYPES[A.kind(r)] || 'document', title: A.options.formulas ? A.titleHtml(r, true) : r.title, author: r.authors.map(name), editor: r.editors.map(name),
+    var it = { id: id, type: CSL_TYPES[A.kind(r)] || 'document', title: A.options.formulas ? A.titleHtml(r, true) : r.title, author: r.authors.map(name).concat(r.authorsOthers && r.authors.length ? [{ literal: 'others' }] : []), editor: r.editors.map(name),
       'container-title': r.container || undefined, 'container-title-short': r.shortContainer || undefined,
       volume: r.volume || undefined, issue: r.issue || undefined, page: r.pages || undefined,
       publisher: r.publisher || undefined, 'publisher-place': r.place || undefined,
       DOI: r.doi || undefined, URL: r.url || undefined, ISSN: r.issn || undefined, ISBN: r.isbn || undefined };
     if (r.year) it.issued = { 'date-parts': [[Number(r.year)].concat(r.month ? [r.month] : []).concat(r.day ? [r.day] : [])] };
+    if (A.kind(r) === 'preprint') { // repository as publisher reads best across styles ("[Preprint]. arXiv", "Preprint, bioRxiv")
+      it.genre = 'Preprint'; it.publisher = r.institution || r.container || r.publisher || undefined; delete it['container-title'];
+      if (asContainer) it['container-title'] = it.publisher; // for styles that expect a journal slot (GSA/Geology)
+    }
     Object.keys(it).forEach(function (k) { if (it[k] === undefined) delete it[k]; });
     return it;
   }
@@ -3887,6 +3900,19 @@
     eng.updateItems(ids);
     var bib = eng.makeBibliography();
     var entries = ((bib && bib[1]) || []).map(cslEntryHtml);
+    // Styles with an empty journal slot for preprints leave "title:, doi" — render those again with the repository as container
+    if (entries.some(function (e) { return /:\s*,|\.\s*,\s/.test(e.replace(/<[^>]+>/g, '')); }) && records.some(function (r) { return A.kind(r) === 'preprint'; })) {
+      var items2 = {};
+      records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1), true); items2[it.id] = it; });
+      var eng2 = new window.CSL.Engine({ retrieveLocale: function () { return csl.locale; }, retrieveItem: function (id) { return items2[id]; } }, csl.xml[style.name]);
+      eng2.updateItems(ids);
+      var bib2 = eng2.makeBibliography();
+      if (bib2 && bib2[1]) entries = bib2[1].map(cslEntryHtml);
+    }
+    // A source list cut short with "and others" comes out as "& others": print the style-neutral "et al."
+    if (records.some(function (r) { return r.authorsOthers; })) {
+      entries = entries.map(function (e) { return e.replace(/,?\s*(?:&#38;|&amp;|&|and)\s+others\b/g, ', et al.').replace(/et al\.\./g, 'et al.'); });
+    }
     var inText = ''; try { inText = eng.makeCitationCluster(ids.map(function (id) { return { id: id }; })); } catch (e) { inText = ''; }
     return { entries: entries, inText: inText };
   }
@@ -3910,8 +3936,19 @@
     return caseState.loading;
   }
   // Convert one title according to the current mode; returns {text, tokens} or null when nothing applies
+  // "FOSSIL VERTEBRATES FROM THE HELL CREEK FORMATION, DNA" -> "Fossil Vertebrates From The Hell Creek Formation, DNA"
+  // (short non-words stay upper case as likely acronyms; the length never changes)
+  function fromAllCaps(title) {
+    return title.replace(/[A-Z\u00C0-\u00DE][A-Z\u00C0-\u00DE'\u2019]*/g, function (w) {
+      var lw = w.toLowerCase();
+      if (!caseState.words.has(lw) && (w.length <= 3 || /^[^AEIOUY]+$/.test(w) || /^(NASA|NOAA|USGS|IPCC|IUCN|UNEP|ICZN|AMNH|CMNH|FMNH|USNM|NHMUK|MNHN|IODP|ODP|DSDP|LIDAR|CRISPR|SARS|MERS|AIDS)$/.test(w))) return w; // DNA, USA, NMR, USGS
+      var t = w.charAt(0) + lw.slice(1);
+      return t.length === w.length ? t : w;
+    });
+  }
   function caseTitle(title) {
     if (!C || caseState.mode === 'none' || !caseState.words || !title) return null;
+    if (C.detectCase && C.detectCase(title) === 'upper' && /[A-Z]{4}/.test(title)) title = fromAllCaps(title);
     var opts = { words: caseState.words, protect: protectSet };
     var res = caseState.mode === 'sentence' ? (C.toSentenceCaseSafe || C.toSentenceCase)(title, opts) : C.toTitleCase(title, opts);
     if (!res || !res.tokens) res = C.toSentenceCase(title, opts); // toSentenceCaseSafe may return the title untouched
@@ -3923,13 +3960,14 @@
       first = false;
     });
     res.text = res.tokens.map(function (t) { return t.text; }).join('');
+    res.base = title; // the text the engine worked on (all-caps titles are title-cased first)
     return res;
   }
   function withCase(r) { // shallow copy with the converted title, so exports and styles see it too
     var res = caseTitle(r.title);
     if (!res) return r;
     var copy = Object.create(Object.getPrototypeOf(r)); Object.keys(r).forEach(function (k) { copy[k] = r[k]; });
-    copy.title = res.text; copy.titleTokens = res.tokens; copy.originalTitle = r.title; // tokens kept even when unchanged, so words stay clickable
+    copy.title = res.text; copy.titleTokens = res.tokens; copy.originalTitle = res.base || r.title; // tokens kept even when unchanged, so words stay clickable
     return copy;
   }
   function withCaseAll(records) { return caseState.mode === 'none' ? records : records.map(withCase); }
