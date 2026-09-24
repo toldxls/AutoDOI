@@ -4,11 +4,13 @@
 // locally; only fonts are blocked.  Slow (about two seconds per reference on Crossref's public pool).
 // The glued variant joins consecutive pairs into one line ("; ", a bare space, ". ") and pastes in automatic layout mode: the
 // splitter must separate them before matching can succeed.
-// Usage: node tests/browser/match-bench.js [--variants deposited,lowercase,noyear,glued] [--limit N] [--batch 25] [--out file.json]
+// The nonlatin variant pastes references written in Cyrillic, CJK and Greek scripts (tests/fixtures/match-truth-nonlatin.json).
+// Usage: node tests/browser/match-bench.js [--variants deposited,lowercase,noyear,glued,nonlatin] [--limit N] [--batch 25] [--out file.json]
 var http = require('http'), fs = require('fs'), path = require('path');
 var { chromium } = require('playwright');
 var ROOT = path.join(__dirname, '..', '..');
 var truth = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'match-truth.json'), 'utf8'));
+var nonlatin = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'match-truth-nonlatin.json'), 'utf8')); // Cyrillic, CJK and Greek references with known DOIs
 var arg = function (k, d) { var i = process.argv.indexOf('--' + k); return i === -1 ? d : process.argv[i + 1]; };
 var VARIANTS = arg('variants', 'deposited').split(','), LIMIT = Number(arg('limit', truth.length)), BATCH = Number(arg('batch', 25)), OUT = arg('out', '');
 var DOI_RE = /(?:\bdoi:?\s*)?(?:https?:\/\/(?:dx\.)?doi\.org\/)?\b10\.\d{4,9}\/[^\s"'<>]+/gi;
@@ -81,9 +83,10 @@ async function gluedRun(page, items) {
   for (var v of VARIANTS) {
     if (v === 'glued') { results.glued = await gluedRun(page, items); continue; }
     await page.selectOption('#split-mode', 'lines');
+    var set = v === 'nonlatin' ? nonlatin.slice(0, process.argv.indexOf('--limit') === -1 ? nonlatin.length : LIMIT) : items, fn = degrade[v] || degrade.deposited;
     var rows = [], t0 = Date.now();
-    for (var b = 0; b < items.length; b += BATCH) {
-      var chunk = items.slice(b, b + BATCH), texts = chunk.map(function (x) { return degrade[v](x.text); });
+    for (var b = 0; b < set.length; b += BATCH) {
+      var chunk = set.slice(b, b + BATCH), texts = chunk.map(function (x) { return fn(x.text); });
       await page.fill('#export-input', texts.join('\n'));
       await page.waitForFunction(function (n) { return new RegExp(n + ' references?').test(document.querySelector('#split-count').textContent); }, chunk.length, { timeout: 5000 }).catch(function () {});
       await page.click('#export-go');
@@ -99,7 +102,7 @@ async function gluedRun(page, items) {
       chunk.forEach(function (x, i) {
         var line = squash(texts[i]), mine = got.filter(function (r) { var raw = squash(r.raw); return raw && (line.indexOf(raw) !== -1 || raw.indexOf(line) !== -1); });
         var g = mine.filter(function (r) { return normDoi(r.doi) === normDoi(x.doi); })[0] || mine[0] || { level: 'none', doi: '', chip: '' };
-        rows.push({ text: texts[i], want: x.doi, got: normDoi(g.doi), level: g.level, chip: g.chip, correct: normDoi(g.doi) === normDoi(x.doi), extraRows: Math.max(0, mine.length - 1) });
+        rows.push({ text: texts[i], want: x.doi, got: normDoi(g.doi), level: g.level, chip: g.chip, correct: normDoi(g.doi) === normDoi(x.doi), extraRows: Math.max(0, mine.length - 1), script: x.script });
       });
       process.stdout.write('.');
     }
@@ -115,6 +118,8 @@ async function gluedRun(page, items) {
     console.log('   green right ' + tally.greenRight + ' | GREEN WRONG ' + tally.greenWrong + ' | amber right ' + tally.amberRight + ' | amber wrong ' + tally.amberWrong + ' | red right ' + tally.redRight + ' | red wrong ' + tally.redWrong + ' | no record ' + tally.none);
     var precision = tally.greenRight / Math.max(1, tally.greenRight + tally.greenWrong), recall = tally.greenRight / rows.length;
     console.log('   green precision ' + (precision * 100).toFixed(1) + '%   green recall ' + (recall * 100).toFixed(1) + '%   found anywhere ' + ((tally.greenRight + tally.amberRight + tally.redRight) / rows.length * 100).toFixed(1) + '%');
+    if (v === 'nonlatin') { var bs = {}; rows.forEach(function (r) { var k = r.script || '?'; bs[k] = bs[k] || { n: 0, green: 0, any: 0, wrongGreen: 0 }; bs[k].n++; if (r.correct && r.level === 'good') bs[k].green++; if (r.correct) bs[k].any++; if (!r.correct && r.level === 'good' && r.got) bs[k].wrongGreen++; });
+      console.log('   by script: ' + Object.keys(bs).map(function (k) { return k + ' green ' + bs[k].green + '/' + bs[k].n + ', found ' + bs[k].any + ', wrong green ' + bs[k].wrongGreen; }).join(' | ')); }
     rows.filter(function (r) { return r.level === 'good' && !r.correct; }).forEach(function (r) { console.log('   GREEN WRONG  [' + r.chip + '] ' + r.text.slice(0, 110) + '\n                want ' + r.want + '\n                got  ' + r.got); });
     rows.filter(function (r) { return r.correct && r.level !== 'good'; }).slice(0, 8).forEach(function (r) { console.log('   right but ' + r.level + ' [' + r.chip + '] ' + r.text.slice(0, 110)); });
     rows.filter(function (r) { return !r.got || (r.level !== 'good' && !r.correct); }).slice(0, 8).forEach(function (r) { console.log('   missed (' + r.level + ' ' + (r.got || '-') + ') ' + r.text.slice(0, 110) + '\n                want ' + r.want); });

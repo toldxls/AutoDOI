@@ -1008,6 +1008,7 @@
       abstract: cleanAbstract(m.abstract || ''),
       language: clean(m.language || ''),
       event: clean((m.event && m.event.name) || ''),
+      originalTitle: stripMarks(markup(firstText(m['original-title']) || '')),                                   // the native-script title beside a translated one ("国外社区韧性的理论与实践进展" under an English title)
       database: clean(m.database || m.archive || rawTagOf(m, 'ris', ['DP', 'DB'], 'enw', ['W']) || ''),   // the database or platform a file says the record came from (RIS DP/DB, EndNote %W, CSL archive)
       accession: clean(m.accession || m.archive_location || rawTagOf(m, 'ris', ['AN'], 'enw', ['M']) || ''), // its accession number there (RIS AN, EndNote %M)
       publishedDoi: relDoi(m.relation, 'is-preprint-of'),
@@ -1805,7 +1806,7 @@
   // Every field the formatters read, coerced to the type they expect.  Records from normalize() already have this
   // shape; this guards a caller's hand-built record, so a stray null, number or array cannot throw or leak
   var STR_FIELDS = ['type', 'doi', 'url', 'title', 'subtitle', 'container', 'series', 'number', 'shortContainer', 'institution', 'edition', 'numPages', 'genre',
-    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession'];
+    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession', 'originalTitle'];
   var ANY_PUA = /[\uE000-\uF8FF]/g;
   function str(v) { return v === undefined || v === null || typeof v === 'boolean' || (typeof v === 'number' && !isFinite(v)) ? '' : Array.isArray(v) ? v.map(str).filter(Boolean).join(' ') : typeof v === 'object' ? '' : String(v); }
   function harden(record) {
@@ -1853,12 +1854,35 @@
   // Sub/superscript digits and signs as plain characters: "Fe₂O₃" and "Fe<sub>2</sub>O<sub>3</sub>" are the same formula
   var SCRIPT_CHARS = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9', '⁰': '0', '¹': '1', '²': '2', '³': '3',
     '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁺': '+', '⁻': '-', '₊': '+', '₋': '-' };
+  // Words of any script. Letters and digits are words (three or more characters, as before for Latin); CJK text carries no
+  // spaces, so a CJK run is read as its overlapping character pairs; a Cyrillic word also yields its Latin transliteration,
+  // so "Пароникян" meets a record that Crossref holds as "Paronikyan"
+  var WORD_RE; try { WORD_RE = new RegExp('[\\p{L}\\p{N}]+', 'gu'); } catch (e) { WORD_RE = /[a-z0-9À-ɏͰ-ϿЀ-ӿ԰-֏֐-׿؀-ۿ぀-ヿ㐀-鿿가-힯]+/g; }
+  var CJK_RE = /[぀-ヿ㐀-鿿가-힯]/, CJK_SPLIT = /[぀-ヿ㐀-鿿가-힯]+|[^぀-ヿ㐀-鿿가-힯]+/g;
+  var CYR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya', і: 'i', ї: 'yi', є: 'ye', ґ: 'g', ў: 'u' };
+  function translit(w) { return w.replace(/[Ѐ-ӿ]/g, function (c) { return CYR[c] !== undefined ? CYR[c] : c; }); }
   function tokens(s) {
-    var t = clean(s).replace(/[\uE000-\uE00F]/g, '')
-      .replace(/[\u2080-\u2089\u2070\u00B9\u00B2\u00B3\u2074-\u2079\u207A\u207B\u208A\u208B]/g, function (c) { return SCRIPT_CHARS[c]; });
-    return foldAscii(t).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-      .filter(function (w) { return w.length >= 3; });
+    var t = clean(s).replace(/[-]/g, '')
+      .replace(/[₀-₉⁰¹²³⁴-⁹⁺⁻₊₋]/g, function (c) { return SCRIPT_CHARS[c]; });
+    t = foldAscii(t).toLowerCase().replace(/ё/g, 'е'); // ё is е
+    var out = [], m;
+    WORD_RE.lastIndex = 0;
+    while ((m = WORD_RE.exec(t))) {
+      var w = m[0];
+      if (CJK_RE.test(w)) {
+        (w.match(CJK_SPLIT) || []).forEach(function (seg) {
+          if (!CJK_RE.test(seg)) { if (seg.length >= 3) out.push(seg); return; }
+          if (seg.length === 1) out.push(seg);
+          for (var i = 0; i + 1 < seg.length; i++) out.push(seg.slice(i, i + 2));
+        });
+      } else if (w.length >= 3) {
+        out.push(w);
+        if (/[Ѐ-ӿ]/.test(w)) { var tr = translit(w); if (tr !== w && tr.length >= 3) out.push(tr); }
+      }
+    }
+    return out;
   }
+
 
   // Spelling folded the same way on both sides, so British and American forms compare equal (behaviour/behavior,
   // sulphide/sulfide, palaeo/paleo, modelling/modeling, centre/center, -isation/-ization); only equality is ever tested
@@ -1910,19 +1934,22 @@
     var r = record.authors ? record : normalize(record);
     var hay = tokens(refText).map(foldSpelling), haySet = {};
     hay.forEach(function (w) { haySet[w] = true; });
-    var title = marksToText(r.title);
-    if (!tokens(title).length) return 0;
-    var score = titleScore(title, hay, haySet);
-    // a reference often drops the subtitle: "Screw rotations and glide mirrors" for "Screw rotations and glide mirrors: Crystallography in Fourier space"
-    var main = title.split(/:\s+/)[0];
-    if (main !== title && tokens(main).length >= 3) score = Math.max(score, titleScore(main, hay, haySet));
+    var title = marksToText(r.title), score = 0;
+    if (!tokens(title).length && !tokens(r.originalTitle || '').length) return 0;
+    // the record's title, or the original-language title Crossref holds beside a translation; a reference often drops a subtitle
+    [title, r.originalTitle ? marksToText(r.originalTitle) : ''].forEach(function (t) {
+      if (!t) return;
+      score = Math.max(score, titleScore(t, hay, haySet));
+      var main = t.split(/:\s+/)[0];
+      if (main !== t && tokens(main).length >= 3) score = Math.max(score, titleScore(main, hay, haySet));
+    });
     if (opts.titleOnly) return Math.max(0, Math.min(1, score)); // the Find tab has no year or author to check
     // the first person named: an organisation deposited as first author cannot be checked against a name list
     var persons = r.authors.filter(function (p) { return !p.literal; });
     var authorOk = true;
     if (persons.length) {
-      var fam = tokens(persons[0].family).map(foldSpelling)[0];
-      if (fam && !haySet[fam] && !(fam.length >= 5 && hay.some(function (h) { return editDistance(h, fam, 1) <= 1; }))) authorOk = false; // "Safna" for "Safina"
+      var fams = tokens(persons[0].family).map(foldSpelling), fam = fams[0];
+      if (fam && !fams.some(function (f) { return haySet[f] || (f.length >= 5 && hay.some(function (h) { return editDistance(h, f, f.length >= 8 ? 2 : 1) <= (f.length >= 8 ? 2 : 1); })); })) authorOk = false; // "Safna" for "Safina"; "Пароникян" for "Paronikyan"
     }
     // "(1964a)" is a year; "1573-1588" is a page range, but only a real year check can tell, so every four-digit token counts
     var yearsInRef = (String(refText).match(/\b(?:1[5-9]|20)\d{2}(?=[a-z]?\b)/g) || []).map(Number);
@@ -1935,7 +1962,26 @@
     // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
     var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
     if ((NOTICE.test(r.title) || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
+    // A container is never what a reference cites: the journal's own record ("Вестник Пермского университета") shares the journal name with every reference to it
+    if (/^(?:journal|journal-issue|journal-volume|book-series|book-set|proceedings-series|report-series|book-track)$/.test(r.type)) score -= 0.5;
     if (!authorOk) score -= 0.15;
+    // A reference with no title ("Бабичев А.В. и др. // Письма в ЖТФ. 2020. Т. 46. № 9. С. 35", "Smith J. Nature 500:54 (2013)"):
+    // author, year, volume and first page agreeing with the record is a specific enough match; three of the four is one to check
+    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
+      var raw = String(refText), nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
+      var volOk = r.volume && new RegExp('(^|[^\\d])' + r.volume.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\d])').test(raw);
+      var firstPage = (r.pages.match(/^[A-Za-z]?\d+/) || [''])[0];
+      var pageOk = firstPage && new RegExp('(^|[^\\d])' + firstPage.replace(/^0+/, '') + '(?![\\d])').test(raw);
+      // "15-25" is one page range, not volume 25 and page 15
+      var rangeRe = /(\d+)\s*[-\u2013\u2212]\s*(\d+)/g, rg;
+      while (volOk && pageOk && (rg = rangeRe.exec(raw))) { var ends = [rg[1], rg[2]]; if (ends.indexOf(String(r.volume)) !== -1 && ends.indexOf(firstPage.replace(/^0+/, '')) !== -1) { volOk = false; } }
+      var known = {}; // the record's author names and journal words; whatever else the reference says of five letters or more is a title
+      r.authors.forEach(function (p) { tokens(p.family).forEach(function (w) { known[foldSpelling(w)] = 1; }); });
+      tokens(r.container + ' ' + r.shortContainer).forEach(function (w) { known[foldSpelling(w)] = 1; });
+      var leftover = hay.filter(function (w) { return w.length >= 5 && !known[w] && !known[foldSpelling(translit(w))] && !/^\d+$/.test(w); }).length;
+      if (nearYear && volOk && pageOk) score = Math.max(score, 0.85);          // the same author, year, volume and first page: the same article
+      else if (nearYear && leftover <= 3 && (volOk || pageOk)) score = Math.max(score, 0.6); // three of the four in a line with no title words: check it
+    }
     return Math.max(0, Math.min(1, score));
   }
 

@@ -28,7 +28,7 @@ var POLITE_EMAIL = ''; // optional: your email for Crossref's polite pool, e.g. 
 var TIME_BUDGET_MS = 24000; // stay under the 30 s custom-function limit
 var CACHE_SECONDS = 21600;  // 6 h, the CacheService maximum
 
-var SELECT_ = 'DOI,URL,title,subtitle,author,editor,container-title,short-container-title,issued,published-print,' +
+var SELECT_ = 'DOI,URL,title,subtitle,original-title,author,editor,container-title,short-container-title,issued,published-print,' +
   'published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event';
 
 function onOpen() {
