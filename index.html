@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fkvrEcnL+9apLQJRpNIv+Rz6qv5BR2xaWwgw56VBNNE=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-tuaeT2E4vaQFSBcube5QF5yhy5GcE+06ifGIVv5/v48=' 'sha256-Gb6ta4fchjWgaD+TD7rnrcK6liisyY5RTx5JtNWdvwY=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-wMqovmE7woTdUyn8c7REG0vIVowDavcaLh9AM6VG+hs=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-tuaeT2E4vaQFSBcube5QF5yhy5GcE+06ifGIVv5/v48=' 'sha256-Lkuee7vGHIwcrqOnnu8ub1YulD6TC2dNJTackNuMe8c=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -1242,7 +1242,11 @@
     var inst = m.institution;
     var acc = m.accessed && m.accessed['date-parts'] && m.accessed['date-parts'][0];
     var accMonth = validMonth(acc && acc[1]);
-    var month = validMonth(dp[1]);
+    var month = validMonth(dp[1]), dayParts = dp;
+    // A journal article's issue date is the print date ("2013 Aug;500(7460)" in PubMed, "(April 2016)" in Chicago); Crossref's
+    // "issued" is the earliest date, usually the online one.  Same year only: an online-2019, print-2020 article keeps its 2019
+    var pp = m['published-print'] && m['published-print']['date-parts'] && m['published-print']['date-parts'][0];
+    if (type === 'journal-article' && pp && pp[0] && dp[0] && String(pp[0]) === String(dp[0]) && validMonth(pp[1])) { month = validMonth(pp[1]); dayParts = pp; }
     var titleSrc = firstText(m.title) || firstText(m['original-title']) || firstText(m['short-title']);
     var subSrc = firstText(m.subtitle);
     if (!titleSrc && subSrc) { titleSrc = subSrc; subSrc = ''; }
@@ -1270,7 +1274,7 @@
       years: ['issued', 'published-print', 'published-online', 'published'].map(function (k) { var d = m[k] && m[k]['date-parts'] && m[k]['date-parts'][0]; return d && d[0] ? String(d[0]) : ''; })
         .filter(function (y, i, a) { return y && a.indexOf(y) === i; }), // print and online years can differ; references may cite either
       month: month,
-      day: month ? validDay(dp[2]) : 0,
+      day: month ? validDay(dayParts[2]) : 0,
       volume: clean(m.volume || ''),
       issue: clean(m.issue || ''),
       pages: page,
@@ -4628,7 +4632,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.2.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.2.1'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;

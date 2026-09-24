@@ -4,6 +4,9 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 
 ## Unreleased
 
+## 1.2.1 - 2026-09-24
+
+- A journal article's issue month and day now come from Crossref's print date when its year matches, not from the earliest (usually online) date, so Vancouver, Chicago, MLA and IEEE print the issue date PubMed and the journal print ("Nature. 2013 Aug;500(7460):54-8."). The first canary run caught this against the live page and opened its issue as designed.
 ## 1.2.0 - 2026-09-24
 
 - References now match the style authorities' own published examples exactly: 66 examples from the APA Style site, the Chicago Manual of Style citation guide, the MLA Style Center, NLM's Citing Medicine and formatted-reference samples, and the IEEE Reference Guide are reproduced from their metadata in `tests/golden-styleguides.test.js` (27 more are listed there as needing data no source supplies). Corrections this forced: APA prints a web page's full date, a retrieval date when one was recorded, a chapter's edition before its pages, a dissertation's publication number and archive, a report number in place of a bracketed label, and no "[Preprint]" label; Chicago prints the issue month, "PhD diss.," and an access date for undated pages; MLA prints issue months and full web dates, and starts an authorless edited book with its title; Vancouver prints month and day, name suffixes as "Jr" and "3rd", an organisation author after a semicolon, book page counts, a chapter's book edition and volume, supplements without a volume, and "doi: … ." as NLM does; IEEE uses "Ed.," before the place, a comma after a proceedings title, the book volume and edition, three-letter months, and puts an article number after the date. A title ending in a quoted sentence no longer gets a second period.

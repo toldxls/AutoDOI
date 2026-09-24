@@ -22,8 +22,8 @@ function check(name, ok, detail) { if (ok) { passed++; console.log('ok   ' + nam
     check('no error status after the lookup', !/err/.test(await page.getAttribute('#doi-status', 'class')), await page.locator('#doi-status').textContent());
     // Vancouver needs the NLM abbreviation; wait a moment for it
     await page.selectOption('#style-select', 'vancouver');
-    await page.waitForFunction(function () { return /Nature\. 2013/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 30000 }).catch(function () {});
-    check('Vancouver renders with the journal abbreviation from NLM', /Nature\. 2013;500\(7460\):54-8/.test(await page.locator('#doi-result').textContent()), (await page.locator('#doi-result').textContent()).slice(0, 200));
+    await page.waitForFunction(function () { return /Nature\. 2013 Aug;500/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 30000 }).catch(function () {});
+    check('Vancouver renders the print issue date and the NLM journal abbreviation', /Nature\. 2013 Aug;500\(7460\):54-8\./.test(await page.locator('#doi-result').textContent()), (await page.locator('#doi-result').textContent()).slice(0, 200));
     await page.selectOption('#style-select', 'all');
     // A journal style through citeproc, with the real style index, style file, locale and engine
     await page.selectOption('#style-select', 'search');

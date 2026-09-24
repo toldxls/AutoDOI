@@ -946,7 +946,11 @@
     var inst = m.institution;
     var acc = m.accessed && m.accessed['date-parts'] && m.accessed['date-parts'][0];
     var accMonth = validMonth(acc && acc[1]);
-    var month = validMonth(dp[1]);
+    var month = validMonth(dp[1]), dayParts = dp;
+    // A journal article's issue date is the print date ("2013 Aug;500(7460)" in PubMed, "(April 2016)" in Chicago); Crossref's
+    // "issued" is the earliest date, usually the online one.  Same year only: an online-2019, print-2020 article keeps its 2019
+    var pp = m['published-print'] && m['published-print']['date-parts'] && m['published-print']['date-parts'][0];
+    if (type === 'journal-article' && pp && pp[0] && dp[0] && String(pp[0]) === String(dp[0]) && validMonth(pp[1])) { month = validMonth(pp[1]); dayParts = pp; }
     var titleSrc = firstText(m.title) || firstText(m['original-title']) || firstText(m['short-title']);
     var subSrc = firstText(m.subtitle);
     if (!titleSrc && subSrc) { titleSrc = subSrc; subSrc = ''; }
@@ -974,7 +978,7 @@
       years: ['issued', 'published-print', 'published-online', 'published'].map(function (k) { var d = m[k] && m[k]['date-parts'] && m[k]['date-parts'][0]; return d && d[0] ? String(d[0]) : ''; })
         .filter(function (y, i, a) { return y && a.indexOf(y) === i; }), // print and online years can differ; references may cite either
       month: month,
-      day: month ? validDay(dp[2]) : 0,
+      day: month ? validDay(dayParts[2]) : 0,
       volume: clean(m.volume || ''),
       issue: clean(m.issue || ''),
       pages: page,
