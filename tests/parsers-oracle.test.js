@@ -39,8 +39,9 @@ function compare(fmt, got, want, doi) {
   }
   if (A.kind(want) === 'chapter' && want.container && fmt === 'bibtex') check(tag + 'book title of a chapter', norm(got.container) === norm(want.container), doi + '  got "' + got.container + '" want "' + want.container + '"'); // RIS carries the series instead
   if (want.publisher && A.kind(want) !== 'journal') check(tag + 'publisher', norm(got.publisher) === norm(want.publisher), doi + '  got "' + got.publisher + '" want "' + want.publisher + '"');
-  var lossy = /^(dataset|report|dissertation|posted-content|standard|peer-review|report-component|reference-entry|other)$/.test(want.type) && /^(other|GENERIC)$/.test(got.type) // the exporter wrote GENERIC/@misc with nothing to infer from (an encyclopedia entry and a dataset look alike without an ISBN)
-    || (want.type === 'posted-content' && got.type === 'journal-article' && !got.container && !/^10\.1101\//.test(want.doi)); // publisher-hosted posted content written as @article with no journal
+  var lossy = (/^(dataset|report|dissertation|posted-content|standard|peer-review|report-component|reference-entry|other)$/.test(want.type) && /^(other|GENERIC)$/.test(got.type)) // the exporter wrote GENERIC/@misc with nothing to infer from (an encyclopedia entry and a dataset look alike without an ISBN)
+    || (want.type === 'posted-content' && got.type === 'journal-article' && !got.container && !/^10\.1101\//.test(want.doi)) // publisher-hosted posted content written as @article with no journal
+    || (/^report/.test(want.type) && got.type === 'book' && !got.isbn); // a report from a publisher we do not know, written as @book without an ISBN
   check(tag + 'kind', A.kind(got) === A.kind(want) || A.kind(want) === 'generic' || lossy, doi + '  got ' + A.kind(got) + ' (' + got.type + ') want ' + A.kind(want) + ' (' + want.type + ')');
   check(tag + 'no leaked markup or entities', !/<\/?[a-z]|&[a-z#]+;|\\[a-z]+\{/i.test(got.title + got.container), doi + '  ' + got.title);
 }

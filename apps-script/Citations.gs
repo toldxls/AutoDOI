@@ -1023,6 +1023,8 @@
     if (/^\d{4}$/.test(r.volume) && r.year && r.years.concat(r.year).indexOf(r.volume) !== -1) { // Fieldiana: volume "2010", issue "52"
       r.volume = r.issue; r.issue = '';
     }
+    // Report publishers whose DOIs Crossref's exports write as @book without an ISBN: USGS, OSTI, DTIC, IDB, NIST
+    if (r.type === 'book' && !r.isbn && /^10\.(?:3133|2172|21236|18235|6028)\//i.test(r.doi)) r.type = type = 'report';
     var srv = preprintServerOf(r.doi);
     if (srv && !r.container && /^(?:journal-article|other|book|monograph)$/.test(r.type)) { r.type = type = 'posted-content'; } // a file or search record that names no journal
     if (/^(?:posted-content|preprint)$/.test(type) && !r.container) {
