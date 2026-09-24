@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-DI+37xbVHTy1z+7FHaMGl/NdCwdCrKy36SAF9zluRmg=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-UG106IWjZRnVwt/vDKt2rn4SsT3K+kmu3cPfsZjR4Us=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-DI+37xbVHTy1z+7FHaMGl/NdCwdCrKy36SAF9zluRmg=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-SoN+13YLohSIgxmhMQKf1c8zjG0gitUUoPZzhverxeY=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -6255,10 +6255,17 @@
     }
     function markDifferences(inEl, raw, rec) {
       var rw = recordWords(rec), set = rw.set, keys = Object.keys(set), last = 0, m, marked = 0;
+      // a word broken by a line-break hyphen in a PDF paste ("min- eralogist") is one word when the halves join to a record word
+      var joined = {}, jm, JOIN_RE = /([\p{L}]{2,})-\s+([\p{L}]{2,})/gu;
+      try { while ((jm = JOIN_RE.exec(raw))) if (set[diffFold(jm[1] + jm[2])]) { joined[jm.index] = true; joined[jm.index + jm[0].length - jm[2].length] = true; } } catch (e) { /* no Unicode classes: no joining */ }
+      // an abbreviation is the start of a record word: "Mineral." for Mineralogist, "Geol" for Geology, "Contrib" for Contributions
+      var abbreviates = function (f) { if (f.length < 4) return false; for (var k = 0; k < keys.length; k++) if (keys[k].length > f.length && keys[k].indexOf(f) === 0) return true; return false; };
       inEl.textContent = '';
       DIFF_WORD.lastIndex = 0;
       while ((m = DIFF_WORD.exec(raw))) {
         var w = m[0], f = diffFold(w), isNum = /^\d+$/.test(f);
+        if (joined[m.index]) continue;
+        if (!set[f] && !isNum && abbreviates(f)) continue;
         // the same word, but the record spells it with diacritics the text left out: "Bacik" for "Bačík"
         var accent = set[f] && !isNum && f.length >= 3 && rw.orig[f] && hasAccent(rw.orig[f]) && !hasAccent(w) ? rw.orig[f] : '';
         var show = accent || (!set[f] && (isNum ? f.length >= 2 && f.length <= 5 : f.length >= 4 && !DIFF_SKIP.test(f)));

@@ -4,6 +4,7 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 
 ## Unreleased
 
+- The row marks no longer flag an abbreviated journal ("Am. Mineral." against American Mineralogist) or a word broken by a PDF's line-break hyphen ("min- eralogist").
 - Diacritics between a pasted reference and its record are handled both ways. A name typed without them ("Bacik", "Skrapkova") is marked on the row in blue with the record's spelling ("Bačík", "Skřápková"), and the output takes the record's form. A name typed with them while Crossref's record lacks them ("Škoda" for a deposited "Skoda") lends them to the record, so the reference list and the exports keep them.
 - In a mineral formula written IMA style, an oxidation state directly before the next element is read as a charge: "Ca19Fe2+Al4(Al7Fe2+)(SiO4)10" becomes Ca₁₉Fe²⁺Al₄(Al₇Fe²⁺)(SiO₄)₁₀ rather than a sum Fe₂+Al₄. Only formulas with a bracket or three or more elements qualify, so "Ca2+Mg2+ ratio" and "CO2+H2O" are unchanged.
 - A reference pasted from Word, Google Docs or a browser keeps its sub- and superscripts: when the clipboard's HTML carries any, the text is rebuilt from it with Unicode forms (Ca₁₉Fe²⁺Al₄) and its paragraphs as lines; a plain paste is untouched. The matched record's title on a row now shows formulas and deposited markup as the DOI tab does.

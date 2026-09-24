@@ -39,5 +39,16 @@ ok('after borrowing, no accent marks remain on the row', !el2.children.some(func
 var other = A.normalize({ type: 'journal-article', title: ['T'], author: [{ family: 'Novak', given: 'Jan' }], issued: { 'date-parts': [[2020]] } });
 ok('a different name with accents is not borrowed', H.adoptDiacritics(other, 'Nováková, J. (2020) T.') === 0 && other.authors[0].family === 'Novak');
 ok('ß, ł, đ and ø count as accents', H.hasAccent('Straße') && H.hasAccent('Łódź') && H.hasAccent('Đorđević') && H.hasAccent('Sørensen') && !H.hasAccent('Smith'));
+// journal abbreviations and PDF line-break hyphens are not differences
+var el3 = fakeEl(); H.markDifferences(el3, 'Uher P, Bacik P. Modraite, a new vesuvianite-group mineral from the Modra skarn. Am. Mineral. 2026.', rec);
+var m3 = el3.children.filter(function (c) { return c.tag === 'mark'; }).map(function (m) { return m.className + ':' + m.textContent; });
+ok('an abbreviated journal is not marked', m3.indexOf('Mineral') === -1 && !m3.some(function (x) { return /:Mineral$/.test(x); }), JSON.stringify(m3));
+ok('the diacritic mark still shows beside the abbreviation', m3.indexOf('accent:Bacik') !== -1, JSON.stringify(m3));
+var el4 = fakeEl(); H.markDifferences(el4, 'Uher, P., 2026. Modraite, a new vesuvianite-group min- eral from the Modra skarn, Malé Karpaty Moun- tains, Slovakia. American Mineralogist.', rec);
+var m4 = el4.children.filter(function (c) { return c.tag === 'mark'; }).map(function (m) { return m.textContent; });
+ok('a word broken by a line-break hyphen is not marked', m4.length === 0, JSON.stringify(m4));
+var el5 = fakeEl(); H.markDifferences(el5, 'Uher, P., 2026. Modraite, a new mineral from the Modra skarn. Aerican Mineralogist.', rec);
+var m5 = el5.children.filter(function (c) { return c.tag === 'mark'; }).map(function (m) { return m.textContent; });
+ok('a real misspelling is still marked', m5.length === 1 && m5[0] === 'Aerican', JSON.stringify(m5));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;
