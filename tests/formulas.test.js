@@ -51,4 +51,9 @@ eq('in-formula charge', f('Fe3+2(H2O)4[O(SO4)2]'), 'Fe³⁺₂(H₂O)₄[O(SO₄
 eq('almandine', f('Almandine Fe2+3Al2Si3O12'), 'Almandine Fe²⁺₃Al₂Si₃O₁₂');
 ['C3+C4 photosynthesis', 'H2+H2O mixtures', 'Ca2+Mg2+ ratio', 'CD4+CD25+ T cells'].forEach(t => eq('same: ' + t, f(t), t));
 eq('middle dot placeholder', A.titleText(A.normalize({ title: ['Zn4Si2O7(OH)2{middle dot}H2O'] })), 'Zn₄Si₂O₇(OH)₂·H₂O');
+// IMA-style mineral formulas: an oxidation state right before the next element, not a sum
+[['Ca19Fe2+Al4(Al7Fe2+)(SiO4)10(Si2O7)4O(OH)9', 'Ca₁₉Fe²⁺Al₄(Al₇Fe²⁺)(SiO₄)₁₀(Si₂O₇)₄O(OH)₉'], ['KFe2+Fe3+(SO4)2', 'KFe²⁺Fe³⁺(SO₄)₂'], ['Mn2+Fe3+2O4', 'Mn²⁺Fe³⁺₂O₄'],
+ ['CO2+H2O', 'CO₂+H₂O'], ['(CO2+ H2O + NaCl)', '(CO₂+ H₂O + NaCl)'], ['Fe2+-bearing olivine', 'Fe²⁺-bearing olivine']].forEach(function (c) {
+  var got = A.autoFormulas(c[0]); if (got === c[1]) pass++; else { fail++; console.log('FAIL ima charge ' + c[0] + '\n   got  ' + got + '\n   want ' + c[1]); }
+});
 console.log(pass + ' passed, ' + fail + ' failed');

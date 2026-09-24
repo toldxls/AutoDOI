@@ -330,7 +330,9 @@
       var metal = last && last.t === 'el' && (last.v.length === 2 || /^[VUWYK]$/.test(last.v));
       // "Fe3+2(H2O)4", "Fe2+3Al2Si3O12", "(Mg,Fe2+)2SiO4", "(Fe3+,Al)2O3": a metal's oxidation state inside the formula,
       // followed by a count, a bracket, or (inside a site list) a comma or the closing bracket
-      if (metal && (m = rest.match(depth > 0 ? /^(\d[+−])(?=\d|[(\[,)\]])/ : /^(\d[+−])(?=\d|[(\[])/))) {
+      // …or, in a mineral formula written IMA style, by the next element: "Ca19Fe2+Al4(Al7Fe2+)(SiO4)10" (vesuvianite group), "KFe2+Fe3+(SO4)2"
+      var mineral = /[(\[]/.test(s) || (s.match(/[A-Z][a-z]?(?![a-z])/g) || []).filter(function (e, i, a) { return ELEM[e] && a.indexOf(e) === i; }).length >= 3; // "Ca2+Mg2+ ratio" is not one
+      if (metal && (m = rest.match(depth > 0 ? /^(\d[+−])(?=\d|[(\[,)\]])/ : /^(\d[+−])(?=\d|[(\[])/)) || (metal && mineral && (m = rest.match(/^(\d[+−])(?=[A-Z][a-z]?(?![a-z]))/)))) {
         toks.push({ t: 'ox', v: m[1] }); i += m[1].length; continue;
       }
       // IMA order, count before charge: "PbFe22+V23+(PO4)3(OH)3" -> PbFe₂²⁺V₂³⁺(PO₄)₃(OH)₃
@@ -510,6 +512,8 @@
     var plus = function (x) {                              // H2O+CO2, Fe3++Fe2+ (only when every side is a formula)
       var parts = x.split(/(\+(?=[A-Z(\[]))/);
       if (parts.length > 1) {
+        var whole = convertPiece(x, false, false);           // one formula whose "+" is an oxidation state ("Ca19Fe2+Al4…") beats a sum
+        if (whole !== null && new RegExp(SUPO + '\\d*[+\u2212-]' + SUPC).test(whole)) { any = true; return whole; } // a superscript charge is still a marker here
         var ok = true, conv1 = false, out = parts.map(function (p, i) {
           if (i % 2) return p;
           var r = p ? convertPiece(p, false, false) : null;
