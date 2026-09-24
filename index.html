@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-DI+37xbVHTy1z+7FHaMGl/NdCwdCrKy36SAF9zluRmg=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-YIc9x3+zYzq8nXxgz/+ioQgJ5TSX3/sq/bMFj/ouvXw=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-DI+37xbVHTy1z+7FHaMGl/NdCwdCrKy36SAF9zluRmg=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-UG106IWjZRnVwt/vDKt2rn4SsT3K+kmu3cPfsZjR4Us=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -157,6 +157,7 @@
   .match.good { border-left-color: var(--good); } .match.warn { border-left-color: var(--warn); } .match.bad { border-left-color: var(--bad); }
   .match .in { font-family: var(--serif); color: var(--muted); font-size: 14px; }
   .match .in mark { background: var(--warn-soft); color: var(--ink); border-bottom: 1px dotted var(--warn); border-radius: 2px; padding: 0 1px; cursor: help; } /* a word the matched record does not contain */
+  .match .in mark.accent { background: var(--accent-soft); border-bottom-color: var(--accent); } /* the same word, with the record's diacritics */
   .match .out { margin-top: 6px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .match .out .t { font-family: var(--serif); font-size: 15px; }
   .match .out code { font-family: var(--mono); font-size: 12.5px; }
@@ -6222,25 +6223,51 @@
       if (la === lb) return a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
       return la > lb ? a.slice(i + 1) === b.slice(i) : b.slice(i + 1) === a.slice(i);
     }
+    // Diacritics. A name typed without them ("Bacik") is marked with the record's spelling ("Bačík"); a name typed with them
+    // while the record lacks them ("Škoda" for a record's "Skoda") lends them to the record, so the reference list and the
+    // exports keep them. Only whole words that are the same letters once the accents are removed take part.
+    function stripAccents(s) { s = String(s || ''); if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); return s.replace(/ł/g, 'l').replace(/Ł/g, 'L').replace(/đ/g, 'd').replace(/Đ/g, 'D').replace(/ø/g, 'o').replace(/Ø/g, 'O').replace(/ß/g, 'ss'); }
+    function hasAccent(w) { w = String(w || ''); if (w.normalize) w = w.normalize('NFC'); return /[^\x00-\x7f]/.test(w) && stripAccents(w) !== w; }
+    function adoptDiacritics(rec, raw) {
+      var words = (String(raw).match(DIFF_WORD) || []).filter(hasAccent); if (!words.length) return 0;
+      var byFold = {}; words.forEach(function (w) { var k = stripAccents(w).toLowerCase(); if (!byFold[k]) byFold[k] = w.normalize ? w.normalize('NFC') : w; });
+      var n = 0;
+      rec.authors.concat(rec.editors).forEach(function (p) {
+        ['family', 'given'].forEach(function (f) {
+          var v = p[f]; if (!v || hasAccent(v)) return;
+          var out = v.split(/(\s+|-)/).map(function (part) {
+            if (!/^[A-Za-z]{3,}$/.test(part)) return part;
+            var w = byFold[part.toLowerCase()]; if (!w) return part;
+            n++; // the record's casing pattern is kept: "Skoda" -> "Škoda", "SKODA" -> "ŠKODA"
+            return part === part.toUpperCase() ? w.toUpperCase() : part.charAt(0) === part.charAt(0).toUpperCase() ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase();
+          }).join('');
+          if (out !== v) p[f] = out;
+        });
+      });
+      return n;
+    }
     function recordWords(rec) {
-      var set = {}, add = function (v) { if (!v) return; (diffFold(A.stripTags(String(v))).match(DIFF_WORD) || []).forEach(function (w) { set[w] = true; }); };
+      var set = {}, orig = {}, add = function (v) { if (!v) return; var raw = A.stripTags(String(v)); (raw.match(DIFF_WORD) || []).forEach(function (w) { var k = diffFold(w); set[k] = true; if (!orig[k] || (hasAccent(w) && !hasAccent(orig[k]))) orig[k] = w.normalize ? w.normalize('NFC') : w; }); };
       [rec.title, rec.originalTitle, rec.subtitle, rec.container, rec.shortContainer, rec.publisher, rec.place, rec.institution, rec.series, rec.doi, rec.url, rec.year, rec.volume, rec.issue, rec.pages, rec.articleNumber, rec.edition, rec.isbn, rec.issn].forEach(add);
       (rec.years || []).forEach(add);
       rec.authors.concat(rec.editors).forEach(function (p) { add(p.family); add(p.given); });
-      return set;
+      return { set: set, orig: orig };
     }
     function markDifferences(inEl, raw, rec) {
-      var set = recordWords(rec), keys = Object.keys(set), last = 0, m, marked = 0;
+      var rw = recordWords(rec), set = rw.set, keys = Object.keys(set), last = 0, m, marked = 0;
       inEl.textContent = '';
       DIFF_WORD.lastIndex = 0;
       while ((m = DIFF_WORD.exec(raw))) {
         var w = m[0], f = diffFold(w), isNum = /^\d+$/.test(f);
-        var show = !set[f] && (isNum ? f.length >= 2 && f.length <= 5 : f.length >= 4 && !DIFF_SKIP.test(f));
+        // the same word, but the record spells it with diacritics the text left out: "Bacik" for "Bačík"
+        var accent = set[f] && !isNum && f.length >= 3 && rw.orig[f] && hasAccent(rw.orig[f]) && !hasAccent(w) ? rw.orig[f] : '';
+        var show = accent || (!set[f] && (isNum ? f.length >= 2 && f.length <= 5 : f.length >= 4 && !DIFF_SKIP.test(f)));
         if (!show) continue;
-        var near = ''; if (!isNum && f.length >= 5) for (var k = 0; k < keys.length; k++) if (keys[k].length >= 5 && oneEditApart(f, keys[k])) { near = keys[k]; break; }
+        var near = ''; if (!accent && !isNum && f.length >= 5) for (var k = 0; k < keys.length; k++) if (keys[k].length >= 5 && oneEditApart(f, keys[k])) { near = keys[k]; break; }
         inEl.appendChild(document.createTextNode(raw.slice(last, m.index)));
         var mk = document.createElement('mark'); mk.textContent = w;
-        mk.title = near ? 'The matched record has \u201C' + near + '\u201D' : 'Not in the matched record';
+        if (accent) { mk.className = 'accent'; mk.title = 'The matched record spells it \u201C' + accent + '\u201D'; }
+        else mk.title = near ? 'The matched record has \u201C' + near + '\u201D' : 'Not in the matched record';
         inEl.appendChild(mk); last = m.index + w.length; marked++;
       }
       inEl.appendChild(document.createTextNode(raw.slice(last)));
@@ -6262,7 +6289,7 @@
       o.appendChild(lab);
       inc.addEventListener('change', function () { if (inc.checked && row.keep) row.keep.checked = false; build(); });
       row.rec = rec; row.box = inc;
-      if (row.raw && (level === 'good' || level === 'warn')) { var inEl = row.node.querySelector('.in'); if (inEl) markDifferences(inEl, row.raw, rec); }
+      if (row.raw && (level === 'good' || level === 'warn')) { adoptDiacritics(rec, row.raw); var inEl = row.node.querySelector('.in'); if (inEl) markDifferences(inEl, row.raw, rec); }
       if (rec.publishedDoi) {
         var pn = el('div', 'note'); pn.style.marginTop = '6px';
         pn.appendChild(document.createTextNode('Preprint; published version: ')); pn.appendChild(el('code', '', rec.publishedDoi));

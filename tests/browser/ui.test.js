@@ -250,6 +250,13 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('export output holds the matched record'), /Kucsko/.test(outText) && /RIS|EndNote|BibTeX/.test(outText), outText.slice(0, 200));
   await axeCheck('Export tab with matches');
 
+  // 8a. Diacritics typed in the reference are lent to a record that lacks them, and reach the exports
+  await page.fill('#export-input', 'Kučsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54-58.');
+  await page.click('#export-go');
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  var lentText = await page.evaluate(function () { return Array.prototype.map.call(document.querySelectorAll('#export-output textarea, #export-output pre, #export-output code'), function (e) { return e.value || e.textContent; }).join('\n') + '\n' + document.querySelector('#export-output').textContent; });
+  check(name('a diacritic typed in the reference is lent to the record and reaches the exports'), /Kučsko/.test(lentText) && !/Kucsko/.test(lentText.replace(/kucsko\d*/gi, '')), lentText.slice(0, 200));
+  check(name('the lent name is not marked as a difference'), (await page.locator('#export-matches .match.good .in mark').count()) === 0, await page.locator('#export-matches .match.good .in').innerHTML());
   // 8b. A rich paste (Word, Google Docs) keeps its sub- and superscripts as Unicode; a plain paste is untouched
   await page.fill('#export-input', '');
   await page.evaluate(function () {
