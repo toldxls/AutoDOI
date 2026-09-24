@@ -2,7 +2,9 @@
 // tests/fixtures/match-truth.json holds references as publishers deposited them in Crossref reference lists,
 // each with the DOI the publisher resolved it to.  Variants degrade the text further.  The page is served
 // locally; only fonts are blocked.  Slow (about two seconds per reference on Crossref's public pool).
-// Usage: node tests/browser/match-bench.js [--variants deposited,lowercase,noyear] [--limit N] [--batch 25] [--out file.json]
+// The glued variant joins consecutive pairs into one line ("; ", a bare space, ". ") and pastes in automatic layout mode: the
+// splitter must separate them before matching can succeed.
+// Usage: node tests/browser/match-bench.js [--variants deposited,lowercase,noyear,glued] [--limit N] [--batch 25] [--out file.json]
 var http = require('http'), fs = require('fs'), path = require('path');
 var { chromium } = require('playwright');
 var ROOT = path.join(__dirname, '..', '..');
@@ -28,6 +30,47 @@ function serve() {
   });
 }
 function normDoi(d) { return String(d || '').toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, '').replace(/[.,;)]+$/, ''); }
+var GLUES = ['; ', ' ', '. '];
+function glueTexts(a, b, g) { a = degrade.deposited(a); b = degrade.deposited(b); if (g === '. ') a = a.replace(/[.\s]+$/, ''); return a + g + b; }
+function squash(t) { return String(t).replace(/\s+/g, ' ').trim(); }
+async function gluedRun(page, items) {
+  var pairs = [], t0 = Date.now();
+  for (var i = 0; i + 1 < items.length; i += 2) pairs.push({ a: items[i], b: items[i + 1], glue: GLUES[(i / 2) % GLUES.length], line: glueTexts(items[i].text, items[i + 1].text, GLUES[(i / 2) % GLUES.length]) });
+  await page.selectOption('#split-mode', 'auto');
+  var PER = Math.max(4, Math.floor(BATCH / 2));
+  for (var b = 0; b < pairs.length; b += PER) {
+    var chunk = pairs.slice(b, b + PER);
+    await page.fill('#export-input', chunk.map(function (p) { return p.line; }).join('\n'));
+    await page.waitForFunction(function () { return /references?/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
+    await page.click('#export-go');
+    await page.waitForFunction(function () { var s = document.querySelector('#export-status').textContent; return !document.querySelector('#export-go').disabled && /good|matched|Stopped|Paste/.test(s); }, null, { timeout: 600000 });
+    var got = await page.evaluate(function () {
+      return Array.prototype.map.call(document.querySelectorAll('#export-matches .match'), function (m) {
+        var code = m.querySelector('.out code'), inp = m.querySelector('.in');
+        return { level: /\bgood\b/.test(m.className) ? 'good' : /\bwarn\b/.test(m.className) ? 'warn' : /\bbad\b/.test(m.className) ? 'bad' : 'none', doi: code ? code.textContent : '', raw: inp ? inp.textContent : '' };
+      });
+    });
+    chunk.forEach(function (p) {
+      var mine = got.filter(function (r) { var raw = squash(r.raw); return raw && (squash(p.line).indexOf(raw) !== -1 || raw.indexOf(squash(p.line)) !== -1); });
+      p.rows = mine.length;
+      var dois = mine.map(function (r) { return { doi: normDoi(r.doi), level: r.level }; });
+      var find = function (want) { return dois.filter(function (d) { return d.doi === normDoi(want); })[0]; };
+      p.foundA = find(p.a.doi); p.foundB = find(p.b.doi);
+      p.wrongGreen = dois.filter(function (d) { return d.level === 'good' && d.doi && d.doi !== normDoi(p.a.doi) && d.doi !== normDoi(p.b.doi); }).length;
+    });
+    process.stdout.write('.');
+  }
+  var split = pairs.filter(function (p) { return p.rows === 2; }).length, over = pairs.filter(function (p) { return p.rows > 2; }).length, under = pairs.filter(function (p) { return p.rows < 2; }).length;
+  var refs = pairs.length * 2, green = 0, any = 0, wrongGreen = 0;
+  pairs.forEach(function (p) { [p.foundA, p.foundB].forEach(function (f) { if (f) { any++; if (f.level === 'good') green++; } }); wrongGreen += p.wrongGreen; });
+  var byGlue = {}; pairs.forEach(function (p) { var k = JSON.stringify(p.glue); byGlue[k] = byGlue[k] || { n: 0, split: 0 }; byGlue[k].n++; if (p.rows === 2) byGlue[k].split++; });
+  var secs = ((Date.now() - t0) / 1000).toFixed(0);
+  console.log('\n== glued: ' + pairs.length + ' lines holding two references each, automatic layout, ' + secs + ' s');
+  console.log('   split into two: ' + split + ' | left as one: ' + under + ' | split into more: ' + over + '   by glue: ' + Object.keys(byGlue).map(function (k) { return k + ' ' + byGlue[k].split + '/' + byGlue[k].n; }).join(', '));
+  console.log('   references greened: ' + green + '/' + refs + ' (' + (green / refs * 100).toFixed(1) + '%)   found at any level: ' + any + '/' + refs + '   wrong greens: ' + wrongGreen);
+  pairs.filter(function (p) { return p.rows !== 2; }).slice(0, 8).forEach(function (p) { console.log('   ' + p.rows + ' row(s) [' + JSON.stringify(p.glue) + '] ' + p.line.slice(0, 150)); });
+  return { pairs: pairs.map(function (p) { return { glue: p.glue, rows: p.rows, a: !!p.foundA, b: !!p.foundB, wrongGreen: p.wrongGreen, line: p.line }; }), split: split, green: green, any: any, refs: refs, wrongGreen: wrongGreen };
+}
 (async function () {
   var server = await serve(), browser = await chromium.launch(), ctx = await browser.newContext({ viewport: { width: 1200, height: 900 } }), page = await ctx.newPage();
   await page.route('**/*', function (r) { return /fonts\.g/.test(r.request().url()) ? r.fulfill({ status: 200, contentType: 'text/css', body: '' }) : r.continue(); });
@@ -36,6 +79,8 @@ function normDoi(d) { return String(d || '').toLowerCase().replace(/^https?:\/\/
   await page.selectOption('#split-mode', 'lines');
   var items = truth.slice(0, LIMIT), results = {};
   for (var v of VARIANTS) {
+    if (v === 'glued') { results.glued = await gluedRun(page, items); continue; }
+    await page.selectOption('#split-mode', 'lines');
     var rows = [], t0 = Date.now();
     for (var b = 0; b < items.length; b += BATCH) {
       var chunk = items.slice(b, b + BATCH), texts = chunk.map(function (x) { return degrade[v](x.text); });
@@ -45,12 +90,17 @@ function normDoi(d) { return String(d || '').toLowerCase().replace(/^https?:\/\/
       await page.waitForFunction(function () { var s = document.querySelector('#export-status').textContent; return !document.querySelector('#export-go').disabled && /good|matched|Stopped|Paste/.test(s); }, null, { timeout: 420000 });
       var got = await page.evaluate(function () {
         return Array.prototype.map.call(document.querySelectorAll('#export-matches .match'), function (m) {
-          var code = m.querySelector('.out code'), chip = m.querySelector('.out .chip');
-          return { level: /\bgood\b/.test(m.className) ? 'good' : /\bwarn\b/.test(m.className) ? 'warn' : /\bbad\b/.test(m.className) ? 'bad' : 'none', doi: code ? code.textContent : '', chip: chip ? chip.textContent : '' };
+          var code = m.querySelector('.out code'), chip = m.querySelector('.out .chip'), inp = m.querySelector('.in');
+          return { level: /\bgood\b/.test(m.className) ? 'good' : /\bwarn\b/.test(m.className) ? 'warn' : /\bbad\b/.test(m.className) ? 'bad' : 'none', doi: code ? code.textContent : '', chip: chip ? chip.textContent : '', raw: inp ? inp.textContent : '' };
         });
       });
-      if (got.length !== chunk.length) console.log('note: ' + chunk.length + ' pasted, ' + got.length + ' rows (batch at ' + b + ')');
-      chunk.forEach(function (x, i) { var g = got[i] || { level: 'none', doi: '', chip: '' }; rows.push({ text: texts[i], want: x.doi, got: normDoi(g.doi), level: g.level, chip: g.chip, correct: normDoi(g.doi) === normDoi(x.doi) }); });
+      if (got.length !== chunk.length) console.log('note: ' + chunk.length + ' pasted, ' + got.length + ' rows (batch at ' + b + '): a line holding two references was split');
+      // rows belong to the pasted line whose text contains theirs (a glued line yields two rows); the row holding the wanted DOI wins, else the first
+      chunk.forEach(function (x, i) {
+        var line = squash(texts[i]), mine = got.filter(function (r) { var raw = squash(r.raw); return raw && (line.indexOf(raw) !== -1 || raw.indexOf(line) !== -1); });
+        var g = mine.filter(function (r) { return normDoi(r.doi) === normDoi(x.doi); })[0] || mine[0] || { level: 'none', doi: '', chip: '' };
+        rows.push({ text: texts[i], want: x.doi, got: normDoi(g.doi), level: g.level, chip: g.chip, correct: normDoi(g.doi) === normDoi(x.doi), extraRows: Math.max(0, mine.length - 1) });
+      });
       process.stdout.write('.');
     }
     var tally = { greenRight: 0, greenWrong: 0, amberRight: 0, amberWrong: 0, redRight: 0, redWrong: 0, none: 0 };

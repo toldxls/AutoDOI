@@ -4,6 +4,22 @@ const html = require('fs').readFileSync(require('path').join(ROOT, 'index.html')
 const a = html.indexOf('  // Lines that are nothing but an identifier'), b = html.indexOf('  async function resolve(refText)');
 const splitReferences = new Function(html.slice(a, b) + '; return splitReferences;')();
 let pass = 0, fail = 0;
+// Two references glued into one line are separated; semicolons inside one reference are not
+const glued = [
+  ['physics semicolon pair', 'L.J. Campbell et al., Physica B 211 (1995) 52; S. Askenazy, Physica B 216 (1996) 221.', 2],
+  ['ibid pair', 'H.J. Fischback, Phys. Stat. Sol. 3 (1963) 1082; ibid. 22 (1967) 235.', 2],
+  ['run together after pages', 'M. J. Benton, 2000 .Stems, nodes, crown-clades, and rank-free lists: Is Linnaeus dead? Biological Reviews, 75 :633 –648 C. A. Brochu, 2000 .Phylogenetic relationships and divergence timing of Crocodylus based on morphology and the fossil record. Copeia, 2000 :657 –673', 2],
+  ['period glue', 'Soltis, D.E., and P.S. Soltis. 1992. The distribution of selfing rates in homosporous ferns. American Journal of Botany, 79:97-100. Wahlert, J.H. 1977. Cranial foramina and relationships of Eutypomys (Rodentia, Eutypomyidae). American Museum Novitates, 2626:1-8.', 2],
+  ['three glued', 'A. Smith, Phys. Rev. B 12 (1990) 100; B. Jones, Phys. Rev. B 13 (1991) 200; C. Brown, Phys. Rev. B 14 (1992) 300.', 3],
+  ['ACS author semicolons are one reference', 'Smith, J.; Jones, K.; Brown, L. Deep learning for crystals. J. Am. Chem. Soc. 2020, 142, 1234-1240.', 1],
+  ['Vancouver year;volume is one reference', 'Kucsko G, Maurer PC. Nanometre-scale thermometry in a living cell. Nature. 2013;500(7460):54-8.', 1],
+  ['semicolon inside a title is one reference', 'Smith J (2020) Warming; cooling; and everything between: a review of ocean heat. J Clim 33:1-20.', 1],
+  ['two-year title is one reference', 'Keng S-H (2017) Expanding college access in Taiwan, 1978–2014: effects on graduate quality. J Hum Cap 11:1-34.', 1]
+];
+glued.forEach(c => { ['auto', 'lines'].forEach(mode => { const r = splitReferences(c[1], mode); if (r.length === c[2]) pass++; else { fail++; console.log('FAIL glued ' + c[0] + ' (' + mode + ')', r.length, '!=', c[2], JSON.stringify(r)); } }); });
+{ const r = splitReferences('H.J. Fischback, Phys. Stat. Sol. 3 (1963) 1082; ibid. 22 (1967) 235.', 'auto');
+  if (r[1] === 'H.J. Fischback, Phys. Stat. Sol. 22 (1967) 235.') pass++; else { fail++; console.log('FAIL ibid expands to the journal', JSON.stringify(r)); } }
+
 const t = (label, input, n) => { const r = splitReferences(input); if (r.length === n) pass++; else { fail++; console.log('FAIL', label, r.length, '!=', n); r.forEach(x => console.log('   |', x.slice(0, 100))); } };
 t('particle', "Kucsko, G., & Maurer, P. C. (2013). Nanometre-scale thermometry. Nature, 500, 54-58.\nvan der Maaten, L., & Hinton, G. (2008). Visualizing data using t-SNE. JMLR, 9, 2579-2605.", 2);
 t('ids', "PMC4221854\n23903748\narXiv:1706.03762\narXiv:1810.04805", 4);

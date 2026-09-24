@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NVYvVOhUmZMJJOuUFPVb8IMfx5UemxPOu3to3wVGfMk=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-MepDclLhK2aQuDwJ5enjrF42AtzXMUI1fGYB/2YdZQ4=' 'sha256-m0cYHfPWYTIZZUi0JoJsoIDTb5s/i9AHB2nlysDJ6Xc=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NVYvVOhUmZMJJOuUFPVb8IMfx5UemxPOu3to3wVGfMk=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-MepDclLhK2aQuDwJ5enjrF42AtzXMUI1fGYB/2YdZQ4=' 'sha256-xGX5nkmPeiyBNUElav09NDdo2YjZjJPuKnBnrR0SXmM=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -4709,7 +4709,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.4.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.5.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -5770,6 +5770,48 @@
     parts.push(chunk.slice(from));
     return parts.map(function (x) { return x.trim(); }).filter(Boolean);
   }
+  // Two references glued into one line, physics style ("Campbell L.J., Physica B 211 (1995) 52; Askenazy S., Physica B 216 (1996) 221.")
+  // or simply run together.  A cut is taken only where the left part already reads as a whole reference (a year and
+  // a volume, page or identifier) and the right part opens like one (a name, or "ibid.") and has its own year, so
+  // semicolons between authors (ACS) or inside "Nature 1995; 375: 123" never split.
+  var YEAR_IN = /\b(1[5-9]|20)\d{2}[a-z]?\b/;
+  // A real author opening: "Surname, I." or "Surname AB" followed by another author or a year; or "I. Surname" initials first.
+  // "Cambridge, MA: Harvard" and "Kandy, Sri Lanka" fail it, so a place after a title never starts a new reference
+  var NAME = '(?:' + PARTICLES + ')?[' + UC + '][' + WC + ']+', JOIN = '(?:,?\\s*(?:and|&)\\s+|,\\s*|:?\\s+)', YR = '\\(?(?:1[5-9]|20)\\d{2}', INI = '[' + UC + '][a-z]?\\.'; // "Yu." "Zh." are one initial
+  var STRONG_AUTHOR = new RegExp('^' + NAME + '(?:,?\\s+(?:' + INI + '(?:\\s?-?' + INI + ')*[.,]?' + JOIN + '(?:' + NAME + '|et al|' + YR + ')' +      // "Wahlert, J.H. 1977" / "Litvin Yu.A., Spivak" / "Taylor, S. R.: 1964"
+    '|[' + UC + ']{1,3}(?=[,.\\s])[.,]?' + JOIN + '(?:' + NAME + '\\s+[' + UC + ']{1,3}(?=[,.\\s])|et al|' + YR + '))' +                                   // "Kucsko G, Maurer PC"; a space before the initials, so "IEEE, 2012" and "Moscow, FGU GKZ," are not names
+    '|,\\s*[' + UC + '][a-z]+(?:\\s[' + UC + ']\\.?)?,?\\s+(?:and\\s+)?[' + UC + '][a-z]+\\s+' + NAME + ')');                                              // "Al-Badi, Ali, Ali Tarhini" / "Yunchao, Gu and Yang Jiayao"; the comma is required ("Proc Lunar Sci Conf" is not a name)
+  var INITIALS_FIRST = new RegExp('^(?:' + INI + '\\s?){1,3}(?:-' + INI + '\\s?)?' + NAME + '[,.]');
+  var HAS_LOCATOR = /\d+\s*[:,]\s*[A-Z]?\d+|\b[A-Z]?\d+\s*[–−-]\s*[A-Z]?\d+\b|\d+\s*\((?:1[5-9]|20)\d{2}\)\s*[A-Z]?\d+|\bpp?\.?\s*\d|\bvol\.?\s*\d|\bno\.\s*\d|\bV\.\s*\d|\bP\.\s*\d/i; // volume and pages: "15: 87–104", "88, A615–A630", "211 (1995) 52", "V. 194, No. 4828, p. 568"
+  var YEAR_POS = /(?<![\d\-–−?\/:])\b(?:1[5-9]|20)\d{2}[a-z]?\b(?![\-–−?\/]\d)/; // a year, not one end of a page range "1549–1579"
+  function gluePoint(text) {
+    var re = /(; |\. | )/g, m;
+    while ((m = re.exec(text))) {
+      var at = m.index, sep = m[1], left = text.slice(0, at + (sep === ' ' ? 0 : 1)).replace(/^(\[\d{1,4}\]|\d{1,4}[.)])\s*/, ''), right = text.slice(at + sep.length); // a list number is not a page
+      var ibid = /^ibid\b/i.test(right);
+      if (left.length < 30 || right.length < (ibid ? 12 : 25)) continue;
+      if (!YEAR_IN.test(left)) continue;
+      var located = HAS_LOCATOR.test(left.replace(YEAR_IN, ' ')) || DOI_URL_END.test(left);
+      if (!located && !/\d\s*;$/.test(left)) continue;                                                                             // "Smith, J. (2019)." alone is a start, not a reference
+      if (sep === ' ' && !/[\d)\]]\.?$/.test(left)) continue;                                                                       // run together: the left ends on a page, a year or a closing note
+      if (sep === '. ' && (ABBR_END.test(left.replace(/\s?\.$/, '')) || !/[\d)\]A-Za-z]\s?\.$/.test(left))) continue;                // "Res. " is an abbreviation, not an end
+      if (!(ibid || STRONG_AUTHOR.test(right) || INITIALS_FIRST.test(right))) continue; // "Smith, J. (2020)" / "Kucsko G, Maurer PC" / "S. Askenazy," / "ibid."
+      if (!YEAR_POS.test(right)) continue;
+      return { at: at, len: sep === ' ' ? 1 : sep.length, keep: sep === ' ' ? 0 : 1 };
+    }
+    return null;
+  }
+  // "ibid. 22 (1967) 235" after "Fischback H.J., Phys. Stat. Sol. 3 (1963) 1082": the same authors and journal
+  function ibidExpand(prev, part) {
+    var m = prev.match(/^([\s\S]*?\S)\s+\d+[A-Za-z]?\s*\(\s*(1[5-9]|20)\d{2}[a-z]?\s*\)/);
+    return m ? m[1] + ' ' + part.replace(/^ibid\.?,?\s*/i, '') : part;
+  }
+  function splitGlued(chunk) {
+    var out = [], rest = chunk, guard = 0, cut;
+    while (guard++ < 8 && (cut = gluePoint(rest))) { out.push(rest.slice(0, cut.at + cut.keep).trim()); rest = rest.slice(cut.at + cut.len).trim(); }
+    out.push(rest);
+    return out.map(function (p, i) { return i && /^ibid\b/i.test(p) ? ibidExpand(out[i - 1], p) : p; }).filter(Boolean);
+  }
   // A line that ends mid-reference: trailing comma/colon/dash, or an initial or journal abbreviation ("et al.", "Res.", "U.S.A.")
   var ABBR_END = /(^|[\s(.])([A-Za-z]|al|Jr|Sr|St|Co|Mt|Ft|Dr|cf|vs|sp|Acad|Am|Amer|Ann|Assoc|Biol|Bull|Can|Chem|Col|Comp|Dept|Ecol|Environ|Evol|Fm|Geogr|Geol|Geophys|Hist|Inst|Int|Intl|Lett|Mag|Mem|Mineral|Mus|Nat|Natl|Palaeontol|Paleontol|Petrol|Phys|Proc|Publ|Res|Rev|Sci|Ser|Soc|Spec|Suppl|Surv|Trans|Univ|Vert|Vol|Zool|ed|eds|Eds|vol|no|pp|et al)\.$/;
   var DOI_URL_END = /(https?:\/\/\S+|doi:\s*\S+|10\.\d{4,9}\/\S+)$/i;
@@ -5808,7 +5850,8 @@
       });
     }
     return parts.map(function (l) { if (ID_LINE.test(l) || /^(https?:\/\/|doi:|10\.\d{4,9}\/)/i.test(l)) return l.trim(); return l.replace(/^\s*(\[\d{1,4}\]|\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim(); })
-      .filter(function (l) { return l.length > 8 || ID_LINE.test(l); });
+      .filter(function (l) { return l.length > 8 || ID_LINE.test(l); })
+      .reduce(function (acc, l) { return acc.concat(splitAtDois(l).reduce(function (a2, x) { return a2.concat(splitGlued(x)); }, [])); }, []); // a line can still hold two references run together
   }
   function splitReferences(text, mode) {
     if (mode && mode !== 'auto') return splitByMode(text, mode);
@@ -5870,7 +5913,7 @@
     });
     flush();
     var out = [];
-    refs.forEach(function (r) { splitAtDois(r).forEach(function (x) { out.push(x); }); });
+    refs.forEach(function (r) { splitAtDois(r).forEach(function (x) { splitGlued(x).forEach(function (y) { out.push(y); }); }); });
     return out.map(function (l) {
       l = l.trim();
       if (ID_LINE.test(l) || /^(https?:\/\/)?(dx\.)?doi\.org\/|^doi:|^10\.\d{4,9}\//i.test(l)) return l; // a bare identifier is not a numbered item
