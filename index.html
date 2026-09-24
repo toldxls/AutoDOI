@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Yq2+0NBKA8wYPboBPqMPGzcvDQCefQ/957MG2l189P4=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-xGX5nkmPeiyBNUElav09NDdo2YjZjJPuKnBnrR0SXmM=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Yq2+0NBKA8wYPboBPqMPGzcvDQCefQ/957MG2l189P4=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-xGX5nkmPeiyBNUElav09NDdo2YjZjJPuKnBnrR0SXmM=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -2927,6 +2927,11 @@
         HPREFIX_SET.has(parts[0].toLowerCase()) && parts[1].length > 2 && (cls[1] === 'candidate' || cls[1] === 'unknown' || cls[1] === 'lower')) {
       cls[0] = 'candidate';
     }
+    // "Wi-Fi", "Hi-C", "Ka-Band": a compound whose first part is not an English word is a name or a trademark; its other parts keep their capitals
+    var p0 = parts[0], nameHead = cls[0] === 'unknown' || (cls[0] === 'fixed' && p0.length === 2 && isUpper(p0.charAt(0)) && !hasUpper(p0.slice(1)) && !ELEMENT_SET.has(p0) && !isCommon(lookupKey(p0), words)); // two letters: "Wi" yes, "Fe" no
+    if (parts.length > 1 && nameHead && p0.length >= 2 && !HPREFIX_SET.has(p0.toLowerCase())) {
+      for (i = 1; i < cls.length; i++) if (cls[i] === 'candidate' && isUpper(parts[i].charAt(0))) cls[i] = 'protected';
+    }
     var info = { pieces: pieces, parts: parts, cls: cls, whole: 'neutral', tech: tech };
     wholeClass(info);
     return info;
@@ -3248,6 +3253,9 @@
           }
           // B: name prefix before a kept word ("Late Cretaceous", "Early-Middle Jurassic")
           if (r + 1 < n && kept[r + 1] && allPrefix(e)) { kept[r] = true; via[r] = 'p'; changed = true; continue; }
+          // E: an ordinary word right before an unknown name that a head word follows is part of the name ("Bang Pakong River", "Cerro Paranal Observatory")
+          if (r + 2 < n && !e.start && single(e) && k && !isHeadKey(k) && !X_STOP_SET.has(k) && run[r + 1].anchor && kept[r + 1] && kept[r + 2] &&
+              (via[r + 2] === 'h' || isHeadKey(run[r + 2].key || ''))) { kept[r] = true; via[r] = 'c'; changed = true; continue; }
           // "Gulf of Guinea", "University of Utah": head + of + name
           if (r === n - 1 && k && e.ofName && (inSet(X_HEAD_SET, k) || INSTITUTION_SET.has(k))) { kept[r] = true; via[r] = 'h'; changed = true; continue; }
           // D: name opener + the capitalised word after it ("Mount Baker", "Cape Cod", "Lac Des Iles")
