@@ -1316,14 +1316,14 @@
       var s = I(r.container);
       if (r.volume) s += ' ' + T(r.volume);
       if (r.issue) s += ', no. ' + T(r.issue);
-      s += r.year ? ' (' + (issueMonth(r) ? MONTHS[issueMonth(r) - 1] + ' ' : '') + T(r.year) + ')' : ''; // "111, no. 2 (April 2016)"
+      s += ' (' + (r.year ? (issueMonth(r) ? MONTHS[issueMonth(r) - 1] + ' ' : '') + T(r.year) : 'n.d.') + ')'; // "111, no. 2 (April 2016)"; an undated article "(n.d.)"
       if (r.pages) s += ': ' + T(pageRange(r.pages));
       s = s.replace(/^[\s,]+/, '');
       if (s) out.push(htmlDot(s));
     } else if (k === 'book') {
       out.push(Idot(validEdition(r.edition) ? dot(r.title) + ' ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : r.title)); // no "Politics?. 2nd ed"
       var pub = [r.place, r.publisher].filter(Boolean).join(': ');
-      out.push(T(dot([pub, r.year].filter(Boolean).join(', '))));
+      out.push(T(dot([pub, r.year || 'n.d.'].filter(Boolean).join(', '))));
     } else if (k === 'chapter' || k === 'proceedings') {
       out.push('“' + T(dot(r.title)) + '”');
       var inp = r.container ? 'In ' + I(r.container) : '';
@@ -1331,12 +1331,12 @@
       if (r.pages) inp += (inp ? ', ' : '') + T(pageRange(r.pages));
       if (inp) out.push(htmlDot(inp));
       var pub2 = [r.place, r.publisher].filter(Boolean).join(': ');
-      out.push(T(dot([pub2, r.year].filter(Boolean).join(', '))));
+      out.push(T(dot([pub2, r.year || 'n.d.'].filter(Boolean).join(', '))));
     } else {
       out.push('“' + T(dot(r.title)) + '”');
       var host = k === 'thesis'
         ? [/m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') // "PhD diss., University of Chicago, 2013."
-        : [hostOf(r), r.year].filter(Boolean).join(', ');
+        : [hostOf(r), r.year || (k === 'web' && accessedDate(r) ? '' : 'n.d.')].filter(Boolean).join(', '); // an undated page shows its access date instead
       if (host) out.push(T(dot(host)));
       if (k === 'web' && !r.year && accessedDate(r)) out.push('Accessed ' + accessedDate(r) + '.'); // an undated page is cited by the day it was read
     }

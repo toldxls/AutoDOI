@@ -141,4 +141,14 @@ eq('10 ris UR encoded, DO raw', lines(A.format(siciRec, 'ris'), /^(UR|DO)/).join
 eq('10 ieee bare doi raw', /doi: 10\.1002\/\(SICI\)1097-0258\(19980430\)17:8<857::AID-SIM777>3\.0\.CO;2-E\.$/.test(A.format(siciRec, 'ieee')), true);
 ['ris', 'bibtex', 'endnote'].forEach(function (f) { eq('10 ' + f + ' doi survives round trip', P.parse(A.format(siciRec, f)).records[0].DOI, sici); });
 
+// 5 Chicago: an undated work says n.d. (CMOS 14.145); an undated web page shows its access date instead
+(function () {
+  var und = A.normalize({ type: 'journal-article', title: ['Undated article'], author: [{ family: 'Ash', given: 'A.' }], 'container-title': ['Journal'], volume: '3', page: '1-2' });
+  eq('5 chicago undated article', A.format(und, 'chicago'), 'Ash, A. “Undated article.” Journal 3 (n.d.): 1–2.');
+  var book = A.normalize({ type: 'book', title: ['Undated book'], author: [{ family: 'Ash', given: 'A.' }], publisher: 'Pub' });
+  eq('5 chicago undated book', A.format(book, 'chicago'), 'Ash, A. Undated Book. Pub, n.d.'.replace('Undated Book', 'Undated book'));
+  var page = A.normalize({ type: 'posted-content', subtype: 'other', title: ['Undated page'], author: [{ name: 'Org' }], URL: 'https://x.org/p', accessed: { 'date-parts': [[2022, 3, 8]] } });
+  page.type = 'webpage';
+  eq('5 chicago undated page keeps its access date, no n.d.', A.format(page, 'chicago'), 'Org. “Undated page.” Accessed March 8, 2022. https://x.org/p.');
+})();
 console.log(pass + ' passed, ' + fail + ' failed');

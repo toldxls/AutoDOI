@@ -21,7 +21,8 @@
     "canary": "node tests/canary.js && node tests/browser/live.test.js",
     "bump-csl": "sh tools/bump-csl-pin.sh",
     "harvest-corpus": "sh tools/harvest-corpus.sh",
-    "bench:match": "node tests/browser/match-bench.js --variants deposited,lowercase,noyear,glued"
+    "bench:match": "node tests/browser/match-bench.js --variants deposited,lowercase,noyear,glued",
+    "compare:csl": "node tests/csl-compare.js"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
