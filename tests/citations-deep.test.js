@@ -97,7 +97,7 @@ eq('10 caps org kept', N(jr({ title: ['T'], author: [{ family: 'NASA' }] })).aut
 /* 11. kind() */
 eq('11 article-journal', A.kind(N({ type: 'article-journal', title: ['T'], 'container-title': ['J'] })), 'journal');
 const aj = { type: 'article-journal', title: ['T'], author: [{ name: 'X' }], issued: { 'date-parts': [[2024]] }, DOI: '10.1/x' };
-eq('11 article-journal no container vancouver', F(aj, 'vancouver'), 'X. T. 2024. doi:10.1/x');
+eq('11 article-journal no container vancouver', F(aj, 'vancouver'), 'X. T. 2024. doi: 10.1/x.');
 eq('11 article-journal no container carnegie', F(aj, 'carnegie'), 'X. 2024. T.');
 eq('11 article with container', A.kind(N({ type: 'article', title: ['T'], 'container-title': ['J'] })), 'journal');
 eq('11 article no container', A.kind(N({ type: 'article', title: ['T'] })), 'preprint');
@@ -242,7 +242,7 @@ eq('28 ELEC round trip', line(F({ type: 'other', title: ['T'], source: 'ris', ra
 /* 29. EarthArXiv */
 const ea = { type: 'posted-content', title: ['Intelligent National Map'], author: [{ given: 'A', family: 'B' }], publisher: 'California Digital Library (CDL)', 'group-title': 'Physical Sciences and Mathematics', DOI: '10.31223/X5W163', issued: { 'date-parts': [[2025]] } };
 eq('29 institution', N(ea).institution, 'EarthArXiv');
-eq('29 apa', F(ea, 'apa'), 'B, A. (2025). Intelligent National Map [Preprint]. EarthArXiv. https://doi.org/10.31223/X5W163');
+eq('29 apa', F(ea, 'apa'), 'B, A. (2025). Intelligent National Map. EarthArXiv. https://doi.org/10.31223/X5W163');
 eq('29 OSF group-title', N({ type: 'posted-content', title: ['T'], publisher: 'Center for Open Science', 'group-title': 'PsyArXiv', DOI: '10.31234/osf.io/abc' }).institution, 'PsyArXiv');
 
 /* 30. " : " in titles */

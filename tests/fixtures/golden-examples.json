@@ -1,0 +1,4763 @@
+[
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "journal-article",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references",
+    "expected": "Grady, J. S., Her, M., Moreno, G., Perez, C., & Yelinek, J. (2019). Emotions in storybooks: A comparison of storybooks that represent ethnic and racial groups in the United States. *Psychology of Popular Media Culture*, *8*(3), 207–217. https://doi.org/10.1037/ppm0000185",
+    "inText": "(Grady et al., 2019; Pope & Wall, 2025; Rybaczewska & Sparks, 2022)",
+    "inTextNarrative": "Grady et al. (2019), Pope and Wall (2025), and Rybaczewska and Sparks (2022)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Grady",
+          "given": "J. S."
+        },
+        {
+          "family": "Her",
+          "given": "M."
+        },
+        {
+          "family": "Moreno",
+          "given": "G."
+        },
+        {
+          "family": "Perez",
+          "given": "C."
+        },
+        {
+          "family": "Yelinek",
+          "given": "J."
+        }
+      ],
+      "editors": null,
+      "title": "Emotions in storybooks: A comparison of storybooks that represent ethnic and racial groups in the United States",
+      "container": "Psychology of Popular Media Culture",
+      "year": 2019,
+      "month": null,
+      "day": null,
+      "volume": "8",
+      "issue": "3",
+      "pages": "207–217",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1037/ppm0000185",
+      "url": null,
+      "accessed": null,
+      "type": "1. Journal article",
+      "notes": "5 authors; in-text citations are printed jointly for the three examples in this group; italics from Wayback capture of the same page: https://web.archive.org/web/20251221030733id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "journal-article",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references",
+    "expected": "Pope, J. P., & Wall, H. (2025). Is the goal intrinsic or extrinsic? Examining self-determination theory researchers’ and the general publics’ perceptions of exercise goals. *Canadian Journal of Behavioural Science/Revue canadienne des sciences du comportement*, *57*(3), 239–248. https://doi.org/10.1037/cbs0000411",
+    "inText": "(Grady et al., 2019; Pope & Wall, 2025; Rybaczewska & Sparks, 2022)",
+    "inTextNarrative": "Grady et al. (2019), Pope and Wall (2025), and Rybaczewska and Sparks (2022)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Pope",
+          "given": "J. P."
+        },
+        {
+          "family": "Wall",
+          "given": "H."
+        }
+      ],
+      "editors": null,
+      "title": "Is the goal intrinsic or extrinsic? Examining self-determination theory researchers’ and the general publics’ perceptions of exercise goals",
+      "container": "Canadian Journal of Behavioural Science/Revue canadienne des sciences du comportement",
+      "year": 2025,
+      "month": null,
+      "day": null,
+      "volume": "57",
+      "issue": "3",
+      "pages": "239–248",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1037/cbs0000411",
+      "url": null,
+      "accessed": null,
+      "type": "1. Journal article",
+      "notes": "2 authors; bilingual journal title with slash kept as published; italics from Wayback capture of the same page: https://web.archive.org/web/20251221030733id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "journal-article",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references",
+    "expected": "Jerrentrup, A., Mueller, T., Glowalla, U., Herder, M., Henrichs, N., Neubauer, A., & Schaefer, J. R. (2018). Teaching medicine with the help of “Dr. House.” *PLoS ONE*, *13*(3), Article e0193972. https://doi.org/10.1371/journal.pone.0193972",
+    "inText": "(Jerrentrup et al., 2018; Schlesselmann et al., 2025)",
+    "inTextNarrative": "Jerrentrup et al. (2018) and Schlesselmann et al. (2025)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Jerrentrup",
+          "given": "A."
+        },
+        {
+          "family": "Mueller",
+          "given": "T."
+        },
+        {
+          "family": "Glowalla",
+          "given": "U."
+        },
+        {
+          "family": "Herder",
+          "given": "M."
+        },
+        {
+          "family": "Henrichs",
+          "given": "N."
+        },
+        {
+          "family": "Neubauer",
+          "given": "A."
+        },
+        {
+          "family": "Schaefer",
+          "given": "J. R."
+        }
+      ],
+      "editors": null,
+      "title": "Teaching medicine with the help of “Dr. House.”",
+      "container": "PLoS ONE",
+      "year": 2018,
+      "month": null,
+      "day": null,
+      "volume": "13",
+      "issue": "3",
+      "pages": null,
+      "articleNumber": "e0193972",
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1371/journal.pone.0193972",
+      "url": null,
+      "accessed": null,
+      "type": "2. Journal article with an article number",
+      "notes": "7 authors; article number instead of page range; title ends with a quoted phrase so the closing period sits inside the quotation marks; italics from Wayback capture of the same page: https://web.archive.org/web/20251221030733id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "journal-article",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references",
+    "expected": "Lipscomb, A. Y. (2021, Winter). Addressing trauma in the college essay writing process. *The Journal of College Admission*, (249), 30–33. https://www.catholiccollegesonline.org/pdf/national_ccaa_in_the_news_-_nacac_journal_of_college_admission_winter_2021.pdf",
+    "inText": "(Bosco et al., 2018; Butler, 2017; Lipscomb, 2021; Sanchiz et al., 2017)",
+    "inTextNarrative": "Bosco et al. (2018), Butler (2017), Lipscomb (2021), and Sanchiz et al. (2017)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Lipscomb",
+          "given": "A. Y."
+        }
+      ],
+      "editors": null,
+      "title": "Addressing trauma in the college essay writing process",
+      "container": "The Journal of College Admission",
+      "year": 2021,
+      "month": "Winter",
+      "day": null,
+      "volume": null,
+      "issue": "249",
+      "pages": "30–33",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.catholiccollegesonline.org/pdf/national_ccaa_in_the_news_-_nacac_journal_of_college_admission_winter_2021.pdf",
+      "accessed": null,
+      "type": "3. Journal article with missing information (Missing volume number)",
+      "notes": "no DOI; no volume number (issue only, in parentheses, not italic); season in date element; italics from Wayback capture of the same page: https://web.archive.org/web/20251221030733id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "journal-article",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references",
+    "expected": "Butler, J. (2017). Where access meets multimodality: The case of ASL music videos. *Kairos: A Journal of Rhetoric, Technology, and Pedagogy*, *21*(1). https://technorhetoric.net/21.1/topoi/butler/index.html",
+    "inText": "(Bosco et al., 2018; Butler, 2017; Lipscomb, 2021; Sanchiz et al., 2017)",
+    "inTextNarrative": "Bosco et al. (2018), Butler (2017), Lipscomb (2021), and Sanchiz et al. (2017)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Butler",
+          "given": "J."
+        }
+      ],
+      "editors": null,
+      "title": "Where access meets multimodality: The case of ASL music videos",
+      "container": "Kairos: A Journal of Rhetoric, Technology, and Pedagogy",
+      "year": 2017,
+      "month": null,
+      "day": null,
+      "volume": "21",
+      "issue": "1",
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://technorhetoric.net/21.1/topoi/butler/index.html",
+      "accessed": null,
+      "type": "3. Journal article with missing information (Missing page or article number)",
+      "notes": "no DOI; no page or article number; italics from Wayback capture of the same page: https://web.archive.org/web/20251221030733id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/journal-article-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "book",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/book-references",
+    "expected": "Jackson, L. M. (2019). *The psychology of prejudice: From attitudes to social action* (2nd ed.). American Psychological Association. https://doi.org/10.1037/0000168-000",
+    "inText": "(Jackson, 2019; Sapolsky, 2017; Svendsen & Løber, 2020)",
+    "inTextNarrative": "Jackson (2019), Sapolsky (2017), and Svendsen and Løber (2020)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Jackson",
+          "given": "L. M."
+        }
+      ],
+      "editors": null,
+      "title": "The psychology of prejudice: From attitudes to social action",
+      "container": null,
+      "year": 2019,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "American Psychological Association",
+      "place": null,
+      "edition": "2nd ed.",
+      "doi": "10.1037/0000168-000",
+      "url": null,
+      "accessed": null,
+      "type": "1. Whole authored book",
+      "notes": "edition in parentheses, not italic; italics from Wayback capture of the same page: https://web.archive.org/web/20250101182813id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/book-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "book",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/book-references",
+    "expected": "Sapolsky, R. M. (2017). *Behave: The biology of humans at our best and worst*. Penguin Books.",
+    "inText": "(Jackson, 2019; Sapolsky, 2017; Svendsen & Løber, 2020)",
+    "inTextNarrative": "Jackson (2019), Sapolsky (2017), and Svendsen and Løber (2020)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Sapolsky",
+          "given": "R. M."
+        }
+      ],
+      "editors": null,
+      "title": "Behave: The biology of humans at our best and worst",
+      "container": null,
+      "year": 2017,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Penguin Books",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Whole authored book",
+      "notes": "no DOI; italics from Wayback capture of the same page: https://web.archive.org/web/20250101182813id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/book-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "edited-book",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/book-references",
+    "expected": "Torino, G. C., Rivera, D. P., Capodilupo, C. M., Nadal, K. L., & Sue, D. W. (Eds.). (2019). *Microaggression theory: Influence and implications*. John Wiley & Sons. https://doi.org/10.1002/9781119466642",
+    "inText": "(Hygum & Pedersen, 2010; Kesharwani, 2020; Torino et al., 2019)",
+    "inTextNarrative": "Hygum and Pedersen (2010), Kesharwani (2020), and Torino et al. (2019)",
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Torino",
+          "given": "G. C."
+        },
+        {
+          "family": "Rivera",
+          "given": "D. P."
+        },
+        {
+          "family": "Capodilupo",
+          "given": "C. M."
+        },
+        {
+          "family": "Nadal",
+          "given": "K. L."
+        },
+        {
+          "family": "Sue",
+          "given": "D. W."
+        }
+      ],
+      "title": "Microaggression theory: Influence and implications",
+      "container": null,
+      "year": 2019,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "John Wiley & Sons",
+      "place": null,
+      "edition": null,
+      "doi": "10.1002/9781119466642",
+      "url": null,
+      "accessed": null,
+      "type": "2. Whole edited book",
+      "notes": "5 editors in the author position with (Eds.); italics from Wayback capture of the same page: https://web.archive.org/web/20250101182813id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/book-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "book-chapter",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/edited-book-chapter-references",
+    "expected": "Aron, L., Botella, M., & Lubart, T. (2019). Culinary arts: Talent and their development. In R. F. Subotnik, P. Olszewski-Kubilius, & F. C. Worrell (Eds.), *The psychology of high performance: Developing human potential into domain-specific talent* (pp. 345–359). American Psychological Association. https://doi.org/10.1037/0000120-016",
+    "inText": "(Aron et al., 2019; Dillard, 2020; Thestrup, 2010)",
+    "inTextNarrative": "Aron et al. (2019), Dillard (2020), and Thestrup (2010)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Aron",
+          "given": "L."
+        },
+        {
+          "family": "Botella",
+          "given": "M."
+        },
+        {
+          "family": "Lubart",
+          "given": "T."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Subotnik",
+          "given": "R. F."
+        },
+        {
+          "family": "Olszewski-Kubilius",
+          "given": "P."
+        },
+        {
+          "family": "Worrell",
+          "given": "F. C."
+        }
+      ],
+      "title": "Culinary arts: Talent and their development",
+      "container": "The psychology of high performance: Developing human potential into domain-specific talent",
+      "year": 2019,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "345–359",
+      "articleNumber": null,
+      "publisher": "American Psychological Association",
+      "place": null,
+      "edition": null,
+      "doi": "10.1037/0000120-016",
+      "url": null,
+      "accessed": null,
+      "type": "1. Chapter in an edited book",
+      "notes": "3 authors, 3 editors (given names first for editors); italics from Wayback capture of the same page: https://web.archive.org/web/20250101183009id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/edited-book-chapter-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "book-chapter",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/edited-book-chapter-references",
+    "expected": "Dillard, J. P. (2020). Currents in the study of persuasion. In M. B. Oliver, A. A. Raney, & J. Bryant (Eds.), *Media effects: Advances in theory and research* (4th ed., pp. 115–129). Routledge.",
+    "inText": "(Aron et al., 2019; Dillard, 2020; Thestrup, 2010)",
+    "inTextNarrative": "Aron et al. (2019), Dillard (2020), and Thestrup (2010)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Dillard",
+          "given": "J. P."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Oliver",
+          "given": "M. B."
+        },
+        {
+          "family": "Raney",
+          "given": "A. A."
+        },
+        {
+          "family": "Bryant",
+          "given": "J."
+        }
+      ],
+      "title": "Currents in the study of persuasion",
+      "container": "Media effects: Advances in theory and research",
+      "year": 2020,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "115–129",
+      "articleNumber": null,
+      "publisher": "Routledge",
+      "place": null,
+      "edition": "4th ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Chapter in an edited book",
+      "notes": "no DOI; edition and page range share one set of parentheses; italics from Wayback capture of the same page: https://web.archive.org/web/20250101183009id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/edited-book-chapter-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "webpage",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/webpage-website-references",
+    "expected": "National Institute of Mental Health. (2018, July). *Anxiety disorders*. U.S. Department of Health and Human Services, National Institutes of Health. https://www.nimh.nih.gov/health/topics/anxiety-disorders/index.shtml",
+    "inText": "(National Institute of Mental Health, 2018)",
+    "inTextNarrative": "National Institute of Mental Health (2018)",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "National Institute of Mental Health"
+        }
+      ],
+      "editors": null,
+      "title": "Anxiety disorders",
+      "container": null,
+      "year": 2018,
+      "month": "July",
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "U.S. Department of Health and Human Services, National Institutes of Health",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.nimh.nih.gov/health/topics/anxiety-disorders/index.shtml",
+      "accessed": null,
+      "type": "3. Webpage on a website with a government agency group author",
+      "notes": "group author; parent agencies in the source element; month but no day; italics from Wayback capture of the same page: https://web.archive.org/web/20241228013029id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/webpage-website-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "webpage",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/webpage-website-references",
+    "expected": "World Health Organization. (2018, May 24). *The top 10 causes of death*. https://www.who.int/news-room/fact-sheets/detail/the-top-10-causes-of-death",
+    "inText": "(World Health Organization, 2018)",
+    "inTextNarrative": "World Health Organization (2018)",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "World Health Organization"
+        }
+      ],
+      "editors": null,
+      "title": "The top 10 causes of death",
+      "container": null,
+      "year": 2018,
+      "month": "May",
+      "day": 24,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.who.int/news-room/fact-sheets/detail/the-top-10-causes-of-death",
+      "accessed": null,
+      "type": "4. Webpage on a website with an organizational group author",
+      "notes": "group author identical to site name, so site name omitted; in the archived HTML the italic span starts one character early (before the period after the date); normalised here to the title only; italics from Wayback capture of the same page: https://web.archive.org/web/20241228013029id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/webpage-website-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "webpage",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/webpage-website-references",
+    "expected": "U.S. Census Bureau. (n.d.). *U.S. and world population clock*. U.S. Department of Commerce. Retrieved January 9, 2020, from https://www.census.gov/popclock/",
+    "inText": "(U.S. Census Bureau, n.d.)",
+    "inTextNarrative": "U.S. Census Bureau (n.d.)",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "U.S. Census Bureau"
+        }
+      ],
+      "editors": null,
+      "title": "U.S. and world population clock",
+      "container": null,
+      "year": null,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "U.S. Department of Commerce",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.census.gov/popclock/",
+      "accessed": "January 9, 2020",
+      "type": "6. Webpage on a website with a retrieval date",
+      "notes": "no date (n.d.); retrieval date required because content changes; italics from Wayback capture of the same page: https://web.archive.org/web/20241228013029id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/webpage-website-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "preprint",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/preprint-article-references",
+    "expected": "Hampton, S., Rabagliati, H., Sorace, A., & Fletcher-Watson, S. (2017). *Autism and bilingualism: A qualitative interview study of parents’ perspectives and experiences*. PsyArXiv. https://doi.org/10.31234/osf.io/76xfs",
+    "inText": "(Hampton et al., 2017; Hetland et al., 2018)",
+    "inTextNarrative": "Hampton et al. (2017) and Hetland et al. (2018)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Hampton",
+          "given": "S."
+        },
+        {
+          "family": "Rabagliati",
+          "given": "H."
+        },
+        {
+          "family": "Sorace",
+          "given": "A."
+        },
+        {
+          "family": "Fletcher-Watson",
+          "given": "S."
+        }
+      ],
+      "editors": null,
+      "title": "Autism and bilingualism: A qualitative interview study of parents’ perspectives and experiences",
+      "container": null,
+      "year": 2017,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "PsyArXiv",
+      "place": null,
+      "edition": null,
+      "doi": "10.31234/osf.io/76xfs",
+      "url": null,
+      "accessed": null,
+      "type": "Preprint article",
+      "notes": "title italic (treated like a report); repository in source element; italics from Wayback capture of the same page: https://web.archive.org/web/20260103041347id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/preprint-article-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "dissertation",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/published-dissertation-references",
+    "expected": "Kabir, J. M. (2016). *Factors influencing customer satisfaction at a fast food hamburger chain: The relationship between customer satisfaction and customer loyalty* (Publication No. 10169573) [Doctoral dissertation, Wilmington University]. ProQuest Dissertations & Theses Global.",
+    "inText": "(Kabir, 2016; Miranda, 2019; Zambrano-Vazquez, 2016)",
+    "inTextNarrative": "Kabir (2016), Miranda (2019), and Zambrano-Vazquez (2016)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Kabir",
+          "given": "J. M."
+        }
+      ],
+      "editors": null,
+      "title": "Factors influencing customer satisfaction at a fast food hamburger chain: The relationship between customer satisfaction and customer loyalty",
+      "container": null,
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "ProQuest Dissertations & Theses Global",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Published dissertation or thesis",
+      "notes": "publication number in parentheses; institution in brackets; no URL because database requires login; italics from Wayback capture of the same page: https://web.archive.org/web/20251229192601id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/published-dissertation-references",
+      "institution": "Wilmington University",
+      "number": "10169573"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "dissertation",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/published-dissertation-references",
+    "expected": "Zambrano-Vazquez, L. (2016). *The interaction of state and trait worry on response monitoring in those with worry and obsessive-compulsive symptoms* [Doctoral dissertation, University of Arizona]. UA Campus Repository. https://repository.arizona.edu/handle/10150/620615",
+    "inText": "(Kabir, 2016; Miranda, 2019; Zambrano-Vazquez, 2016)",
+    "inTextNarrative": "Kabir (2016), Miranda (2019), and Zambrano-Vazquez (2016)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Zambrano-Vazquez",
+          "given": "L."
+        }
+      ],
+      "editors": null,
+      "title": "The interaction of state and trait worry on response monitoring in those with worry and obsessive-compulsive symptoms",
+      "container": null,
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "UA Campus Repository",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://repository.arizona.edu/handle/10150/620615",
+      "accessed": null,
+      "type": "Published dissertation or thesis",
+      "notes": "institutional repository with URL; italics from Wayback capture of the same page: https://web.archive.org/web/20251229192601id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/published-dissertation-references",
+      "institution": "University of Arizona"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "conference-paper",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/conference-presentation-references",
+    "expected": "Evans, A. C., Jr., Garbarino, J., Bocanegra, E., Kinscherff, R. T., & Márquez-Greene, N. (2019, August 8–11). *Gun violence: An event on the power of community* [Conference presentation]. APA 2019 Convention, Chicago, IL, United States. https://convention.apa.org/2019-video",
+    "inText": "(Evans et al., 2019)",
+    "inTextNarrative": "Evans et al. (2019)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Evans",
+          "given": "A. C., Jr."
+        },
+        {
+          "family": "Garbarino",
+          "given": "J."
+        },
+        {
+          "family": "Bocanegra",
+          "given": "E."
+        },
+        {
+          "family": "Kinscherff",
+          "given": "R. T."
+        },
+        {
+          "family": "Márquez-Greene",
+          "given": "N."
+        }
+      ],
+      "editors": null,
+      "title": "Gun violence: An event on the power of community",
+      "container": "APA 2019 Convention",
+      "year": 2019,
+      "month": "August",
+      "day": "8–11",
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": "Chicago, IL, United States",
+      "edition": null,
+      "doi": null,
+      "url": "https://convention.apa.org/2019-video",
+      "accessed": null,
+      "type": "1. Conference presentation",
+      "notes": "date range; suffix Jr. after initials; bracketed description; italics from Wayback capture of the same page: https://web.archive.org/web/20251203161225id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/conference-presentation-references"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "dataset",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/data-set-references",
+    "expected": "O’Donohue, W. (2017). *Content analysis of undergraduate psychology textbooks* (ICPSR 36966; Version V1) [Data set]. ICPSR. https://doi.org/10.3886/ICPSR36966.v1",
+    "inText": "(O’Donohue, 2017)",
+    "inTextNarrative": "O’Donohue (2017)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "O’Donohue",
+          "given": "W."
+        }
+      ],
+      "editors": null,
+      "title": "Content analysis of undergraduate psychology textbooks",
+      "container": null,
+      "year": 2017,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "ICPSR",
+      "place": null,
+      "edition": null,
+      "doi": "10.3886/ICPSR36966.v1",
+      "url": null,
+      "accessed": null,
+      "type": "Data set",
+      "notes": "UNVERIFIED ITALICS: no HTML capture of this page was obtainable (Wayback holds only the bot-wall stub); title marked italic because the page itself states “Provide the title of the data set in italics”; text verified from the live page"
+    }
+  },
+  {
+    "style": "apa",
+    "styleEdition": "7",
+    "kind": "report",
+    "source": "https://apastyle.apa.org/style-grammar-guidelines/references/examples/report-government-agency-references",
+    "expected": "National Cancer Institute. (2019). *Taking time: Support for people with cancer* (NIH Publication No. 18-2059). U.S. Department of Health and Human Services, National Institutes of Health. https://www.cancer.gov/publications/patient-education/takingtime.pdf",
+    "inText": "(National Cancer Institute, 2019)",
+    "inTextNarrative": "National Cancer Institute (2019)",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "National Cancer Institute"
+        }
+      ],
+      "editors": null,
+      "title": "Taking time: Support for people with cancer",
+      "container": null,
+      "year": 2019,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "U.S. Department of Health and Human Services, National Institutes of Health",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.cancer.gov/publications/patient-education/takingtime.pdf",
+      "accessed": null,
+      "type": "Report by a government agency",
+      "notes": "group author; report number in parentheses; parent agencies as publisher; italics from Wayback capture of the same page: https://web.archive.org/web/20241212100318id_/https://apastyle.apa.org/style-grammar-guidelines/references/examples/report-government-agency-references",
+      "number": "NIH Publication No. 18-2059"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Binder, Amy J., and Jeffrey L. Kidder. 2022. *The Channels of Student Activism: How the Left and Right Are Winning (and Losing) in Campus Politics Today*. University of Chicago Press.",
+    "inText": "(Binder and Kidder 2022, 117–18)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Binder",
+          "given": "Amy J."
+        },
+        {
+          "family": "Kidder",
+          "given": "Jeffrey L."
+        }
+      ],
+      "editors": null,
+      "title": "The Channels of Student Activism: How the Left and Right Are Winning (and Losing) in Campus Politics Today",
+      "container": null,
+      "year": 2022,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries)"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Yu, Charles. 2020. *Interior Chinatown*. Pantheon Books.",
+    "inText": "(Yu 2020, 45)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Yu",
+          "given": "Charles"
+        }
+      ],
+      "editors": null,
+      "title": "Interior Chinatown",
+      "container": null,
+      "year": 2020,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Pantheon Books",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries)"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "book-chapter",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Doyle, Kathleen. 2023. “The Queen Mary Psalter.” In *The Book by Design: The Remarkable Story of the World’s Greatest Invention*, edited by P. J. M. Marks and Stephen Parkin. University of Chicago Press.",
+    "inText": "(Doyle 2023, 64)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Doyle",
+          "given": "Kathleen"
+        }
+      ],
+      "editors": [
+        {
+          "family": "Marks",
+          "given": "P. J. M."
+        },
+        {
+          "family": "Parkin",
+          "given": "Stephen"
+        }
+      ],
+      "title": "The Queen Mary Psalter",
+      "container": "The Book by Design: The Remarkable Story of the World’s Greatest Invention",
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); page range for a chapter no longer required in the reference list (CMOS 14.8)"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "edited-book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Marks, P. J. M., and Stephen Parkin, eds. 2023. *The Book by Design: The Remarkable Story of the World’s Greatest Invention*. University of Chicago Press.",
+    "inText": "(Marks and Parkin 2023)",
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Marks",
+          "given": "P. J. M."
+        },
+        {
+          "family": "Parkin",
+          "given": "Stephen"
+        }
+      ],
+      "title": "The Book by Design: The Remarkable Story of the World’s Greatest Invention",
+      "container": null,
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book (collection as a whole)",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries)"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Borel, Brooke. 2023. *The Chicago Guide to Fact-Checking*. 2nd ed. University of Chicago Press. EBSCOhost.",
+    "inText": "(Borel 2023, 92)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Borel",
+          "given": "Brooke"
+        }
+      ],
+      "editors": null,
+      "title": "The Chicago Guide to Fact-Checking",
+      "container": null,
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": "2nd ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book consulted in an electronic format",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); database name (EBSCOhost) in place of URL"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Dittmar, Emily L., and Douglas W. Schemske. 2023. “Temporal Variation in Selection Influences Microgeographic Local Adaptation.” *American Naturalist* 202 (4): 471–85. https://doi.org/10.1086/725865.",
+    "inText": "(Dittmar and Schemske 2023, 480)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Dittmar",
+          "given": "Emily L."
+        },
+        {
+          "family": "Schemske",
+          "given": "Douglas W."
+        }
+      ],
+      "editors": null,
+      "title": "Temporal Variation in Selection Influences Microgeographic Local Adaptation",
+      "container": "American Naturalist",
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": "202",
+      "issue": "4",
+      "pages": "471–85",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/725865",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); 2 authors; DOI URL"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Hebert, B. T. 1925. “The Island of Bolsö: A Study of Norwegian Life.” *Sociological Review* 17 (4): 307–13. EBSCOhost.",
+    "inText": "(Hebert 1925, 310)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Hebert",
+          "given": "B. T."
+        }
+      ],
+      "editors": null,
+      "title": "The Island of Bolsö: A Study of Norwegian Life",
+      "container": "Sociological Review",
+      "year": 1925,
+      "month": null,
+      "day": null,
+      "volume": "17",
+      "issue": "4",
+      "pages": "307–13",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); no DOI; database name"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Kwon, Hyeyoung. 2022. “Inclusion Work: Children of Immigrants Claiming Membership in Everyday Life.” *American Journal of Sociology* 127 (6): 1818–59. https://doi.org/10.1086/720277.",
+    "inText": "(Kwon 2022, 1842–43)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Kwon",
+          "given": "Hyeyoung"
+        }
+      ],
+      "editors": null,
+      "title": "Inclusion Work: Children of Immigrants Claiming Membership in Everyday Life",
+      "container": "American Journal of Sociology",
+      "year": 2022,
+      "month": null,
+      "day": null,
+      "volume": "127",
+      "issue": "6",
+      "pages": "1818–59",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/720277",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); single author; abbreviated page range"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Snyder, Carl D., Manuel Bedrossian, Casey Barr, et al. 2025. “Extant Life Detection Using Label-Free Video Microscopy in Analog Aquatic Environments.” *PLOS ONE* 20 (3): e0318239. https://doi.org/10.1371/journal.pone.0318239.",
+    "inText": "(Snyder et al. 2025, 9–10)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Snyder",
+          "given": "Carl D."
+        },
+        {
+          "family": "Bedrossian",
+          "given": "Manuel"
+        },
+        {
+          "family": "Barr",
+          "given": "Casey"
+        }
+      ],
+      "editors": null,
+      "title": "Extant Life Detection Using Label-Free Video Microscopy in Analog Aquatic Environments",
+      "container": "PLOS ONE",
+      "year": 2025,
+      "month": null,
+      "day": null,
+      "volume": "20",
+      "issue": "3",
+      "pages": null,
+      "articleNumber": "e0318239",
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1371/journal.pone.0318239",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); the article credits seven authors; guide lists first three followed by et al. (rule: more than six authors); article ID in place of page range; only the three printed names are given in metadata"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "dissertation",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Blajer de la Garza, Yuna. 2019. “A House Is Not a Home: Citizenship and Belonging in Contemporary Democracies.” PhD diss., University of Chicago. ProQuest (13865986).",
+    "inText": "(Blajer de la Garza 2019, 66–67)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Blajer de la Garza",
+          "given": "Yuna"
+        }
+      ],
+      "editors": null,
+      "title": "A House Is Not a Home: Citizenship and Belonging in Contemporary Democracies",
+      "container": null,
+      "year": 2019,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Thesis or dissertation",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); ProQuest identification number in parentheses"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "webpage",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Google. 2023. “Privacy Policy.” Privacy & Terms. Effective November 15. https://policies.google.com/privacy.",
+    "inText": "(Google 2023)",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Google"
+        }
+      ],
+      "editors": null,
+      "title": "Privacy Policy",
+      "container": "Privacy & Terms",
+      "year": 2023,
+      "month": "November",
+      "day": 15,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://policies.google.com/privacy",
+      "accessed": null,
+      "type": "Web page",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); group author; “Effective” date"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "webpage",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Yale University. n.d. “About Yale: Yale Facts.” Accessed March 8, 2022. https://www.yale.edu/about-yale/yale-facts.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Yale University"
+        }
+      ],
+      "editors": null,
+      "title": "About Yale: Yale Facts",
+      "container": null,
+      "year": null,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.yale.edu/about-yale/yale-facts",
+      "accessed": "March 8, 2022",
+      "type": "Web page",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); no date (n.d.) with access date; no in-text example printed for this entry on the 18th-ed page"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "18",
+    "kind": "other",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Blum, Dani. 2023. “Are Flax Seeds All That?” *New York Times*, December 13. https://www.nytimes.com/2023/12/13/well/eat/flax-seeds-benefits.html.",
+    "inText": "(Blum 2023)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Blum",
+          "given": "Dani"
+        }
+      ],
+      "editors": null,
+      "title": "Are Flax Seeds All That?",
+      "container": "New York Times",
+      "year": 2023,
+      "month": "December",
+      "day": 13,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.nytimes.com/2023/12/13/well/eat/flax-seeds-benefits.html",
+      "accessed": null,
+      "type": "News or magazine article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); newspaper article; title ends with question mark so no period after it"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "book",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Grazer, Brian, and Charles Fishman. 2015. *A Curious Mind: The Secret to a Bigger Life*. New York: Simon & Schuster.",
+    "inText": "(Grazer and Fishman 2015, 12)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Grazer",
+          "given": "Brian"
+        },
+        {
+          "family": "Fishman",
+          "given": "Charles"
+        }
+      ],
+      "editors": null,
+      "title": "A Curious Mind: The Secret to a Bigger Life",
+      "container": null,
+      "year": 2015,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Simon & Schuster",
+      "place": "New York",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); in the page HTML the italic span swallows the period after the title; normalised to title-only italics"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "book",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Smith, Zadie. 2016. *Swing Time*. New York: Penguin Press.",
+    "inText": "(Smith 2016, 315–16)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Smith",
+          "given": "Zadie"
+        }
+      ],
+      "editors": null,
+      "title": "Swing Time",
+      "container": null,
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Penguin Press",
+      "place": "New York",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included)"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "book-chapter",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Thoreau, Henry David. 2016. “Walking.” In *The Making of the American Essay*, edited by John D’Agata, 167–95. Minneapolis: Graywolf Press.",
+    "inText": "(Thoreau 2016, 177–78)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Thoreau",
+          "given": "Henry David"
+        }
+      ],
+      "editors": [
+        {
+          "family": "D’Agata",
+          "given": "John"
+        }
+      ],
+      "title": "Walking",
+      "container": "The Making of the American Essay",
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "167–95",
+      "articleNumber": null,
+      "publisher": "Graywolf Press",
+      "place": "Minneapolis",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); page range included in reference list"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "edited-book",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "D’Agata, John, ed. 2016. *The Making of the American Essay*. Minneapolis: Graywolf Press.",
+    "inText": "(D’Agata 2016, 177–78)",
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "D’Agata",
+          "given": "John"
+        }
+      ],
+      "title": "The Making of the American Essay",
+      "container": null,
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Graywolf Press",
+      "place": "Minneapolis",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book (collection as a whole)",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included)"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Keng, Shao-Hsun, Chun-Hung Lin, and Peter F. Orazem. 2017. “Expanding College Access in Taiwan, 1978–2014: Effects on Graduate Quality and Income Inequality.” *Journal of Human Capital* 11, no. 1 (Spring): 1–34. https://doi.org/10.1086/690235.",
+    "inText": "(Keng, Lin, and Orazem 2017, 9–10)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Keng",
+          "given": "Shao-Hsun"
+        },
+        {
+          "family": "Lin",
+          "given": "Chun-Hung"
+        },
+        {
+          "family": "Orazem",
+          "given": "Peter F."
+        }
+      ],
+      "editors": null,
+      "title": "Expanding College Access in Taiwan, 1978–2014: Effects on Graduate Quality and Income Inequality",
+      "container": "Journal of Human Capital",
+      "year": 2017,
+      "month": "Spring",
+      "day": null,
+      "volume": "11",
+      "issue": "1",
+      "pages": "1–34",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/690235",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); 3 authors, all named in text; season in parentheses; “no. 1” form"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "LaSalle, Peter. 2017. “Conundrum: A Story about Reading.” *New England Review* 38 (1): 95–109. Project MUSE.",
+    "inText": "(LaSalle 2017, 95)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "LaSalle",
+          "given": "Peter"
+        }
+      ],
+      "editors": null,
+      "title": "Conundrum: A Story about Reading",
+      "container": "New England Review",
+      "year": 2017,
+      "month": null,
+      "day": null,
+      "volume": "38",
+      "issue": "1",
+      "pages": "95–109",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no DOI; database name; issue in parentheses form"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Satterfield, Susan. 2016. “Livy and the *Pax Deum*.” *Classical Philology* 111, no. 2 (April): 165–76.",
+    "inText": "(Satterfield 2016, 170)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Satterfield",
+          "given": "Susan"
+        }
+      ],
+      "editors": null,
+      "title": "Livy and the *Pax Deum*",
+      "container": "Classical Philology",
+      "year": 2016,
+      "month": "April",
+      "day": null,
+      "volume": "111",
+      "issue": "2",
+      "pages": "165–76",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no DOI or URL (print); italic term inside article title"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Bay, Rachael A., Noah Rose, Rowan Barrett, Louis Bernatchez, Cameron K. Ghalambor, Jesse R. Lasky, Rachel B. Brem, Stephen R. Palumbi, and Peter Ralph. 2017. “Predicting Responses to Contemporary Environmental Change Using Evolutionary Response Architectures.” *American Naturalist* 189, no. 5 (May): 463–73. https://doi.org/10.1086/691233.",
+    "inText": "(Bay et al. 2017, 465)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Bay",
+          "given": "Rachael A."
+        },
+        {
+          "family": "Rose",
+          "given": "Noah"
+        },
+        {
+          "family": "Barrett",
+          "given": "Rowan"
+        },
+        {
+          "family": "Bernatchez",
+          "given": "Louis"
+        },
+        {
+          "family": "Ghalambor",
+          "given": "Cameron K."
+        },
+        {
+          "family": "Lasky",
+          "given": "Jesse R."
+        },
+        {
+          "family": "Brem",
+          "given": "Rachel B."
+        },
+        {
+          "family": "Palumbi",
+          "given": "Stephen R."
+        },
+        {
+          "family": "Ralph",
+          "given": "Peter"
+        }
+      ],
+      "editors": null,
+      "title": "Predicting Responses to Contemporary Environmental Change Using Evolutionary Response Architectures",
+      "container": "American Naturalist",
+      "year": 2017,
+      "month": "May",
+      "day": null,
+      "volume": "189",
+      "issue": "5",
+      "pages": "463–73",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/691233",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); 9 authors all listed (17th ed. rule: up to ten listed; first author + et al. in text)"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "dissertation",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Rutz, Cynthia Lillian. 2013. “*King Lear* and Its Folktale Analogues.” PhD diss., University of Chicago.",
+    "inText": "(Rutz 2013, 99–100)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Rutz",
+          "given": "Cynthia Lillian"
+        }
+      ],
+      "editors": null,
+      "title": "*King Lear* and Its Folktale Analogues",
+      "container": null,
+      "year": 2013,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Thesis or dissertation",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); italic work title inside quoted dissertation title"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "book",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Borel, Brooke. 2016. *The Chicago Guide to Fact-Checking*. Chicago: University of Chicago Press. ProQuest Ebrary.",
+    "inText": "(Borel 2016, 92)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Borel",
+          "given": "Brooke"
+        }
+      ],
+      "editors": null,
+      "title": "The Chicago Guide to Fact-Checking",
+      "container": null,
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": "Chicago",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "E-book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); database name after publication details"
+    }
+  },
+  {
+    "style": "chicago-ad",
+    "styleEdition": "17",
+    "kind": "webpage",
+    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
+    "expected": "Yale University. n.d. “About Yale: Yale Facts.” Accessed May 1, 2017. https://www.yale.edu/about-yale/yale-facts.",
+    "inText": "(Yale University, n.d.)",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Yale University"
+        }
+      ],
+      "editors": null,
+      "title": "About Yale: Yale Facts",
+      "container": null,
+      "year": null,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.yale.edu/about-yale/yale-facts",
+      "accessed": "May 1, 2017",
+      "type": "Website content",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no date; note the comma before n.d. in the 17th-ed in-text form"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Binder, Amy J., and Jeffrey L. Kidder. *The Channels of Student Activism: How the Left and Right Are Winning (and Losing) in Campus Politics Today*. University of Chicago Press, 2022.",
+    "inText": "2. Amy J. Binder and Jeffrey L. Kidder, *The Channels of Student Activism: How the Left and Right Are Winning (and Losing) in Campus Politics Today* (University of Chicago Press, 2022), 117–18.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Binder",
+          "given": "Amy J."
+        },
+        {
+          "family": "Kidder",
+          "given": "Jeffrey L."
+        }
+      ],
+      "editors": null,
+      "title": "The Channels of Student Activism: How the Left and Right Are Winning (and Losing) in Campus Politics Today",
+      "container": null,
+      "year": 2022,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 4. Binder and Kidder, *Channels of Student Activism*, 125.; in the page HTML the bibliography entry’s italic <em> wraps the period after the title; normalised to title-only italics"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Yu, Charles. *Interior Chinatown*. Pantheon Books, 2020.",
+    "inText": "1. Charles Yu, *Interior Chinatown* (Pantheon Books, 2020), 45.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Yu",
+          "given": "Charles"
+        }
+      ],
+      "editors": null,
+      "title": "Interior Chinatown",
+      "container": null,
+      "year": 2020,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Pantheon Books",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 3. Yu, *Interior Chinatown*, 48."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "book-chapter",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Doyle, Kathleen. “The Queen Mary Psalter.” In *The Book by Design: The Remarkable Story of the World’s Greatest Invention*, edited by P. J. M. Marks and Stephen Parkin. University of Chicago Press, 2023.",
+    "inText": "1. Kathleen Doyle, “The Queen Mary Psalter,” in *The Book by Design: The Remarkable Story of the World’s Greatest Invention*, ed. P. J. M. Marks and Stephen Parkin (University of Chicago Press, 2023), 64.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Doyle",
+          "given": "Kathleen"
+        }
+      ],
+      "editors": [
+        {
+          "family": "Marks",
+          "given": "P. J. M."
+        },
+        {
+          "family": "Parkin",
+          "given": "Stephen"
+        }
+      ],
+      "title": "The Queen Mary Psalter",
+      "container": "The Book by Design: The Remarkable Story of the World’s Greatest Invention",
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 2. Doyle, “Queen Mary Psalter,” 65.; no page range in bibliography (CMOS 14.8)"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "edited-book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Marks, P. J. M., and Stephen Parkin, eds. *The Book by Design: The Remarkable Story of the World’s Greatest Invention*. University of Chicago Press, 2023.",
+    "inText": "1. P. J. M. Marks and Stephen Parkin, eds., *The Book by Design: The Remarkable Story of the World’s Greatest Invention* (University of Chicago Press, 2023).",
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Marks",
+          "given": "P. J. M."
+        },
+        {
+          "family": "Parkin",
+          "given": "Stephen"
+        }
+      ],
+      "title": "The Book by Design: The Remarkable Story of the World’s Greatest Invention",
+      "container": null,
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book (collection as a whole)",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 2. Marks and Parkin, *Book by Design*.; the page’s note has a stray space inside the italic span before the closing parenthesis; normalised"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "book",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Borel, Brooke. *The Chicago Guide to Fact-Checking*. 2nd ed. University of Chicago Press, 2023. EBSCOhost.",
+    "inText": "3. Brooke Borel, *The Chicago Guide to Fact-Checking*, 2nd ed. (University of Chicago Press, 2023), 92, EBSCOhost.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Borel",
+          "given": "Brooke"
+        }
+      ],
+      "editors": null,
+      "title": "The Chicago Guide to Fact-Checking",
+      "container": null,
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago Press",
+      "place": null,
+      "edition": "2nd ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book consulted in an electronic format",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 7. Borel, *Fact-Checking*, 104–5."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Dittmar, Emily L., and Douglas W. Schemske. “Temporal Variation in Selection Influences Microgeographic Local Adaptation.” *American Naturalist* 202, no. 4 (2023): 471–85. https://doi.org/10.1086/725865.",
+    "inText": "4. Emily L. Dittmar and Douglas W. Schemske, “Temporal Variation in Selection Influences Microgeographic Local Adaptation,” *American Naturalist* 202, no. 4 (2023): 480, https://doi.org/10.1086/725865.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Dittmar",
+          "given": "Emily L."
+        },
+        {
+          "family": "Schemske",
+          "given": "Douglas W."
+        }
+      ],
+      "editors": null,
+      "title": "Temporal Variation in Selection Influences Microgeographic Local Adaptation",
+      "container": "American Naturalist",
+      "year": 2023,
+      "month": null,
+      "day": null,
+      "volume": "202",
+      "issue": "4",
+      "pages": "471–85",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/725865",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 8. Dittmar and Schemske, “Temporal Variation,” 480.; the page’s note has a stray space inside the italic journal title; normalised"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Hebert, B. T. “The Island of Bolsö: A Study of Norwegian Life.” *Sociological Review* 17, no. 4 (1925): 307–13. EBSCOhost.",
+    "inText": "2. B. T. Hebert, “The Island of Bolsö: A Study of Norwegian Life,” *Sociological Review* 17, no. 4 (1925): 310, EBSCOhost.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Hebert",
+          "given": "B. T."
+        }
+      ],
+      "editors": null,
+      "title": "The Island of Bolsö: A Study of Norwegian Life",
+      "container": "Sociological Review",
+      "year": 1925,
+      "month": null,
+      "day": null,
+      "volume": "17",
+      "issue": "4",
+      "pages": "307–13",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 6. Hebert, “Island of Bolsö,” 311.; no DOI"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Kwon, Hyeyoung. “Inclusion Work: Children of Immigrants Claiming Membership in Everyday Life.” *American Journal of Sociology* 127, no. 6 (2022): 1818–59. https://doi.org/10.1086/720277.",
+    "inText": "1. Hyeyoung Kwon, “Inclusion Work: Children of Immigrants Claiming Membership in Everyday Life,” *American Journal of Sociology* 127, no. 6 (2022): 1842–43, https://doi.org/10.1086/720277.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Kwon",
+          "given": "Hyeyoung"
+        }
+      ],
+      "editors": null,
+      "title": "Inclusion Work: Children of Immigrants Claiming Membership in Everyday Life",
+      "container": "American Journal of Sociology",
+      "year": 2022,
+      "month": null,
+      "day": null,
+      "volume": "127",
+      "issue": "6",
+      "pages": "1818–59",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/720277",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 5. Kwon, “Inclusion Work,” 1851."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "journal-article",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Snyder, Carl D., Manuel Bedrossian, Casey Barr, et al. “Extant Life Detection Using Label-Free Video Microscopy in Analog Aquatic Environments.” *PLOS ONE* 20, no. 3 (2025): e0318239. https://doi.org/10.1371/journal.pone.0318239.",
+    "inText": "7. Carl D. Snyder et al., “Extant Life Detection Using Label-Free Video Microscopy in Analog Aquatic Environments,” *PLOS ONE* 20, no. 3 (2025): 9–10, e0318239, https://doi.org/10.1371/journal.pone.0318239.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Snyder",
+          "given": "Carl D."
+        },
+        {
+          "family": "Bedrossian",
+          "given": "Manuel"
+        },
+        {
+          "family": "Barr",
+          "given": "Casey"
+        }
+      ],
+      "editors": null,
+      "title": "Extant Life Detection Using Label-Free Video Microscopy in Analog Aquatic Environments",
+      "container": "PLOS ONE",
+      "year": 2025,
+      "month": null,
+      "day": null,
+      "volume": "20",
+      "issue": "3",
+      "pages": null,
+      "articleNumber": "e0318239",
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1371/journal.pone.0318239",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); seven authors credited; bibliography lists first three + et al.; note lists first + et al.; shortened note: 8. Snyder et al., “Extant Life Detection,” 12."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "dissertation",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Blajer de la Garza, Yuna. “A House Is Not a Home: Citizenship and Belonging in Contemporary Democracies.” PhD diss., University of Chicago, 2019. ProQuest (13865986).",
+    "inText": "1. Yuna Blajer de la Garza, “A House Is Not a Home: Citizenship and Belonging in Contemporary Democracies” (PhD diss., University of Chicago, 2019), 66–67, ProQuest (13865986).",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Blajer de la Garza",
+          "given": "Yuna"
+        }
+      ],
+      "editors": null,
+      "title": "A House Is Not a Home: Citizenship and Belonging in Contemporary Democracies",
+      "container": null,
+      "year": 2019,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Thesis or dissertation",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 2. Blajer de la Garza, “House,” 93."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "webpage",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Google. “Privacy Policy.” Privacy & Terms. Effective November 15, 2023. https://policies.google.com/privacy.",
+    "inText": "1. “Privacy Policy,” Privacy & Terms, Google, effective November 15, https://policies.google.com/privacy.",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Google"
+        }
+      ],
+      "editors": null,
+      "title": "Privacy Policy",
+      "container": "Privacy & Terms",
+      "year": 2023,
+      "month": "November",
+      "day": 15,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://policies.google.com/privacy",
+      "accessed": null,
+      "type": "Web page",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 4. Google, “Privacy Policy.”; the full note as printed omits the year after “November 15” (sic); title-first order in notes, owner-first in bibliography"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "18",
+    "kind": "webpage",
+    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Yale University. “About Yale: Yale Facts.” Accessed March 8, 2022. https://www.yale.edu/about-yale/yale-facts.",
+    "inText": "3. “About Yale: Yale Facts,” Yale University, accessed March 8, 2022, https://www.yale.edu/about-yale/yale-facts.",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Yale University"
+        }
+      ],
+      "editors": null,
+      "title": "About Yale: Yale Facts",
+      "container": null,
+      "year": null,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.yale.edu/about-yale/yale-facts",
+      "accessed": "March 8, 2022",
+      "type": "Web page",
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); no date, access date; shortened note: 6. “Yale Facts.”"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "book",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Smith, Zadie. *Swing Time*. New York: Penguin Press, 2016.",
+    "inText": "1. Zadie Smith, *Swing Time* (New York: Penguin Press, 2016), 315–16.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Smith",
+          "given": "Zadie"
+        }
+      ],
+      "editors": null,
+      "title": "Swing Time",
+      "container": null,
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Penguin Press",
+      "place": "New York",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); shortened note: 3. Smith, *Swing Time*, 320."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "book",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Grazer, Brian, and Charles Fishman. *A Curious Mind: The Secret to a Bigger Life*. New York: Simon & Schuster, 2015.",
+    "inText": "2. Brian Grazer and Charles Fishman, *A Curious Mind: The Secret to a Bigger Life* (New York: Simon & Schuster, 2015), 12.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Grazer",
+          "given": "Brian"
+        },
+        {
+          "family": "Fishman",
+          "given": "Charles"
+        }
+      ],
+      "editors": null,
+      "title": "A Curious Mind: The Secret to a Bigger Life",
+      "container": null,
+      "year": 2015,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Simon & Schuster",
+      "place": "New York",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); shortened note: 4. Grazer and Fishman, *Curious Mind*, 37.; italic span in the page HTML swallows the period after the title; normalised"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "book-chapter",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Thoreau, Henry David. “Walking.” In *The Making of the American Essay*, edited by John D’Agata, 167–95. Minneapolis: Graywolf Press, 2016.",
+    "inText": "1. Henry David Thoreau, “Walking,” in *The Making of the American Essay*, ed. John D’Agata (Minneapolis: Graywolf Press, 2016), 177–78.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Thoreau",
+          "given": "Henry David"
+        }
+      ],
+      "editors": [
+        {
+          "family": "D’Agata",
+          "given": "John"
+        }
+      ],
+      "title": "Walking",
+      "container": "The Making of the American Essay",
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "167–95",
+      "articleNumber": null,
+      "publisher": "Graywolf Press",
+      "place": "Minneapolis",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); shortened note: 2. Thoreau, “Walking,” 182."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "edited-book",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "D’Agata, John, ed. *The Making of the American Essay*. Minneapolis: Graywolf Press, 2016.",
+    "inText": "1. John D’Agata, ed., *The Making of the American Essay* (Minneapolis: Graywolf Press, 2016), 177–78.",
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "D’Agata",
+          "given": "John"
+        }
+      ],
+      "title": "The Making of the American Essay",
+      "container": null,
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Graywolf Press",
+      "place": "Minneapolis",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Chapter or other part of an edited book (collection as a whole)",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); shortened note: 2. D’Agata, *American Essay*, 182."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Keng, Shao-Hsun, Chun-Hung Lin, and Peter F. Orazem. “Expanding College Access in Taiwan, 1978–2014: Effects on Graduate Quality and Income Inequality.” *Journal of Human Capital* 11, no. 1 (Spring 2017): 1–34. https://doi.org/10.1086/690235.",
+    "inText": "2. Shao-Hsun Keng, Chun-Hung Lin, and Peter F. Orazem, “Expanding College Access in Taiwan, 1978–2014: Effects on Graduate Quality and Income Inequality,” *Journal of Human Capital* 11, no. 1 (Spring 2017): 9–10, https://doi.org/10.1086/690235.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Keng",
+          "given": "Shao-Hsun"
+        },
+        {
+          "family": "Lin",
+          "given": "Chun-Hung"
+        },
+        {
+          "family": "Orazem",
+          "given": "Peter F."
+        }
+      ],
+      "editors": null,
+      "title": "Expanding College Access in Taiwan, 1978–2014: Effects on Graduate Quality and Income Inequality",
+      "container": "Journal of Human Capital",
+      "year": 2017,
+      "month": "Spring",
+      "day": null,
+      "volume": "11",
+      "issue": "1",
+      "pages": "1–34",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/690235",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); shortened note: 5. Keng, Lin, and Orazem, “Expanding College Access,” 23."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "LaSalle, Peter. “Conundrum: A Story about Reading.” *New England Review* 38, no. 1 (2017): 95–109. Project MUSE.",
+    "inText": "3. Peter LaSalle, “Conundrum: A Story about Reading,” *New England Review* 38, no. 1 (2017): 95, Project MUSE.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "LaSalle",
+          "given": "Peter"
+        }
+      ],
+      "editors": null,
+      "title": "Conundrum: A Story about Reading",
+      "container": "New England Review",
+      "year": 2017,
+      "month": null,
+      "day": null,
+      "volume": "38",
+      "issue": "1",
+      "pages": "95–109",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no DOI; shortened note: 6. LaSalle, “Conundrum,” 101.; the page’s note has a stray space inside the italic journal title; normalised"
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Satterfield, Susan. “Livy and the *Pax Deum*.” *Classical Philology* 111, no. 2 (April 2016): 165–76.",
+    "inText": "1. Susan Satterfield, “Livy and the *Pax Deum*,” *Classical Philology* 111, no. 2 (April 2016): 170.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Satterfield",
+          "given": "Susan"
+        }
+      ],
+      "editors": null,
+      "title": "Livy and the *Pax Deum*",
+      "container": "Classical Philology",
+      "year": 2016,
+      "month": "April",
+      "day": null,
+      "volume": "111",
+      "issue": "2",
+      "pages": "165–76",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); print article, no DOI or URL; shortened note: 4. Satterfield, “Livy,” 172–73."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "journal-article",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Bay, Rachael A., Noah Rose, Rowan Barrett, Louis Bernatchez, Cameron K. Ghalambor, Jesse R. Lasky, Rachel B. Brem, Stephen R. Palumbi, and Peter Ralph. “Predicting Responses to Contemporary Environmental Change Using Evolutionary Response Architectures.” *American Naturalist* 189, no. 5 (May 2017): 463–73. https://doi.org/10.1086/691233.",
+    "inText": "7. Rachel A. Bay et al., “Predicting Responses to Contemporary Environmental Change Using Evolutionary Response Architectures,” *American Naturalist* 189, no. 5 (May 2017): 465, https://doi.org/10.1086/691233.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Bay",
+          "given": "Rachael A."
+        },
+        {
+          "family": "Rose",
+          "given": "Noah"
+        },
+        {
+          "family": "Barrett",
+          "given": "Rowan"
+        },
+        {
+          "family": "Bernatchez",
+          "given": "Louis"
+        },
+        {
+          "family": "Ghalambor",
+          "given": "Cameron K."
+        },
+        {
+          "family": "Lasky",
+          "given": "Jesse R."
+        },
+        {
+          "family": "Brem",
+          "given": "Rachel B."
+        },
+        {
+          "family": "Palumbi",
+          "given": "Stephen R."
+        },
+        {
+          "family": "Ralph",
+          "given": "Peter"
+        }
+      ],
+      "editors": null,
+      "title": "Predicting Responses to Contemporary Environmental Change Using Evolutionary Response Architectures",
+      "container": "American Naturalist",
+      "year": 2017,
+      "month": "May",
+      "day": null,
+      "volume": "189",
+      "issue": "5",
+      "pages": "463–73",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1086/691233",
+      "url": null,
+      "accessed": null,
+      "type": "Journal article",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); 9 authors listed in bibliography, first + et al. in note; the guide spells the first name “Rachel” in the note and “Rachael” in the bibliography (as printed); shortened note: 8. Bay et al., “Predicting Responses,” 466."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "dissertation",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Rutz, Cynthia Lillian. “*King Lear* and Its Folktale Analogues.” PhD diss., University of Chicago, 2013.",
+    "inText": "1. Cynthia Lillian Rutz, “*King Lear* and Its Folktale Analogues” (PhD diss., University of Chicago, 2013), 99–100.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Rutz",
+          "given": "Cynthia Lillian"
+        }
+      ],
+      "editors": null,
+      "title": "*King Lear* and Its Folktale Analogues",
+      "container": null,
+      "year": 2013,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Chicago",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Thesis or dissertation",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); shortened note: 2. Rutz, “*King Lear*,” 158."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "book",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Melville, Herman. *Moby-Dick; or, The Whale*. New York: Harper & Brothers, 1851. http://mel.hofstra.edu/moby-dick-the-whale-proofs.html.",
+    "inText": "1. Herman Melville, *Moby-Dick; or, The Whale* (New York: Harper & Brothers, 1851), 627, http://mel.hofstra.edu/moby-dick-the-whale-proofs.html.",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Melville",
+          "given": "Herman"
+        }
+      ],
+      "editors": null,
+      "title": "Moby-Dick; or, The Whale",
+      "container": null,
+      "year": 1851,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Harper & Brothers",
+      "place": "New York",
+      "edition": null,
+      "doi": null,
+      "url": "http://mel.hofstra.edu/moby-dick-the-whale-proofs.html",
+      "accessed": null,
+      "type": "E-book",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); shortened note: 5. Melville, *Moby-Dick*, 722–23."
+    }
+  },
+  {
+    "style": "chicago-nb",
+    "styleEdition": "17",
+    "kind": "webpage",
+    "source": "https://web.archive.org/web/20240101064045id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-1.html",
+    "expected": "Google. “Privacy Policy.” Privacy & Terms. Last modified April 17, 2017. https://www.google.com/policies/privacy/.",
+    "inText": "1. “Privacy Policy,” Privacy & Terms, Google, last modified April 17, 2017, https://www.google.com/policies/privacy/.",
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Google"
+        }
+      ],
+      "editors": null,
+      "title": "Privacy Policy",
+      "container": "Privacy & Terms",
+      "year": 2017,
+      "month": "April",
+      "day": 17,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.google.com/policies/privacy/",
+      "accessed": null,
+      "type": "Website content",
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); group author; “Last modified” date; shortened note: 4. Google, “Privacy Policy.”"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "book",
+    "source": "https://style.mla.org/works-cited/citations-by-format/",
+    "expected": "Mantel, Hilary. *Wolf Hall*. Picador, 2010.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Mantel",
+          "given": "Hilary"
+        }
+      ],
+      "editors": null,
+      "title": "Wolf Hall",
+      "container": null,
+      "year": 2010,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Picador",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book by One Author",
+      "notes": null
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "book",
+    "source": "https://style.mla.org/works-cited/citations-by-format/",
+    "expected": "*Beowulf*. Translated by Alan Sullivan and Timothy Murphy, edited by Sarah Anderson, Pearson, 2004.",
+    "inText": null,
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Anderson",
+          "given": "Sarah"
+        }
+      ],
+      "title": "Beowulf",
+      "container": null,
+      "year": 2004,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Pearson",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "Book by an Unknown Author",
+      "notes": "no author; entry begins with title; translators Alan Sullivan and Timothy Murphy as contributors"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "edited-book",
+    "source": "https://style.mla.org/works-cited/citations-by-format/",
+    "expected": "Sánchez Prado, Ignacio M., editor. *Mexican Literature in Theory*. Bloomsbury, 2018.",
+    "inText": null,
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Sánchez Prado",
+          "given": "Ignacio M."
+        }
+      ],
+      "title": "Mexican Literature in Theory",
+      "container": null,
+      "year": 2018,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Bloomsbury",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "An Edited Book",
+      "notes": "editor label spelled out after the name"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "webpage",
+    "source": "https://style.mla.org/works-cited/citations-by-format/",
+    "expected": "Deresiewicz, William. “The Death of the Artist—and the Birth of the Creative Entrepreneur.” *The Atlantic*, 28 Dec. 2014, theatlantic.com/magazine/archive/2015/01/ the-death-of-the-artist-and-the-birth-of-thecreative-entrepreneur/383497/.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Deresiewicz",
+          "given": "William"
+        }
+      ],
+      "editors": null,
+      "title": "The Death of the Artist—and the Birth of the Creative Entrepreneur",
+      "container": "The Atlantic",
+      "year": 2014,
+      "month": "Dec.",
+      "day": 28,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "theatlantic.com/magazine/archive/2015/01/ the-death-of-the-artist-and-the-birth-of-thecreative-entrepreneur/383497/",
+      "accessed": null,
+      "type": "Article on a website",
+      "notes": "URL printed without protocol/www; AS PRINTED the URL contains a space after “2015/01/” and “thecreative” lacks a hyphen (verified in the page HTML) — consider trimming when used as an oracle"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "book-chapter",
+    "source": "https://style.mla.org/works-cited/citations-by-format/",
+    "expected": "Poe, Edgar Allan. “The Masque of the Red Death.” *The Complete Works of Edgar Allan Poe*, edited by James A. Harrison, vol. 4, Thomas Y. Crowell, 1902, pp. 250-58. *HathiTrust Digital Library*, hdl.handle.net/2027/coo.31924079574368.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Poe",
+          "given": "Edgar Allan"
+        }
+      ],
+      "editors": [
+        {
+          "family": "Harrison",
+          "given": "James A."
+        }
+      ],
+      "title": "The Masque of the Red Death",
+      "container": "The Complete Works of Edgar Allan Poe",
+      "year": 1902,
+      "month": null,
+      "day": null,
+      "volume": "4",
+      "issue": null,
+      "pages": "250-58",
+      "articleNumber": null,
+      "publisher": "Thomas Y. Crowell",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "hdl.handle.net/2027/coo.31924079574368",
+      "accessed": null,
+      "type": "Book on a website",
+      "notes": "two containers (book, then database); hyphen (not en dash) in page range as printed"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "journal-article",
+    "source": "https://style.mla.org/works-cited/citations-by-format/",
+    "expected": "Goldman, Anne. “Questions of Transport: Reading Primo Levi Reading Dante.” *The Georgia Review*, vol. 64, no. 1, spring 2010, pp. 69-88. *JSTOR*, www.jstor.org/stable/41403188.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Goldman",
+          "given": "Anne"
+        }
+      ],
+      "editors": null,
+      "title": "Questions of Transport: Reading Primo Levi Reading Dante",
+      "container": "The Georgia Review",
+      "year": 2010,
+      "month": "spring",
+      "day": null,
+      "volume": "64",
+      "issue": "1",
+      "pages": "69-88",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "www.jstor.org/stable/41403188",
+      "accessed": null,
+      "type": "Journal Article in a Database",
+      "notes": "no DOI; lowercase season; database as second container; hyphen in page range as printed"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "other",
+    "source": "https://style.mla.org/works-cited/citations-by-format/",
+    "expected": "Karasik, Paul. Cartoon. *The New Yorker*, 14 Apr. 2008, p. 49.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Karasik",
+          "given": "Paul"
+        }
+      ],
+      "editors": null,
+      "title": null,
+      "container": "The New Yorker",
+      "year": 2008,
+      "month": "Apr.",
+      "day": 14,
+      "volume": null,
+      "issue": null,
+      "pages": "49",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "An Untitled Image from a Print Magazine",
+      "notes": "untitled work described generically (“Cartoon.”); single page with p."
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "journal-article",
+    "source": "https://style.mla.org/page-range-and-doi/",
+    "expected": "Berman, Russell. “The Necessity of Language Learning.” *ADFL Bulletin*, vol. 43, no. 2, 2015, https://doi.org/10.1632/adfl.43.2.11.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Berman",
+          "given": "Russell"
+        }
+      ],
+      "editors": null,
+      "title": "The Necessity of Language Learning",
+      "container": "ADFL Bulletin",
+      "year": 2015,
+      "month": null,
+      "day": null,
+      "volume": "43",
+      "issue": "2",
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1632/adfl.43.2.11",
+      "url": null,
+      "accessed": null,
+      "type": "paginated article in an online-only journal (DOI, no page range)",
+      "notes": "DOI printed as https://doi.org/ URL; page range omitted (one of two acceptable forms on the page)"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "journal-article",
+    "source": "https://style.mla.org/page-range-and-doi/",
+    "expected": "Berman, Russell. “The Necessity of Language Learning.” *ADFL Bulletin*, vol. 43, no. 2, 2015, pp. 11-14, https://doi.org/10.1632/adfl.43.2.11.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Berman",
+          "given": "Russell"
+        }
+      ],
+      "editors": null,
+      "title": "The Necessity of Language Learning",
+      "container": "ADFL Bulletin",
+      "year": 2015,
+      "month": null,
+      "day": null,
+      "volume": "43",
+      "issue": "2",
+      "pages": "11-14",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1632/adfl.43.2.11",
+      "url": null,
+      "accessed": null,
+      "type": "paginated article in an online-only journal (DOI with page range)",
+      "notes": "page range plus DOI in the same container; hyphen in page range as printed"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "book-chapter",
+    "source": "https://style.mla.org/doi-for-a-book-chapter/",
+    "expected": "Bould, Mark. “Speculative Fiction.” *The Cambridge Companion to Twenty-First Century American Fiction*, edited by Joshua Miller, Cambridge UP, 2021, pp. 63–78. *Cambridge Core*, https://doi.org/10.1017/9781108974288.005.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Bould",
+          "given": "Mark"
+        }
+      ],
+      "editors": [
+        {
+          "family": "Miller",
+          "given": "Joshua"
+        }
+      ],
+      "title": "Speculative Fiction",
+      "container": "The Cambridge Companion to Twenty-First Century American Fiction",
+      "year": 2021,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "63–78",
+      "articleNumber": null,
+      "publisher": "Cambridge UP",
+      "place": null,
+      "edition": null,
+      "doi": "10.1017/9781108974288.005",
+      "url": null,
+      "accessed": null,
+      "type": "chapter in an anthology with page numbers and a DOI",
+      "notes": "en dash in page range on this page; platform (Cambridge Core) as second container; publisher abbreviated UP"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "book-chapter",
+    "source": "https://style.mla.org/doi-for-a-book-chapter/",
+    "expected": "Lewalski, Barbara K. “*Paradise Lost*, the Bible, and Biblical Epic.” *The Oxford Handbook of the Bible in Early Modern England, c.1530-1700*, edited by Kevin Killeen et al., Oxford UP, Nov. 2015. *Oxford Handbooks Online*, https://doi.org/10.1093/oxfordhb/9780199686971.013.34.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Lewalski",
+          "given": "Barbara K."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Killeen",
+          "given": "Kevin"
+        }
+      ],
+      "title": "*Paradise Lost*, the Bible, and Biblical Epic",
+      "container": "The Oxford Handbook of the Bible in Early Modern England, c.1530-1700",
+      "year": 2015,
+      "month": "Nov.",
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Oxford UP",
+      "place": null,
+      "edition": null,
+      "doi": "10.1093/oxfordhb/9780199686971.013.34",
+      "url": null,
+      "accessed": null,
+      "type": "chapter in an anthology with a DOI (no page numbers)",
+      "notes": "editors truncated with et al.; month with year; in the page HTML the container title is split across two adjacent italic spans (break after “c.”); merged here into one italic span"
+    }
+  },
+  {
+    "style": "mla",
+    "styleEdition": "9",
+    "kind": "journal-article",
+    "source": "https://style.mla.org/in-text-citations/",
+    "expected": "Baron, Naomi S. “Redefining Reading: The Impact of Digital Communication Media.” *PMLA*, vol. 128, no. 1, Jan. 2013, pp. 193–200.",
+    "inText": "(Baron 194)",
+    "metadata": {
+      "authors": [
+        {
+          "family": "Baron",
+          "given": "Naomi S."
+        }
+      ],
+      "editors": null,
+      "title": "Redefining Reading: The Impact of Digital Communication Media",
+      "container": "PMLA",
+      "year": 2013,
+      "month": "Jan.",
+      "day": null,
+      "volume": "128",
+      "issue": "1",
+      "pages": "193–200",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "works-cited entry accompanying the in-text citation examples",
+      "notes": "print journal article, no DOI; in-text examples on the page: “Reading is “just half of literacy. The other half is writing” (Baron 194).” and, with the author named in prose, “(194)”"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Petitti DB, Crooks VC, Buckwalter JG, Chiu V. Blood pressure levels before dementia. Arch Neurol. 2005 Jan;62(1):112-6.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Petitti",
+          "given": "DB"
+        },
+        {
+          "family": "Crooks",
+          "given": "VC"
+        },
+        {
+          "family": "Buckwalter",
+          "given": "JG"
+        },
+        {
+          "family": "Chiu",
+          "given": "V"
+        }
+      ],
+      "editors": null,
+      "title": "Blood pressure levels before dementia",
+      "container": "Arch Neurol",
+      "year": 2005,
+      "month": "Jan",
+      "day": null,
+      "volume": "62",
+      "issue": "1",
+      "pages": "112-6",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard journal article",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Jun BC, Song SW, Park CS, Lee DH, Cho KJ, Cho JH. The analysis of maxillary sinus aeration according to aging process: volume assessment by 3-dimensional reconstruction by high-resolutional CT scanning. Otolaryngol Head Neck Surg. 2005 Mar;132(3):429-34.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Jun",
+          "given": "BC"
+        },
+        {
+          "family": "Song",
+          "given": "SW"
+        },
+        {
+          "family": "Park",
+          "given": "CS"
+        },
+        {
+          "family": "Lee",
+          "given": "DH"
+        },
+        {
+          "family": "Cho",
+          "given": "KJ"
+        },
+        {
+          "family": "Cho",
+          "given": "JH"
+        }
+      ],
+      "editors": null,
+      "title": "The analysis of maxillary sinus aeration according to aging process: volume assessment by 3-dimensional reconstruction by high-resolutional CT scanning",
+      "container": "Otolaryngol Head Neck Surg",
+      "year": 2005,
+      "month": "Mar",
+      "day": null,
+      "volume": "132",
+      "issue": "3",
+      "pages": "429-34",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard journal article",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; 6 authors, all listed"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Rastan S, Hough T, Kierman A, Hardisty R, Erven A, Gray IC, Voeling S, Isaacs A, Tsai H, Strivens M, Washbourne R, Thornton C, Greenaway S, Hewitt M, McCormick S, Selley R, Wells C, Tymowska-Lalanne Z, Roby P, Mburu P, Rogers D, Hagan J, Reavill C, Davies K, Glenister P, Fisher EM, Martin J, Vizor L, Bouzyk M, Kelsell D, Guenet JL, Steel KP, Sheardown S, Spurr N, Gray I, Peters J, Nolan PM, Hunter AJ, Brown SD. Towards a mutant map of the mouse--new models of neurological, behavioural, deafness, bone, renal and blood disorders. Genetica. 2004 Sep;122(1):47-9.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Rastan",
+          "given": "S"
+        },
+        {
+          "family": "Hough",
+          "given": "T"
+        },
+        {
+          "family": "Kierman",
+          "given": "A"
+        },
+        {
+          "family": "Hardisty",
+          "given": "R"
+        },
+        {
+          "family": "Erven",
+          "given": "A"
+        },
+        {
+          "family": "Gray",
+          "given": "IC"
+        },
+        {
+          "family": "Voeling",
+          "given": "S"
+        },
+        {
+          "family": "Isaacs",
+          "given": "A"
+        },
+        {
+          "family": "Tsai",
+          "given": "H"
+        },
+        {
+          "family": "Strivens",
+          "given": "M"
+        },
+        {
+          "family": "Washbourne",
+          "given": "R"
+        },
+        {
+          "family": "Thornton",
+          "given": "C"
+        },
+        {
+          "family": "Greenaway",
+          "given": "S"
+        },
+        {
+          "family": "Hewitt",
+          "given": "M"
+        },
+        {
+          "family": "McCormick",
+          "given": "S"
+        },
+        {
+          "family": "Selley",
+          "given": "R"
+        },
+        {
+          "family": "Wells",
+          "given": "C"
+        },
+        {
+          "family": "Tymowska-Lalanne",
+          "given": "Z"
+        },
+        {
+          "family": "Roby",
+          "given": "P"
+        },
+        {
+          "family": "Mburu",
+          "given": "P"
+        },
+        {
+          "family": "Rogers",
+          "given": "D"
+        },
+        {
+          "family": "Hagan",
+          "given": "J"
+        },
+        {
+          "family": "Reavill",
+          "given": "C"
+        },
+        {
+          "family": "Davies",
+          "given": "K"
+        },
+        {
+          "family": "Glenister",
+          "given": "P"
+        },
+        {
+          "family": "Fisher",
+          "given": "EM"
+        },
+        {
+          "family": "Martin",
+          "given": "J"
+        },
+        {
+          "family": "Vizor",
+          "given": "L"
+        },
+        {
+          "family": "Bouzyk",
+          "given": "M"
+        },
+        {
+          "family": "Kelsell",
+          "given": "D"
+        },
+        {
+          "family": "Guenet",
+          "given": "JL"
+        },
+        {
+          "family": "Steel",
+          "given": "KP"
+        },
+        {
+          "family": "Sheardown",
+          "given": "S"
+        },
+        {
+          "family": "Spurr",
+          "given": "N"
+        },
+        {
+          "family": "Gray",
+          "given": "I"
+        },
+        {
+          "family": "Peters",
+          "given": "J"
+        },
+        {
+          "family": "Nolan",
+          "given": "PM"
+        },
+        {
+          "family": "Hunter",
+          "given": "AJ"
+        },
+        {
+          "family": "Brown",
+          "given": "SD"
+        }
+      ],
+      "editors": null,
+      "title": "Towards a mutant map of the mouse--new models of neurological, behavioural, deafness, bone, renal and blood disorders",
+      "container": "Genetica",
+      "year": 2004,
+      "month": "Sep",
+      "day": null,
+      "volume": "122",
+      "issue": "1",
+      "pages": "47-9",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "2. Journal article with many authors",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; all 39 authors listed (NLM lists all authors); double hyphen in title as printed"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Rastan S, Hough T, Kierman A, et al. Towards a mutant map of the mouse--new models of neurological, behavioural, deafness, bone, renal and blood disorders. Genetica. 2004 Sep;122(1):47-9.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Rastan",
+          "given": "S"
+        },
+        {
+          "family": "Hough",
+          "given": "T"
+        },
+        {
+          "family": "Kierman",
+          "given": "A"
+        }
+      ],
+      "editors": null,
+      "title": "Towards a mutant map of the mouse--new models of neurological, behavioural, deafness, bone, renal and blood disorders",
+      "container": "Genetica",
+      "year": 2004,
+      "month": "Sep",
+      "day": null,
+      "volume": "122",
+      "issue": "1",
+      "pages": "47-9",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "3. Journal article with optional limit to the number of authors (to 3 authors)",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; same article as the 39-author entry, truncated to three names + et al. (alternative “and others” also shown)"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Hallal AH, Amortegui JD, Jeroukhimov IM, Casillas J, Schulman CI, Manning RJ, et al. Magnetic resonance cholangiopancreatography accurately detects common bile duct stones in resolving gallstone pancreatitis. J Am Coll Surg. 2005 Jun;200(6):869-75.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Hallal",
+          "given": "AH"
+        },
+        {
+          "family": "Amortegui",
+          "given": "JD"
+        },
+        {
+          "family": "Jeroukhimov",
+          "given": "IM"
+        },
+        {
+          "family": "Casillas",
+          "given": "J"
+        },
+        {
+          "family": "Schulman",
+          "given": "CI"
+        },
+        {
+          "family": "Manning",
+          "given": "RJ"
+        }
+      ],
+      "editors": null,
+      "title": "Magnetic resonance cholangiopancreatography accurately detects common bile duct stones in resolving gallstone pancreatitis",
+      "container": "J Am Coll Surg",
+      "year": 2005,
+      "month": "Jun",
+      "day": null,
+      "volume": "200",
+      "issue": "6",
+      "pages": "869-75",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "3. Journal article with optional limit to the number of authors (to 6 authors)",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; six names then et al."
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "American Diabetes Association. Diabetes update. Nursing. 2003 Nov;Suppl:19-20, 24.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "American Diabetes Association"
+        }
+      ],
+      "editors": null,
+      "title": "Diabetes update",
+      "container": "Nursing",
+      "year": 2003,
+      "month": "Nov",
+      "day": null,
+      "volume": null,
+      "issue": "Suppl",
+      "pages": "19-20, 24",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "4. Journal article with organization as author",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; group author; supplement with no volume; discontinuous pages"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Parkinson Study Group. A randomized placebo-controlled trial of rasagiline in levodopa-treated patients with Parkinson disease and motor fluctuations: the PRESTO study. Arch Neurol. 2005 Feb;62(2):241-8.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Parkinson Study Group"
+        }
+      ],
+      "editors": null,
+      "title": "A randomized placebo-controlled trial of rasagiline in levodopa-treated patients with Parkinson disease and motor fluctuations: the PRESTO study",
+      "container": "Arch Neurol",
+      "year": 2005,
+      "month": "Feb",
+      "day": null,
+      "volume": "62",
+      "issue": "2",
+      "pages": "241-8",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "4. Journal article with organization as author",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; group author"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Orchard TJ, Temprosa M, Goldberg R, Haffner S, Ratner R, Marcovina S, Fowler S; Diabetes Prevention Program Research Group. The effect of metformin and intensive lifestyle intervention on the metabolic syndrome: the Diabetes Prevention Program randomized trial. Ann Intern Med. 2005 Apr 19;142(8):611-9.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Orchard",
+          "given": "TJ"
+        },
+        {
+          "family": "Temprosa",
+          "given": "M"
+        },
+        {
+          "family": "Goldberg",
+          "given": "R"
+        },
+        {
+          "family": "Haffner",
+          "given": "S"
+        },
+        {
+          "family": "Ratner",
+          "given": "R"
+        },
+        {
+          "family": "Marcovina",
+          "given": "S"
+        },
+        {
+          "family": "Fowler",
+          "given": "S"
+        },
+        {
+          "literal": "Diabetes Prevention Program Research Group"
+        }
+      ],
+      "editors": null,
+      "title": "The effect of metformin and intensive lifestyle intervention on the metabolic syndrome: the Diabetes Prevention Program randomized trial",
+      "container": "Ann Intern Med",
+      "year": 2005,
+      "month": "Apr",
+      "day": 19,
+      "volume": "142",
+      "issue": "8",
+      "pages": "611-9",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "9. Journal article with both a personal author and an organization as author",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; semicolon separates personal authors from the group author; full date with day"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "journal-article",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7282/",
+    "expected": "Pelvic floor exercise can reduce stress incontinence. Health News. 2005 Apr;11(4):11.",
+    "inText": null,
+    "metadata": {
+      "authors": null,
+      "editors": null,
+      "title": "Pelvic floor exercise can reduce stress incontinence",
+      "container": "Health News",
+      "year": 2005,
+      "month": "Apr",
+      "day": null,
+      "volume": "11",
+      "issue": "4",
+      "pages": "11",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "16. Journal article with no author provided",
+      "notes": "Citing Medicine, 2nd ed., Chapter 1 Journals (NBK7256 is the book landing page; the journals chapter is NBK7282), section “Examples of Citations to Journal Articles”; no author; entry begins with title (no “Anonymous”)"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "book",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7271/",
+    "expected": "Jenkins PF. Making sense of the chest x-ray: a hands-on guide. New York: Oxford University Press; 2005. 194 p.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Jenkins",
+          "given": "PF"
+        }
+      ],
+      "editors": null,
+      "title": "Making sense of the chest x-ray: a hands-on guide",
+      "container": null,
+      "year": 2005,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Oxford University Press",
+      "place": "New York",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard book with initials for authors",
+      "notes": "Citing Medicine, 2nd ed., Chapter 2 Books (NBK7271), section “Examples of Citations to Entire Books”; total page count (optional) at end",
+      "numPages": "194"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "book",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7271/",
+    "expected": "Eyre HJ, Lange DP, Morris LB. Informed decisions: the complete book of cancer diagnosis, treatment, and recovery. 2nd ed. Atlanta: American Cancer Society; c2002. 768 p.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Eyre",
+          "given": "HJ"
+        },
+        {
+          "family": "Lange",
+          "given": "DP"
+        },
+        {
+          "family": "Morris",
+          "given": "LB"
+        }
+      ],
+      "editors": null,
+      "title": "Informed decisions: the complete book of cancer diagnosis, treatment, and recovery",
+      "container": null,
+      "year": 2002,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "American Cancer Society",
+      "place": "Atlanta",
+      "edition": "2nd ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard book with initials for authors",
+      "notes": "Citing Medicine, 2nd ed., Chapter 2 Books (NBK7271), section “Examples of Citations to Entire Books”; copyright year written c2002; edition after title",
+      "numPages": "768"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "edited-book",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7271/",
+    "expected": "Izzo JL Jr, Black HR, editors. Hypertension primer: the essentials of high blood pressure. 3rd ed. Philadelphia: Lippincott Williams & Wilkins; c2003. 532 p.",
+    "inText": null,
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Izzo",
+          "given": "JL Jr"
+        },
+        {
+          "family": "Black",
+          "given": "HR"
+        }
+      ],
+      "title": "Hypertension primer: the essentials of high blood pressure",
+      "container": null,
+      "year": 2003,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Lippincott Williams & Wilkins",
+      "place": "Philadelphia",
+      "edition": "3rd ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "9. Book with editors or translators when there is no author",
+      "notes": "Citing Medicine, 2nd ed., Chapter 2 Books (NBK7271), section “Examples of Citations to Entire Books”; “editors” label after names; Jr suffix without comma",
+      "numPages": "532"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "book",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7271/",
+    "expected": "Advanced Life Support Group. Acute medical emergencies: the practical approach. London: BMJ Books; 2001. 454 p.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Advanced Life Support Group"
+        }
+      ],
+      "editors": null,
+      "title": "Acute medical emergencies: the practical approach",
+      "container": null,
+      "year": 2001,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "BMJ Books",
+      "place": "London",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "11. Book with organization as author/editor",
+      "notes": "Citing Medicine, 2nd ed., Chapter 2 Books (NBK7271), section “Examples of Citations to Entire Books”; group author",
+      "numPages": "454"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "book",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7271/",
+    "expected": "Modlin IM, Sachs G. Acid related diseases: biology and treatment. 2nd ed. Philadelphia: Lippincott Williams & Wilkins; c2004. 522 p.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Modlin",
+          "given": "IM"
+        },
+        {
+          "family": "Sachs",
+          "given": "G"
+        }
+      ],
+      "editors": null,
+      "title": "Acid related diseases: biology and treatment",
+      "container": null,
+      "year": 2004,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Lippincott Williams & Wilkins",
+      "place": "Philadelphia",
+      "edition": "2nd ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "25. Book with an edition",
+      "notes": "Citing Medicine, 2nd ed., Chapter 2 Books (NBK7271), section “Examples of Citations to Entire Books”",
+      "numPages": "522"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "book-chapter",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7271/",
+    "expected": "Whiteside TL, Heberman RB. Effectors of immunity and rationale for immunotherapy. In: Kufe DW, Pollock RE, Weichselbaum RR, Bast RC Jr, Gansler TS, Holland JF, Frei E 3rd, editors. Cancer medicine 6. Hamilton (ON): BC Decker Inc; 2003. p. 221-8.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Whiteside",
+          "given": "TL"
+        },
+        {
+          "family": "Heberman",
+          "given": "RB"
+        }
+      ],
+      "editors": [
+        {
+          "family": "Kufe",
+          "given": "DW"
+        },
+        {
+          "family": "Pollock",
+          "given": "RE"
+        },
+        {
+          "family": "Weichselbaum",
+          "given": "RR"
+        },
+        {
+          "family": "Bast",
+          "given": "RC Jr"
+        },
+        {
+          "family": "Gansler",
+          "given": "TS"
+        },
+        {
+          "family": "Holland",
+          "given": "JF"
+        },
+        {
+          "family": "Frei",
+          "given": "E 3rd"
+        }
+      ],
+      "title": "Effectors of immunity and rationale for immunotherapy",
+      "container": "Cancer medicine 6",
+      "year": 2003,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "221-8",
+      "articleNumber": null,
+      "publisher": "BC Decker Inc",
+      "place": "Hamilton (ON)",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard reference to a contributed chapter",
+      "notes": "Citing Medicine, 2nd ed., Chapter 2 Books (NBK7271), section “Examples of Citations to Contributions to Books”; seven editors all listed; province in parentheses; “p.” before chapter pages"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "Citing Medicine 2nd ed.",
+    "kind": "book-chapter",
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK7271/",
+    "expected": "Kone BC. Metabolic basis of solute transport. In: Brenner BM, Rector FC, editors. Brenner and Rector’s the kidney. 8th ed. Vol. 1. Philadelphia: Saunders Elsevier; c2008. p. 130-55.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Kone",
+          "given": "BC"
+        }
+      ],
+      "editors": [
+        {
+          "family": "Brenner",
+          "given": "BM"
+        },
+        {
+          "family": "Rector",
+          "given": "FC"
+        }
+      ],
+      "title": "Metabolic basis of solute transport",
+      "container": "Brenner and Rector’s the kidney",
+      "year": 2008,
+      "month": null,
+      "day": null,
+      "volume": "1",
+      "issue": null,
+      "pages": "130-55",
+      "articleNumber": null,
+      "publisher": "Saunders Elsevier",
+      "place": "Philadelphia",
+      "edition": "8th ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard reference to a contributed chapter",
+      "notes": "Citing Medicine, 2nd ed., Chapter 2 Books (NBK7271), section “Examples of Citations to Contributions to Books”; edition and volume of the book; copyright year c2008"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "NLM samples (ICMJE)",
+    "kind": "journal-article",
+    "source": "https://www.nlm.nih.gov/bsd/uniform_requirements.html",
+    "expected": "Halpern SD, Ubel PA, Caplan AL. Solid-organ transplantation in HIV-infected patients. N Engl J Med. 2002 Jul 25;347(4):284-7.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Halpern",
+          "given": "SD"
+        },
+        {
+          "family": "Ubel",
+          "given": "PA"
+        },
+        {
+          "family": "Caplan",
+          "given": "AL"
+        }
+      ],
+      "editors": null,
+      "title": "Solid-organ transplantation in HIV-infected patients",
+      "container": "N Engl J Med",
+      "year": 2002,
+      "month": "Jul",
+      "day": 25,
+      "volume": "347",
+      "issue": "4",
+      "pages": "284-7",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard journal article",
+      "notes": "NLM “Samples of Formatted References for Authors of Journal Articles” (ICMJE/Vancouver samples); page also shows the continuous-pagination variant: Halpern SD, Ubel PA, Caplan AL. Solid-organ transplantation in HIV-infected patients. N Engl J Med. 2002;347:284-7."
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "NLM samples (ICMJE)",
+    "kind": "journal-article",
+    "source": "https://www.nlm.nih.gov/bsd/uniform_requirements.html",
+    "expected": "Rose ME, Huerbin MB, Melick J, Marion DW, Palmer AM, Schiding JK, et al. Regulation of interstitial excitatory amino acid concentrations after cortical contusion injury. Brain Res. 2002;935(1-2):40-6.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Rose",
+          "given": "ME"
+        },
+        {
+          "family": "Huerbin",
+          "given": "MB"
+        },
+        {
+          "family": "Melick",
+          "given": "J"
+        },
+        {
+          "family": "Marion",
+          "given": "DW"
+        },
+        {
+          "family": "Palmer",
+          "given": "AM"
+        },
+        {
+          "family": "Schiding",
+          "given": "JK"
+        }
+      ],
+      "editors": null,
+      "title": "Regulation of interstitial excitatory amino acid concentrations after cortical contusion injury",
+      "container": "Brain Res",
+      "year": 2002,
+      "month": null,
+      "day": null,
+      "volume": "935",
+      "issue": "1-2",
+      "pages": "40-6",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "1. Standard journal article (more than six authors)",
+      "notes": "NLM “Samples of Formatted References for Authors of Journal Articles” (ICMJE/Vancouver samples); first six authors followed by et al.; combined issue 1-2; no month"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "NLM samples (ICMJE)",
+    "kind": "journal-article",
+    "source": "https://www.nlm.nih.gov/bsd/uniform_requirements.html",
+    "expected": "Zhang M, Holman CD, Price SD, Sanfilippo FM, Preen DB, Bulsara MK. Comorbidity and repeat admission to hospital for adverse drug reactions in older adults: retrospective cohort study. BMJ. 2009 Jan 7;338:a2752. doi: 10.1136/bmj.a2752. PubMed PMID: 19129307; PubMed Central PMCID: PMC2615549.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Zhang",
+          "given": "M"
+        },
+        {
+          "family": "Holman",
+          "given": "CD"
+        },
+        {
+          "family": "Price",
+          "given": "SD"
+        },
+        {
+          "family": "Sanfilippo",
+          "given": "FM"
+        },
+        {
+          "family": "Preen",
+          "given": "DB"
+        },
+        {
+          "family": "Bulsara",
+          "given": "MK"
+        }
+      ],
+      "editors": null,
+      "title": "Comorbidity and repeat admission to hospital for adverse drug reactions in older adults: retrospective cohort study",
+      "container": "BMJ",
+      "year": 2009,
+      "month": "Jan",
+      "day": 7,
+      "volume": "338",
+      "issue": null,
+      "pages": null,
+      "articleNumber": "a2752",
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1136/bmj.a2752",
+      "url": null,
+      "accessed": null,
+      "type": "36. Journal article on the Internet — Article with a Digital Object Identifier (DOI)",
+      "notes": "NLM “Samples of Formatted References for Authors of Journal Articles” (ICMJE/Vancouver samples); DOI written as “doi: …” after the pagination; PMID and PMCID appended (MEDLINE/PubMed optional format)"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "NLM samples (ICMJE)",
+    "kind": "book",
+    "source": "https://www.nlm.nih.gov/bsd/uniform_requirements.html",
+    "expected": "Murray PR, Rosenthal KS, Kobayashi GS, Pfaller MA. Medical microbiology. 4th ed. St. Louis: Mosby; 2002.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Murray",
+          "given": "PR"
+        },
+        {
+          "family": "Rosenthal",
+          "given": "KS"
+        },
+        {
+          "family": "Kobayashi",
+          "given": "GS"
+        },
+        {
+          "family": "Pfaller",
+          "given": "MA"
+        }
+      ],
+      "editors": null,
+      "title": "Medical microbiology",
+      "container": null,
+      "year": 2002,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Mosby",
+      "place": "St. Louis",
+      "edition": "4th ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "19. Personal author(s)",
+      "notes": "NLM “Samples of Formatted References for Authors of Journal Articles” (ICMJE/Vancouver samples); no page count"
+    }
+  },
+  {
+    "style": "vancouver",
+    "styleEdition": "NLM samples (ICMJE)",
+    "kind": "edited-book",
+    "source": "https://www.nlm.nih.gov/bsd/uniform_requirements.html",
+    "expected": "Gilstrap LC 3rd, Cunningham FG, VanDorsten JP, editors. Operative obstetrics. 2nd ed. New York: McGraw-Hill; 2002.",
+    "inText": null,
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Gilstrap",
+          "given": "LC 3rd"
+        },
+        {
+          "family": "Cunningham",
+          "given": "FG"
+        },
+        {
+          "family": "VanDorsten",
+          "given": "JP"
+        }
+      ],
+      "title": "Operative obstetrics",
+      "container": null,
+      "year": 2002,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "McGraw-Hill",
+      "place": "New York",
+      "edition": "2nd ed.",
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "20. Editor(s), compiler(s) as author",
+      "notes": "NLM “Samples of Formatted References for Authors of Journal Articles” (ICMJE/Vancouver samples); “3rd” generational suffix"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "book",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "B. Klaus and P. Horn, *Robot Vision*. Cambridge, MA, USA: MIT Press, 1986.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Klaus",
+          "given": "B."
+        },
+        {
+          "family": "Horn",
+          "given": "P."
+        }
+      ],
+      "editors": null,
+      "title": "Robot Vision",
+      "container": null,
+      "year": 1986,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "MIT Press",
+      "place": "Cambridge, MA, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "B. Books — Book",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); in-text form from section I.A: “According to [1]; as demonstrated in [2]; as shown by Brown [4], [5]; as mentioned earlier [2], [4], [5], [6], [7], [9]; Smith [4] and Brown and Jones [5]; Wood et al. [7]”; the doc’s italic span includes the period and following space after the title; normalised to title-only italics"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "book-chapter",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "L. Stein, “Random patterns,” in *Computers and You*, J. S. Brake, Ed., New York, NY, USA: Wiley, 1994, pp. 55–70.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Stein",
+          "given": "L."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Brake",
+          "given": "J. S."
+        }
+      ],
+      "title": "Random patterns",
+      "container": "Computers and You",
+      "year": 1994,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "55–70",
+      "articleNumber": null,
+      "publisher": "Wiley",
+      "place": "New York, NY, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "B. Books — Book / Book With Editor(s)",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); single editor with “Ed.”; italic span in the doc includes the comma after the book title; normalised"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "book-chapter",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "R. L. Myer, “Parametric oscillators and nonlinear materials,” in *Nonlinear Optics*, vol. 4, P. G. Harper and B. S. Wherret, Eds., San Francisco, CA, USA: Academic, 1977, pp. 47–160.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Myer",
+          "given": "R. L."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Harper",
+          "given": "P. G."
+        },
+        {
+          "family": "Wherret",
+          "given": "B. S."
+        }
+      ],
+      "title": "Parametric oscillators and nonlinear materials",
+      "container": "Nonlinear Optics",
+      "year": 1977,
+      "month": null,
+      "day": null,
+      "volume": "4",
+      "issue": null,
+      "pages": "47–160",
+      "articleNumber": null,
+      "publisher": "Academic",
+      "place": "San Francisco, CA, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "B. Books — Book",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); two editors with “Eds.”; volume before editors"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "edited-book",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "M. Abramowitz and I. A. Stegun, Eds., *Handbook of Mathematical Functions* (Applied Mathematics Series 55). Washington, DC, USA: NBS, 1964, pp. 32–33.",
+    "inText": null,
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Abramowitz",
+          "given": "M."
+        },
+        {
+          "family": "Stegun",
+          "given": "I. A."
+        }
+      ],
+      "title": "Handbook of Mathematical Functions",
+      "container": null,
+      "year": 1964,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "32–33",
+      "articleNumber": null,
+      "publisher": "NBS",
+      "place": "Washington, DC, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "B. Books — Book (series title in parentheses)",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); editors in author position; series in parentheses after title; italic span in the doc includes trailing space; normalised"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "book",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "Westinghouse Electric Corporation (Staff of Technology and Science, Aerospace Div.), *Integrated Electronic Systems*. Englewood Cliffs, NJ, USA: Prentice-Hall, 1970.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Westinghouse Electric Corporation (Staff of Technology and Science, Aerospace Div.)"
+        }
+      ],
+      "editors": null,
+      "title": "Integrated Electronic Systems",
+      "container": null,
+      "year": 1970,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Prentice-Hall",
+      "place": "Englewood Cliffs, NJ, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "B. Books — Book",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); corporate author"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "edited-book",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "W. R. Leonard and M. H. Crawford, Eds. *Human Biology of Pastoral Populations*. New York, NY, USA: Cambridge Univ. Press, 2002.",
+    "inText": null,
+    "metadata": {
+      "authors": null,
+      "editors": [
+        {
+          "family": "Leonard",
+          "given": "W. R."
+        },
+        {
+          "family": "Crawford",
+          "given": "M. H."
+        }
+      ],
+      "title": "Human Biology of Pastoral Populations",
+      "container": null,
+      "year": 2002,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Cambridge Univ. Press",
+      "place": "New York, NY, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "B. Books — Book With Editor(s)",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); “Eds.” followed by a period, not a comma, in this example (as printed)"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "book-chapter",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "C. Bennett, “What happens when you book an airline ticket? The collection and processing of passenger data post-9/11,” in *Global Surveillance and Policing: Borders, Security, Identity*, E. Zureik and M. Salter, Eds., Cullompton, U.K.: Willan, 2005, pp. 113–138.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Bennett",
+          "given": "C."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Zureik",
+          "given": "E."
+        },
+        {
+          "family": "Salter",
+          "given": "M."
+        }
+      ],
+      "title": "What happens when you book an airline ticket? The collection and processing of passenger data post-9/11",
+      "container": "Global Surveillance and Policing: Borders, Security, Identity",
+      "year": 2005,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "113–138",
+      "articleNumber": null,
+      "publisher": "Willan",
+      "place": "Cullompton, U.K.",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "B. Books — Book With Editor(s)",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); non-US place has no state; full page numbers not elided"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "book-chapter",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "G. O. Young, “Synthetic structure of industrial plastics,” in *Plastics, vol. 3, Polymers of Hexadromicon*, J. Peters, Ed., 2nd ed. New York, NY, USA: McGraw-Hill, 1964, pp. 15–64. [Online]. Available: https://www.scirp.org",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Young",
+          "given": "G. O."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Peters",
+          "given": "J."
+        }
+      ],
+      "title": "Synthetic structure of industrial plastics",
+      "container": "Plastics, vol. 3, Polymers of Hexadromicon",
+      "year": 1964,
+      "month": null,
+      "day": null,
+      "volume": "3",
+      "issue": null,
+      "pages": "15–64",
+      "articleNumber": null,
+      "publisher": "McGraw-Hill",
+      "place": "New York, NY, USA",
+      "edition": "2nd ed.",
+      "doi": null,
+      "url": "https://www.scirp.org",
+      "accessed": null,
+      "type": "B. Books — Books, Monographs (Online)",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); edition; volume and volume title inside the italic book title; [Online]. Available: URL with no terminal period"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "journal-article",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "M. M. Chiampi and L. L. Zilberti, “Induction of electric field in human bodies moving near MRI: An efficient BEM computational procedure,” *IEEE Trans. Biomed. Eng.*, vol. 58, no. 10, pp. 2787–2793, Oct. 2011, doi: 10.1109/TBME.2011.2158315.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Chiampi",
+          "given": "M. M."
+        },
+        {
+          "family": "Zilberti",
+          "given": "L. L."
+        }
+      ],
+      "editors": null,
+      "title": "Induction of electric field in human bodies moving near MRI: An efficient BEM computational procedure",
+      "container": "IEEE Trans. Biomed. Eng.",
+      "year": 2011,
+      "month": "Oct.",
+      "day": null,
+      "volume": "58",
+      "issue": "10",
+      "pages": "2787–2793",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1109/TBME.2011.2158315",
+      "url": null,
+      "accessed": null,
+      "type": "M. Periodicals — Periodical With DOI",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); the general Periodicals list prints the same reference without “no. 10”; this is the “Periodical With DOI” version"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "journal-article",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "M. Ito et al., “Can the application of amorphous oxide TFT be an electrophoretic display?,” *J. Non-Cryst. Solids*, vol. 354, no. 19, pp. 2777–2782, Feb. 2008.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Ito",
+          "given": "M."
+        }
+      ],
+      "editors": null,
+      "title": "Can the application of amorphous oxide TFT be an electrophoretic display?",
+      "container": "J. Non-Cryst. Solids",
+      "year": 2008,
+      "month": "Feb.",
+      "day": null,
+      "volume": "354",
+      "issue": "19",
+      "pages": "2777–2782",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "M. Periodicals — Examples",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); first author + et al.; question mark followed by comma inside the quotation marks (as printed); no DOI; the doc’s italic spans spill onto “, vol. 354, ” — normalised to journal title only"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "journal-article",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "R. Fardel, M. Nagel, F. Nuesch, T. Lippert, and A. Wokaun, “Fabrication of organic light emitting diode pixels by laser-assisted forward transfer,” *Appl. Phys. Lett.*, vol. 91, no. 6, Aug. 2007, Art. no. 061103.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Fardel",
+          "given": "R."
+        },
+        {
+          "family": "Nagel",
+          "given": "M."
+        },
+        {
+          "family": "Nuesch",
+          "given": "F."
+        },
+        {
+          "family": "Lippert",
+          "given": "T."
+        },
+        {
+          "family": "Wokaun",
+          "given": "A."
+        }
+      ],
+      "editors": null,
+      "title": "Fabrication of organic light emitting diode pixels by laser-assisted forward transfer",
+      "container": "Appl. Phys. Lett.",
+      "year": 2007,
+      "month": "Aug.",
+      "day": null,
+      "volume": "91",
+      "issue": "6",
+      "pages": null,
+      "articleNumber": "061103",
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "M. Periodicals — Periodical With Article ID",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); 5 authors, serial comma before “and”; article number instead of pages"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "journal-article",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "X. Yang, W. Cao, Y. Lu, and Y. Zhou, “Hyperspectral image transformer classification networks,” *IEEE Trans. Geosci. Remote Sens.*, vol. 60, 2022, Art. no. 5528715, doi: 10.1109/TGRS.2022.3171551.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Yang",
+          "given": "X."
+        },
+        {
+          "family": "Cao",
+          "given": "W."
+        },
+        {
+          "family": "Lu",
+          "given": "Y."
+        },
+        {
+          "family": "Zhou",
+          "given": "Y."
+        }
+      ],
+      "editors": null,
+      "title": "Hyperspectral image transformer classification networks",
+      "container": "IEEE Trans. Geosci. Remote Sens.",
+      "year": 2022,
+      "month": null,
+      "day": null,
+      "volume": "60",
+      "issue": null,
+      "pages": null,
+      "articleNumber": "5528715",
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1109/TGRS.2022.3171551",
+      "url": null,
+      "accessed": null,
+      "type": "M. Periodicals — Periodical With Article ID",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); no issue or month; article number and DOI; the doc has a double space after “vol. 60,” — collapsed to one space"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "journal-article",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "H. Eriksson and P. E. Danielsson, “Two problems on Boolean memories,” *IEEE Trans. Electron. Devices*, vol. ED-11, no. 1, pp. 32–33, Jan. 1959.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Eriksson",
+          "given": "H."
+        },
+        {
+          "family": "Danielsson",
+          "given": "P. E."
+        }
+      ],
+      "editors": null,
+      "title": "Two problems on Boolean memories",
+      "container": "IEEE Trans. Electron. Devices",
+      "year": 1959,
+      "month": "Jan.",
+      "day": null,
+      "volume": "ED-11",
+      "issue": "1",
+      "pages": "32–33",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "M. Periodicals — Examples",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); pre-1988 IEEE Transactions volume carries the journal acronym (ED-11); no DOI"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "conference-paper",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "G. Veruggio, “The EURON roboethics roadmap,” in *Proc. Humanoids ’06: 6th IEEE-RAS Int. Conf. Humanoid Robots*, 2006, pp. 612–617, doi: 10.1109/ICHR.2006.321337.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Veruggio",
+          "given": "G."
+        }
+      ],
+      "editors": null,
+      "title": "The EURON roboethics roadmap",
+      "container": "Proc. Humanoids ’06: 6th IEEE-RAS Int. Conf. Humanoid Robots",
+      "year": 2006,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "612–617",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1109/ICHR.2006.321337",
+      "url": null,
+      "accessed": null,
+      "type": "C. Conferences — Conference Proceedings With DOI",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); single author; conference name abbreviated per the guide’s list"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "conference-paper",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "J. Zhao, G. Sun, G. H. Loh, and Y. Xie, “Energy-efficient GPU design with reconfigurable in-package graphics memory,” in *Proc. ACM/IEEE Int. Symp. Low Power Electron. Design (ISLPED)*, Jul. 2012, pp. 403–408, doi: 10.1145/2333660.2333752.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Zhao",
+          "given": "J."
+        },
+        {
+          "family": "Sun",
+          "given": "G."
+        },
+        {
+          "family": "Loh",
+          "given": "G. H."
+        },
+        {
+          "family": "Xie",
+          "given": "Y."
+        }
+      ],
+      "editors": null,
+      "title": "Energy-efficient GPU design with reconfigurable in-package graphics memory",
+      "container": "Proc. ACM/IEEE Int. Symp. Low Power Electron. Design (ISLPED)",
+      "year": 2012,
+      "month": "Jul.",
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "403–408",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1145/2333660.2333752",
+      "url": null,
+      "accessed": null,
+      "type": "C. Conferences — Conference Proceedings With DOI",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); 4 authors; month before year; acronym in parentheses inside italic title"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "conference-paper",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "L. S. Carmichael, N. Ghani, P. K. Rajan, K. O’Donoghue, and R. Holt, “Characterization and comparison of modern layer-2 Ethernet survivability protocols,” in *Proc. 37th Southeastern Symp. Syst. Theory (SSST 2005)*, Tuskegee, AL, USA, Mar. 20–22, 2005, pp. 124–129.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Carmichael",
+          "given": "L. S."
+        },
+        {
+          "family": "Ghani",
+          "given": "N."
+        },
+        {
+          "family": "Rajan",
+          "given": "P. K."
+        },
+        {
+          "family": "O’Donoghue",
+          "given": "K."
+        },
+        {
+          "family": "Holt",
+          "given": "R."
+        }
+      ],
+      "editors": null,
+      "title": "Characterization and comparison of modern layer-2 Ethernet survivability protocols",
+      "container": "Proc. 37th Southeastern Symp. Syst. Theory (SSST 2005)",
+      "year": 2005,
+      "month": "Mar.",
+      "day": "20–22",
+      "volume": null,
+      "issue": null,
+      "pages": "124–129",
+      "articleNumber": null,
+      "publisher": null,
+      "place": "Tuskegee, AL, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "C. Conferences — Conference Proceedings With Location",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); location and full date range; no DOI"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "conference-paper",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "S. P. Bingulac, “On the compatibility of adaptive controllers,” in *Proc. 4th Annu. Allerton Conf. Circuit Syst. Theory*, New York, NY, USA, 1994, pp. 8–16.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Bingulac",
+          "given": "S. P."
+        }
+      ],
+      "editors": null,
+      "title": "On the compatibility of adaptive controllers",
+      "container": "Proc. 4th Annu. Allerton Conf. Circuit Syst. Theory",
+      "year": 1994,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "8–16",
+      "articleNumber": null,
+      "publisher": null,
+      "place": "New York, NY, USA",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "C. Conferences — Conference Proceedings in Print",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); ordinal in numeral form; location without date"
+    }
+  },
+  {
+    "style": "ieee",
+    "styleEdition": "V 3.28.2025",
+    "kind": "conference-paper",
+    "source": "https://docs.google.com/document/d/1j1L96U2NagwWI9MEVDNVKt9pXxRzTH7h3krI3Mb6wZE/export?format=html",
+    "expected": "D. Caratelli, M. C. Viganó, G. Toso, and P. Angeletti, “Analytical placement technique for sparse arrays,” presented at the 32nd ESA Antenna Workshop, Noordwijk, The Netherlands, Oct. 5–8, 2010.",
+    "inText": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Caratelli",
+          "given": "D."
+        },
+        {
+          "family": "Viganó",
+          "given": "M. C."
+        },
+        {
+          "family": "Toso",
+          "given": "G."
+        },
+        {
+          "family": "Angeletti",
+          "given": "P."
+        }
+      ],
+      "editors": null,
+      "title": "Analytical placement technique for sparse arrays",
+      "container": "32nd ESA Antenna Workshop",
+      "year": 2010,
+      "month": "Oct.",
+      "day": "5–8",
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": "Noordwijk, The Netherlands",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "type": "C. Conferences — Conference Paper (Paper Presented at a Conference)",
+      "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); unpublished presentation: “presented at the …”, conference name not italicised, no pages"
+    }
+  }
+]

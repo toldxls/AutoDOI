@@ -45,6 +45,14 @@ check('CHANGELOG.md top entry matches package.json (' + pkg + ')', inLog === pkg
 check('index.html has a favicon', /<link rel="icon" href="data:image\/svg\+xml,/.test(html));
 check('index.html has a description', /<meta name="description"/.test(html));
 check('index.html has a Content-Security-Policy', /Content-Security-Policy/.test(html));
+// script-src lists a hash for every inline script and nothing else that would let injected script run
+var crypto = require('crypto');
+var scriptSrc = (html.match(/Content-Security-Policy" content="[^"]*?script-src ([^;]*);/) || [])[1] || '';
+var wantHashes = (html.match(/<script>([\s\S]*?)<\/script>/g) || []).map(function (b) { return "'sha256-" + crypto.createHash('sha256').update(b.replace(/^<script>/, '').replace(/<\/script>$/, ''), 'utf8').digest('base64') + "'"; });
+check('CSP script-src has no unsafe-inline or unsafe-eval', !/unsafe-inline|unsafe-eval/.test(scriptSrc), scriptSrc);
+check('CSP script-src hashes every inline script block (run ./build.sh)', wantHashes.length >= 4 && wantHashes.every(function (h) { return scriptSrc.indexOf(h) !== -1; }), scriptSrc);
+check('CSP script-src allows only self, the hashes and the citeproc CDN', scriptSrc.split(/\s+/).filter(Boolean).every(function (tok) { return tok === "'self'" || /^'sha256-[A-Za-z0-9+\/=]+'$/.test(tok) || tok === 'https://cdn.jsdelivr.net'; }), scriptSrc);
+check('index.html has no inline event handlers', !/<[a-z][^>]*\son[a-z]+\s*=/i.test(html.replace(/<script>[\s\S]*?<\/script>/g, '')));
 check('CSL styles are pinned to a commit, not master', /citation-style-language\/styles\/' \+ CSL_STYLES_COMMIT/.test(html) && /CSL_STYLES_COMMIT = '[0-9a-f]{40}'/.test(html));
 check('CSL locale is pinned to a commit, not master', /CSL_LOCALES_COMMIT = '[0-9a-f]{40}'/.test(html));
 

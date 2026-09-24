@@ -1,0 +1,48 @@
+name: canary
+# Weekly check that the real services still answer the way the page expects and that the live page works
+# against them.  Everything in the push-time workflow mocks the network; this is what catches upstream drift.
+on:
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  canary:
+    name: canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Real services answer the way the page expects
+        run: node tests/canary.js
+      - name: The live page works against the real services
+        if: success() || failure()
+        run: node tests/browser/live.test.js
+      - name: Open or update the canary issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          body="The weekly canary failed on $(date -u +%Y-%m-%d). An upstream service, a pinned file, or the live page no longer behaves the way the tests expect. Log: $run_url"
+          existing=$(gh issue list --label canary --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then gh issue comment "$existing" --body "$body"; else gh issue create --title "Canary: an upstream service or the live page changed" --label canary --body "$body"; fi
+      - name: Close the canary issue when everything passes again
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          existing=$(gh issue list --label canary --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then gh issue close "$existing" --comment "The canary passed again on $(date -u +%Y-%m-%d)."; fi
