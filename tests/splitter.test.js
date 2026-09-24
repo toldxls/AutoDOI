@@ -2,7 +2,7 @@ var ROOT = require('path').resolve(__dirname, '..');
 var FIX = require('path').join(__dirname, 'fixtures');
 const html = require('fs').readFileSync(require('path').join(ROOT, 'index.html'), 'utf8');
 const a = html.indexOf('  // Lines that are nothing but an identifier'), b = html.indexOf('  async function resolve(refText)');
-const splitReferences = new Function(html.slice(a, b) + '; return splitReferences;')();
+const splitReferences = new Function('A', html.slice(a, b) + '; return splitReferences;')(require(require('path').join(ROOT, 'citations.js')));
 let pass = 0, fail = 0;
 // Arabic and Hebrew references open with a name run and a year, with no capitals to go by
 [['Arabic, one per line', 'العمري، محمد أحمد (2019). التغيرات المناخية وأثرها على الزراعة في اليمن. مجلة الدراسات الجغرافية، 12(3)، 45-67.\nالحسني، فاطمة (2020). إدارة الموارد المائية في المناطق الجافة. مجلة العلوم البيئية، 8، 101-120.\nالخطيب، أحمد (2018). التصحر في شمال أفريقيا. مجلة البحوث الجغرافية، 5(1)، 1-20.', 3],
@@ -51,6 +51,16 @@ t('year-led lines', "Smith J, Jones K\n2019. Title of the paper. Journal 1:2-3.\
 t('hanging indent capital wrap', "Smith, J. (2019). A long title about the geology of the\nNorthern Territory. Journal of Geology, 12, 1-5.\nJones, K. (2020). Other. Nature Geoscience, 12, 1-5.", 2);
 t('book ending Press.', "Darwin, C. (1859). On the origin of species. John Murray.\nMayr, E. (1942). Systematics and the origin of species. Columbia University Press.\nSimpson, G. G. (1944). Tempo and mode. Columbia University Press.", 3);
 t('Chicago', "Smith, John. 2020. “A Title.” Geology 48: 1–2.\nJones, Kate. 2019. “Another.” Nature 5: 3–4.", 2);
+// adversarial review: a wrapped Arabic or Hebrew line with a year mid-sentence is not a new reference; Arabic-Indic and Persian digits and hijri years are years
+t('Arabic wrap with a year mid-sentence', 'العمري، محمد أحمد (2019). التغيرات المناخية وأثرها على الزراعة في اليمن خلال\nالفترة من 1990 إلى 2015. مجلة الدراسات الجغرافية، 12(3)، 45-67.\nالحسني، فاطمة (2020). إدارة الموارد المائية في المناطق الجافة. مجلة العلوم البيئية، 8، 101-120.\nالخطيب، أحمد (2018). التصحر في شمال أفريقيا. مجلة البحوث الجغرافية، 5(1)، 1-20.', 3);
+t('Hebrew wrap with a year mid-sentence', 'כהן, י. (2015). גיאולוגיה של הנגב והשינויים\nבשנת 2015 ואילך. כתב עת למדעי כדור הארץ, 22, 33-48.\nלוי, ד. (2017). מים בישראל. מחקרים בגיאוגרפיה, 9(2), 5-19.\nמזרחי, ר. (2019). אקלים המזרח התיכון. אופקים בגיאוגרפיה, 41, 77-90.', 3);
+t('Arabic-Indic digits', 'العمري، محمد أحمد (٢٠١٩). التغيرات المناخية وأثرها على الزراعة في اليمن. مجلة الدراسات الجغرافية، ١٢(٣)، ٤٥-٦٧.\nالحسني، فاطمة (٢٠٢٠). إدارة الموارد المائية في المناطق الجافة. مجلة العلوم البيئية، ٨، ١٠١-١٢٠.\nالخطيب، أحمد (٢٠١٨). التصحر في شمال أفريقيا. مجلة البحوث الجغرافية، ٥(١)، ١-٢٠.', 3);
+t('Persian digits and solar years', 'احمدی، علی (۱۳۹۸). زمین‌شناسی ایران مرکزی. مجله علوم زمین، ۱۲، ۴۵-۶۷.\nرضایی، مریم (۱۳۹۷). آب‌های زیرزمینی. فصلنامه محیط زیست، ۸، ۱۰۱-۱۲۰.\nکریمی، حسن (۱۳۹۶). زلزله‌های ایران. مجله زمین، ۵، ۱-۲۰.', 3);
+t('hijri years', 'العمري، محمد (1440ه). التغيرات المناخية وأثرها على الزراعة. مجلة الدراسات، 12، 45-67.\nالحسني، فاطمة (1441ه). إدارة الموارد المائية. مجلة العلوم، 8، 101-120.\nالخطيب، أحمد (1439ه). التصحر في شمال أفريقيا. مجلة البحوث، 5، 1-20.', 3);
+// glue: a reference given in Cyrillic and again transliterated is one; a chapter's "In K. Jones (Ed.)" is not a new reference; a link before a space is an end
+t('Cyrillic reference with its transliteration', 'Иванов И.И. (2013) Геохимия гранитов Урала. Геохимия 12:54–58. Ivanov I.I. (2013) Geochemistry of Ural granites. Geochemistry 12:54–58 (in Russian).', 1);
+t('chapter with its book after In', 'Smith, J. (2013). Chapter title, pp. 54–58. In K. Jones (Ed.), Book title. Berlin: Springer, 2013.', 1);
+t('run together after a DOI link', 'Smith, J. (2020). Title one. Nature, 1, 1–2. https://doi.org/10.1007/s00410-019-1234-x Jones, K. (2019). Title two. Nature, 2, 3–4.', 2);
 console.log(pass + ' passed, ' + fail + ' failed');
 
 // --- regressions from the 2026-09-23 page-script review ---

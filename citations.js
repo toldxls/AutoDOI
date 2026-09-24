@@ -55,7 +55,7 @@
     do {
       prev = doi;
       doi = doi.replace(/\/(full|abstract|pdf|epdf|epub|fulltext|html|meta|summary|references|figures|tables|supplemental|suppl_file)(?:[\/;].*)?$/i, '');
-      doi = trimUnbalanced(trimTail(doi.replace(/(?:'|\u2019)s$/, ''), DOI_TAIL));
+      doi = trimUnbalanced(trimTail(doi.replace(/(?:'|\u2019)s$/, '').replace(/[\u00B2\u00B3\u00B9\u2070-\u209F]+$/, ''), DOI_TAIL)); // a footnote number set in superscript after the DOI
     } while (doi !== prev);
     if (!/^10\.\d{4,9}\/./.test(doi)) return null; // nothing left after the prefix
     // bioRxiv / medRxiv landing pages: 10.1101/2020.03.24.20042937v3.full -> 10.1101/2020.03.24.20042937
@@ -332,7 +332,7 @@
       // followed by a count, a bracket, or (inside a site list) a comma or the closing bracket
       // …or, in a mineral formula written IMA style, by the next element: "Ca19Fe2+Al4(Al7Fe2+)(SiO4)10" (vesuvianite group), "KFe2+Fe3+(SO4)2"
       var mineral = /[(\[]/.test(s) || (s.match(/[A-Z][a-z]?(?![a-z])/g) || []).filter(function (e, i, a) { return ELEM[e] && a.indexOf(e) === i; }).length >= 3; // "Ca2+Mg2+ ratio" is not one
-      if (metal && (m = rest.match(depth > 0 ? /^(\d[+−])(?=\d|[(\[,)\]])/ : /^(\d[+−])(?=\d|[(\[])/)) || (metal && mineral && (m = rest.match(/^(\d[+−])(?=[A-Z][a-z]?(?![a-z]))/)))) {
+      if (metal && (m = rest.match(depth > 0 ? /^(\d[+−])(?=\d|[(\[,)\]])/ : /^(\d[+−])(?=\d|[(\[])/)) || (metal && mineral && (m = rest.match(/^(\d[+−])(?=[A-Z][a-z]?(?![a-z])|$)/)))) {
         toks.push({ t: 'ox', v: m[1] }); i += m[1].length; continue;
       }
       // IMA order, count before charge: "PbFe22+V23+(PO4)3(OH)3" -> PbFe₂²⁺V₂³⁺(PO₄)₃(OH)₃
@@ -420,6 +420,7 @@
     }
     var base = toks.slice(), charge = S;
     if (d && prev && prev.t === 'close' && prev.v === ']' && d.length === 1) { base.pop(); charge = d + S; } // [Fe(CN)6]3−
+    else if (d.length === 1 && prev && prev.t === 'el' && sign.length === 1 && toks.some(function (k) { return k.t === 'ox'; })) { base.pop(); charge = d + S; } // IMA style, the last cation charged too: Fe2+Mn2+Mg2+
     else if (d.length >= 2) { base[base.length - 1] = { t: 'n', v: d.slice(0, -1) }; charge = d.slice(-1) + S; } // SO42−
     var plain = base.map(function (k) { return k.v; }).join('');
     if (!acceptNeutral(base, false) && !(BARE_IONS[plain] && !d)) return null; // HIV+, CK7+, HPV16+ are not ions
@@ -1878,6 +1879,7 @@
           if (!CJK_RE.test(seg)) { if (seg.length >= 3) out.push(seg); return; }
           if (seg.length === 1) out.push(seg);
           for (var i = 0; i + 1 < seg.length; i++) out.push(seg.slice(i, i + 2));
+          if (seg.length >= 2 && seg.length <= 4) for (var q = 0; q < seg.length; q++) out.push(seg.charAt(q)); // a name: 王明 is 王 + 明 too
         });
       } else if (w.length >= 3) {
         out.push(w);
@@ -1891,8 +1893,9 @@
   // Spelling folded the same way on both sides, so British and American forms compare equal (behaviour/behavior,
   // sulphide/sulfide, palaeo/paleo, modelling/modeling, centre/center, -isation/-ization); only equality is ever tested
   function foldSpelling(w) {
-    return w.replace(/sulph/g, 'sulf').replace(/ae|oe/g, 'e').replace(/our$/, 'or').replace(/i[sz]ation$/, 'ization').replace(/i[sz]e[sd]?$/, 'ize')
-      .replace(/y[sz]e[sd]?$/, 'yze').replace(/re$/, 'er').replace(/ll/g, 'l').replace(/mme$/, 'm').replace(/logue$/, 'log').replace(/^grey$/, 'gray');
+    if (w.length < 6) return w === 'grey' ? 'gray' : w;                                   // short words are left as they are: gill is not gil, poet is not pet
+    return w.replace(/sulph/g, 'sulf').replace(/(ae|oe)(?![l])/g, 'e').replace(/our$/, 'or').replace(/i[sz]ation$/, 'ization').replace(/i[sz]e[sd]?$/, 'ize')
+      .replace(/y[sz]e[sd]?$/, 'yze').replace(/(t|b)re$/, '$1er').replace(/ll(?=[iea])/g, 'l').replace(/mme$/, 'm').replace(/logue$/, 'log');
   }
   // Damerau-Levenshtein distance, stopping once it exceeds max
   function editDistance(a, b, max) {
@@ -1925,10 +1928,14 @@
     return false;
   }
   function titleScore(title, hay, haySet) {
-    var words = tokens(title).map(foldSpelling);
+    var raw = tokens(title), words = [], i;
+    for (i = 0; i < raw.length; i++) { // a Cyrillic word is followed by its transliteration: one word, found if either form is
+      if (i + 1 < raw.length && /[\u0400-\u04ff]/.test(raw[i]) && raw[i + 1] === translit(raw[i])) { words.push([foldSpelling(raw[i]), foldSpelling(raw[i + 1])]); i++; }
+      else words.push([foldSpelling(raw[i])]);
+    }
     if (!words.length) return 0;
-    var hit = 0;
-    for (var i = 0; i < words.length; i++) if (wordFound(words[i], i, words, hay, haySet)) hit++;
+    var flat = words.map(function (p) { return p[0]; }), hit = 0;
+    for (i = 0; i < words.length; i++) if (words[i].some(function (w) { return wordFound(w, i, flat, hay, haySet); })) hit++;
     return hit / words.length;
   }
   // How well does a found record explain the reference text the user pasted? 0..1
@@ -1952,7 +1959,7 @@
     var persons = r.authors.filter(function (p) { return !p.literal; });
     var authorOk = true;
     if (persons.length) {
-      var fams = tokens(persons[0].family).map(foldSpelling), fam = fams[0];
+      var fams = tokens(persons[0].family), fam = fams[0]; // names are compared as written (plus the transliteration), not spelling-folded
       if (fam && !fams.some(function (f) { return haySet[f] || (f.length >= 5 && hay.some(function (h) { return editDistance(h, f, f.length >= 8 ? 2 : 1) <= (f.length >= 8 ? 2 : 1); })); })) authorOk = false; // "Safna" for "Safina"; "Пароникян" for "Paronikyan"
     }
     // "(1964a)" is a year; "1573-1588" is a page range, but only a real year check can tell, so every four-digit token counts
@@ -1971,9 +1978,11 @@
     if (!authorOk) score -= 0.15;
     // A reference with no title ("Бабичев А.В. и др. // Письма в ЖТФ. 2020. Т. 46. № 9. С. 35", "Smith J. Nature 500:54 (2013)"):
     // author, year, volume and first page agreeing with the record is a specific enough match; three of the four is one to check
+    var STOP_PREFIX = /^(?:with|from|that|this|into|over|under|these|those|there|their|what|when|where|which|while|other|about|after|before|between)$/;
     if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
-      var raw = String(refText), nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
-      var volOk = r.volume && new RegExp('(^|[^\\d])' + r.volume.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\d])').test(raw);
+      var raw = String(refText).replace(/^\s*(?:\[\d{1,3}\]|\d{1,3}[.)])\s+/, ''), nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); }); // a list number is not a volume
+      var volText = raw.replace(/(\d)\s*\(\d{1,4}\)/g, '$1').replace(/(?:\bno\.?|\u2116|\bissue)\s*\d+/gi, ''); // "5(12)", "no. 12": an issue is not a volume
+      var volOk = r.volume && new RegExp('(^|[^\\d])' + r.volume.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\d])').test(volText);
       var firstPage = (r.pages.match(/^[A-Za-z]?\d+/) || [''])[0];
       var pageOk = firstPage && new RegExp('(^|[^\\d])' + firstPage.replace(/^0+/, '') + '(?![\\d])').test(raw);
       // "15-25" is one page range, not volume 25 and page 15
@@ -1981,10 +1990,34 @@
       while (volOk && pageOk && (rg = rangeRe.exec(raw))) { var ends = [rg[1], rg[2]]; if (ends.indexOf(String(r.volume)) !== -1 && ends.indexOf(firstPage.replace(/^0+/, '')) !== -1) { volOk = false; } }
       var known = {}; // the record's author names and journal words; whatever else the reference says of five letters or more is a title
       r.authors.forEach(function (p) { tokens(p.family).forEach(function (w) { known[foldSpelling(w)] = 1; }); });
-      tokens(r.container + ' ' + r.shortContainer).forEach(function (w) { known[foldSpelling(w)] = 1; });
-      var leftover = hay.filter(function (w) { return w.length >= 5 && !known[w] && !known[foldSpelling(translit(w))] && !/^\d+$/.test(w); }).length;
-      if (nearYear && volOk && pageOk) score = Math.max(score, 0.85);          // the same author, year, volume and first page: the same article
-      else if (nearYear && leftover <= 3 && (volOk || pageOk)) score = Math.max(score, 0.6); // three of the four in a line with no title words: check it
+      var jwords = tokens(r.container + ' ' + r.shortContainer).filter(function (w) { return w.length >= 4 && !/^\d+$/.test(w); }).map(foldSpelling);
+      var ofJournal = function (w) { return jwords.some(function (j) { return j === w || (w.length >= 4 && !STOP_PREFIX.test(w) && j.indexOf(w) === 0); }); }; // "Geophys" abbreviates "Geophysical"; "the" does not abbreviate "Thermochimica"
+      // a name the reference writes with initials ("Мохсени Т.И.", "J. Smith") is an author, however the record spells it
+      var NAME_INI = /([A-Za-zÀ-ɏͰ-ϿЀ-ӿ]{3,}),?\s+(?:[A-ZÀ-ÞΑ-ΩА-Я]\.\s?){1,3}|(?:[A-ZÀ-ÞΑ-ΩА-Я]\.\s?){1,3}([A-Za-zÀ-ɏͰ-ϿЀ-ӿ]{3,})/g, nm;
+      while ((nm = NAME_INI.exec(raw))) tokens(nm[1] || nm[2]).forEach(function (w) { known[foldSpelling(w)] = 1; });
+      // a title word can only disagree with a title in its own script: a Russian reference to a record whose title is English has no title to compare
+      var titleText = String(r.title || '') + ' ' + String(r.originalTitle || ''), letters = function (re) { return (titleText.match(re) || []).length; };
+      var cnt = { cyr: letters(/[Ѐ-ӿ]/g), grk: letters(/[Ͱ-Ͽ]/g), cjk: letters(/[぀-ヿ㐀-鿿가-힯]/g), lat: letters(/[A-Za-zÀ-ɏ]/g) }, total = cnt.cyr + cnt.grk + cnt.cjk + cnt.lat;
+      var scriptOf = function (w) { return /[Ѐ-ӿ]/.test(w) ? 'cyr' : /[Ͱ-Ͽ]/.test(w) ? 'grk' : /[぀-ヿ㐀-鿿가-힯]/.test(w) ? 'cjk' : 'lat'; };
+      // …and only in the reference's own script: the bracketed English rendering of a Russian reference is not its title
+      var refLetters = function (re) { return (raw.match(re) || []).length; }, refCnt = { cyr: refLetters(/[Ѐ-ӿ]/g), grk: refLetters(/[Ͱ-Ͽ]/g), cjk: refLetters(/[぀-ヿ㐀-鿿가-힯]/g), lat: refLetters(/[A-Za-zÀ-ɏ]/g) };
+      var refScript = Object.keys(refCnt).sort(function (x, y) { return refCnt[y] - refCnt[x]; })[0];
+      var comparable = function (w) { return total > 0 && scriptOf(w) === refScript && cnt[refScript] >= 0.3 * total; };
+      // links, DOIs, EDN codes and the words around locators are not title words
+      var hayC = tokens(raw.replace(/https?:\/\/\S+|\b(?:doi|dx\.doi)\S*|10\.\d{4,9}\/\S+|\bEDN:?\s*[A-Z]{6}\b/gi, ' ')), NOT_TITLE = /^(?:https?|suppl|supplement|issue|volume|pages|available|accessed|retrieved|online|cited|article|number)$/;
+      var journalSaid = false, leftover = 0;
+      hayC.forEach(function (w, i) {
+        if (i && /[Ѐ-ӿ]/.test(hayC[i - 1]) && w === translit(hayC[i - 1])) return; // the transliteration the tokeniser adds beside a Cyrillic word
+        var f = foldSpelling(translit(w));
+        if (ofJournal(w) || ofJournal(f)) { journalSaid = true; return; }
+        if (w.length >= 5 && !known[w] && !known[f] && !/^\d+$/.test(w) && !NOT_TITLE.test(w) && comparable(w)) leftover++;
+      });
+      var journalOk = journalSaid || !jwords.length || leftover === 0; // the journal named, or no journal named at all; an unexplained word may be another journal
+      // a line with no title of its own: the same author, year, volume and first page is the same article; three of the four is one to check.
+      // A full reference whose title disagrees is a different paper whatever the numbers say, unless the journal agrees too: then check it
+      if (nearYear && volOk && pageOk && leftover <= 2) score = Math.max(score, journalOk ? 0.85 : 0.6);
+      else if (nearYear && volOk && pageOk && journalSaid) score = Math.max(score, 0.6);
+      else if (nearYear && leftover <= 3 && (volOk || pageOk)) score = Math.max(score, 0.6);
     }
     return Math.max(0, Math.min(1, score));
   }
@@ -2002,6 +2035,7 @@
     format: format,
     formatHtml: formatHtml,
     stripTags: stripTags,
+    translit: translit,
     options: OPTIONS,
     titleHtml: titleHtml,
     titleText: function (r) { return marksToText(displayTitle(r)); },

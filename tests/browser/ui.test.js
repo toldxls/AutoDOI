@@ -89,7 +89,7 @@ async function newPage(browser, base, dark) {
   var ctx = await browser.newContext({ viewport: { width: 1100, height: 900 }, colorScheme: dark ? 'dark' : 'light', permissions: ['clipboard-read', 'clipboard-write'] });
   var page = await ctx.newPage();
   var state = { errors: [], requests: [] };
-  page.on('pageerror', function (e) { state.errors.push('pageerror: ' + e.message); });
+  page.on('pageerror', function (e) { state.errors.push('pageerror: ' + e.message + ' @ ' + String(e.stack || '').split('\n').slice(1, 4).join(' <- ').replace(/\s+/g, ' ')); });
   page.on('console', function (msg) { if (msg.type() === 'error' && !/Failed to load resource/.test(msg.text())) state.errors.push('console: ' + msg.text()); });
   await mockNetwork(page, base, state.requests);
   return { ctx: ctx, page: page, state: state };
@@ -302,6 +302,21 @@ async function runFlows(browser, base, dark, cslReady) {
     ta.focus(); ta.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
   });
   check(name('a paste without scripts is left to the browser'), (await page.inputValue('#export-input')) === '', JSON.stringify(await page.inputValue('#export-input')));
+  // Word puts a line break between paragraphs; a table's number column is a list number; hidden and struck text is dropped; a footnote after a DOI stays out of it
+  await page.selectOption('#split-mode', 'auto');
+  await page.evaluate(function () {
+    var ta = document.getElementById('export-input'), dt = new DataTransfer(); ta.value = '';
+    dt.setData('text/html', '<p class=MsoNormal>Smith, J. (2020). A long title about H<sub>2</sub>O in the</p>\r\n<p class=MsoNormal>deep mantle. Journal, 1, 1–5.</p>\r\n<p class=MsoNormal>Jones, K. (2019). Title<span style="display:none">DRAFT</span>. J 2:2. <del>peridotite</del><ins>eclogite</ins> https://doi.org/10.1038/nature12373<sup>2</sup></p>\r\n<table><tr><td>3</td><td>Brown, B. (2018). Water, H<sub>2</sub>O. J 3:3.</td></tr></table>');
+    dt.setData('text/plain', 'x');
+    ta.focus(); ta.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+  var wordPaste = await page.inputValue('#export-input');
+  check(name('Word paragraphs paste as lines without blank lines between them'), wordPaste.split('\n').length === 4 && /in the\ndeep mantle/.test(wordPaste), JSON.stringify(wordPaste));
+  check(name('hidden and struck text is dropped, a table number column becomes a list number, a footnote after a DOI stays out'), /Title\. J 2:2\. eclogite https:\/\/doi\.org\/10\.1038\/nature12373²$/m.test(wordPaste) && /^3\. Brown, B\. \(2018\)\. Water, H₂O\. J 3:3\.$/m.test(wordPaste), JSON.stringify(wordPaste));
+  await page.waitForFunction(function () { return /3 references/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  check(name('the pasted Word text splits into three references in automatic layout'), /^3 references/.test(await page.textContent('#split-count')), await page.textContent('#split-count'));
+  await page.fill('#export-input', '');
+  await page.selectOption('#split-mode', 'lines');
   // 9. File import: a RIS file and a BibTeX file are read directly, no lookup
   await page.fill('#export-input', '');
   var before = s.state.requests.length;

@@ -72,5 +72,47 @@ var CP = { 0x80: 0x20AC, 0x82: 0x201A, 0x83: 0x0192, 0x84: 0x201E, 0x85: 0x2026,
 function garble(s) { return Array.from(Buffer.from(s, 'utf8')).map(function (b) { return String.fromCharCode(CP[b] || b); }).join(''); }
 ['Bačík, P., Škoda, R. – “quoted” Skřápková', 'Uher, P. (2026) Modraite – Malé Karpaty', 'São Paulo não é', 'Müller & Größe – Ångström'].forEach(function (s) { ok('mojibake repaired: ' + s.slice(0, 20), H.repairMojibake(garble(s)) === s, JSON.stringify(H.repairMojibake(garble(s)))); });
 ['Bačík and Škoda', 'São Paulo não é', 'Ångström Ã la carte', 'plain ascii text 2026', '日本語の参考文献'].forEach(function (s) { ok('left alone: ' + s.slice(0, 20), H.repairMojibake(s) === s, JSON.stringify(H.repairMojibake(s))); });
+// adversarial review: styles that put initials first or write full given names, months, abbreviations, access dates, links
+var kuc = A.normalize({ type: 'journal-article', DOI: '10.1038/nature12373', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'G.' }, { family: 'Maurer', given: 'P. C.' }, { family: 'Yao', given: 'N. Y.' }, { family: 'Kubo', given: 'M.' }, { family: 'Noh', given: 'H. J.' }, { family: 'Lo', given: 'P. K.' }, { family: 'Park', given: 'H.' }, { family: 'Lukin', given: 'M. D.' }], 'container-title': ['Nature'], issued: { 'date-parts': [[2013, 8, 1]] }, volume: '500', issue: '7460', page: '54-58' });
+var kucFull = A.normalize({ type: 'journal-article', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'Georg' }, { family: 'Maurer', given: 'Peter C.' }, { family: 'Yao', given: 'Norman Y.' }, { family: 'Kubo', given: 'Mikhail' }, { family: 'Noh', given: 'Hyun J.' }, { family: 'Lo', given: 'Po K.' }, { family: 'Park', given: 'Hongkun' }, { family: 'Lukin', given: 'Mikhail D.' }], 'container-title': ['Nature'], issued: { 'date-parts': [[2013]] }, volume: '500', issue: '7460', page: '54-58' });
+var pnas = A.normalize({ type: 'journal-article', title: ['A title of some paper about things'], author: [{ family: 'Smith', given: 'J. A.' }], 'container-title': ['Proceedings of the National Academy of Sciences'], issued: { 'date-parts': [[2013]] }, volume: '110', page: '1234-1240' });
+var litvin = A.normalize({ type: 'journal-article', title: ['A title of some paper about things'], author: [{ family: 'Litvin', given: 'Yu. A.' }], 'container-title': ['Proceedings of the National Academy of Sciences'], issued: { 'date-parts': [[2013]] }, volume: '110', page: '1234-1240' });
+[['IEEE, initials first', 'G. Kucsko, P. C. Maurer, N. Y. Yao, M. Kubo, H. J. Noh, P. K. Lo, H. Park, and M. D. Lukin, “Nanometre-scale thermometry in a living cell,” Nature, vol. 500, no. 7460, pp. 54–58, 2013.', kuc],
+ ['RSC, initials first', 'G. Kucsko, P. C. Maurer, N. Y. Yao and M. D. Lukin, Nature, 2013, 500, 54–58.', kuc],
+ ['Chicago, full given names', 'Kucsko, Georg, Peter C. Maurer, Norman Y. Yao, Mikhail Kubo, Hyun J. Noh, Po K. Lo, Hongkun Park, and Mikhail D. Lukin. 2013. “Nanometre-Scale Thermometry in a Living Cell.” Nature 500 (7460): 54–58.', kucFull],
+ ['Vancouver month', 'Kucsko G, Maurer PC, Yao NY, Kubo M, Noh HJ, Lo PK, Park H, Lukin MD. Nanometre-scale thermometry in a living cell. Nature. 2013 Aug 1;500(7460):54-8.', kuc],
+ ['Chicago month', 'Kucsko, G., et al. “Nanometre-scale thermometry in a living cell.” Nature 500, no. 7460 (August 2013): 54–58.', kuc],
+ ['three-letter journal abbreviations', 'Smith JA (2013) A title of some paper about things. Proc Natl Acad Sci USA 110:1234–1240.', pnas],
+ ['abbreviations with periods', 'Smith, J. A. (2013). A title of some paper about things. Proc. Natl. Acad. Sci. U.S.A., 110, 1234–1240.', pnas],
+ ['two-letter initials run together', 'Litvin YuA (2013) A title of some paper about things. Proc Natl Acad Sci 110:1234', litvin],
+ ['year suffix', 'Kucsko, G. et al. (2013a) Nanometre-scale thermometry in a living cell. Nature 500, 54–58.', kuc],
+ ['and others', 'Kucsko G, Maurer PC, and others. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54-58.', kuc],
+ ['words of a link', 'Kucsko G, Maurer PC. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54-58. https://www.nature.com/articles/nature12373', kuc],
+ ['Vancouver web with a cited date', 'Kucsko G, Maurer PC. Nanometre-scale thermometry in a living cell. Nature [Internet]. 2013 [cited 2024 Jan 5];500:54-58.', kuc],
+ ['APA retrieval date', 'Kucsko, G., & Maurer, P. C. (2013). Nanometre-scale thermometry in a living cell. Nature, 500, 54–58. Retrieved March 3, 2024, from https://www.nature.com/articles/nature12373', kuc],
+ ['Suppl.', 'Kucsko G, Maurer PC. Nanometre-scale thermometry in a living cell. Nature. 2013;500(Suppl. 3):54-58.', kuc],
+ ['decomposed (NFD) text', 'Kucsko, G., Maurer, P. C. (2013). Nanometre-scale thermometry in a living cell. Nature, 500, 54–58.'.normalize('NFD'), kuc]
+].forEach(function (c) { var mm = marksOf(c[1], c[2]); ok('no false mark: ' + c[0], mm.length === 0, JSON.stringify(mm)); });
+var m54 = marksOf('Kucsko G, Maurer PC. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54–58.', A.normalize({ type: 'journal-article', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'G.' }, { family: 'Maurer', given: 'P. C.' }], 'container-title': ['Nature'], issued: { 'date-parts': [[2013]] }, volume: '500', page: '54-8' }));
+ok('an abbreviated page range in the record is the full one in the text', m54.length === 0, JSON.stringify(m54));
+var mqc = marksOf('Kucsko G, Maurer QC, Yao NY. Nanometre-scale thermometry in a living cell. Nature. 2013;500(7460):54-58.', kuc);
+ok('a wrong two-letter initial before a comma is marked', mqc.length === 1 && /^diff:QC\|.*P\. C\./.test(mqc[0]), JSON.stringify(mqc));
+var mdoi = marksOf('Kucsko G, Maurer PC. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54-58. https://doi.org/10.1038/nature99999', kuc);
+ok('a DOI other than the record\'s is marked as one item', mdoi.length === 1 && /^diff:https:\/\/doi\.org\/10\.1038\/nature99999\|.*10\.1038\/nature12373/.test(mdoi[0]), JSON.stringify(mdoi));
+var mnfd = marksOf('Bacik, P., Uher, P. (2026). Modraite, a new vesuvianite-group mineral from the Modra skarn, Malé Karpaty Mountains, Slovakia. American Mineralogist.'.normalize('NFD'), rec);
+ok('decomposed text still gets the diacritic mark, on the whole word', mnfd.length === 1 && /^accent:Bacik\|/.test(mnfd[0]), JSON.stringify(mnfd));
+// lending: casing letter by letter, no lend when the text also writes the plain form or the word belongs to the title
+function lend(auth, raw, title) { var r = A.normalize({ type: 'journal-article', title: [title || 'T'], author: auth, issued: { 'date-parts': [[2020]] } }); H.adoptDiacritics(r, raw); return r.authors.map(function (p) { return p.family + '/' + p.given; }).join(','); }
+ok('inner capitals survive a lend', lend([{ family: 'McDonald', given: 'A.' }], 'McDónald, A. (2020). T.') === 'McDónald/A.', lend([{ family: 'McDonald', given: 'A.' }], 'McDónald, A. (2020). T.'));
+ok('two people, one with the accent: nothing lent', lend([{ family: 'Muller', given: 'A.' }, { family: 'Muller', given: 'B.' }], 'Müller, A., Muller, B. (2020). X.') === 'Muller/A.,Muller/B.');
+ok('a title word is not lent to a name', lend([{ family: 'Male', given: 'J.' }], 'Male, J. (2020). Geology of the Malé Karpaty. J.', 'Geology of the Malé Karpaty') === 'Male/J.');
+ok('a given name is not lent to another author\'s family name', lend([{ family: 'Garcia', given: 'Angel' }, { family: 'Angel', given: 'B.' }], 'García, Ángel, Angel, B. (2020). T.') === 'García/Angel,Angel/B.', lend([{ family: 'Garcia', given: 'Angel' }, { family: 'Angel', given: 'B.' }], 'García, Ángel, Angel, B. (2020). T.'));
+var nfdRec = A.normalize({ type: 'journal-article', title: ['T'], author: [{ family: 'Bacik', given: 'P.' }], issued: { 'date-parts': [[2026]] } });
+ok('decomposed text lends its diacritics', H.adoptDiacritics(nfdRec, 'Bačík, P. (2026). T.'.normalize('NFD')) === 1 && nfdRec.authors[0].family === 'Bačík', nfdRec.authors[0].family);
+// mojibake: real Latin-1 text that happens to look like a garbled pair is kept; garbled lines beside clean ones, twice-garbled text and three-byte sequences are repaired
+['Smith J (2020) Unit-cell volume of 1234.5 Å³ in garnet. Am Mineral 105:1-10.', '20 Å²', 'Gauß’s law revisited', 'Strauß’ Vorlesungen', 'LE PASSÉ : UNE HISTOIRE', 'Grid of 10 × 10 cells', 'Groß–Klein', 'Ø 5 mm', 'Contribution à la géologie'].forEach(function (s) { ok('real text kept: ' + s, H.repairMojibake(s) === s, JSON.stringify(H.repairMojibake(s))); });
+[[garble('Bačík, P. (2026). X.') + '\nŠkoda, R. (2020). Y.', 'Bačík, P. (2026). X.\nŠkoda, R. (2020). Y.'], [garble(garble('Bačík')), 'Bačík'], ['Price â‚¬100', 'Price €100'], ['Fe â†’ Mg', 'Fe → Mg'], ['x â‰¤ 5 â„¢', 'x ≤ 5 ™'],
+ [garble('日本語の参考文献'), '日本語の参考文献'], [garble('王明 (2020) 中国'), '王明 (2020) 中国'], [garble('😀 ok'), '😀 ok'], [garble('Contribution à la géologie'), 'Contribution à la géologie'], [garble('α-quartz at 25 °C'), 'α-quartz at 25 °C'], [garble('Пароникян А.В.'), 'Пароникян А.В.']
+].forEach(function (c) { ok('repaired: ' + c[1], H.repairMojibake(c[0]) === c[1], JSON.stringify(H.repairMojibake(c[0]))); });
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

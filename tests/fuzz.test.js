@@ -7,7 +7,7 @@ var ROOT = path.resolve(__dirname, '..');
 var A = require(path.join(ROOT, 'citations.js')), P = require(path.join(ROOT, 'parsers.js')), S = require(path.join(ROOT, 'sentencecase.js'));
 var html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 var a0 = html.indexOf('  // Lines that are nothing but an identifier'), b0 = html.indexOf('  async function resolve(refText)');
-var splitReferences = new Function(html.slice(a0, b0) + '; return splitReferences;')();
+var splitReferences = new Function('A', html.slice(a0, b0) + '; return splitReferences;')(A);
 var corpus = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'corpus.json'), 'utf8'));
 var real = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'real-references.json'), 'utf8'));
 var seed = Number(process.argv[2]) || 20260924, pass = 0, fail = 0, problems = {};

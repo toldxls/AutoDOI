@@ -6,7 +6,7 @@ var ROOT = path.resolve(__dirname, '..'), FIX = path.join(__dirname, 'fixtures')
 var A = require(path.join(ROOT, 'citations.js'));
 var html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 var a = html.indexOf('  // Lines that are nothing but an identifier'), b = html.indexOf('  async function resolve(refText)');
-var split = new Function(html.slice(a, b) + '; return splitReferences;')();
+var split = new Function('A', html.slice(a, b) + '; return splitReferences;')(require(require('path').join(ROOT, 'citations.js')));
 var pass = 0, fail = 0;
 function check(label, ok, detail) { if (ok) pass++; else { fail++; console.log('FAIL', label, detail || ''); } }
 function wrap(t, w, indent) {

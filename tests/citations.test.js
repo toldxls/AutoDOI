@@ -144,4 +144,6 @@ eq('F org collab', org2.authors[0].family + '|' + org2.authors[0].literal, 'Plan
 const person = A.normalize({ type: 'dataset', title: ['X'], author: [{ family: 'Theron', given: 'Charlize' }], issued: { 'date-parts': [[2018]] } });
 eq('F person untouched', person.authors[0].literal, false);
 
+eq('a footnote number set in superscript after a DOI is not part of it', A.extractDoi('https://doi.org/10.1038/nature12373² and'), '10.1038/nature12373');
+eq('a superscripted link is still a DOI', A.extractDoi('https://doi.org/10.1038/nature12373⁷⁸'), '10.1038/nature12373');
 console.log(pass + ' passed, ' + fail + ' failed');
