@@ -1,0 +1,884 @@
+[
+ {
+  "doi": "10.1007/978-0-230-80207-0",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-0-230-80207-0\nUR  - http://dx.doi.org/10.1007/978-0-230-80207-0\nTI  - A Special Relationship\nAU  - Dumbrell, John\nPY  - 2006\nPB  - Macmillan Education UK\nSN  - 9781403987754\nSN  - 9780230802070\nER  - \n",
+  "bibtex": " @book{Dumbrell_2006, title={A Special Relationship}, ISBN={9780230802070}, url={http://dx.doi.org/10.1007/978-0-230-80207-0}, DOI={10.1007/978-0-230-80207-0}, publisher={Macmillan Education UK}, author={Dumbrell, John}, year={2006} }\n"
+ },
+ {
+  "doi": "10.1007/978-1-349-22851-5",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-1-349-22851-5\nUR  - http://dx.doi.org/10.1007/978-1-349-22851-5\nTI  - Morphology\nAU  - Katamba, Francis\nPY  - 1993\nPB  - Macmillan Education UK\nSN  - 9780333541142\nSN  - 9781349228515\nER  - \n",
+  "bibtex": " @book{Katamba_1993, title={Morphology}, ISBN={9781349228515}, url={http://dx.doi.org/10.1007/978-1-349-22851-5}, DOI={10.1007/978-1-349-22851-5}, publisher={Macmillan Education UK}, author={Katamba, Francis}, year={1993} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-662-26187-3",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-662-26187-3\nUR  - http://dx.doi.org/10.1007/978-3-662-26187-3\nTI  - Die Knickfestigkeit von Stäben und Stabwerken\nAU  - Ratzersdorfer, Julius\nPY  - 1936\nPB  - Springer Berlin Heidelberg\nSN  - 9783662240755\nSN  - 9783662261873\nER  - \n",
+  "bibtex": " @book{Ratzersdorfer_1936, title={Die Knickfestigkeit von Stäben und Stabwerken}, ISBN={9783662261873}, url={http://dx.doi.org/10.1007/978-3-662-26187-3}, DOI={10.1007/978-3-662-26187-3}, publisher={Springer Berlin Heidelberg}, author={Ratzersdorfer, Julius}, year={1936} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-662-26269-6",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-662-26269-6\nUR  - http://dx.doi.org/10.1007/978-3-662-26269-6\nTI  - Die extrapleurale Thorakoplastik\nAU  - Elving, H.\nPY  - 1913\nPB  - Springer Berlin Heidelberg\nSN  - 9783662241578\nSN  - 9783662262696\nER  - \n",
+  "bibtex": " @book{Elving_1913, title={Die extrapleurale Thorakoplastik}, ISBN={9783662262696}, url={http://dx.doi.org/10.1007/978-3-662-26269-6}, DOI={10.1007/978-3-662-26269-6}, publisher={Springer Berlin Heidelberg}, author={Elving, H.}, year={1913} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-663-16201-8",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-663-16201-8\nUR  - http://dx.doi.org/10.1007/978-3-663-16201-8\nTI  - Charakterköpfe aus der Antiken Literatur\nAU  - Schwartz, Eduard\nPY  - 1919\nPB  - Vieweg+Teubner Verlag\nSN  - 9783663156260\nSN  - 9783663162018\nER  - \n",
+  "bibtex": " @book{Schwartz_1919, title={Charakterköpfe aus der Antiken Literatur}, ISBN={9783663162018}, url={http://dx.doi.org/10.1007/978-3-663-16201-8}, DOI={10.1007/978-3-663-16201-8}, publisher={Vieweg+Teubner Verlag}, author={Schwartz, Eduard}, year={1919} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-663-19777-5",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-663-19777-5\nUR  - http://dx.doi.org/10.1007/978-3-663-19777-5\nTI  - Untersuchungen über die Auswirkungen der Eindringtiefe und die Wahl der Strahlung bei der röntgenographischen Spannungsmessung\nAU  - Krause, Hans\nAU  - Jühe, Hans-Helmut\nPY  - 1981\nPB  - VS Verlag für Sozialwissenschaften\nSN  - 9783531030265\nSN  - 9783663197775\nER  - \n",
+  "bibtex": " @book{Krause_1981, title={Untersuchungen über die Auswirkungen der Eindringtiefe und die Wahl der Strahlung bei der röntgenographischen Spannungsmessung}, ISBN={9783663197775}, url={http://dx.doi.org/10.1007/978-3-663-19777-5}, DOI={10.1007/978-3-663-19777-5}, publisher={VS Verlag für Sozialwissenschaften}, author={Krause, Hans and Jühe, Hans-Helmut}, year={1981} }\n"
+ },
+ {
+  "doi": "10.1007/978-94-011-9367-2",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-94-011-9367-2\nUR  - http://dx.doi.org/10.1007/978-94-011-9367-2\nTI  - Peirce’s and Lewis’s Theories of Induction\nAU  - Cheng, Chung-Ying\nPY  - 1969\nPB  - Springer Netherlands\nSN  - 9789401185981\nSN  - 9789401193672\nER  - \n",
+  "bibtex": " @book{Cheng_1969, title={Peirce’s and Lewis’s Theories of Induction}, ISBN={9789401193672}, url={http://dx.doi.org/10.1007/978-94-011-9367-2}, DOI={10.1007/978-94-011-9367-2}, publisher={Springer Netherlands}, author={Cheng, Chung-Ying}, year={1969} }\n"
+ },
+ {
+  "doi": "10.1057/978-1-137-57088-8",
+  "type": "book",
+  "ris": "TY  - GENERIC\nDO  - 10.1057/978-1-137-57088-8\nUR  - http://dx.doi.org/10.1057/978-1-137-57088-8\nTI  - Fake Meds Online\nAU  - Hall, Alexandra\nAU  - Antonopoulos, Georgios A.\nPY  - 2016\nPB  - Palgrave Macmillan UK\nSN  - 9781137570871\nSN  - 9781137570888\nER  - \n",
+  "bibtex": " @book{Hall_2016, title={Fake Meds Online}, ISBN={9781137570888}, url={http://dx.doi.org/10.1057/978-1-137-57088-8}, DOI={10.1057/978-1-137-57088-8}, publisher={Palgrave Macmillan UK}, author={Hall, Alexandra and Antonopoulos, Georgios A.}, year={2016} }\n"
+ },
+ {
+  "doi": "10.1007/1-4020-0613-6_10813",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/1-4020-0613-6_10813\nUR  - http://dx.doi.org/10.1007/1-4020-0613-6_10813\nTI  - machine instruction set\nT2  - Computer Science and Communications Dictionary\nAU  - Weik, Martin H.\nPY  - 2000\nPB  - Springer US\nSP  - 950-950\nSN  - 9780792384250\nSN  - 9781402006135\nER  - \n",
+  "bibtex": " @inbook{Weik_2000, title={machine instruction set}, ISBN={9781402006135}, url={http://dx.doi.org/10.1007/1-4020-0613-6_10813}, DOI={10.1007/1-4020-0613-6_10813}, booktitle={Computer Science and Communications Dictionary}, publisher={Springer US}, author={Weik, Martin H.}, year={2000}, pages={950–950} }\n"
+ },
+ {
+  "doi": "10.1007/978-1-4614-0679-2_11",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-1-4614-0679-2_11\nUR  - http://dx.doi.org/10.1007/978-1-4614-0679-2_11\nTI  - Minimally Invasive Quadriceps-Sparing Total Knee Replacement Preserving the Posterior Cruciate Ligament\nT2  - Minimally Invasive Surgery in Orthopedics\nAU  - Berger, Richard A.\nAU  - Rosenberg, Aaron G.\nPY  - 2011\nDA  - 2011/08/30\nPB  - Springer New York\nSP  - 109-119\nSN  - 9781461406785\nSN  - 9781461406792\nER  - \n",
+  "bibtex": " @inbook{Berger_2011, title={Minimally Invasive Quadriceps-Sparing Total Knee Replacement Preserving the Posterior Cruciate Ligament}, ISBN={9781461406792}, url={http://dx.doi.org/10.1007/978-1-4614-0679-2_11}, DOI={10.1007/978-1-4614-0679-2_11}, booktitle={Minimally Invasive Surgery in Orthopedics}, publisher={Springer New York}, author={Berger, Richard A. and Rosenberg, Aaron G.}, year={2011}, month=Aug, pages={109–119} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-031-49200-6_21",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-031-49200-6_21\nUR  - http://dx.doi.org/10.1007/978-3-031-49200-6_21\nTI  - Study of Certified Reference Materials for Temperature and Specific Enthalpy of Phase Transitions of Metals and Metal Salts\nT2  - Reference Materials in Measurement and Technology\nAU  - Nepomiluev, Andrei M.\nAU  - Shipitsyn, Artyom P.\nAU  - Tyurnina, Anastasiya E.\nPY  - 2024\nPB  - Springer Nature Switzerland\nSP  - 323-342\nSN  - 9783031491993\nSN  - 9783031492006\nER  - \n",
+  "bibtex": " @inbook{Nepomiluev_2024, title={Study of Certified Reference Materials for Temperature and Specific Enthalpy of Phase Transitions of Metals and Metal Salts}, ISBN={9783031492006}, url={http://dx.doi.org/10.1007/978-3-031-49200-6_21}, DOI={10.1007/978-3-031-49200-6_21}, booktitle={Reference Materials in Measurement and Technology}, publisher={Springer Nature Switzerland}, author={Nepomiluev, Andrei M. and Shipitsyn, Artyom P. and Tyurnina, Anastasiya E.}, year={2024}, pages={323–342} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-032-27702-2_27",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-032-27702-2_27\nUR  - http://dx.doi.org/10.1007/978-3-032-27702-2_27\nTI  - Traffic Fingerprinting of Encrypted IoT Protocols and Privacy Mitigations\nT2  - Lecture Notes in Networks and Systems\nAU  - Josheni, K. S.\nAU  - Srinivasan, Chandana\nAU  - M., Gokul Krishna\nAU  - Ullas, S.\nPY  - 2026\nPB  - Springer Nature Switzerland\nSP  - 297-312\nSN  - 2367-3370\nSN  - 2367-3389\nSN  - 9783032277015\nSN  - 9783032277022\nER  - \n",
+  "bibtex": " @inbook{Josheni_2026, title={Traffic Fingerprinting of Encrypted IoT Protocols and Privacy Mitigations}, ISBN={9783032277022}, ISSN={2367-3389}, url={http://dx.doi.org/10.1007/978-3-032-27702-2_27}, DOI={10.1007/978-3-032-27702-2_27}, booktitle={Smart Trends in Computing and Communications}, publisher={Springer Nature Switzerland}, author={Josheni, K. S. and Srinivasan, Chandana and M., Gokul Krishna and Ullas, S.}, year={2026}, pages={297–312} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-0348-7885-2_4",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-0348-7885-2_4\nUR  - http://dx.doi.org/10.1007/978-3-0348-7885-2_4\nTI  - Domain Decomposition for Elliptic Optimal Control Problems\nT2  - Domain Decomposition Methods in Optimal Control of Partial Differential Equations\nAU  - Lagnese, John E.\nAU  - Leugering, Günter\nPY  - 2004\nPB  - Birkhäuser Basel\nSP  - 107-129\nSN  - 9783034896108\nSN  - 9783034878852\nER  - \n",
+  "bibtex": " @inbook{Lagnese_2004, title={Domain Decomposition for Elliptic Optimal Control Problems}, ISBN={9783034878852}, url={http://dx.doi.org/10.1007/978-3-0348-7885-2_4}, DOI={10.1007/978-3-0348-7885-2_4}, booktitle={Domain Decomposition Methods in Optimal Control of Partial Differential Equations}, publisher={Birkhäuser Basel}, author={Lagnese, John E. and Leugering, Günter}, year={2004}, pages={107–129} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-319-48764-9_344",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-319-48764-9_344\nUR  - http://dx.doi.org/10.1007/978-3-319-48764-9_344\nTI  - Strain-Induced Phase Transition in Martensitic Alloys: Phase-Field Simulation\nT2  - Proceedings of the 8th Pacific Rim International Congress on Advanced Materials and Processing\nAU  - Cui, Yanguang\nAU  - Wan, Jianfeng\nAU  - Zhang, Jihua\nAU  - Rong, Yonghua\nPY  - 2013\nPB  - Springer International Publishing\nSP  - 2781-2790\nSN  - 9783319485867\nSN  - 9783319487649\nER  - \n",
+  "bibtex": " @inbook{Cui_2013, title={Strain-Induced Phase Transition in Martensitic Alloys: Phase-Field Simulation}, ISBN={9783319487649}, url={http://dx.doi.org/10.1007/978-3-319-48764-9_344}, DOI={10.1007/978-3-319-48764-9_344}, booktitle={Proceedings of the 8th Pacific Rim International Congress on Advanced Materials and Processing}, publisher={Springer International Publishing}, author={Cui, Yanguang and Wan, Jianfeng and Zhang, Jihua and Rong, Yonghua}, year={2013}, pages={2781–2790} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-319-75544-1_3",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-319-75544-1_3\nUR  - http://dx.doi.org/10.1007/978-3-319-75544-1_3\nTI  - Molecular and Biochemical Markers for Investigating the Vectorial Roles of Brazilian Sand Flies\nT2  - Brazilian Sand Flies\nAU  - Ready, Paul D.\nAU  - Vigoder, Felipe M.\nAU  - Rangel, Elizabeth F.\nPY  - 2018\nPB  - Springer International Publishing\nSP  - 213-250\nSN  - 9783319755434\nSN  - 9783319755441\nER  - \n",
+  "bibtex": " @inbook{Ready_2018, title={Molecular and Biochemical Markers for Investigating the Vectorial Roles of Brazilian Sand Flies}, ISBN={9783319755441}, url={http://dx.doi.org/10.1007/978-3-319-75544-1_3}, DOI={10.1007/978-3-319-75544-1_3}, booktitle={Brazilian Sand Flies}, publisher={Springer International Publishing}, author={Ready, Paul D. and Vigoder, Felipe M. and Rangel, Elizabeth F.}, year={2018}, pages={213–250} }\n"
+ },
+ {
+  "doi": "10.1007/978-3-642-25646-2_53",
+  "type": "book-chapter",
+  "ris": "TY  - GENERIC\nDO  - 10.1007/978-3-642-25646-2_53\nUR  - http://dx.doi.org/10.1007/978-3-642-25646-2_53\nTI  - Population Burst Trajectory Retrieval in Smart City\nT2  - Lecture Notes in Electrical Engineering\nAU  - Zhang, Wei\nAU  - Wang, Xiaojian\nAU  - Liu, Siyuan\nAU  - Liu, Ce\nAU  - Liu, Yanping\nPY  - 2011\nPB  - Springer Berlin Heidelberg\nSP  - 407-416\nSN  - 1876-1100\nSN  - 1876-1119\nSN  - 9783642256455\nSN  - 9783642256462\nER  - \n",
+  "bibtex": " @inbook{Zhang_2011, title={Population Burst Trajectory Retrieval in Smart City}, ISBN={9783642256462}, ISSN={1876-1119}, url={http://dx.doi.org/10.1007/978-3-642-25646-2_53}, DOI={10.1007/978-3-642-25646-2_53}, booktitle={Advances in Automation and Robotics, Vol. 2}, publisher={Springer Berlin Heidelberg}, author={Zhang, Wei and Wang, Xiaojian and Liu, Siyuan and Liu, Ce and Liu, Yanping}, year={2011}, pages={407–416} }\n"
+ },
+ {
+  "doi": "10.1093/med-psych/9780190926939.005.0003",
+  "type": "book-section",
+  "ris": "TY  - GENERIC\nDO  - 10.1093/med-psych/9780190926939.005.0003\nUR  - http://dx.doi.org/10.1093/med-psych/9780190926939.005.0003\nTI  - Therapist Imaginal Exposure Recording Form\nT2  - Prolonged Exposure Therapy for PTSD\nAU  - Foa, Edna B.\nAU  - Hembree, Elizabeth A.\nAU  - Rothbaum, Barbara Olasov\nAU  - Rauch, Sheila A. M.\nPY  - 2019\nDA  - 2019/08\nPB  - Oxford University PressNew York\nSP  - 155-156\nSN  - 0190926937\nSN  - 9780190926939\nSN  - 9780190926960\nER  - \n",
+  "bibtex": " @inbook{Foa_2019, title={Therapist Imaginal Exposure Recording Form: (For therapist’s use in Session 3)}, ISBN={9780190926960}, url={http://dx.doi.org/10.1093/med-psych/9780190926939.005.0003}, DOI={10.1093/med-psych/9780190926939.005.0003}, booktitle={Prolonged Exposure Therapy for PTSD}, publisher={Oxford University PressNew York}, author={Foa, Edna B. and Hembree, Elizabeth A. and Rothbaum, Barbara Olasov and Rauch, Sheila A. M.}, year={2019}, month=Aug, pages={155–156} }\n"
+ },
+ {
+  "doi": "10.1093/oso/9780198526315.005.0005",
+  "type": "book-section",
+  "ris": "TY  - GENERIC\nDO  - 10.1093/oso/9780198526315.005.0005\nUR  - http://dx.doi.org/10.1093/oso/9780198526315.005.0005\nTI  - Stochastic clamped-free beam under stochastic loading\nT2  - Finite Element Methods for Structures with Large Stochastic Variations\nAU  - Elishakoff, Isaac\nAU  - Ren, Yongjian\nPY  - 2003\nDA  - 2003/07/03\nPB  - Oxford University PressOxford\nSP  - 182-183\nSN  - 9780198526315\nSN  - 9781383024371\nER  - \n",
+  "bibtex": " @inbook{Elishakoff_2003, title={Stochastic clamped-free beam under stochastic loading}, ISBN={9781383024371}, url={http://dx.doi.org/10.1093/oso/9780198526315.005.0005}, DOI={10.1093/oso/9780198526315.005.0005}, booktitle={Finite Element Methods for Structures with Large Stochastic Variations}, publisher={Oxford University PressOxford}, author={Elishakoff, Isaac and Ren, Yongjian}, year={2003}, month=July, pages={182–183} }\n"
+ },
+ {
+  "doi": "10.1093/oso/9780199257805.005.0002",
+  "type": "book-section",
+  "ris": "TY  - GENERIC\nDO  - 10.1093/oso/9780199257805.005.0002\nUR  - http://dx.doi.org/10.1093/oso/9780199257805.005.0002\nTI  - CPL Database\nT2  - Medical Conflicts in Early Modern London\nAU  - Felling, Margaret\nPY  - 2003\nDA  - 2003/06/05\nPB  - Oxford University PressOxford\nSP  - 346-348\nSN  - 9780199257805\nSN  - 9781383039924\nER  - \n",
+  "bibtex": " @inbook{Felling_2003, title={CPL Database}, ISBN={9781383039924}, url={http://dx.doi.org/10.1093/oso/9780199257805.005.0002}, DOI={10.1093/oso/9780199257805.005.0002}, booktitle={Medical Conflicts in Early Modern London}, publisher={Oxford University PressOxford}, author={Felling, Margaret}, year={2003}, month=June, pages={346–348} }\n"
+ },
+ {
+  "doi": "10.1037/e324292004-013",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.1037/e324292004-013\nUR  - http://dx.doi.org/10.1037/e324292004-013\nTI  - Realistic Look at Preventing Substance Abuse\nT2  - PsycEXTRA Dataset\nAU  - Lorion, R. P.\nAU  - Ross, R. J.\nPY  - 1993\nPB  - American Psychological Association (APA)\nER  - \n",
+  "bibtex": " @misc{Lorion_1993, title={Realistic Look at Preventing Substance Abuse: (324292004-013)}, url={http://dx.doi.org/10.1037/e324292004-013}, DOI={10.1037/e324292004-013}, journal={PsycEXTRA Dataset}, publisher={American Psychological Association (APA)}, author={Lorion, R. P. and Ross, R. J.}, year={1993} }\n"
+ },
+ {
+  "doi": "10.1037/e505642023-001",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.1037/e505642023-001\nUR  - http://dx.doi.org/10.1037/e505642023-001\nTI  - Positive Psychology: A 7-Day Unit Plan for High School Psychology\nT2  - PsycEXTRA Dataset\nAU  - Greene, Leah Everson\nAU  - Romero, Fernando\nAU  - Schwarzrock, Corinne\nPY  - 2022\nPB  - American Psychological Association (APA)\nER  - \n",
+  "bibtex": " @misc{Greene_2022, title={Positive Psychology: A 7-Day Unit Plan for High School Psychology: (505642023-001)}, url={http://dx.doi.org/10.1037/e505642023-001}, DOI={10.1037/e505642023-001}, journal={PsycEXTRA Dataset}, publisher={American Psychological Association (APA)}, author={Greene, Leah Everson and Romero, Fernando and Schwarzrock, Corinne}, year={2022} }\n"
+ },
+ {
+  "doi": "10.1037/e509392017-001",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.1037/e509392017-001\nUR  - http://dx.doi.org/10.1037/e509392017-001\nTI  - Workplace Bullying And Risk Of Disability Retirement: Investigating Direct And Moderating Effects\nT2  - PsycEXTRA Dataset\nAU  - Clausen, Thomas\nAU  - Garde, Anne Helene\nAU  - Conway, Paul Maurice\nAU  - Hogh, Annie\nAU  - Burr, Hermann\nPY  - 2017\nPB  - American Psychological Association (APA)\nER  - \n",
+  "bibtex": " @misc{Clausen_2017, title={Workplace Bullying And Risk Of Disability Retirement: Investigating Direct And Moderating Effects: (509392017-001)}, url={http://dx.doi.org/10.1037/e509392017-001}, DOI={10.1037/e509392017-001}, journal={PsycEXTRA Dataset}, publisher={American Psychological Association (APA)}, author={Clausen, Thomas and Garde, Anne Helene and Conway, Paul Maurice and Hogh, Annie and Burr, Hermann}, year={2017} }\n"
+ },
+ {
+  "doi": "10.1037/e560172009-011",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.1037/e560172009-011\nUR  - http://dx.doi.org/10.1037/e560172009-011\nTI  - Report on \"Summit Meeting\" American Psychological Society (APS)\nT2  - PsycEXTRA Dataset\nAU  - Kimmel, Ellen\nPY  - 1989\nPB  - American Psychological Association (APA)\nER  - \n",
+  "bibtex": " @misc{Kimmel_1989, title={Report on “Summit Meeting” American Psychological Society (APS): (560172009-011)}, url={http://dx.doi.org/10.1037/e560172009-011}, DOI={10.1037/e560172009-011}, journal={PsycEXTRA Dataset}, publisher={American Psychological Association (APA)}, author={Kimmel, Ellen}, year={1989} }\n"
+ },
+ {
+  "doi": "10.1037/t96105-000",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.1037/t96105-000\nUR  - http://dx.doi.org/10.1037/t96105-000\nTI  - Technology Readiness Index 2.0\nT2  - PsycTESTS Dataset\nAU  - Parasuraman, A.\nAU  - Colby, Charles L.\nPY  - 2015\nPB  - American Psychological Association (APA)\nER  - \n",
+  "bibtex": " @misc{Parasuraman_2015, title={Technology Readiness Index 2.0}, url={http://dx.doi.org/10.1037/t96105-000}, DOI={10.1037/t96105-000}, journal={PsycTESTS Dataset}, publisher={American Psychological Association (APA)}, author={Parasuraman, A. and Colby, Charles L.}, year={2015} }\n"
+ },
+ {
+  "doi": "10.1257/rct.4226",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.1257/rct.4226\nUR  - http://dx.doi.org/10.1257/rct.4226\nTI  - Behavioral biases in annuity choice\nT2  - AEA Randomized Controlled Trials\nAU  - Taubinsky, Dmitry\nPY  - 2019\nDA  - 2019/05/29\nPB  - American Economic Association\nER  - \n",
+  "bibtex": " @misc{Taubinsky_2019, title={Behavioral biases in annuity choice}, url={http://dx.doi.org/10.1257/rct.4226}, DOI={10.1257/rct.4226}, journal={AEA Randomized Controlled Trials}, publisher={American Economic Association}, author={Taubinsky, Dmitry}, year={2019}, month=May }\n"
+ },
+ {
+  "doi": "10.1601/nm.20301",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.1601/nm.20301\nUR  - http://dx.doi.org/10.1601/nm.20301\nTI  - Nomenclature Abstract for Ekhidna lutea Alain et al. 2010 emend. García-López et al. 2019.\nT2  - The NamesforLife Abstracts\nAU  - Parker, Charles Thomas\nAU  - Taylor, Dorothea\nAU  - Garrity, George M\nPY  - 2010\nDA  - 2010/12/13\nPB  - NamesforLife, LLC\nER  - \n",
+  "bibtex": " @misc{Parker_2010, title={Nomenclature Abstract for Ekhidna lutea Alain et al. 2010 emend. García-López et al. 2019.}, url={http://dx.doi.org/10.1601/nm.20301}, DOI={10.1601/nm.20301}, journal={The NamesforLife Abstracts}, publisher={NamesforLife, LLC}, author={Parker, Charles Thomas and Taylor, Dorothea and Garrity, George M}, editor={Parker, Charles Thomas and Garrity, George M}, year={2010}, month=Dec }\n"
+ },
+ {
+  "doi": "10.17989/encsr325xqp",
+  "type": "dataset",
+  "ris": "TY  - DATA\nDO  - 10.17989/encsr325xqp\nUR  - http://dx.doi.org/10.17989/encsr325xqp\nTI  - ENCSR325XQP\nT2  - ENCODE Datasets\nAU  - Noble, B\nPY  - 2020\nDA  - 2020/02/21\nPB  - ENCODE Data Coordination Center\nER  - \n",
+  "bibtex": " @misc{Noble_2020, title={ENCSR325XQP}, url={http://dx.doi.org/10.17989/encsr325xqp}, DOI={10.17989/encsr325xqp}, journal={ENCODE Datasets}, publisher={ENCODE Data Coordination Center}, author={Noble, B}, year={2020}, month=Feb }\n"
+ },
+ {
+  "doi": "10.11606/d.84.2010.tde-18122012-110215",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.11606/d.84.2010.tde-18122012-110215\nUR  - http://dx.doi.org/10.11606/d.84.2010.tde-18122012-110215\nTI  - A paradiplomacia e seus atores nas políticas públicas locais na América Latina - experiências de São Paulo e Montevidéu\nAU  - Batista, Sinoel\nPB  - Universidade de São Paulo. Agência de Bibliotecas e Coleções Digitais\nER  - \n",
+  "bibtex": " @phdthesis{Batista, title={A paradiplomacia e seus atores nas políticas públicas locais na América Latina - experiências de São Paulo e Montevidéu}, url={http://dx.doi.org/10.11606/d.84.2010.tde-18122012-110215}, DOI={10.11606/d.84.2010.tde-18122012-110215}, school={Universidade de São Paulo. Agência de Bibliotecas e Coleções Digitais}, author={Batista, Sinoel} }\n"
+ },
+ {
+  "doi": "10.11606/t.42.2011.tde-09022012-141522",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.11606/t.42.2011.tde-09022012-141522\nUR  - http://dx.doi.org/10.11606/t.42.2011.tde-09022012-141522\nTI  - Leptina: um modulador central das respostas imunes.\nAU  - Vieira, Pedro Manoel Mendes de Moraes\nPB  - Universidade de São Paulo. Agência de Bibliotecas e Coleções Digitais\nER  - \n",
+  "bibtex": " @phdthesis{Vieira, title={Leptina: um modulador central das respostas imunes.}, url={http://dx.doi.org/10.11606/t.42.2011.tde-09022012-141522}, DOI={10.11606/t.42.2011.tde-09022012-141522}, school={Universidade de São Paulo. Agência de Bibliotecas e Coleções Digitais}, author={Vieira, Pedro Manoel Mendes de Moraes} }\n"
+ },
+ {
+  "doi": "10.11606/t.84.2020.tde-19042022-174541",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.11606/t.84.2020.tde-19042022-174541\nUR  - http://dx.doi.org/10.11606/t.84.2020.tde-19042022-174541\nTI  - Cultura para o desenvolvimento: o papel da cultura no desenvolvimento da sociedade latino-americana\nAU  - Corrêa, Isabela Furegatti\nPB  - Universidade de Sao Paulo, Agencia USP de Gestao da Informacao Academica (AGUIA)\nER  - \n",
+  "bibtex": " @phdthesis{Corr_a, title={Cultura para o desenvolvimento: o papel da cultura no desenvolvimento da sociedade latino-americana}, url={http://dx.doi.org/10.11606/t.84.2020.tde-19042022-174541}, DOI={10.11606/t.84.2020.tde-19042022-174541}, school={Universidade de Sao Paulo, Agencia USP de Gestao da Informacao Academica (AGUIA)}, author={Corrêa, Isabela Furegatti} }\n"
+ },
+ {
+  "doi": "10.12794/metadc177182",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.12794/metadc177182\nUR  - http://dx.doi.org/10.12794/metadc177182\nTI  - The Invisible Dragon\nAU  - Boutwell, Nathan\nPB  - University of North Texas Libraries\nER  - \n",
+  "bibtex": " @phdthesis{Boutwell, title={The Invisible Dragon}, url={http://dx.doi.org/10.12794/metadc177182}, DOI={10.12794/metadc177182}, school={University of North Texas Libraries}, author={Boutwell, Nathan} }\n"
+ },
+ {
+  "doi": "10.14264/uql.2018.357",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.14264/uql.2018.357\nUR  - http://dx.doi.org/10.14264/uql.2018.357\nTI  - Speech and language screening for children with medical complexity: A comparison of telepractice and in-person methods\nAU  - Taylor, Olivia\nPB  - University of Queensland Library\nER  - \n",
+  "bibtex": " @phdthesis{Taylor, title={Speech and language screening for children with medical complexity: A comparison of telepractice and in-person methods}, url={http://dx.doi.org/10.14264/uql.2018.357}, DOI={10.14264/uql.2018.357}, school={University of Queensland Library}, author={Taylor, Olivia} }\n"
+ },
+ {
+  "doi": "10.17771/pucrio.acad.12315",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.17771/pucrio.acad.12315\nUR  - http://dx.doi.org/10.17771/pucrio.acad.12315\nTI  - GLOBALIZAÇÃO E SOCIEDADE DE CONTROLE: A CULTURA DO MEDO E O MERCADO DA VIOLÊNCIA\nAU  - FRANCISCO CARLOS GRAZIANO SOBRINHO, SERGIO\nPB  - Faculdades Catolicas\nER  - \n",
+  "bibtex": " @phdthesis{FRANCISCO_CARLOS_GRAZIANO_SOBRINHO, title={GLOBALIZAÇÃO E SOCIEDADE DE CONTROLE: A CULTURA DO MEDO E O MERCADO DA VIOLÊNCIA}, url={http://dx.doi.org/10.17771/pucrio.acad.12315}, DOI={10.17771/pucrio.acad.12315}, school={Faculdades Catolicas}, author={FRANCISCO CARLOS GRAZIANO SOBRINHO, SERGIO} }\n"
+ },
+ {
+  "doi": "10.18174/44120",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.18174/44120\nUR  - http://dx.doi.org/10.18174/44120\nTI  - Conservation scenarios for olive farming on sloping land in de Mediterranean\nAU  - Fleskens, L.\nPB  - Wageningen University and Research\nER  - \n",
+  "bibtex": " @phdthesis{Fleskens, title={Conservation scenarios for olive farming on sloping land in de Mediterranean}, url={http://dx.doi.org/10.18174/44120}, DOI={10.18174/44120}, school={Wageningen University and Research}, author={Fleskens, L.} }\n"
+ },
+ {
+  "doi": "10.22215/etd/2014-10952",
+  "type": "dissertation",
+  "ris": "TY  - THES\nDO  - 10.22215/etd/2014-10952\nUR  - http://dx.doi.org/10.22215/etd/2014-10952\nTI  - The Influence of Internal Parameters on the Electrochemical and Thermal Behaviours of Lithium-Ion Batteries\nAU  - Zhao, Rui\nPB  - Carleton University\nER  - \n",
+  "bibtex": " @phdthesis{Zhao, title={The Influence of Internal Parameters on the Electrochemical and Thermal Behaviours of Lithium-Ion Batteries}, url={http://dx.doi.org/10.22215/etd/2014-10952}, DOI={10.22215/etd/2014-10952}, school={Carleton University}, author={Zhao, Rui} }\n"
+ },
+ {
+  "doi": "10.14198/interpretacion-datos-oceanograficos-analisis-espaciales",
+  "type": "edited-book",
+  "ris": "TY  - EDBOOK\nDO  - 10.14198/interpretacion-datos-oceanograficos-analisis-espaciales\nUR  - http://dx.doi.org/10.14198/interpretacion-datos-oceanograficos-analisis-espaciales\nTI  - Interpretaci�n de datos oceanogr�ficos mediante an�lisis espaciales georreferenciados de interpolaci�n\nAU  - Sanz-L�zaro, Carlos\nPY  - 2018\nPB  - Universidad de Alicante\nER  - \n",
+  "bibtex": " @book{Sanz_L_zaro_2018, title={Interpretaci�n de datos oceanogr�ficos mediante an�lisis espaciales georreferenciados de interpolaci�n}, url={http://dx.doi.org/10.14198/interpretacion-datos-oceanograficos-analisis-espaciales}, DOI={10.14198/interpretacion-datos-oceanograficos-analisis-espaciales}, publisher={Universidad de Alicante}, author={Sanz-L�zaro, Carlos}, year={2018} }\n"
+ },
+ {
+  "doi": "10.1515/9780820379722",
+  "type": "edited-book",
+  "ris": "TY  - EDBOOK\nDO  - 10.1515/9780820379722\nUR  - http://dx.doi.org/10.1515/9780820379722\nTI  - Contentious Liberties\nAU  - Kenny, Gale L.\nPY  - 2010\nDA  - 2010/01/25\nPB  - University of Georgia Press\nSN  - 9780820379722\nER  - \n",
+  "bibtex": " @book{Kenny_2010, title={Contentious Liberties: American Abolitionists in Post-Emancipation Jamaica, 1834-1866}, ISBN={9780820379722}, url={http://dx.doi.org/10.1515/9780820379722}, DOI={10.1515/9780820379722}, publisher={University of Georgia Press}, author={Kenny, Gale L.}, year={2010}, month=Jan }\n"
+ },
+ {
+  "doi": "10.1525/9780520320925",
+  "type": "edited-book",
+  "ris": "TY  - EDBOOK\nDO  - 10.1525/9780520320925\nUR  - http://dx.doi.org/10.1525/9780520320925\nTI  - Phil Swing and Boulder Dam\nAU  - Bowen Moeller, Beverley\nPY  - 1971\nDA  - 1971/12/31\nPB  - University of California Press\nSN  - 9780520320925\nER  - \n",
+  "bibtex": " @book{Bowen_Moeller_1971, title={Phil Swing and Boulder Dam}, ISBN={9780520320925}, url={http://dx.doi.org/10.1525/9780520320925}, DOI={10.1525/9780520320925}, publisher={University of California Press}, author={Bowen Moeller, Beverley}, year={1971}, month=Dec }\n"
+ },
+ {
+  "doi": "10.33324/ceuazuay.364",
+  "type": "edited-book",
+  "ris": "TY  - EDBOOK\nDO  - 10.33324/ceuazuay.364\nUR  - http://dx.doi.org/10.33324/ceuazuay.364\nTI  - Psicoeducación comunitaria aprendiendo juntos: Descubriendo juntos -12 a 14 años\nAU  - \nAU  - Chocho-Orellana, Ximena\nAU  - Reyes-Fernández de Córdova, Norma\nAU  - \nAU  - Cordero-Cobos, Lucía\nAU  - \nPY  - 2024\nDA  - 2024/11/01\nPB  - Casa Editora de la Universidad del Azuay\nSN  - 9789942670410\nER  - \n",
+  "bibtex": " @book{2024, title={Psicoeducación comunitaria aprendiendo juntos: Descubriendo juntos -12 a 14 años}, ISBN={9789942670410}, url={http://dx.doi.org/10.33324/ceuazuay.364}, DOI={10.33324/ceuazuay.364}, publisher={Casa Editora de la Universidad del Azuay}, author={ and Chocho-Orellana, Ximena and Reyes-Fernández de Córdova, Norma and Cordero-Cobos, Lucía and }, year={2024}, month=Nov }\n"
+ },
+ {
+  "doi": "10.48021/978-65-252-7706-6",
+  "type": "edited-book",
+  "ris": "TY  - EDBOOK\nDO  - 10.48021/978-65-252-7706-6\nUR  - http://dx.doi.org/10.48021/978-65-252-7706-6\nTI  - O Magnificat: uma análise socioteológica de Lucas 1,46-56\nAU  - ZEPONI, M. A. M.\nPY  - 2023\nPB  - Dialética\nSN  - 9786525277066\nER  - \n",
+  "bibtex": " @book{ZEPONI_2023, title={O Magnificat: uma análise socioteológica de Lucas 1,46-56}, ISBN={9786525277066}, url={http://dx.doi.org/10.48021/978-65-252-7706-6}, DOI={10.48021/978-65-252-7706-6}, publisher={Dialética}, author={ZEPONI, M. A. M.}, year={2023} }\n"
+ },
+ {
+  "doi": "10.48021/978-65-252-8313-5",
+  "type": "edited-book",
+  "ris": "TY  - EDBOOK\nDO  - 10.48021/978-65-252-8313-5\nUR  - http://dx.doi.org/10.48021/978-65-252-8313-5\nTI  - Respire fundo... Vire a página e viva a vida que você deseja alinhada ao seu poder de confiança e fé\nAU  - ALVES, Z.\nPY  - 2023\nPB  - Dialética Literária\nSN  - 9786525283135\nER  - \n",
+  "bibtex": " @book{ALVES_2023, title={Respire fundo... Vire a página e viva a vida que você deseja alinhada ao seu poder de confiança e fé}, ISBN={9786525283135}, url={http://dx.doi.org/10.48021/978-65-252-8313-5}, DOI={10.48021/978-65-252-8313-5}, publisher={Dialética Literária}, author={ALVES, Z.}, year={2023} }\n"
+ },
+ {
+  "doi": "10.48021/978-65-270-8039-8",
+  "type": "edited-book",
+  "ris": "TY  - EDBOOK\nDO  - 10.48021/978-65-270-8039-8\nUR  - http://dx.doi.org/10.48021/978-65-270-8039-8\nTI  - A Proteção da Mulher no Direito do Trabalho: Reflexões à Luz da Reforma Trabalhista e das Leis 14.611/2023 e 15.222/2025\nAU  - SOUZA, D. A.\nPY  - 2026\nPB  - Editora Dialética\nSN  - 9786527080398\nER  - \n",
+  "bibtex": " @book{SOUZA_2026, title={A Proteção da Mulher no Direito do Trabalho: Reflexões à Luz da Reforma Trabalhista e das Leis 14.611/2023 e 15.222/2025}, ISBN={9786527080398}, url={http://dx.doi.org/10.48021/978-65-270-8039-8}, DOI={10.48021/978-65-270-8039-8}, publisher={Editora Dialética}, author={SOUZA, D. A.}, year={2026} }\n"
+ },
+ {
+  "doi": "10.1002/ange.201107991",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1002/ange.201107991\nUR  - http://dx.doi.org/10.1002/ange.201107991\nTI  - Heterocycles in Natural Product Synthesis. Herausgegeben von Krishna C. Majumdar und Shital K. Chattopadhyay.\nT2  - Angewandte Chemie\nAU  - Snyder, Scott A.\nPY  - 2011\nDA  - 2011/12/30\nPB  - Wiley\nSP  - 1333-1333\nIS  - 6\nVL  - 124\nSN  - 0044-8249\nSN  - 1521-3757\nER  - \n",
+  "bibtex": " @article{Snyder_2011, title={Heterocycles in Natural Product Synthesis. Herausgegeben von Krishna C. Majumdar und Shital K. Chattopadhyay.}, volume={124}, ISSN={1521-3757}, url={http://dx.doi.org/10.1002/ange.201107991}, DOI={10.1002/ange.201107991}, number={6}, journal={Angewandte Chemie}, publisher={Wiley}, author={Snyder, Scott A.}, year={2011}, month=Dec, pages={1333–1333} }\n"
+ },
+ {
+  "doi": "10.1002/batt.202100121",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1002/batt.202100121\nUR  - http://dx.doi.org/10.1002/batt.202100121\nTI  - Cover Feature: The (In‐)Stability of the Ionic Liquids [(TMEDA)BH<sub>2</sub>][TFSI] and −[FSI] on the Li(001) Surface (Batteries &amp; Supercaps 7/2021)\nT2  - Batteries &amp; Supercaps\nAU  - Clarke‐Hannaford, Jonathan\nAU  - Breedon, Michael\nAU  - Rüther, Thomas\nAU  - Johansson, Patrik\nAU  - Spencer, Michelle J. S.\nPY  - 2021\nDA  - 2021/06/02\nPB  - Wiley\nSP  - 1033-1033\nIS  - 7\nVL  - 4\nSN  - 2566-6223\nSN  - 2566-6223\nER  - \n",
+  "bibtex": " @article{Clarke_Hannaford_2021, title={Cover Feature: The (In‐)Stability of the Ionic Liquids [(TMEDA)BH<sub>2</sub>][TFSI] and −[FSI] on the Li(001) Surface (Batteries &amp; Supercaps 7/2021)}, volume={4}, ISSN={2566-6223}, url={http://dx.doi.org/10.1002/batt.202100121}, DOI={10.1002/batt.202100121}, number={7}, journal={Batteries &amp; Supercaps}, publisher={Wiley}, author={Clarke‐Hannaford, Jonathan and Breedon, Michael and Rüther, Thomas and Johansson, Patrik and Spencer, Michelle J. S.}, year={2021}, month=June, pages={1033–1033} }\n"
+ },
+ {
+  "doi": "10.1002/chin.197143206",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1002/chin.197143206\nUR  - http://dx.doi.org/10.1002/chin.197143206\nTI  - ChemInform Abstract: ELEKTRO‐ORGANISCHE SYNTHESEN\nT2  - Chemischer Informationsdienst. Organische Chemie\nAU  - WAWZONEK, S.\nPY  - 1971\nDA  - 1971/10/26\nPB  - Wiley\nIS  - 43\nVL  - 2\nSN  - 0300-5151\nSN  - 2199-2932\nER  - \n",
+  "bibtex": " @article{WAWZONEK_1971, title={ChemInform Abstract: ELEKTRO‐ORGANISCHE SYNTHESEN}, volume={2}, ISSN={2199-2932}, url={http://dx.doi.org/10.1002/chin.197143206}, DOI={10.1002/chin.197143206}, number={43}, journal={Chemischer Informationsdienst. Organische Chemie}, publisher={Wiley}, author={WAWZONEK, S.}, year={1971}, month=Oct }\n"
+ },
+ {
+  "doi": "10.1002/jmv.21035",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1002/jmv.21035\nUR  - http://dx.doi.org/10.1002/jmv.21035\nTI  - Hepatitis B virus transmission pattern and vaccination efficiency in Uzbekistan\nT2  - Journal of Medical Virology\nAU  - Avazova, Dildora\nAU  - Kurbanov, Fuat\nAU  - Tanaka, Yasuhito\nAU  - Sugiyama, Masaya\nAU  - Radchenko, Ivan\nAU  - Ruziev, Dilmurod\nAU  - Musabaev, Erkin\nAU  - Mizokami, Masashi\nPY  - 2007\nDA  - 2007/12/20\nPB  - Wiley\nSP  - 217-224\nIS  - 2\nVL  - 80\nSN  - 0146-6615\nSN  - 1096-9071\nER  - \n",
+  "bibtex": " @article{Avazova_2007, title={Hepatitis B virus transmission pattern and vaccination efficiency in Uzbekistan}, volume={80}, ISSN={1096-9071}, url={http://dx.doi.org/10.1002/jmv.21035}, DOI={10.1002/jmv.21035}, number={2}, journal={Journal of Medical Virology}, publisher={Wiley}, author={Avazova, Dildora and Kurbanov, Fuat and Tanaka, Yasuhito and Sugiyama, Masaya and Radchenko, Ivan and Ruziev, Dilmurod and Musabaev, Erkin and Mizokami, Masashi}, year={2007}, month=Dec, pages={217–224} }\n"
+ },
+ {
+  "doi": "10.1002/ldr.70575",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1002/ldr.70575\nUR  - http://dx.doi.org/10.1002/ldr.70575\nTI  - Effects of Taproot‐Type and Fibrous‐Root‐Type Grass Cover Structures on Runoff and Sediment Yield Processes on Slopes in the Loess Hilly and Gully Region\nT2  - Land Degradation &amp; Development\nAU  - He, Zimiao\nAU  - Yuan, Gangxiang\nAU  - Tong, Haoqiang\nAU  - Hao, Shilong\nAU  - Yao, Zhihong\nAU  - Liu, Zhe\nAU  - Wei, Ran\nAU  - Li, Ting\nAU  - Guo, Yinghong\nAU  - Heng, Douhuan\nAU  - Xiao, Peiqing\nPY  - 2026\nDA  - 2026/03/26\nPB  - Wiley\nSP  - 7131-7145\nIS  - 11\nVL  - 37\nSN  - 1085-3278\nSN  - 1099-145X\nER  - \n",
+  "bibtex": " @article{He_2026, title={Effects of Taproot‐Type and Fibrous‐Root‐Type Grass Cover Structures on Runoff and Sediment Yield Processes on Slopes in the Loess Hilly and Gully Region}, volume={37}, ISSN={1099-145X}, url={http://dx.doi.org/10.1002/ldr.70575}, DOI={10.1002/ldr.70575}, number={11}, journal={Land Degradation &amp; Development}, publisher={Wiley}, author={He, Zimiao and Yuan, Gangxiang and Tong, Haoqiang and Hao, Shilong and Yao, Zhihong and Liu, Zhe and Wei, Ran and Li, Ting and Guo, Yinghong and Heng, Douhuan and Xiao, Peiqing}, year={2026}, month=Mar, pages={7131–7145} }\n"
+ },
+ {
+  "doi": "10.1002/tox.23097",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1002/tox.23097\nUR  - http://dx.doi.org/10.1002/tox.23097\nTI  - Linseed ameliorates renal apoptosis in rat fetuses induced by single or combined exposure to diesel nanoparticles or fenitrothion by inhibiting transcriptional activation of p21/p53 and caspase‐3/9 through pro‐oxidant stimulus\nT2  - Environmental Toxicology\nAU  - Ibrahim, Khairy A.\nAU  - Abdelgaid, Hala A.\nAU  - El‐Desouky, Mohamed Ali\nAU  - Fahmi, Abdelgawad Ali\nAU  - Abdel‐Daim, Mohamed M.\nPY  - 2021\nDA  - 2021/01/04\nPB  - Wiley\nSP  - 958-974\nIS  - 5\nVL  - 36\nSN  - 1520-4081\nSN  - 1522-7278\nER  - \n",
+  "bibtex": " @article{Ibrahim_2021, title={Linseed ameliorates renal apoptosis in rat fetuses induced by single or combined exposure to diesel nanoparticles or fenitrothion by inhibiting transcriptional activation of p21/p53 and caspase‐3/9 through pro‐oxidant stimulus}, volume={36}, ISSN={1522-7278}, url={http://dx.doi.org/10.1002/tox.23097}, DOI={10.1002/tox.23097}, number={5}, journal={Environmental Toxicology}, publisher={Wiley}, author={Ibrahim, Khairy A. and Abdelgaid, Hala A. and El‐Desouky, Mohamed Ali and Fahmi, Abdelgawad Ali and Abdel‐Daim, Mohamed M.}, year={2021}, month=Jan, pages={958–974} }\n"
+ },
+ {
+  "doi": "10.1007/bf00829951",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/bf00829951\nUR  - http://dx.doi.org/10.1007/bf00829951\nTI  - Errors in determining the parameters of photopeaks in semiconductor gamma spectra\nT2  - Measurement Techniques\nAU  - Kuznetsov, V. P.\nPY  - 1981\nDA  - 1981/09\nPB  - Springer Science and Business Media LLC\nSP  - 739-742\nIS  - 9\nVL  - 24\nSN  - 0543-1972\nSN  - 1573-8906\nER  - \n",
+  "bibtex": " @article{Kuznetsov_1981, title={Errors in determining the parameters of photopeaks in semiconductor gamma spectra}, volume={24}, ISSN={1573-8906}, url={http://dx.doi.org/10.1007/bf00829951}, DOI={10.1007/bf00829951}, number={9}, journal={Measurement Techniques}, publisher={Springer Science and Business Media LLC}, author={Kuznetsov, V. P.}, year={1981}, month=Sept, pages={739–742} }\n"
+ },
+ {
+  "doi": "10.1007/bf02901223",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/bf02901223\nUR  - http://dx.doi.org/10.1007/bf02901223\nTI  - Initial-boundary value problem for a class of quasilinear degenerate parabolic equations\nT2  - Wuhan University Journal of Natural Sciences\nAU  - Lei, Nie\nAU  - Chaojiang, Xu\nPY  - 1996\nDA  - 1996/06\nPB  - EDP Sciences\nSP  - 179-183\nIS  - 2\nVL  - 1\nSN  - 1007-1202\nSN  - 1993-4998\nER  - \n",
+  "bibtex": " @article{Lei_1996, title={Initial-boundary value problem for a class of quasilinear degenerate parabolic equations}, volume={1}, ISSN={1993-4998}, url={http://dx.doi.org/10.1007/bf02901223}, DOI={10.1007/bf02901223}, number={2}, journal={Wuhan University Journal of Natural Sciences}, publisher={EDP Sciences}, author={Lei, Nie and Chaojiang, Xu}, year={1996}, month=June, pages={179–183} }\n"
+ },
+ {
+  "doi": "10.1007/bf03075239",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/bf03075239\nUR  - http://dx.doi.org/10.1007/bf03075239\nTI  - Palliatio Calor est (=palliative care is hot!)\nT2  - Tijdschrift voor VerpleeghuisGeneeskunde\nAU  - Achterberg, Wilco\nPY  - 2007\nDA  - 2007/04\nPB  - Springer Science and Business Media LLC\nSP  - 66-67\nIS  - 2\nVL  - 32\nSN  - 1386-1514\nSN  - 1875-6875\nER  - \n",
+  "bibtex": " @article{Achterberg_2007, title={Palliatio Calor est (=palliative care is hot!)}, volume={32}, ISSN={1875-6875}, url={http://dx.doi.org/10.1007/bf03075239}, DOI={10.1007/bf03075239}, number={2}, journal={Tijdschrift voor VerpleeghuisGeneeskunde}, publisher={Springer Science and Business Media LLC}, author={Achterberg, Wilco}, year={2007}, month=Apr, pages={66–67} }\n"
+ },
+ {
+  "doi": "10.1007/jhep05(2026)038",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/jhep05(2026)038\nUR  - http://dx.doi.org/10.1007/jhep05(2026)038\nTI  - The special locus\nT2  - Journal of High Energy Physics\nAU  - Ramella, Tobi\nAU  - Warner, Nicholas P.\nPY  - 2026\nDA  - 2026/05/05\nPB  - Springer Science and Business Media LLC\nIS  - 5\nVL  - 2026\nSN  - 1029-8479\nER  - \n",
+  "bibtex": " @article{Ramella_2026, title={The special locus}, volume={2026}, ISSN={1029-8479}, url={http://dx.doi.org/10.1007/jhep05(2026)038}, DOI={10.1007/jhep05(2026)038}, number={5}, journal={Journal of High Energy Physics}, publisher={Springer Science and Business Media LLC}, author={Ramella, Tobi and Warner, Nicholas P.}, year={2026}, month=May }\n"
+ },
+ {
+  "doi": "10.1007/s00340-011-4767-x",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/s00340-011-4767-x\nUR  - http://dx.doi.org/10.1007/s00340-011-4767-x\nTI  - Editorial\nT2  - Applied Physics B\nAU  - Harren, F. J. M.\nAU  - Konov, V.\nPY  - 2011\nDA  - 2011/11\nPB  - Springer Science and Business Media LLC\nSP  - 493-493\nIS  - 3\nVL  - 105\nSN  - 0946-2171\nSN  - 1432-0649\nER  - \n",
+  "bibtex": " @article{Harren_2011, title={Editorial}, volume={105}, ISSN={1432-0649}, url={http://dx.doi.org/10.1007/s00340-011-4767-x}, DOI={10.1007/s00340-011-4767-x}, number={3}, journal={Applied Physics B}, publisher={Springer Science and Business Media LLC}, author={Harren, F. J. M. and Konov, V.}, year={2011}, month=Nov, pages={493–493} }\n"
+ },
+ {
+  "doi": "10.1007/s00404-024-07803-9",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/s00404-024-07803-9\nUR  - http://dx.doi.org/10.1007/s00404-024-07803-9\nTI  - Does the timing of postprandial glucose monitoring affect the obstetric and neonatal outcomes in patients with gestational diabetes? A prospective study comparing 1 and 2-h postprandial monitoring\nT2  - Archives of Gynecology and Obstetrics\nAU  - Ben Shoshan, Noa\nAU  - Mizrachi, Yossi\nAU  - Tamayev, Liliya\nAU  - Ben-Ari, Tal\nAU  - Weiner, Eran\nAU  - Barda, Giulia\nPY  - 2024\nDA  - 2024/11/04\nPB  - Springer Science and Business Media LLC\nSP  - 983-988\nIS  - 4\nVL  - 311\nSN  - 1432-0711\nER  - \n",
+  "bibtex": " @article{Ben_Shoshan_2024, title={Does the timing of postprandial glucose monitoring affect the obstetric and neonatal outcomes in patients with gestational diabetes? A prospective study comparing 1 and 2-h postprandial monitoring}, volume={311}, ISSN={1432-0711}, url={http://dx.doi.org/10.1007/s00404-024-07803-9}, DOI={10.1007/s00404-024-07803-9}, number={4}, journal={Archives of Gynecology and Obstetrics}, publisher={Springer Science and Business Media LLC}, author={Ben Shoshan, Noa and Mizrachi, Yossi and Tamayev, Liliya and Ben-Ari, Tal and Weiner, Eran and Barda, Giulia}, year={2024}, month=Nov, pages={983–988} }\n"
+ },
+ {
+  "doi": "10.1007/s00703-015-0380-6",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/s00703-015-0380-6\nUR  - http://dx.doi.org/10.1007/s00703-015-0380-6\nTI  - Trends in combined climate indices in Serbia from 1961 to 2010\nT2  - Meteorology and Atmospheric Physics\nAU  - Arsenović, Pavle\nAU  - Tošić, Ivana\nAU  - Unkašević, Miroslava\nPY  - 2015\nDA  - 2015/04/29\nPB  - Springer Science and Business Media LLC\nSP  - 489-498\nIS  - 4\nVL  - 127\nSN  - 0177-7971\nSN  - 1436-5065\nER  - \n",
+  "bibtex": " @article{Arsenovi__2015, title={Trends in combined climate indices in Serbia from 1961 to 2010}, volume={127}, ISSN={1436-5065}, url={http://dx.doi.org/10.1007/s00703-015-0380-6}, DOI={10.1007/s00703-015-0380-6}, number={4}, journal={Meteorology and Atmospheric Physics}, publisher={Springer Science and Business Media LLC}, author={Arsenović, Pavle and Tošić, Ivana and Unkašević, Miroslava}, year={2015}, month=Apr, pages={489–498} }\n"
+ },
+ {
+  "doi": "10.1007/s10964-015-0367-0",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/s10964-015-0367-0\nUR  - http://dx.doi.org/10.1007/s10964-015-0367-0\nTI  - The Relationship Between Immigrant School Composition, Classmate Support and Involvement in Physical Fighting and Bullying among Adolescent Immigrants and Non-immigrants in 11 Countries\nT2  - Journal of Youth and Adolescence\nAU  - Walsh, Sophie D.\nAU  - De Clercq, Bart\nAU  - Molcho, Michal\nAU  - Harel-Fisch, Yossi\nAU  - Davison, Colleen M.\nAU  - Rich Madsen, Katrine\nAU  - Stevens, Gonneke W. J. M.\nPY  - 2015\nDA  - 2015/10/26\nPB  - Springer Science and Business Media LLC\nSP  - 1-16\nIS  - 1\nVL  - 45\nSN  - 0047-2891\nSN  - 1573-6601\nER  - \n",
+  "bibtex": " @article{Walsh_2015, title={The Relationship Between Immigrant School Composition, Classmate Support and Involvement in Physical Fighting and Bullying among Adolescent Immigrants and Non-immigrants in 11 Countries}, volume={45}, ISSN={1573-6601}, url={http://dx.doi.org/10.1007/s10964-015-0367-0}, DOI={10.1007/s10964-015-0367-0}, number={1}, journal={Journal of Youth and Adolescence}, publisher={Springer Science and Business Media LLC}, author={Walsh, Sophie D. and De Clercq, Bart and Molcho, Michal and Harel-Fisch, Yossi and Davison, Colleen M. and Rich Madsen, Katrine and Stevens, Gonneke W. J. M.}, year={2015}, month=Oct, pages={1–16} }\n"
+ },
+ {
+  "doi": "10.1007/s42535-026-01649-z",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1007/s42535-026-01649-z\nUR  - http://dx.doi.org/10.1007/s42535-026-01649-z\nTI  - Isolation and characterization of galactomannan from Sesbania seed and its inhibitory activity against α-amylase to explore its therapeutic ability\nT2  - Vegetos\nAU  - Singh, Shobha\nAU  - Raj, Ritu\nAU  - Kumar, Dinesh\nAU  - Srivastava, Manjoosha\nPY  - 2026\nDA  - 2026/04/27\nPB  - Springer Science and Business Media LLC\nSN  - 2229-4473\nER  - \n",
+  "bibtex": " @article{Singh_2026, title={Isolation and characterization of galactomannan from Sesbania seed and its inhibitory activity against α-amylase to explore its therapeutic ability}, ISSN={2229-4473}, url={http://dx.doi.org/10.1007/s42535-026-01649-z}, DOI={10.1007/s42535-026-01649-z}, journal={Vegetos}, publisher={Springer Science and Business Media LLC}, author={Singh, Shobha and Raj, Ritu and Kumar, Dinesh and Srivastava, Manjoosha}, year={2026}, month=Apr }\n"
+ },
+ {
+  "doi": "10.1016/0031-9163(64)91169-2",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/0031-9163(64)91169-2\nUR  - http://dx.doi.org/10.1016/0031-9163(64)91169-2\nTI  - The B10(He3, pα)2He4 reaction\nT2  - Physics Letters\nAU  - Etter, J.E.\nAU  - Waggoner, M.A.\nAU  - Holmgren, H.D.\nAU  - Moazed, C.\nAU  - Jaffe, A.A.\nPY  - 1964\nDA  - 1964/09\nPB  - Elsevier BV\nSP  - 42-45\nIS  - 1\nVL  - 12\nSN  - 0031-9163\nER  - \n",
+  "bibtex": " @article{Etter_1964, title={The B10(He3, pα)2He4 reaction}, volume={12}, ISSN={0031-9163}, url={http://dx.doi.org/10.1016/0031-9163(64)91169-2}, DOI={10.1016/0031-9163(64)91169-2}, number={1}, journal={Physics Letters}, publisher={Elsevier BV}, author={Etter, J.E. and Waggoner, M.A. and Holmgren, H.D. and Moazed, C. and Jaffe, A.A.}, year={1964}, month=Sept, pages={42–45} }\n"
+ },
+ {
+  "doi": "10.1016/0378-4347(93)80372-b",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/0378-4347(93)80372-b\nUR  - http://dx.doi.org/10.1016/0378-4347(93)80372-b\nTI  - Selective method for plasma quantitation of the stereoisomers of a new aminotetralin by high-performance liquid chromatography with electrochemical detection\nT2  - Journal of Chromatography B: Biomedical Sciences and Applications\nAU  - Rondelli, Ivano\nAU  - Mariotti, Fabrizia\nAU  - Acerbi, Daniela\nAU  - Redenti, Enrico\nAU  - Amari, Gabriele\nAU  - Ventura, Paolo\nPY  - 1993\nDA  - 1993/01\nPB  - Elsevier BV\nSP  - 95-103\nIS  - 1\nVL  - 612\nSN  - 0378-4347\nER  - \n",
+  "bibtex": " @article{Rondelli_1993, title={Selective method for plasma quantitation of the stereoisomers of a new aminotetralin by high-performance liquid chromatography with electrochemical detection}, volume={612}, ISSN={0378-4347}, url={http://dx.doi.org/10.1016/0378-4347(93)80372-b}, DOI={10.1016/0378-4347(93)80372-b}, number={1}, journal={Journal of Chromatography B: Biomedical Sciences and Applications}, publisher={Elsevier BV}, author={Rondelli, Ivano and Mariotti, Fabrizia and Acerbi, Daniela and Redenti, Enrico and Amari, Gabriele and Ventura, Paolo}, year={1993}, month=Jan, pages={95–103} }\n"
+ },
+ {
+  "doi": "10.1016/0378-8733(95)00277-4",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/0378-8733(95)00277-4\nUR  - http://dx.doi.org/10.1016/0378-8733(95)00277-4\nTI  - Kinship networks and discrete structure theory: Applications and implications\nT2  - Social Networks\nAU  - White, Douglas R.\nAU  - Jorion, Paul\nPY  - 1996\nDA  - 1996/08\nPB  - Elsevier BV\nSP  - 267-314\nIS  - 3\nVL  - 18\nSN  - 0378-8733\nER  - \n",
+  "bibtex": " @article{White_1996, title={Kinship networks and discrete structure theory: Applications and implications}, volume={18}, ISSN={0378-8733}, url={http://dx.doi.org/10.1016/0378-8733(95)00277-4}, DOI={10.1016/0378-8733(95)00277-4}, number={3}, journal={Social Networks}, publisher={Elsevier BV}, author={White, Douglas R. and Jorion, Paul}, year={1996}, month=Aug, pages={267–314} }\n"
+ },
+ {
+  "doi": "10.1016/0959-8049(95)99892-4",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/0959-8049(95)99892-4\nUR  - http://dx.doi.org/10.1016/0959-8049(95)99892-4\nTI  - Transfer of the metallothionein gene to CD34+ cells using an original friend virus derived construct confers resistance to cis-platinium derivatives and to alkylating agents\nT2  - European Journal of Cancer\nAU  - Cohen-Haguenauer, Odile\nAU  - Restrepo, Luz-Marina\nAU  - Upegui-Gonzalez, Lia-Cristina\nAU  - Masset, Michel\nAU  - Boiron, Michel\nAU  - Marty, Michel\nPY  - 1995\nDA  - 1995/10\nPB  - Elsevier BV\nSP  - S20\nVL  - 31\nSN  - 0959-8049\nER  - \n",
+  "bibtex": " @article{Cohen_Haguenauer_1995, title={Transfer of the metallothionein gene to CD34+ cells using an original friend virus derived construct confers resistance to cis-platinium derivatives and to alkylating agents}, volume={31}, ISSN={0959-8049}, url={http://dx.doi.org/10.1016/0959-8049(95)99892-4}, DOI={10.1016/0959-8049(95)99892-4}, journal={European Journal of Cancer}, publisher={Elsevier BV}, author={Cohen-Haguenauer, Odile and Restrepo, Luz-Marina and Upegui-Gonzalez, Lia-Cristina and Masset, Michel and Boiron, Michel and Marty, Michel}, year={1995}, month=Oct, pages={S20} }\n"
+ },
+ {
+  "doi": "10.1016/j.aim.2017.06.025",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.aim.2017.06.025\nUR  - http://dx.doi.org/10.1016/j.aim.2017.06.025\nTI  - Injective subsets of l∞(I)\nT2  - Advances in Mathematics\nAU  - Descombes, Dominic\nAU  - Pavón, Maël\nPY  - 2017\nDA  - 2017/09\nPB  - Elsevier BV\nSP  - 91-107\nVL  - 317\nSN  - 0001-8708\nER  - \n",
+  "bibtex": " @article{Descombes_2017, title={Injective subsets of l∞(I)}, volume={317}, ISSN={0001-8708}, url={http://dx.doi.org/10.1016/j.aim.2017.06.025}, DOI={10.1016/j.aim.2017.06.025}, journal={Advances in Mathematics}, publisher={Elsevier BV}, author={Descombes, Dominic and Pavón, Maël}, year={2017}, month=Sept, pages={91–107} }\n"
+ },
+ {
+  "doi": "10.1016/j.anai.2023.08.295",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.anai.2023.08.295\nUR  - http://dx.doi.org/10.1016/j.anai.2023.08.295\nTI  - REPETITIVE FOOD-INDEPENDENT EXERCISE-INDUCED ANAPHYLAXIS\nT2  - Annals of Allergy, Asthma &amp; Immunology\nAU  - Creech, J.\nAU  - Hajirawala, M.\nPY  - 2023\nDA  - 2023/11\nPB  - Elsevier BV\nSP  - S100\nIS  - 5\nVL  - 131\nSN  - 1081-1206\nER  - \n",
+  "bibtex": " @article{Creech_2023, title={REPETITIVE FOOD-INDEPENDENT EXERCISE-INDUCED ANAPHYLAXIS}, volume={131}, ISSN={1081-1206}, url={http://dx.doi.org/10.1016/j.anai.2023.08.295}, DOI={10.1016/j.anai.2023.08.295}, number={5}, journal={Annals of Allergy, Asthma &amp; Immunology}, publisher={Elsevier BV}, author={Creech, J. and Hajirawala, M.}, year={2023}, month=Nov, pages={S100} }\n"
+ },
+ {
+  "doi": "10.1016/j.apsusc.2008.05.061",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.apsusc.2008.05.061\nUR  - http://dx.doi.org/10.1016/j.apsusc.2008.05.061\nTI  - Resonance enhanced multi-photon ionization of neutral atoms sputtered with Ga-FIB\nT2  - Applied Surface Science\nAU  - Koizumi, M.\nAU  - Sakamoto, T.\nPY  - 2008\nDA  - 2008/12\nPB  - Elsevier BV\nSP  - 901-904\nIS  - 4\nVL  - 255\nSN  - 0169-4332\nER  - \n",
+  "bibtex": " @article{Koizumi_2008, title={Resonance enhanced multi-photon ionization of neutral atoms sputtered with Ga-FIB}, volume={255}, ISSN={0169-4332}, url={http://dx.doi.org/10.1016/j.apsusc.2008.05.061}, DOI={10.1016/j.apsusc.2008.05.061}, number={4}, journal={Applied Surface Science}, publisher={Elsevier BV}, author={Koizumi, M. and Sakamoto, T.}, year={2008}, month=Dec, pages={901–904} }\n"
+ },
+ {
+  "doi": "10.1016/j.bbmt.2013.12.391",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.bbmt.2013.12.391\nUR  - http://dx.doi.org/10.1016/j.bbmt.2013.12.391\nTI  - Fludarabine, Intravenous Busulfan, and Total Body Irradiation (FluBuTBI) Conditioning for Allogeneic Peripheral Blood Stem Cell Transplantation the Western Pennsylvania Cancer Institute Experience\nT2  - Biology of Blood and Marrow Transplantation\nAU  - Kefela, Aron\nAU  - Sahovic, Entezam\nAU  - De Yao, Jocelyn\nAU  - Sadashiv, Santhosh\nAU  - Rossetti, James\nAU  - Fazal, Salman\nAU  - Khan, Cyrus\nAU  - Berteotti, Gina\nAU  - Lister, John\nPY  - 2014\nDA  - 2014/02\nPB  - Elsevier BV\nSP  - S232\nIS  - 2\nVL  - 20\nSN  - 1083-8791\nER  - \n",
+  "bibtex": " @article{Kefela_2014, title={Fludarabine, Intravenous Busulfan, and Total Body Irradiation (FluBuTBI) Conditioning for Allogeneic Peripheral Blood Stem Cell Transplantation the Western Pennsylvania Cancer Institute Experience}, volume={20}, ISSN={1083-8791}, url={http://dx.doi.org/10.1016/j.bbmt.2013.12.391}, DOI={10.1016/j.bbmt.2013.12.391}, number={2}, journal={Biology of Blood and Marrow Transplantation}, publisher={Elsevier BV}, author={Kefela, Aron and Sahovic, Entezam and De Yao, Jocelyn and Sadashiv, Santhosh and Rossetti, James and Fazal, Salman and Khan, Cyrus and Berteotti, Gina and Lister, John}, year={2014}, month=Feb, pages={S232} }\n"
+ },
+ {
+  "doi": "10.1016/j.cardfail.2025.11.476",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.cardfail.2025.11.476\nUR  - http://dx.doi.org/10.1016/j.cardfail.2025.11.476\nTI  - Impact Of Neurotic, Stress Related And Somatoform Disorders On 30-day All-cause Readmissions In Elderly Heart Failure Patients: A Study From National Readmission Database 2021\nT2  - Journal of Cardiac Failure\nAU  - Adhikari, Govinda\nAU  - Mulmi, Alex\nAU  - Dahal, Dipendra\nAU  - Sharma, Sorabh\nAU  - Ufion, Alvaro Altamirano\nAU  - Singh, Kamaldeep\nAU  - Gyawali, Nishedh\nAU  - Bhandari, Devendra\nPY  - 2026\nDA  - 2026/01\nPB  - Elsevier BV\nSP  - 364\nIS  - 1\nVL  - 32\nSN  - 1071-9164\nER  - \n",
+  "bibtex": " @article{Adhikari_2026, title={Impact Of Neurotic, Stress Related And Somatoform Disorders On 30-day All-cause Readmissions In Elderly Heart Failure Patients: A Study From National Readmission Database 2021}, volume={32}, ISSN={1071-9164}, url={http://dx.doi.org/10.1016/j.cardfail.2025.11.476}, DOI={10.1016/j.cardfail.2025.11.476}, number={1}, journal={Journal of Cardiac Failure}, publisher={Elsevier BV}, author={Adhikari, Govinda and Mulmi, Alex and Dahal, Dipendra and Sharma, Sorabh and Ufion, Alvaro Altamirano and Singh, Kamaldeep and Gyawali, Nishedh and Bhandari, Devendra}, year={2026}, month=Jan, pages={364} }\n"
+ },
+ {
+  "doi": "10.1016/j.checat.2025.101428",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.checat.2025.101428\nUR  - http://dx.doi.org/10.1016/j.checat.2025.101428\nTI  - Enhancing carbon nanotube production from carbon dioxide and ethane using bimetallic catalysts\nT2  - Chem Catalysis\nAU  - Yuan, Yong\nAU  - Lamichhane, Bipin\nAU  - Porter, William N.\nAU  - Hwang, Sooyeon\nAU  - Ma, Lu\nAU  - Yang, Dali\nAU  - Tayal, Akhil\nAU  - Marinkovic, Nebojsa S.\nAU  - Kattel, Shyam\nAU  - Chen, Jingguang G.\nPY  - 2025\nDA  - 2025/10\nPB  - Elsevier BV\nSP  - 101428\nIS  - 10\nVL  - 5\nSN  - 2667-1093\nER  - \n",
+  "bibtex": " @article{Yuan_2025, title={Enhancing carbon nanotube production from carbon dioxide and ethane using bimetallic catalysts}, volume={5}, ISSN={2667-1093}, url={http://dx.doi.org/10.1016/j.checat.2025.101428}, DOI={10.1016/j.checat.2025.101428}, number={10}, journal={Chem Catalysis}, publisher={Elsevier BV}, author={Yuan, Yong and Lamichhane, Bipin and Porter, William N. and Hwang, Sooyeon and Ma, Lu and Yang, Dali and Tayal, Akhil and Marinkovic, Nebojsa S. and Kattel, Shyam and Chen, Jingguang G.}, year={2025}, month=Oct, pages={101428} }\n"
+ },
+ {
+  "doi": "10.1016/j.compositesa.2019.05.033",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.compositesa.2019.05.033\nUR  - http://dx.doi.org/10.1016/j.compositesa.2019.05.033\nTI  - Molecular dynamics of poly(vinyl alcohol)/cellulose nanofibrils nanocomposites highlighted by dielectric relaxation spectroscopy\nT2  - Composites Part A: Applied Science and Manufacturing\nAU  - Ghorbel, Nouha\nAU  - Kallel, Ali\nAU  - Boufi, Sami\nPY  - 2019\nDA  - 2019/09\nPB  - Elsevier BV\nSP  - 105465\nVL  - 124\nSN  - 1359-835X\nER  - \n",
+  "bibtex": " @article{Ghorbel_2019, title={Molecular dynamics of poly(vinyl alcohol)/cellulose nanofibrils nanocomposites highlighted by dielectric relaxation spectroscopy}, volume={124}, ISSN={1359-835X}, url={http://dx.doi.org/10.1016/j.compositesa.2019.05.033}, DOI={10.1016/j.compositesa.2019.05.033}, journal={Composites Part A: Applied Science and Manufacturing}, publisher={Elsevier BV}, author={Ghorbel, Nouha and Kallel, Ali and Boufi, Sami}, year={2019}, month=Sept, pages={105465} }\n"
+ },
+ {
+  "doi": "10.1016/j.dld.2020.12.122",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.dld.2020.12.122\nUR  - http://dx.doi.org/10.1016/j.dld.2020.12.122\nTI  - The key role of colonoscopy at 6 months from ileocolonic resection in Crohn's disease patients\nT2  - Digestive and Liver Disease\nAU  - Mocciaro, Filippo\nAU  - Di Mitri, Roberto\nAU  - Macaluso, Fabio Salvatore\nAU  - Renna, Sara\nAU  - Scimeca, Daniela\nAU  - Orlando, Ambrogio\nPY  - 2021\nDA  - 2021/04\nPB  - Elsevier BV\nSP  - 517-518\nIS  - 4\nVL  - 53\nSN  - 1590-8658\nER  - \n",
+  "bibtex": " @article{Mocciaro_2021, title={The key role of colonoscopy at 6 months from ileocolonic resection in Crohn’s disease patients}, volume={53}, ISSN={1590-8658}, url={http://dx.doi.org/10.1016/j.dld.2020.12.122}, DOI={10.1016/j.dld.2020.12.122}, number={4}, journal={Digestive and Liver Disease}, publisher={Elsevier BV}, author={Mocciaro, Filippo and Di Mitri, Roberto and Macaluso, Fabio Salvatore and Renna, Sara and Scimeca, Daniela and Orlando, Ambrogio}, year={2021}, month=Apr, pages={517–518} }\n"
+ },
+ {
+  "doi": "10.1016/j.ejrad.2018.01.014",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.ejrad.2018.01.014\nUR  - http://dx.doi.org/10.1016/j.ejrad.2018.01.014\nTI  - Computed tomographic thoracic morphologic indices in normal subjects and patients with chronic obstructive pulmonary disease: Comparison with spiral CT densitometry and pulmonary function tests\nT2  - European Journal of Radiology\nAU  - Chung, Myung Hee\nAU  - Gil, Bo Mi\nAU  - Kwon, Soon Seog\nAU  - Park, Hae-il\nAU  - Song, Sun Wha\nAU  - Jung, Na Young\nAU  - Yoo, Won Jong\nPY  - 2018\nDA  - 2018/03\nPB  - Elsevier BV\nSP  - 147-153\nVL  - 100\nSN  - 0720-048X\nER  - \n",
+  "bibtex": " @article{Chung_2018, title={Computed tomographic thoracic morphologic indices in normal subjects and patients with chronic obstructive pulmonary disease: Comparison with spiral CT densitometry and pulmonary function tests}, volume={100}, ISSN={0720-048X}, url={http://dx.doi.org/10.1016/j.ejrad.2018.01.014}, DOI={10.1016/j.ejrad.2018.01.014}, journal={European Journal of Radiology}, publisher={Elsevier BV}, author={Chung, Myung Hee and Gil, Bo Mi and Kwon, Soon Seog and Park, Hae-il and Song, Sun Wha and Jung, Na Young and Yoo, Won Jong}, year={2018}, month=Mar, pages={147–153} }\n"
+ },
+ {
+  "doi": "10.1016/j.ejrad.2021.110103",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.ejrad.2021.110103\nUR  - http://dx.doi.org/10.1016/j.ejrad.2021.110103\nTI  - Diffusion-weighted imaging-gadolinium enhancement mismatch sign in diffuse midline glioma\nT2  - European Journal of Radiology\nAU  - Ikeda, Koki\nAU  - Kolakshyapati, Manish\nAU  - Takayasu, Takeshi\nAU  - Amatya, Vishwa Jeet\nAU  - Takano, Motoki\nAU  - Yonezawa, Ushio\nAU  - Taguchi, Akira\nAU  - Onishi, Shumpei\nAU  - Takeshima, Yukio\nAU  - Sugiyama, Kazuhiko\nAU  - Yamasaki, Fumiyuki\nPY  - 2022\nDA  - 2022/02\nPB  - Elsevier BV\nSP  - 110103\nVL  - 147\nSN  - 0720-048X\nER  - \n",
+  "bibtex": " @article{Ikeda_2022, title={Diffusion-weighted imaging-gadolinium enhancement mismatch sign in diffuse midline glioma}, volume={147}, ISSN={0720-048X}, url={http://dx.doi.org/10.1016/j.ejrad.2021.110103}, DOI={10.1016/j.ejrad.2021.110103}, journal={European Journal of Radiology}, publisher={Elsevier BV}, author={Ikeda, Koki and Kolakshyapati, Manish and Takayasu, Takeshi and Amatya, Vishwa Jeet and Takano, Motoki and Yonezawa, Ushio and Taguchi, Akira and Onishi, Shumpei and Takeshima, Yukio and Sugiyama, Kazuhiko and Yamasaki, Fumiyuki}, year={2022}, month=Feb, pages={110103} }\n"
+ },
+ {
+  "doi": "10.1016/j.flowmeasinst.2023.102515",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.flowmeasinst.2023.102515\nUR  - http://dx.doi.org/10.1016/j.flowmeasinst.2023.102515\nTI  - Measurement technologies for pipeline transport of carbon dioxide-rich mixtures for CCS\nT2  - Flow Measurement and Instrumentation\nAU  - Arellano, Y.\nAU  - Tjugum, S.-A.\nAU  - Pedersen, O.B.\nAU  - Breivik, M.\nAU  - Jukes, E.\nAU  - Marstein, M.\nPY  - 2024\nDA  - 2024/02\nPB  - Elsevier BV\nSP  - 102515\nVL  - 95\nSN  - 0955-5986\nER  - \n",
+  "bibtex": " @article{Arellano_2024, title={Measurement technologies for pipeline transport of carbon dioxide-rich mixtures for CCS}, volume={95}, ISSN={0955-5986}, url={http://dx.doi.org/10.1016/j.flowmeasinst.2023.102515}, DOI={10.1016/j.flowmeasinst.2023.102515}, journal={Flow Measurement and Instrumentation}, publisher={Elsevier BV}, author={Arellano, Y. and Tjugum, S.-A. and Pedersen, O.B. and Breivik, M. and Jukes, E. and Marstein, M.}, year={2024}, month=Feb, pages={102515} }\n"
+ },
+ {
+  "doi": "10.1016/j.ic.2014.10.009",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.ic.2014.10.009\nUR  - http://dx.doi.org/10.1016/j.ic.2014.10.009\nTI  - A higher-order characterization of probabilistic polynomial time\nT2  - Information and Computation\nAU  - Dal Lago, Ugo\nAU  - Parisen Toldin, Paolo\nPY  - 2015\nDA  - 2015/04\nPB  - Elsevier BV\nSP  - 114-141\nVL  - 241\nSN  - 0890-5401\nER  - \n",
+  "bibtex": " @article{Dal_Lago_2015, title={A higher-order characterization of probabilistic polynomial time}, volume={241}, ISSN={0890-5401}, url={http://dx.doi.org/10.1016/j.ic.2014.10.009}, DOI={10.1016/j.ic.2014.10.009}, journal={Information and Computation}, publisher={Elsevier BV}, author={Dal Lago, Ugo and Parisen Toldin, Paolo}, year={2015}, month=Apr, pages={114–141} }\n"
+ },
+ {
+  "doi": "10.1016/j.ijheatmasstransfer.2010.06.022",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.ijheatmasstransfer.2010.06.022\nUR  - http://dx.doi.org/10.1016/j.ijheatmasstransfer.2010.06.022\nTI  - A study of steady laminar diffusion flame over methanol pool surface\nT2  - International Journal of Heat and Mass Transfer\nAU  - Ali, Seik Mansoor\nAU  - Raghavan, Vasudevan\nAU  - Tiwari, Shaligram\nPY  - 2010\nDA  - 2010/10\nPB  - Elsevier BV\nSP  - 4696-4706\nIS  - 21-22\nVL  - 53\nSN  - 0017-9310\nER  - \n",
+  "bibtex": " @article{Ali_2010, title={A study of steady laminar diffusion flame over methanol pool surface}, volume={53}, ISSN={0017-9310}, url={http://dx.doi.org/10.1016/j.ijheatmasstransfer.2010.06.022}, DOI={10.1016/j.ijheatmasstransfer.2010.06.022}, number={21-22}, journal={International Journal of Heat and Mass Transfer}, publisher={Elsevier BV}, author={Ali, Seik Mansoor and Raghavan, Vasudevan and Tiwari, Shaligram}, year={2010}, month=Oct, pages={4696–4706} }\n"
+ },
+ {
+  "doi": "10.1016/j.ijleo.2015.11.163",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.ijleo.2015.11.163\nUR  - http://dx.doi.org/10.1016/j.ijleo.2015.11.163\nTI  - Optical nonlinearity investigation of the tetracarbonyl(2,2′-bipyridyl)molybdenum(0) using Z-scan technique\nT2  - Optik\nAU  - Zidan, M.D.\nAU  - Al-Ktaifani, M.M.\nAU  - Allahham, A.\nPY  - 2016\nDA  - 2016/03\nPB  - Elsevier BV\nSP  - 2570-2574\nIS  - 5\nVL  - 127\nSN  - 0030-4026\nER  - \n",
+  "bibtex": " @article{Zidan_2016, title={Optical nonlinearity investigation of the tetracarbonyl(2,2′-bipyridyl)molybdenum(0) using Z-scan technique}, volume={127}, ISSN={0030-4026}, url={http://dx.doi.org/10.1016/j.ijleo.2015.11.163}, DOI={10.1016/j.ijleo.2015.11.163}, number={5}, journal={Optik}, publisher={Elsevier BV}, author={Zidan, M.D. and Al-Ktaifani, M.M. and Allahham, A.}, year={2016}, month=Mar, pages={2570–2574} }\n"
+ },
+ {
+  "doi": "10.1016/j.ijrmhm.2021.105590",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.ijrmhm.2021.105590\nUR  - http://dx.doi.org/10.1016/j.ijrmhm.2021.105590\nTI  - Synergistic addition of yttria-stabilized zirconia and h-BN/graphene/diamond restricts multi-scale length wear of Cr-based hybrid coatings\nT2  - International Journal of Refractory Metals and Hard Materials\nAU  - Tripathi, Pragya\nAU  - Ramkumar, Janakarajan\nAU  - Balani, Kantesh\nPY  - 2021\nDA  - 2021/09\nPB  - Elsevier BV\nSP  - 105590\nVL  - 99\nSN  - 0263-4368\nER  - \n",
+  "bibtex": " @article{Tripathi_2021, title={Synergistic addition of yttria-stabilized zirconia and h-BN/graphene/diamond restricts multi-scale length wear of Cr-based hybrid coatings}, volume={99}, ISSN={0263-4368}, url={http://dx.doi.org/10.1016/j.ijrmhm.2021.105590}, DOI={10.1016/j.ijrmhm.2021.105590}, journal={International Journal of Refractory Metals and Hard Materials}, publisher={Elsevier BV}, author={Tripathi, Pragya and Ramkumar, Janakarajan and Balani, Kantesh}, year={2021}, month=Sept, pages={105590} }\n"
+ },
+ {
+  "doi": "10.1016/j.imr.2026.101348",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.imr.2026.101348\nUR  - http://dx.doi.org/10.1016/j.imr.2026.101348\nTI  - Positive results in acupuncture randomized controlled trials since 1995: reflections on publications indexed in MEDLINE\nT2  - Integrative Medicine Research\nAU  - Zuo, Jing-ling\nAU  - Yuan, Yi\nAU  - Yin, Heng\nAU  - Liu, Xiao-zhong\nAU  - Wu, Xiao-ti\nAU  - Su, You-zhu\nAU  - Zhang, Chen-hao\nAU  - Cao, Feng\nAU  - Huang, Hao-wen\nAU  - Han, Mei\nAU  - Robinson, Nicola\nAU  - Lee, Hye Won\nAU  - Liu, Jian-ping\nPY  - 2026\nDA  - 2026/04\nPB  - Elsevier BV\nSP  - 101348\nSN  - 2213-4220\nER  - \n",
+  "bibtex": " @article{Zuo_2026, title={Positive results in acupuncture randomized controlled trials since 1995: reflections on publications indexed in MEDLINE}, ISSN={2213-4220}, url={http://dx.doi.org/10.1016/j.imr.2026.101348}, DOI={10.1016/j.imr.2026.101348}, journal={Integrative Medicine Research}, publisher={Elsevier BV}, author={Zuo, Jing-ling and Yuan, Yi and Yin, Heng and Liu, Xiao-zhong and Wu, Xiao-ti and Su, You-zhu and Zhang, Chen-hao and Cao, Feng and Huang, Hao-wen and Han, Mei and Robinson, Nicola and Lee, Hye Won and Liu, Jian-ping}, year={2026}, month=Apr, pages={101348} }\n"
+ },
+ {
+  "doi": "10.1016/j.jacc.2017.09.597",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.jacc.2017.09.597\nUR  - http://dx.doi.org/10.1016/j.jacc.2017.09.597\nTI  - TCT-486 Acute Thrombogenicity and Inflammation in Response to a Durable Fluoropolymer Everolimus-Eluting Stent Relative to a Durable BioLinx polymer Zotarolimus-Eluting Stent\nT2  - Journal of the American College of Cardiology\nAU  - Torii, Sho\nAU  - Kolodgie, Frank\nAU  - Cheng, Qi\nAU  - Acampado, Eduardo\nAU  - Perkins, Laura\nAU  - Hossainy, Syed\nAU  - Pacetti, Stephen\nAU  - Finn, Aloke\nAU  - Virmani, Renu\nPY  - 2017\nDA  - 2017/10\nPB  - Elsevier BV\nSP  - B201\nIS  - 18\nVL  - 70\nSN  - 0735-1097\nER  - \n",
+  "bibtex": " @article{Torii_2017, title={TCT-486 Acute Thrombogenicity and Inflammation in Response to a Durable Fluoropolymer Everolimus-Eluting Stent Relative to a Durable BioLinx polymer Zotarolimus-Eluting Stent}, volume={70}, ISSN={0735-1097}, url={http://dx.doi.org/10.1016/j.jacc.2017.09.597}, DOI={10.1016/j.jacc.2017.09.597}, number={18}, journal={Journal of the American College of Cardiology}, publisher={Elsevier BV}, author={Torii, Sho and Kolodgie, Frank and Cheng, Qi and Acampado, Eduardo and Perkins, Laura and Hossainy, Syed and Pacetti, Stephen and Finn, Aloke and Virmani, Renu}, year={2017}, month=Oct, pages={B201} }\n"
+ },
+ {
+  "doi": "10.1016/j.jbc.2021.101271",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.jbc.2021.101271\nUR  - http://dx.doi.org/10.1016/j.jbc.2021.101271\nTI  - Molecular dynamics simulations elucidate oligosaccharide recognition pathways by galectin-3 at atomic resolution\nT2  - Journal of Biological Chemistry\nAU  - Koneru, Jaya Krishna\nAU  - Sinha, Suman\nAU  - Mondal, Jagannath\nPY  - 2021\nDA  - 2021/11\nPB  - Elsevier BV\nSP  - 101271\nIS  - 5\nVL  - 297\nSN  - 0021-9258\nER  - \n",
+  "bibtex": " @article{Koneru_2021, title={Molecular dynamics simulations elucidate oligosaccharide recognition pathways by galectin-3 at atomic resolution}, volume={297}, ISSN={0021-9258}, url={http://dx.doi.org/10.1016/j.jbc.2021.101271}, DOI={10.1016/j.jbc.2021.101271}, number={5}, journal={Journal of Biological Chemistry}, publisher={Elsevier BV}, author={Koneru, Jaya Krishna and Sinha, Suman and Mondal, Jagannath}, year={2021}, month=Nov, pages={101271} }\n"
+ },
+ {
+  "doi": "10.1016/j.mimet.2019.105726",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.mimet.2019.105726\nUR  - http://dx.doi.org/10.1016/j.mimet.2019.105726\nTI  - Structural analysis of the lipoteichoic acid anchor glycolipid: Comparison of methods for degradation of the glycerophosphate backbone polymer\nT2  - Journal of Microbiological Methods\nAU  - Shiraishi, Tsukasa\nAU  - Yamamoto, Soh\nAU  - Yokota, Shin-ichi\nPY  - 2019\nDA  - 2019/11\nPB  - Elsevier BV\nSP  - 105726\nVL  - 166\nSN  - 0167-7012\nER  - \n",
+  "bibtex": " @article{Shiraishi_2019, title={Structural analysis of the lipoteichoic acid anchor glycolipid: Comparison of methods for degradation of the glycerophosphate backbone polymer}, volume={166}, ISSN={0167-7012}, url={http://dx.doi.org/10.1016/j.mimet.2019.105726}, DOI={10.1016/j.mimet.2019.105726}, journal={Journal of Microbiological Methods}, publisher={Elsevier BV}, author={Shiraishi, Tsukasa and Yamamoto, Soh and Yokota, Shin-ichi}, year={2019}, month=Nov, pages={105726} }\n"
+ },
+ {
+  "doi": "10.1016/j.msard.2011.07.001",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.msard.2011.07.001\nUR  - http://dx.doi.org/10.1016/j.msard.2011.07.001\nTI  - Editor's Welcome\nT2  - Multiple Sclerosis and Related Disorders\nAU  - Banwell, Brenda\nAU  - Giovannoni, Gavin\nAU  - Hawkes, Chris\nAU  - Lublin, Fred\nPY  - 2012\nDA  - 2012/01\nPB  - Elsevier BV\nSP  - 1-2\nIS  - 1\nVL  - 1\nSN  - 2211-0348\nER  - \n",
+  "bibtex": " @article{Banwell_2012, title={Editor’s Welcome}, volume={1}, ISSN={2211-0348}, url={http://dx.doi.org/10.1016/j.msard.2011.07.001}, DOI={10.1016/j.msard.2011.07.001}, number={1}, journal={Multiple Sclerosis and Related Disorders}, publisher={Elsevier BV}, author={Banwell, Brenda and Giovannoni, Gavin and Hawkes, Chris and Lublin, Fred}, year={2012}, month=Jan, pages={1–2} }\n"
+ },
+ {
+  "doi": "10.1016/j.neuint.2009.01.021",
+  "type": "journal-article",
+  "ris": "TY  - JOUR\nDO  - 10.1016/j.neuint.2009.01.021\nUR  - http://dx.doi.org/10.1016/j.neuint.2009.01.021\nTI  - Mechanisms of cognitive alterations in hyperammonemia and hepatic encephalopathy: Therapeutical implications\nT2  - Neurochemistry International\nAU  - Monfort, Pilar\nAU  - Cauli, Omar\nAU  - Montoliu, Carmina\nAU  - Rodrigo, Regina\nAU  - Llansola, Marta\nAU  - Piedrafita, Blanca\nAU  - el Mlili, Nisrin\nAU  - Boix, Jordi\nAU  - Agustí, Ana\nAU  - Felipo, Vicente\nPY  - 2009\nDA  - 2009/01\nPB  - Elsevier BV\nSP  - 106-112\nIS  - 1-3\nVL  - 55\nSN  - 0197-0186\nER  - \n",
+  "bibtex": " @article{Monfort_2009, title={Mechanisms of cognitive alterations in hyperammonemia and hepatic encephalopathy: Therapeutical implications}, volume={55}, ISSN={0197-0186}, url={http://dx.doi.org/10.1016/j.neuint.2009.01.021}, DOI={10.1016/j.neuint.2009.01.021}, number={1-3}, journal={Neurochemistry International}, publisher={Elsevier BV}, author={Monfort, Pilar and Cauli, Omar and Montoliu, Carmina and Rodrigo, Regina and Llansola, Marta and Piedrafita, Blanca and el Mlili, Nisrin and Boix, Jordi and Agustí, Ana and Felipo, Vicente}, year={2009}, month=Jan, pages={106–112} }\n"
+ },
+ {
+  "doi": "10.1017/cbo9781139198691",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.1017/cbo9781139198691\nUR  - http://dx.doi.org/10.1017/cbo9781139198691\nTI  - Democratic Decline and Democratic Renewal\nAU  - Marsh, Ian\nAU  - Miller, Raymond\nPY  - 2012\nDA  - 2012/07/26\nPB  - Cambridge University Press\nSN  - 9781139198691\nSN  - 9781107025684\nSN  - 9781107675476\nER  - \n",
+  "bibtex": " @book{Marsh_2012, title={Democratic Decline and Democratic Renewal: Political Change in Britain, Australia and New Zealand}, ISBN={9781107675476}, url={http://dx.doi.org/10.1017/cbo9781139198691}, DOI={10.1017/cbo9781139198691}, publisher={Cambridge University Press}, author={Marsh, Ian and Miller, Raymond}, year={2012}, month=July }\n"
+ },
+ {
+  "doi": "10.14375/np.9782081213104",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.14375/np.9782081213104\nUR  - http://dx.doi.org/10.14375/np.9782081213104\nTI  - Waterloo\nAU  - Barbero, Alessandro\nPY  - 2008\nDA  - 2008/03/03\nPB  - Flammarion\nSN  - 9782081213104\nSN  - 9782081252356\nER  - \n",
+  "bibtex": " @book{Barbero_2008, title={Waterloo}, ISBN={9782081252356}, url={http://dx.doi.org/10.14375/np.9782081213104}, DOI={10.14375/np.9782081213104}, publisher={Flammarion}, author={Barbero, Alessandro}, year={2008}, month=Mar }\n"
+ },
+ {
+  "doi": "10.21827/68ef4e57578be",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.21827/68ef4e57578be\nUR  - http://dx.doi.org/10.21827/68ef4e57578be\nTI  - Met schuren komt verandering\nAU  - Leliveld, Marijke\nPY  - 2026\nPB  - University of Groningen Press\nER  - \n",
+  "bibtex": " @book{Leliveld_2026, title={Met schuren komt verandering: morele oordeels- en besluitvorming van consumenten}, url={http://dx.doi.org/10.21827/68ef4e57578be}, DOI={10.21827/68ef4e57578be}, publisher={University of Groningen Press}, author={Leliveld, Marijke}, year={2026} }\n"
+ },
+ {
+  "doi": "10.2307/j.ctt20q1z29",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.2307/j.ctt20q1z29\nUR  - http://dx.doi.org/10.2307/j.ctt20q1z29\nTI  - Coloring Locals\nAU  - Shaker, Bonnie James\nPY  - 2005\nDA  - 2005/04/01\nPB  - University of Iowa Press\nSN  - 9781587294280\nSN  - 9780877458289\nER  - \n",
+  "bibtex": " @book{Shaker_2005, title={Coloring Locals: Racial Formation in Katie Chopin’s “Youth’s Companion” Stories}, ISBN={9780877458289}, url={http://dx.doi.org/10.2307/j.ctt20q1z29}, DOI={10.2307/j.ctt20q1z29}, publisher={University of Iowa Press}, author={Shaker, Bonnie James}, year={2005}, month=Apr }\n"
+ },
+ {
+  "doi": "10.26524/royal.57",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.26524/royal.57\nUR  - http://dx.doi.org/10.26524/royal.57\nTI  - INTERNATIONAL CONFERENCE ON SPECTACULAR PROGRESSIVE IMPROVEMENTS IN ENGINEERING SCIENCES &amp; COMPUTING (ICSPEC 2021)INTERNATIONAL CONFERENCE ON SPECTACULAR PROGRESSIVE IMPROVEMENTS IN ENGINEERING SCIENCES &amp; COMPUTING (ICSPEC 2021)\nAU  - I, Dr. Sharath Chandra\nAU  - N, Dr. Srikanth\nAU  - S k, Dr. Senthil Kumar\nAU  - S, Dr. Venkatessulu\nAU  - A, Dr. Anjaiah\nAU  - Ansari, Shaik\nAU  - Nayeem, Mirza\nAU  - M, Vinod Kumar Reddy\nAU  - R, Dr. Lakshmi\nPY  - 2021\nDA  - 2021/06/16\nPB  - Royal Book Publisher\nSN  - 9789391131227\nER  - \n",
+  "bibtex": " @book{I_2021, title={INTERNATIONAL CONFERENCE ON SPECTACULAR PROGRESSIVE IMPROVEMENTS IN ENGINEERING SCIENCES &amp; COMPUTING (ICSPEC 2021)INTERNATIONAL CONFERENCE ON SPECTACULAR PROGRESSIVE IMPROVEMENTS IN ENGINEERING SCIENCES &amp; COMPUTING (ICSPEC 2021)}, ISBN={9789391131227}, url={http://dx.doi.org/10.26524/royal.57}, DOI={10.26524/royal.57}, publisher={Royal Book Publisher}, author={I, Dr. Sharath Chandra and N, Dr. Srikanth and S k, Dr. Senthil Kumar and S, Dr. Venkatessulu and A, Dr. Anjaiah and Ansari, Shaik and Nayeem, Mirza and M, Vinod Kumar Reddy and R, Dr. Lakshmi}, year={2021}, month=June }\n"
+ },
+ {
+  "doi": "10.3138/9781442681217",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.3138/9781442681217\nUR  - http://dx.doi.org/10.3138/9781442681217\nTI  - The Excavations of San Giovanni di Ruoti\nAU  - Buck, Robert J.\nAU  - Small, Alastair M.\nPY  - 1994\nDA  - 1994/01/01\nPB  - University of Toronto Press\nSN  - 9781442681217\nER  - \n",
+  "bibtex": " @book{Buck_1994, title={The Excavations of San Giovanni di Ruoti: Volume I: The Villas and their Environment}, ISBN={9781442681217}, url={http://dx.doi.org/10.3138/9781442681217}, DOI={10.3138/9781442681217}, publisher={University of Toronto Press}, author={Buck, Robert J. and Small, Alastair M.}, year={1994}, month=Jan }\n"
+ },
+ {
+  "doi": "10.4324/9780429316494",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.4324/9780429316494\nUR  - http://dx.doi.org/10.4324/9780429316494\nTI  - Politics, Governance and Development in Bangladesh\nAU  - Rahman, Muhammad Sayadur\nPY  - 2019\nDA  - 2019/06/20\nPB  - Routledge India\nSN  - 9780429316494\nER  - \n",
+  "bibtex": " @book{Rahman_2019, title={Politics, Governance and Development in Bangladesh}, ISBN={9780429316494}, url={http://dx.doi.org/10.4324/9780429316494}, DOI={10.4324/9780429316494}, publisher={Routledge India}, author={Rahman, Muhammad Sayadur}, year={2019}, month=June }\n"
+ },
+ {
+  "doi": "10.4337/9781849808668",
+  "type": "monograph",
+  "ris": "TY  - BOOK\nDO  - 10.4337/9781849808668\nUR  - http://dx.doi.org/10.4337/9781849808668\nTI  - Globalisation and Natural Resources Law\nAU  - Blanco, Elena\nAU  - Razzaque, Jona\nPY  - 2011\nDA  - 2011/03/31\nPB  - Edward Elgar Publishing\nSN  - 9781849808668\nSN  - 9781848442498\nER  - \n",
+  "bibtex": " @book{Blanco_2011, title={Globalisation and Natural Resources Law: Challenges, Key Issues and Perspectives}, ISBN={9781848442498}, url={http://dx.doi.org/10.4337/9781849808668}, DOI={10.4337/9781849808668}, publisher={Edward Elgar Publishing}, author={Blanco, Elena and Razzaque, Jona}, year={2011}, month=Mar }\n"
+ },
+ {
+  "doi": "10.1002/0470841818.ch1",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.1002/0470841818.ch1\nUR  - http://dx.doi.org/10.1002/0470841818.ch1\nTI  - Agent Technology for Communications Infrastructure: An Introduction\nT2  - Agent Technology for Communication Infrastructures\nAU  - Poslad, S. J.\nAU  - Bourne, R. A.\nAU  - Hayzelden, A. L. G.\nAU  - Buckle, P.\nPY  - 2001\nDA  - 2001/10/05\nPB  - Wiley\nSP  - 1-18\nSN  - 9780471498155\nSN  - 9780470841815\nER  - \n",
+  "bibtex": " @misc{Poslad_2001, title={Agent Technology for Communications Infrastructure: An Introduction}, ISBN={9780470841815}, url={http://dx.doi.org/10.1002/0470841818.ch1}, DOI={10.1002/0470841818.ch1}, journal={Agent Technology for Communication Infrastructures}, publisher={Wiley}, author={Poslad, S. J. and Bourne, R. A. and Hayzelden, A. L. G. and Buckle, P.}, year={2001}, month=Oct, pages={1–18} }\n"
+ },
+ {
+  "doi": "10.1002/9781118746509.ch20",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.1002/9781118746509.ch20\nUR  - http://dx.doi.org/10.1002/9781118746509.ch20\nTI  - Priapism\nT2  - Male Sexual Dysfunction\nAU  - Sahdev, Varun\nAU  - Ralph, David\nAU  - Muneer, Asif\nPY  - 2016\nDA  - 2016/12/16\nPB  - Wiley\nSP  - 194-202\nSN  - 9781118746554\nSN  - 9781118746509\nER  - \n",
+  "bibtex": " @misc{Sahdev_2016, title={Priapism}, ISBN={9781118746509}, url={http://dx.doi.org/10.1002/9781118746509.ch20}, DOI={10.1002/9781118746509.ch20}, journal={Male Sexual Dysfunction}, publisher={Wiley}, author={Sahdev, Varun and Ralph, David and Muneer, Asif}, year={2016}, month=Dec, pages={194–202} }\n"
+ },
+ {
+  "doi": "10.1002/9781118785317.weom110132",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.1002/9781118785317.weom110132\nUR  - http://dx.doi.org/10.1002/9781118785317.weom110132\nTI  - Crises/Disasters\nT2  - Wiley Encyclopedia of Management\nAU  - Osborn, Richard N.\nPY  - 2015\nDA  - 2015/01/21\nPB  - Wiley\nSP  - 1-3\nSN  - 9781119972518\nSN  - 9781118785317\nER  - \n",
+  "bibtex": " @misc{Osborn_2015, title={Crises/Disasters}, ISBN={9781118785317}, url={http://dx.doi.org/10.1002/9781118785317.weom110132}, DOI={10.1002/9781118785317.weom110132}, journal={Wiley Encyclopedia of Management}, publisher={Wiley}, author={Osborn, Richard N.}, year={2015}, month=Jan, pages={1–3} }\n"
+ },
+ {
+  "doi": "10.1002/9781118868799.ch14",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.1002/9781118868799.ch14\nUR  - http://dx.doi.org/10.1002/9781118868799.ch14\nTI  - Measurement Issues in Criminal Case‐Processing and Court Decision‐Making Research\nT2  - The Handbook of Measurement Issues in Criminology and Criminal Justice\nAU  - Johnson, Brian D.\nAU  - Stewart, Christina D.\nPY  - 2016\nDA  - 2016/04/29\nPB  - Wiley\nSP  - 303-327\nSN  - 9781118868782\nSN  - 9781118868799\nER  - \n",
+  "bibtex": " @misc{Johnson_2016, title={Measurement Issues in Criminal Case‐Processing and Court Decision‐Making Research}, ISBN={9781118868799}, url={http://dx.doi.org/10.1002/9781118868799.ch14}, DOI={10.1002/9781118868799.ch14}, journal={The Handbook of Measurement Issues in Criminology and Criminal Justice}, publisher={Wiley}, author={Johnson, Brian D. and Stewart, Christina D.}, year={2016}, month=Apr, pages={303–327} }\n"
+ },
+ {
+  "doi": "10.1038/npg.els.0003771",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.1038/npg.els.0003771\nUR  - http://dx.doi.org/10.1038/npg.els.0003771\nTI  - Direct Labelling of Proteins with\n            <sup>125</sup>\n            I\nT2  - Encyclopedia of Life Sciences\nAU  - Gjøen, Tor\nAU  - Berg, Trond\nPY  - 2003\nDA  - 2003/07/22\nPB  - Wiley\nSN  - 9780470016176\nSN  - 9780470015902\nER  - \n",
+  "bibtex": " @misc{Gj_en_2003, title={Direct Labelling of Proteins with\n            <sup>125</sup>\n            I}, ISBN={9780470015902}, url={http://dx.doi.org/10.1038/npg.els.0003771}, DOI={10.1038/npg.els.0003771}, journal={Encyclopedia of Life Sciences}, publisher={Wiley}, author={Gjøen, Tor and Berg, Trond}, year={2003}, month=July }\n"
+ },
+ {
+  "doi": "10.3139/9783446465398.fm",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.3139/9783446465398.fm\nUR  - http://dx.doi.org/10.3139/9783446465398.fm\nTI  - Erfolgsfaktor Künstliche Intelligenz\nT2  - Erfolgsfaktor Künstliche Intelligenz\nAU  - Cole, Tim\nPY  - 2020\nDA  - 2020/08/10\nPB  - Carl Hanser Verlag GmbH & Co. KG\nSP  - I-13\nSN  - 9783446464773\nSN  - 9783446465398\nER  - \n",
+  "bibtex": " @misc{Cole_2020, title={Erfolgsfaktor Künstliche Intelligenz: KI in der Unternehmenspraxis: Potenziale erkennen – Entscheidungen treffen}, ISBN={9783446465398}, url={http://dx.doi.org/10.3139/9783446465398.fm}, DOI={10.3139/9783446465398.fm}, journal={Erfolgsfaktor Künstliche Intelligenz}, publisher={Carl Hanser Verlag GmbH & Co. KG}, author={Cole, Tim}, year={2020}, month=Aug, pages={I–13} }\n"
+ },
+ {
+  "doi": "10.5040/9781350516366.ch-005",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.5040/9781350516366.ch-005\nUR  - http://dx.doi.org/10.5040/9781350516366.ch-005\nTI  - At the Morphological-Syntactic CrossroadsUnveiling the Forces Shaping Neuter Assignment in Heptanesian Borrowing from Italo-Romance\nT2  - Comparing Linguistic Diachronies\nAU  - Makri, Vasiliki\nPY  - 2025\nPB  - Bloomsbury Publishing Plc\nSP  - 105-136\nSN  - 9781350516366\nSN  - 9781350516335\nER  - \n",
+  "bibtex": " @misc{Makri_2025, title={At the Morphological-Syntactic CrossroadsUnveiling the Forces Shaping Neuter Assignment in Heptanesian Borrowing from Italo-Romance}, ISBN={9781350516335}, url={http://dx.doi.org/10.5040/9781350516366.ch-005}, DOI={10.5040/9781350516366.ch-005}, journal={Comparing Linguistic Diachronies}, publisher={Bloomsbury Publishing Plc}, author={Makri, Vasiliki}, year={2025}, pages={105–136} }\n"
+ },
+ {
+  "doi": "10.5040/9781666994599.ch13",
+  "type": "other",
+  "ris": "TY  - GENERIC\nDO  - 10.5040/9781666994599.ch13\nUR  - http://dx.doi.org/10.5040/9781666994599.ch13\nTI  - American Haiku in the New Millennium\nT2  - Haiku, Other Arts, and Literary Disciplines\nAU  - Rosenow, Ce\nPY  - 2022\nPB  - The Rowman & Littlefield Publishing Group\nSP  - 247-260\nSN  - 9781666994599\nSN  - 9781793647207\nER  - \n",
+  "bibtex": " @misc{Rosenow_2022, title={American Haiku in the New Millennium}, ISBN={9781793647207}, url={http://dx.doi.org/10.5040/9781666994599.ch13}, DOI={10.5040/9781666994599.ch13}, journal={Haiku, Other Arts, and Literary Disciplines}, publisher={The Rowman & Littlefield Publishing Group}, author={Rosenow, Ce}, year={2022}, pages={247–260} }\n"
+ },
+ {
+  "doi": "10.1002/1878-0261.13653/v2/response1",
+  "type": "peer-review",
+  "ris": "TY  - GENERIC\nDO  - 10.1002/1878-0261.13653/v2/response1\nUR  - http://dx.doi.org/10.1002/1878-0261.13653/v2/response1\nTI  - Author response for \"Identification of functional and diverse circulating cancer‐associated fibroblasts in metastatic castration‐naïve prostate cancer patients\"\nAU  - Richell Booijink\nAU  - Leon W. M. M. Terstappen\nAU  - Eshwari Dathathri\nAU  - Khrystany Isebia\nAU  - Jaco Kraan\nAU  - John Martens\nAU  - Ruchi Bansal\nPY  - 2024\nDA  - 2024/03/08\nPB  - Wiley\nER  - \n",
+  "bibtex": " @misc{Richell_Booijink_2024, title={Author response for “Identification of functional and diverse circulating cancer‐associated fibroblasts in metastatic castration‐naïve prostate cancer patients”}, url={http://dx.doi.org/10.1002/1878-0261.13653/v2/response1}, DOI={10.1002/1878-0261.13653/v2/response1}, publisher={Wiley}, author={Richell Booijink and Leon W. M. M. Terstappen and Eshwari Dathathri and Khrystany Isebia and Jaco Kraan and John Martens and Ruchi Bansal}, year={2024}, month=Mar }\n"
+ },
+ {
+  "doi": "10.1002/prot.26266/v2/response1",
+  "type": "peer-review",
+  "ris": "TY  - GENERIC\nDO  - 10.1002/prot.26266/v2/response1\nUR  - http://dx.doi.org/10.1002/prot.26266/v2/response1\nTI  - Author response for \"Conformational variability of loops in the SARS‐CoV ‐2 spike protein\"\nAU  - Samuel W. K. Wong\nAU  - Zongjun Liu\nPY  - 2021\nDA  - 2021/09/10\nPB  - Wiley\nER  - \n",
+  "bibtex": " @misc{Samuel_W_K_Wong_2021, title={Author response for “Conformational variability of loops in the SARS‐CoV ‐2 spike protein”}, url={http://dx.doi.org/10.1002/prot.26266/v2/response1}, DOI={10.1002/prot.26266/v2/response1}, publisher={Wiley}, author={Samuel W. K. Wong and Zongjun Liu}, year={2021}, month=Sept }\n"
+ },
+ {
+  "doi": "10.5194/egusphere-2025-4893-ac1",
+  "type": "peer-review",
+  "ris": "TY  - GENERIC\nDO  - 10.5194/egusphere-2025-4893-ac1\nUR  - http://dx.doi.org/10.5194/egusphere-2025-4893-ac1\nTI  - Reply on RC1\nAU  - Pinilla, Elías\nPY  - 2026\nDA  - 2026/02/04\nPB  - Copernicus GmbH\nER  - \n",
+  "bibtex": " @misc{Pinilla_2026, title={Reply on RC1}, url={http://dx.doi.org/10.5194/egusphere-2025-4893-ac1}, DOI={10.5194/egusphere-2025-4893-ac1}, publisher={Copernicus GmbH}, author={Pinilla, Elías}, year={2026}, month=Feb }\n"
+ },
+ {
+  "doi": "10.1101/162552",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1101/162552\nUR  - http://dx.doi.org/10.1101/162552\nTI  - pyABC: distributed, likelihood-free inference\nAU  - Klinger, Emmanuel\nAU  - Rickert, Dennis\nAU  - Hasenauer, Jan\nPY  - 2017\nDA  - 2017/07/17\nPB  - openRxiv\nER  - \n",
+  "bibtex": " @article{Klinger_2017, title={pyABC: distributed, likelihood-free inference}, url={http://dx.doi.org/10.1101/162552}, DOI={10.1101/162552}, publisher={openRxiv}, author={Klinger, Emmanuel and Rickert, Dennis and Hasenauer, Jan}, year={2017}, month=July }\n"
+ },
+ {
+  "doi": "10.1101/2020.01.29.924266",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1101/2020.01.29.924266\nUR  - http://dx.doi.org/10.1101/2020.01.29.924266\nTI  - eQTL Catalogue: a compendium of uniformly processed human gene expression and splicing QTLs\nAU  - Kerimov, Nurlan\nAU  - Hayhurst, James D.\nAU  - Peikova, Kateryna\nAU  - Manning, Jonathan R.\nAU  - Walter, Peter\nAU  - Kolberg, Liis\nAU  - Samoviča, Marija\nAU  - Sakthivel, Manoj Pandian\nAU  - Kuzmin, Ivan\nAU  - Trevanion, Stephen J.\nAU  - Burdett, Tony\nAU  - Jupp, Simon\nAU  - Parkinson, Helen\nAU  - Papatheodorou, Irene\nAU  - Yates, Andrew\nAU  - Zerbino, Daniel R.\nAU  - Alasoo, Kaur\nPY  - 2020\nDA  - 2020/01/29\nPB  - openRxiv\nER  - \n",
+  "bibtex": " @article{Kerimov_2020, title={eQTL Catalogue: a compendium of uniformly processed human gene expression and splicing QTLs}, url={http://dx.doi.org/10.1101/2020.01.29.924266}, DOI={10.1101/2020.01.29.924266}, publisher={openRxiv}, author={Kerimov, Nurlan and Hayhurst, James D. and Peikova, Kateryna and Manning, Jonathan R. and Walter, Peter and Kolberg, Liis and Samoviča, Marija and Sakthivel, Manoj Pandian and Kuzmin, Ivan and Trevanion, Stephen J. and Burdett, Tony and Jupp, Simon and Parkinson, Helen and Papatheodorou, Irene and Yates, Andrew and Zerbino, Daniel R. and Alasoo, Kaur}, year={2020}, month=Jan }\n"
+ },
+ {
+  "doi": "10.1101/2022.04.20.488774",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1101/2022.04.20.488774\nUR  - http://dx.doi.org/10.1101/2022.04.20.488774\nTI  - A Hybrid Method for Ultrasound-Based Tracking of Skeletal Muscle Architecture\nAU  - Verheul, Jasper\nAU  - Yeo, Sang-Hoon\nPY  - 2022\nDA  - 2022/04/21\nPB  - openRxiv\nER  - \n",
+  "bibtex": " @article{Verheul_2022, title={A Hybrid Method for Ultrasound-Based Tracking of Skeletal Muscle Architecture}, url={http://dx.doi.org/10.1101/2022.04.20.488774}, DOI={10.1101/2022.04.20.488774}, publisher={openRxiv}, author={Verheul, Jasper and Yeo, Sang-Hoon}, year={2022}, month=Apr }\n"
+ },
+ {
+  "doi": "10.1101/2022.09.14.507921",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1101/2022.09.14.507921\nUR  - http://dx.doi.org/10.1101/2022.09.14.507921\nTI  - Comparison of Transcriptomic Changes in Younger and Older Multiple Myeloma Patients from the MMRF-CoMMpass Study RNA-Seq Data\nAU  - Keskin, Merve\nPY  - 2022\nDA  - 2022/09/17\nPB  - openRxiv\nER  - \n",
+  "bibtex": " @article{Keskin_2022, title={Comparison of Transcriptomic Changes in Younger and Older Multiple Myeloma Patients from the MMRF-CoMMpass Study RNA-Seq Data}, url={http://dx.doi.org/10.1101/2022.09.14.507921}, DOI={10.1101/2022.09.14.507921}, publisher={openRxiv}, author={Keskin, Merve}, year={2022}, month=Sept }\n"
+ },
+ {
+  "doi": "10.1101/2024.10.15.618387",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1101/2024.10.15.618387\nUR  - http://dx.doi.org/10.1101/2024.10.15.618387\nTI  - Copy number variation analysis of 9,482\n                  <i>Mycobacterium tuberculosis</i>\n                  isolates identifies lineage-specific molecular determinants\nAU  - Bhalla, Nikhil\nAU  - Behera, Anil\nAU  - Gupta, Ashish\nAU  - Kumar Nanda, Ranjan\nPY  - 2024\nDA  - 2024/10/17\nPB  - openRxiv\nER  - \n",
+  "bibtex": " @article{Bhalla_2024, title={Copy number variation analysis of 9,482\n                  <i>Mycobacterium tuberculosis</i>\n                  isolates identifies lineage-specific molecular determinants}, url={http://dx.doi.org/10.1101/2024.10.15.618387}, DOI={10.1101/2024.10.15.618387}, publisher={openRxiv}, author={Bhalla, Nikhil and Behera, Anil and Gupta, Ashish and Kumar Nanda, Ranjan}, year={2024}, month=Oct }\n"
+ },
+ {
+  "doi": "10.1115/1.0004230v",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1115/1.0004230v\nUR  - http://dx.doi.org/10.1115/1.0004230v\nTI  - Driving Wetting Transitions on Textured Surfaces Using Ultrasonic Vibration\nAU  - Trapuzzano, Matthew\nAU  - Guldiken, Rasim\nAU  - Tejada-Martinez, Andres\nAU  - Crane, Nathan\nPY  - 2021\nDA  - 2021/07/16\nPB  - ASME International\nER  - \n",
+  "bibtex": " @article{Trapuzzano_2021, title={Driving Wetting Transitions on Textured Surfaces Using Ultrasonic Vibration}, url={http://dx.doi.org/10.1115/1.0004230v}, DOI={10.1115/1.0004230v}, publisher={ASME International}, author={Trapuzzano, Matthew and Guldiken, Rasim and Tejada-Martinez, Andres and Crane, Nathan}, year={2021}, month=July }\n"
+ },
+ {
+  "doi": "10.1158/0008-5472.22401231.v1",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1158/0008-5472.22401231.v1\nUR  - http://dx.doi.org/10.1158/0008-5472.22401231.v1\nTI  - Supplementary Figure Legends and References from LIMD2 Is a Small LIM-Only Protein Overexpressed in Metastatic Lesions That Regulates Cell Motility and Tumor Progression by Directly Binding to and Activating the Integrin-Linked Kinase\nAU  - Peng, Hongzhuang\nAU  - Talebzadeh-Farrooji, Mehdi\nAU  - Osborne, Michael J.\nAU  - Prokop, Jeremy W.\nAU  - McDonald, Paul C.\nAU  - Karar, Jayashree\nAU  - Hou, Zhaoyuan\nAU  - He, Mei\nAU  - Kebebew, Electron\nAU  - Orntoft, Torben\nAU  - Herlyn, Meenhard\nAU  - Caton, Andrew J.\nAU  - Fredericks, William\nAU  - Malkowicz, Bruce\nAU  - Paterno, Christopher S.\nAU  - Carolin, Alexandra S.\nAU  - Speicher, David W.\nAU  - Skordalakes, Emmanuel\nAU  - Huang, Qihong\nAU  - Dedhar, Shoukat\nAU  - Borden, Katherine L.B.\nAU  - Rauscher, Frank J.\nPY  - 2023\nDA  - 2023/03/30\nPB  - American Association for Cancer Research (AACR)\nER  - \n",
+  "bibtex": " @article{Peng_2023, title={Supplementary Figure Legends and References from LIMD2 Is a Small LIM-Only Protein Overexpressed in Metastatic Lesions That Regulates Cell Motility and Tumor Progression by Directly Binding to and Activating the Integrin-Linked Kinase}, url={http://dx.doi.org/10.1158/0008-5472.22401231.v1}, DOI={10.1158/0008-5472.22401231.v1}, publisher={American Association for Cancer Research (AACR)}, author={Peng, Hongzhuang and Talebzadeh-Farrooji, Mehdi and Osborne, Michael J. and Prokop, Jeremy W. and McDonald, Paul C. and Karar, Jayashree and Hou, Zhaoyuan and He, Mei and Kebebew, Electron and Orntoft, Torben and Herlyn, Meenhard and Caton, Andrew J. and Fredericks, William and Malkowicz, Bruce and Paterno, Christopher S. and Carolin, Alexandra S. and Speicher, David W. and Skordalakes, Emmanuel and Huang, Qihong and Dedhar, Shoukat and Borden, Katherine L.B. and Rauscher, Frank J.}, year={2023}, month=Mar }\n"
+ },
+ {
+  "doi": "10.1158/1055-9965.27435886",
+  "type": "posted-content",
+  "ris": "TY  - GENERIC\nDO  - 10.1158/1055-9965.27435886\nUR  - http://dx.doi.org/10.1158/1055-9965.27435886\nTI  - Supplementary Table S15 from Lung Microbial and Host Genomic Signatures as Predictors of Prognosis in Early-Stage Adenocarcinoma\nAU  - Tsay, Jun-Chieh J.\nAU  - Darawshy, Fares\nAU  - Wang, Chan\nAU  - Kwok, Benjamin\nAU  - Wong, Kendrew K.\nAU  - Wu, Benjamin G.\nAU  - Sulaiman, Imran\nAU  - Zhou, Hua\nAU  - Isaacs, Bradley\nAU  - Kugler, Matthias C.\nAU  - Sanchez, Elizabeth\nAU  - Bain, Alexander\nAU  - Li, Yonghua\nAU  - Schluger, Rosemary\nAU  - Lukovnikova, Alena\nAU  - Collazo, Destiny\nAU  - Kyeremateng, Yaa\nAU  - Pillai, Ray\nAU  - Chang, Miao\nAU  - Li, Qingsheng\nAU  - Vanguri, Rami S.\nAU  - Becker, Anton S.\nAU  - Moore, William H.\nAU  - Thurston, George\nAU  - Gordon, Terry\nAU  - Moreira, Andre L.\nAU  - Goparaju, Chandra M.\nAU  - Sterman, Daniel H.\nAU  - Tsirigos, Aristotelis\nAU  - Li, Huilin\nAU  - Segal, Leopoldo N.\nAU  - Pass, Harvey I.\nPY  - 2024\nDA  - 2024/11/01\nPB  - American Association for Cancer Research (AACR)\nER  - \n",
+  "bibtex": " @article{Tsay_2024, title={Supplementary Table S15 from Lung Microbial and Host Genomic Signatures as Predictors of Prognosis in Early-Stage Adenocarcinoma}, url={http://dx.doi.org/10.1158/1055-9965.27435886}, DOI={10.1158/1055-9965.27435886}, publisher={American Association for Cancer Research (AACR)}, author={Tsay, Jun-Chieh J. and Darawshy, Fares and Wang, Chan and Kwok, Benjamin and Wong, Kendrew K. and Wu, Benjamin G. and Sulaiman, Imran and Zhou, Hua and Isaacs, Bradley and Kugler, Matthias C. and Sanchez, Elizabeth and Bain, Alexander and Li, Yonghua and Schluger, Rosemary and Lukovnikova, Alena and Collazo, Destiny and Kyeremateng, Yaa and Pillai, Ray and Chang, Miao and Li, Qingsheng and Vanguri, Rami S. and Becker, Anton S. and Moore, William H. and Thurston, George and Gordon, Terry and Moreira, Andre L. and Goparaju, Chandra M. and Sterman, Daniel H. and Tsirigos, Aristotelis and Li, Huilin and Segal, Leopoldo N. and Pass, Harvey I.}, year={2024}, month=Nov }\n"
+ },
+ {
+  "doi": "10.1049/cp:20060904",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1049/cp:20060904\nUR  - http://dx.doi.org/10.1049/cp:20060904\nTI  - The realization method and application of resource sharing in manufacturing grid\nT2  - International Technology and Innovation Conference 2006 (ITIC 2006)\nAU  - He Yuan\nAU  - Yu Tao\nAU  - Shen Bin\nPY  - 2006\nPB  - IEE\nSP  - 983-988\nVL  - 2006\nER  - \n",
+  "bibtex": " @inproceedings{He_Yuan_2006, title={The realization method and application of resource sharing in manufacturing grid}, volume={2006}, url={http://dx.doi.org/10.1049/cp:20060904}, DOI={10.1049/cp:20060904}, booktitle={International Technology and Innovation Conference 2006 (ITIC 2006)}, publisher={IEE}, author={He Yuan and Yu Tao and Shen Bin}, year={2006}, pages={983–988} }\n"
+ },
+ {
+  "doi": "10.1063/1.34040",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1063/1.34040\nUR  - http://dx.doi.org/10.1063/1.34040\nTI  - Wavelength conversion with excimer lasers\nT2  - AIP Conference Proceedings\nAU  - Bokor, J.\nAU  - Eichner, L.\nAU  - Storz, R. H.\nAU  - Bucksbaum, P. H.\nAU  - Freeman, R. R.\nAU  - Test\nAU  - Allman, Carole S.\nAU  - Allman, Carole S.\nAU  - Smith, Margot\nAU  - Saltzberg, David\nAU  - Troscher, Test\nPY  - 1983\nPB  - AIP\nSP  - 143-150\nVL  - 100\nSN  - 0094-243X\nER  - \n",
+  "bibtex": " @inproceedings{Bokor_1983, title={Wavelength conversion with excimer lasers}, volume={100}, ISSN={0094-243X}, url={http://dx.doi.org/10.1063/1.34040}, DOI={10.1063/1.34040}, booktitle={AIP Conference Proceedings}, publisher={AIP}, author={Bokor, J. and Eichner, L. and Storz, R. H. and Bucksbaum, P. H. and Freeman, R. R. and Test and Allman, Carole S. and Allman, Carole S. and Smith, Margot and Saltzberg, David and Troscher, Test}, year={1983}, pages={143–150} }\n"
+ },
+ {
+  "doi": "10.1109/acssc.1990.523467",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1109/acssc.1990.523467\nUR  - http://dx.doi.org/10.1109/acssc.1990.523467\nTI  - A Hybrid VLSI System Architecture for Scientific, Matrix, Image, and DSP Computations\nT2  - 1990 Conference Record Twenty-Fourth Asilomar Conference on Signals, Systems and Computers, 1990.\nAU  - Dowling, E.M.\nAU  - Fu, Z.\nAU  - Drafi, R.S.\nPB  - IEEE\nSP  - 897\nVL  - 2\nER  - \n",
+  "bibtex": " @inproceedings{Dowling, title={A Hybrid VLSI System Architecture for Scientific, Matrix, Image, and DSP Computations}, volume={2}, url={http://dx.doi.org/10.1109/acssc.1990.523467}, DOI={10.1109/acssc.1990.523467}, booktitle={1990 Conference Record Twenty-Fourth Asilomar Conference on Signals, Systems and Computers, 1990.}, publisher={IEEE}, author={Dowling, E.M. and Fu, Z. and Drafi, R.S.}, pages={897} }\n"
+ },
+ {
+  "doi": "10.1109/apmc57107.2023.10439932",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1109/apmc57107.2023.10439932\nUR  - http://dx.doi.org/10.1109/apmc57107.2023.10439932\nTI  - Integration of Millimeter-wave and Microwave Antennas for Mobile Phones\nT2  - 2023 Asia-Pacific Microwave Conference (APMC)\nAU  - Liu, Mengdi\nAU  - Xu, Jialu\nAU  - Huang, Huan-Chu\nAU  - Li, Hui\nAU  - Wu, Jie\nAU  - Cui, Shuang\nPY  - 2023\nDA  - 2023/12/05\nPB  - IEEE\nSP  - 192-194\nER  - \n",
+  "bibtex": " @inproceedings{Liu_2023, title={Integration of Millimeter-wave and Microwave Antennas for Mobile Phones}, url={http://dx.doi.org/10.1109/apmc57107.2023.10439932}, DOI={10.1109/apmc57107.2023.10439932}, booktitle={2023 Asia-Pacific Microwave Conference (APMC)}, publisher={IEEE}, author={Liu, Mengdi and Xu, Jialu and Huang, Huan-Chu and Li, Hui and Wu, Jie and Cui, Shuang}, year={2023}, month=Dec, pages={192–194} }\n"
+ },
+ {
+  "doi": "10.1109/aps.2016.7696229",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1109/aps.2016.7696229\nUR  - http://dx.doi.org/10.1109/aps.2016.7696229\nTI  - Miniature fully-passive brain implant for wireless real-time neuropotential monitoring\nT2  - 2016 IEEE International Symposium on Antennas and Propagation (APSURSI)\nAU  - Lee, Cedric W.\nAU  - Kiourti, Asimina\nAU  - Volakis, John L.\nPY  - 2016\nDA  - 2016/06\nPB  - IEEE\nSP  - 1043-1044\nER  - \n",
+  "bibtex": " @inproceedings{Lee_2016, title={Miniature fully-passive brain implant for wireless real-time neuropotential monitoring}, url={http://dx.doi.org/10.1109/aps.2016.7696229}, DOI={10.1109/aps.2016.7696229}, booktitle={2016 IEEE International Symposium on Antennas and Propagation (APSURSI)}, publisher={IEEE}, author={Lee, Cedric W. and Kiourti, Asimina and Volakis, John L.}, year={2016}, month=June, pages={1043–1044} }\n"
+ },
+ {
+  "doi": "10.1109/apsec.2018.00106",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1109/apsec.2018.00106\nUR  - http://dx.doi.org/10.1109/apsec.2018.00106\nTI  - Reducing Redundant Checking for Visual Regression Testing\nT2  - 2018 25th Asia-Pacific Software Engineering Conference (APSEC)\nAU  - Adachi, Yu\nAU  - Tanno, Haruto\nAU  - Yoshimura, Yu\nPY  - 2018\nDA  - 2018/12\nPB  - IEEE\nSP  - 721-722\nER  - \n",
+  "bibtex": " @inproceedings{Adachi_2018, title={Reducing Redundant Checking for Visual Regression Testing}, url={http://dx.doi.org/10.1109/apsec.2018.00106}, DOI={10.1109/apsec.2018.00106}, booktitle={2018 25th Asia-Pacific Software Engineering Conference (APSEC)}, publisher={IEEE}, author={Adachi, Yu and Tanno, Haruto and Yoshimura, Yu}, year={2018}, month=Dec, pages={721–722} }\n"
+ },
+ {
+  "doi": "10.1109/cca.1992.269791",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1109/cca.1992.269791\nUR  - http://dx.doi.org/10.1109/cca.1992.269791\nTI  - Comparison of the self-tuning on-off controller with the conventional switching controllers\nT2  - [Proceedings 1992] The First IEEE Conference on Control Applications\nAU  - Golob, M.\nAU  - Tovornik, B.\nAU  - Donlagic, D.\nPB  - IEEE\nSP  - 962-963\nER  - \n",
+  "bibtex": " @inproceedings{Golob, title={Comparison of the self-tuning on-off controller with the conventional switching controllers}, url={http://dx.doi.org/10.1109/cca.1992.269791}, DOI={10.1109/cca.1992.269791}, booktitle={[Proceedings 1992] The First IEEE Conference on Control Applications}, publisher={IEEE}, author={Golob, M. and Tovornik, B. and Donlagic, D.}, pages={962–963} }\n"
+ },
+ {
+  "doi": "10.1109/cyber.2015.7288042",
+  "type": "proceedings-article",
+  "ris": "TY  - CPAPER\nDO  - 10.1109/cyber.2015.7288042\nUR  - http://dx.doi.org/10.1109/cyber.2015.7288042\nTI  - A new method for noise data detection based on DBSCAN and SVDD\nT2  - 2015 IEEE International Conference on Cyber Technology in Automation, Control, and Intelligent Systems (CYBER)\nAU  - Hao, Shengxuan\nAU  - Zhou, Xiaofeng\nAU  - Song, Hong\nPY  - 2015\nDA  - 2015/06\nPB  - IEEE\nSP  - 784-789\nER  - \n",
+  "bibtex": " @inproceedings{Hao_2015, title={A new method for noise data detection based on DBSCAN and SVDD}, url={http://dx.doi.org/10.1109/cyber.2015.7288042}, DOI={10.1109/cyber.2015.7288042}, booktitle={2015 IEEE International Conference on Cyber Technology in Automation, Control, and Intelligent Systems (CYBER)}, publisher={IEEE}, author={Hao, Shengxuan and Zhou, Xiaofeng and Song, Hong}, year={2015}, month=June, pages={784–789} }\n"
+ },
+ {
+  "doi": "10.1201/9780429111341",
+  "type": "reference-book",
+  "ris": "TY  - BOOK\nDO  - 10.1201/9780429111341\nUR  - http://dx.doi.org/10.1201/9780429111341\nTI  - Excitonic and Vibrational Dynamics in Nanotechnology\nAU  - Kilina, Svetlana V.\nAU  - Habenicht, Bradley F.\nPY  - 2019\nDA  - 2019/10/10\nPB  - Jenny Stanford Publishing\nSN  - 9780429111341\nER  - \n",
+  "bibtex": " @misc{Kilina_2019, title={Excitonic and Vibrational Dynamics in Nanotechnology: Quantum Dots vs. Nanotubes}, ISBN={9780429111341}, url={http://dx.doi.org/10.1201/9780429111341}, DOI={10.1201/9780429111341}, publisher={Jenny Stanford Publishing}, author={Kilina, Svetlana V. and Habenicht, Bradley F.}, editor={Kilina, Svetlana and Habenicht, Bradley G.}, year={2019}, month=Oct }\n"
+ },
+ {
+  "doi": "10.59317/9788194266198",
+  "type": "reference-book",
+  "ris": "TY  - BOOK\nDO  - 10.59317/9788194266198\nUR  - http://dx.doi.org/10.59317/9788194266198\nTI  - Pomegranate: Production,Postharvest,Marketing and Export\nAU  - Tyagi, S.K.\nAU  - Tiwari, Akhilesh\nPY  - 2017\nDA  - 2017/03/10\nPB  - NIPA\nSN  - 9788194266198\nER  - \n",
+  "bibtex": " @misc{Tyagi_2017, title={Pomegranate: Production,Postharvest,Marketing and Export}, ISBN={9788194266198}, url={http://dx.doi.org/10.59317/9788194266198}, DOI={10.59317/9788194266198}, publisher={NIPA}, author={Tyagi, S.K. and Tiwari, Akhilesh}, year={2017}, month=Mar }\n"
+ },
+ {
+  "doi": "10.1057/9780230226203.2459",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.1057/9780230226203.2459\nUR  - http://dx.doi.org/10.1057/9780230226203.2459\nTI  - elasticities approach to the balance of payments\nT2  - The New Palgrave Dictionary of Economics\nAU  - Kemp, Murray C.\nPB  - Nature Publishing Group\nSP  - 1\nSN  - 9780333786765\nER  - \n",
+  "bibtex": " @misc{Kemp, title={elasticities approach to the balance of payments}, ISBN={9780333786765}, url={http://dx.doi.org/10.1057/9780230226203.2459}, DOI={10.1057/9780230226203.2459}, journal={The New Palgrave Dictionary of Economics}, publisher={Nature Publishing Group}, author={Kemp, Murray C.}, pages={1} }\n"
+ },
+ {
+  "doi": "10.1093/acrefore/9780199381135.013.2671",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.1093/acrefore/9780199381135.013.2671\nUR  - http://dx.doi.org/10.1093/acrefore/9780199381135.013.2671\nTI  - fishing\nT2  - Oxford Classical Dictionary\nAU  - Marzano, Annalisa\nPY  - 2015\nDA  - 2015/12/22\nPB  - Oxford University PressNew York, NY\nSN  - 9780197851371\nER  - \n",
+  "bibtex": " @misc{Marzano_2015, title={fishing}, ISBN={9780197851371}, url={http://dx.doi.org/10.1093/acrefore/9780199381135.013.2671}, DOI={10.1093/acrefore/9780199381135.013.2671}, journal={Oxford Classical Dictionary}, publisher={Oxford University PressNew York, NY}, author={Marzano, Annalisa}, year={2015}, month=Dec }\n"
+ },
+ {
+  "doi": "10.1093/gmo/9781561592630.article.25698",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.1093/gmo/9781561592630.article.25698\nUR  - http://dx.doi.org/10.1093/gmo/9781561592630.article.25698\nTI  - Siciliana\nT2  - Oxford Music Online\nAU  - Little, Meredith Ellis\nPY  - 2001\nPB  - Oxford University Press\nSN  - 9781561592630\nER  - \n",
+  "bibtex": " @misc{Little_2001, title={Siciliana}, ISBN={9781561592630}, url={http://dx.doi.org/10.1093/gmo/9781561592630.article.25698}, DOI={10.1093/gmo/9781561592630.article.25698}, journal={Oxford Music Online}, publisher={Oxford University Press}, author={Little, Meredith Ellis}, year={2001} }\n"
+ },
+ {
+  "doi": "10.1093/odnb/9780198614128.013.111908",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.1093/odnb/9780198614128.013.111908\nUR  - http://dx.doi.org/10.1093/odnb/9780198614128.013.111908\nTI  - Adburgham [former name Abram], Jocelyn Frere (1900-1979), architect and town planner\nT2  - Oxford Dictionary of National Biography\nAU  - Darling, Elizabeth\nPY  - 2019\nDA  - 2019/07/11\nPB  - Oxford University Press\nSN  - 9780198614128\nER  - \n",
+  "bibtex": " @misc{Darling_2019, title={Adburgham [former name Abram], Jocelyn Frere (1900-1979), architect and town planner}, ISBN={9780198614128}, url={http://dx.doi.org/10.1093/odnb/9780198614128.013.111908}, DOI={10.1093/odnb/9780198614128.013.111908}, journal={Oxford Dictionary of National Biography}, publisher={Oxford University Press}, author={Darling, Elizabeth}, year={2019}, month=July }\n"
+ },
+ {
+  "doi": "10.32388/hvjnmq",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.32388/hvjnmq\nUR  - http://dx.doi.org/10.32388/hvjnmq\nTI  - Pericardial Synovial Sarcoma\nT2  - Definitions\nAU  - \nPY  - 2020\nDA  - 2020/02/02\nPB  - Qeios\nER  - \n",
+  "bibtex": " @misc{2020, url={http://dx.doi.org/10.32388/hvjnmq}, DOI={10.32388/hvjnmq}, journal={Definitions}, publisher={Qeios}, year={2020}, month=Feb }\n"
+ },
+ {
+  "doi": "10.32388/iqso4c",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.32388/iqso4c\nUR  - http://dx.doi.org/10.32388/iqso4c\nTI  - Mean QT Duration\nT2  - Definitions\nAU  - \nPY  - 2020\nDA  - 2020/02/07\nPB  - Qeios\nER  - \n",
+  "bibtex": " @misc{2020, url={http://dx.doi.org/10.32388/iqso4c}, DOI={10.32388/iqso4c}, journal={Definitions}, publisher={Qeios}, year={2020}, month=Feb }\n"
+ },
+ {
+  "doi": "10.3318/dib.009346.v1",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.3318/dib.009346.v1\nUR  - http://dx.doi.org/10.3318/dib.009346.v1\nTI  - Guiney, Mary\nT2  - Dictionary of Irish Biography\nAU  - Lunney, Linde\nPY  - 2010\nDA  - 2010/12/01\nPB  - Royal Irish Academy\nER  - \n",
+  "bibtex": " @misc{Lunney_2010, title={Guiney, Mary}, url={http://dx.doi.org/10.3318/dib.009346.v1}, DOI={10.3318/dib.009346.v1}, journal={Dictionary of Irish Biography}, publisher={Royal Irish Academy}, author={Lunney, Linde}, year={2010}, month=Dec }\n"
+ },
+ {
+  "doi": "10.53347/rid-173906",
+  "type": "reference-entry",
+  "ris": "TY  - CHAP\nDO  - 10.53347/rid-173906\nUR  - http://dx.doi.org/10.53347/rid-173906\nTI  - Peripheral T-cell lymphoma of the larynx\nT2  - Radiopaedia.org\nAU  - Karupakula, Eshwar\nPY  - 2023\nDA  - 2023/09/14\nPB  - Radiopaedia.org\nER  - \n",
+  "bibtex": " @misc{Karupakula_2023, title={Peripheral T-cell lymphoma of the larynx}, url={http://dx.doi.org/10.53347/rid-173906}, DOI={10.53347/rid-173906}, journal={Radiopaedia.org}, publisher={Radiopaedia.org}, author={Karupakula, Eshwar}, year={2023}, month=Sept }\n"
+ },
+ {
+  "doi": "10.18235/0008781",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.18235/0008781\nUR  - http://dx.doi.org/10.18235/0008781\nTI  - Free and Nondiscriminatory Access to Airports: A Proposal for Latin America\nAU  - Bosch, Antonio\nAU  - García-Montalvo, José\nPY  - 2003\nDA  - 2003/05/01\nPB  - Inter-American Development Bank\nER  - \n",
+  "bibtex": " @book{Bosch_2003, title={Free and Nondiscriminatory Access to Airports: A Proposal for Latin America}, url={http://dx.doi.org/10.18235/0008781}, DOI={10.18235/0008781}, institution={Inter-American Development Bank}, author={Bosch, Antonio and García-Montalvo, José}, year={2003}, month=May }\n"
+ },
+ {
+  "doi": "10.18411/doicode-2023.103",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.18411/doicode-2023.103\nUR  - http://dx.doi.org/10.18411/doicode-2023.103\nTI  - Fundamentals of the general theory of the entire physical world\nAU  - Kozlov, Yuri Vitalievich\nPY  - 2022\nPB  - DOI СODE\nER  - \n",
+  "bibtex": " @book{Kozlov_2022, title={Fundamentals of the general theory of the entire physical world}, url={http://dx.doi.org/10.18411/doicode-2023.103}, DOI={10.18411/doicode-2023.103}, institution={DOI СODE}, author={Kozlov, Yuri Vitalievich}, year={2022} }\n"
+ },
+ {
+  "doi": "10.21236/ad0814989",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.21236/ad0814989\nUR  - http://dx.doi.org/10.21236/ad0814989\nTI  - BASIC AIR BLAST MEASUREMENTS FROM A 500-TON TNT DETONATION PROJECT 1.1 OPERATION SNOWBALL\nAU  - Reisler, Ralph E.\nAU  - Keefer, John H.\nAU  - Giglio-Tos, Louis\nPY  - 1966\nDA  - 1966/12/01\nPB  - Defense Technical Information Center\nER  - \n",
+  "bibtex": " @book{Reisler_1966, title={BASIC AIR BLAST MEASUREMENTS FROM A 500-TON TNT DETONATION PROJECT 1.1 OPERATION SNOWBALL}, url={http://dx.doi.org/10.21236/ad0814989}, DOI={10.21236/ad0814989}, institution={Defense Technical Information Center}, author={Reisler, Ralph E. and Keefer, John H. and Giglio-Tos, Louis}, year={1966}, month=Dec }\n"
+ },
+ {
+  "doi": "10.21236/ada219914",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.21236/ada219914\nUR  - http://dx.doi.org/10.21236/ada219914\nTI  - U.S. - Panama Relations in the 1990's: Developing a Post-Noriega Strategy\nAU  - Naquin, Douglas J.\nPY  - 1990\nDA  - 1990/03/08\nPB  - Defense Technical Information Center\nER  - \n",
+  "bibtex": " @book{Naquin_1990, title={U.S. - Panama Relations in the 1990’s: Developing a Post-Noriega Strategy}, url={http://dx.doi.org/10.21236/ada219914}, DOI={10.21236/ada219914}, institution={Defense Technical Information Center}, author={Naquin, Douglas J.}, year={1990}, month=Mar }\n"
+ },
+ {
+  "doi": "10.21236/ada437172",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.21236/ada437172\nUR  - http://dx.doi.org/10.21236/ada437172\nTI  - Estrogen Metabolism and Prostate Cancer Risk: A Prospective Study\nAU  - Muti, Paola C.\nPY  - 2005\nDA  - 2005/05/01\nPB  - Defense Technical Information Center\nER  - \n",
+  "bibtex": " @book{Muti_2005, title={Estrogen Metabolism and Prostate Cancer Risk: A Prospective Study}, url={http://dx.doi.org/10.21236/ada437172}, DOI={10.21236/ada437172}, institution={Defense Technical Information Center}, author={Muti, Paola C.}, year={2005}, month=May }\n"
+ },
+ {
+  "doi": "10.21236/ada443121",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.21236/ada443121\nUR  - http://dx.doi.org/10.21236/ada443121\nTI  - Web-Based Data Archive for the High Wind CBLAST Project\nAU  - Frasier, Stephen J.\nPY  - 2006\nDA  - 2006/01/26\nPB  - Defense Technical Information Center\nER  - \n",
+  "bibtex": " @book{Frasier_2006, title={Web-Based Data Archive for the High Wind CBLAST Project}, url={http://dx.doi.org/10.21236/ada443121}, DOI={10.21236/ada443121}, institution={Defense Technical Information Center}, author={Frasier, Stephen J.}, year={2006}, month=Jan }\n"
+ },
+ {
+  "doi": "10.21236/ada494291",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.21236/ada494291\nUR  - http://dx.doi.org/10.21236/ada494291\nTI  - Command and Control of Private Security Contractors: Are They a Viable Force Option for the Combatant Commander?\nAU  - Sherard, Scott H.\nPY  - 2008\nDA  - 2008/10/31\nPB  - Defense Technical Information Center\nER  - \n",
+  "bibtex": " @book{Sherard_2008, title={Command and Control of Private Security Contractors: Are They a Viable Force Option for the Combatant Commander?}, url={http://dx.doi.org/10.21236/ada494291}, DOI={10.21236/ada494291}, institution={Defense Technical Information Center}, author={Sherard, Scott H.}, year={2008}, month=Oct }\n"
+ },
+ {
+  "doi": "10.2172/1440911",
+  "type": "report",
+  "ris": "TY  - RPRT\nDO  - 10.2172/1440911\nUR  - http://dx.doi.org/10.2172/1440911\nTI  - Final Technical Report: Plasma Arc Gasification Based Rare Earth Element Recovery from Coal Fly Ash\nAU  - \nAU  - Jeffers, Ken\nAU  - \nAU  - Renew, Jay\nPY  - 2017\nDA  - 2017/09/08\nPB  - Office of Scientific and Technical Information (OSTI)\nER  - \n",
+  "bibtex": " @book{2017, title={Final Technical Report: Plasma Arc Gasification Based Rare Earth Element Recovery from Coal Fly Ash}, url={http://dx.doi.org/10.2172/1440911}, DOI={10.2172/1440911}, institution={Office of Scientific and Technical Information (OSTI)}, author={ and Jeffers, Ken and Renew, Jay}, year={2017}, month=Sept }\n"
+ },
+ {
+  "doi": "10.3133/70045119",
+  "type": "report-component",
+  "ris": "TY  - GENERIC\nDO  - 10.3133/70045119\nUR  - http://dx.doi.org/10.3133/70045119\nTI  - Documentation for the Southeast Asia seismic hazard maps\nT2  - Administrative Report\nAU  - Petersen, Mark D.\nAU  - Harmsen, Stephen\nAU  - Mueller, Charles\nAU  - Haller, Kathleen\nAU  - Dewey, James\nAU  - Luco, Nicolas\nAU  - Crone, Anthony\nAU  - Lidke, David\nAU  - Rukstales, Kenneth\nPY  - 2007\nPB  - US Geological Survey\nER  - \n",
+  "bibtex": " @book{Petersen_2007, title={Documentation for the Southeast Asia seismic hazard maps}, url={http://dx.doi.org/10.3133/70045119}, DOI={10.3133/70045119}, journal={Administrative Report}, institution={US Geological Survey}, author={Petersen, Mark D. and Harmsen, Stephen and Mueller, Charles and Haller, Kathleen and Dewey, James and Luco, Nicolas and Crone, Anthony and Lidke, David and Rukstales, Kenneth}, year={2007} }\n"
+ },
+ {
+  "doi": "10.3133/ofr20041221",
+  "type": "report-component",
+  "ris": "TY  - GENERIC\nDO  - 10.3133/ofr20041221\nUR  - http://dx.doi.org/10.3133/ofr20041221\nTI  - Los Angeles and San Diego Margin High-Resolution Multibeam Bathymetry and Backscatter Data\nT2  - Open-File Report\nAU  - Dartnell, Peter\nAU  - Gardner, James V.\nAU  - Mayer, Larry A.\nAU  - Hughes-Clarke, John E.\nPY  - 2004\nPB  - US Geological Survey\nSN  - 2331-1258\nER  - \n",
+  "bibtex": " @book{Dartnell_2004, title={Los Angeles and San Diego Margin High-Resolution Multibeam Bathymetry and Backscatter Data}, ISSN={2331-1258}, url={http://dx.doi.org/10.3133/ofr20041221}, DOI={10.3133/ofr20041221}, journal={Open-File Report}, institution={US Geological Survey}, author={Dartnell, Peter and Gardner, James V. and Mayer, Larry A. and Hughes-Clarke, John E.}, year={2004} }\n"
+ },
+ {
+  "doi": "10.3133/pp1147",
+  "type": "report-component",
+  "ris": "TY  - GENERIC\nDO  - 10.3133/pp1147\nUR  - http://dx.doi.org/10.3133/pp1147\nTI  - Chemical correlation of some late Cenozoic tuffs of Northern and Central California by neutron activation analysis of glass and comparison with X-ray fluorescence analysis\nT2  - Professional Paper\nAU  - Sarna-Wojcicki, Andrei M.\nAU  - Bowman, Harry W.\nAU  - Russell, Paul C.\nPY  - 1979\nPB  - US Geological Survey\nSN  - 2330-7102\nER  - \n",
+  "bibtex": " @book{Sarna_Wojcicki_1979, title={Chemical correlation of some late Cenozoic tuffs of Northern and Central California by neutron activation analysis of glass and comparison with X-ray fluorescence analysis}, ISSN={2330-7102}, url={http://dx.doi.org/10.3133/pp1147}, DOI={10.3133/pp1147}, journal={Professional Paper}, institution={US Geological Survey}, author={Sarna-Wojcicki, Andrei M. and Bowman, Harry W. and Russell, Paul C.}, year={1979} }\n"
+ },
+ {
+  "doi": "10.3133/sir20075239",
+  "type": "report-component",
+  "ris": "TY  - GENERIC\nDO  - 10.3133/sir20075239\nUR  - http://dx.doi.org/10.3133/sir20075239\nTI  - Ground water redox zonation near La Pine, Oregon: Relation to river position within the aquifer–riparian zone continuum\nT2  - Scientific Investigations Report\nAU  - Hinkle, Stephen R.\nAU  - Morgan, David S.\nAU  - Orzol, Leonard L.\nAU  - Polette, Danial J.\nPY  - 2007\nPB  - US Geological Survey\nSN  - 2328-0328\nER  - \n",
+  "bibtex": " @book{Hinkle_2007, title={Ground water redox zonation near La Pine, Oregon: Relation to river position within the aquifer–riparian zone continuum}, ISSN={2328-0328}, url={http://dx.doi.org/10.3133/sir20075239}, DOI={10.3133/sir20075239}, journal={Scientific Investigations Report}, institution={US Geological Survey}, author={Hinkle, Stephen R. and Morgan, David S. and Orzol, Leonard L. and Polette, Danial J.}, year={2007} }\n"
+ },
+ {
+  "doi": "10.1520/b0481-68r19",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.1520/b0481-68r19\nUR  - http://dx.doi.org/10.1520/b0481-68r19\nTI  - Practice for Preparation of Titanium and Titanium Alloys for Electroplating\nAU  - \nPB  - ASTM International\nER  - \n",
+  "bibtex": " @misc{1, url={http://dx.doi.org/10.1520/b0481-68r19}, DOI={10.1520/b0481-68r19}, publisher={ASTM International} }\n"
+ },
+ {
+  "doi": "10.1520/c1419-14r25",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.1520/c1419-14r25\nUR  - http://dx.doi.org/10.1520/c1419-14r25\nTI  - Test Method for Sonic Velocity in Refractory Materials at Room Temperature and Its Use in Obtaining an Approximate Youngs Modulus\nAU  - \nPB  - ASTM International\nER  - \n",
+  "bibtex": " @misc{1, url={http://dx.doi.org/10.1520/c1419-14r25}, DOI={10.1520/c1419-14r25}, publisher={ASTM International} }\n"
+ },
+ {
+  "doi": "10.1520/c1484-09",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.1520/c1484-09\nUR  - http://dx.doi.org/10.1520/c1484-09\nTI  - Specification for Vacuum Insulation Panels\nAU  - \nPB  - ASTM International\nER  - \n",
+  "bibtex": " @misc{1, url={http://dx.doi.org/10.1520/c1484-09}, DOI={10.1520/c1484-09}, publisher={ASTM International} }\n"
+ },
+ {
+  "doi": "10.1520/d0268-96",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.1520/d0268-96\nUR  - http://dx.doi.org/10.1520/d0268-96\nTI  - Guide for Sampling and Testing Volatile Solvents and Chemical Intermediates for Use in Paint and Related Coatings and Material\nAU  - \nPB  - ASTM International\nER  - \n",
+  "bibtex": " @misc{1, url={http://dx.doi.org/10.1520/d0268-96}, DOI={10.1520/d0268-96}, publisher={ASTM International} }\n"
+ },
+ {
+  "doi": "10.1520/d3176-89r02",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.1520/d3176-89r02\nUR  - http://dx.doi.org/10.1520/d3176-89r02\nTI  - Practice for Ultimate Analysis of Coal and Coke\nAU  - \nPB  - ASTM International\nER  - \n",
+  "bibtex": " @misc{1, url={http://dx.doi.org/10.1520/d3176-89r02}, DOI={10.1520/d3176-89r02}, publisher={ASTM International} }\n"
+ },
+ {
+  "doi": "10.1520/e2776-20r25",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.1520/e2776-20r25\nUR  - http://dx.doi.org/10.1520/e2776-20r25\nTI  - Guide for Correlation of Results of Solid Particle Size Measurement Instruments\nAU  - \nPB  - ASTM International\nER  - \n",
+  "bibtex": " @misc{1, url={http://dx.doi.org/10.1520/e2776-20r25}, DOI={10.1520/e2776-20r25}, publisher={ASTM International} }\n"
+ },
+ {
+  "doi": "10.4271/air5468a",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.4271/air5468a\nUR  - http://dx.doi.org/10.4271/air5468a\nTI  - Ultraviolet (UV) Lasers for Aerospace Wire Marking\nAU  - \nPB  - SAE International\nER  - \n",
+  "bibtex": " @misc{1, url={http://dx.doi.org/10.4271/air5468a}, DOI={10.4271/air5468a}, publisher={SAE International} }\n"
+ },
+ {
+  "doi": "10.4271/ams5399d",
+  "type": "standard",
+  "ris": "TY  - STAND\nDO  - 10.4271/ams5399d\nUR  - http://dx.doi.org/10.4271/ams5399d\nTI  - Nickel Alloy, Corrosion and Heat-Resistant, Investment Castings 52Ni - 19Cr - 11Co - 9.8Mo - 3.2Ti - 1.6Al - 0.006B Vacuum-Melted, Vacuum-Cast, Solution Heat Treated\nAU  - \nPB  - SAE International\nER  - \n",
+  "bibtex": " @misc{1, corrosion and heat-resistant, investment castings 52ni - 19cr - 11co - 9.8mo - 3.2ti - 1.6al - 0.006b vacuum-melted, vacuum-cast, solution heat treated, url={http://dx.doi.org/10.4271/ams5399d}, DOI={10.4271/ams5399d}, publisher={SAE International} }\n"
+ }
+]

@@ -199,7 +199,7 @@
       else { cont(line); lastGood = j; }
     }
     var out = {};
-    for (var t in tags) if (has(tags, t)) out[t] = tags[t].map(function (parts) { return trim(parts.join(' ')); });
+    for (var t in tags) if (has(tags, t)) out[t] = tags[t].map(function (parts) { var v = parts.join('\n'); return trim(/<[a-z]/i.test(v) ? v : v.replace(/\s*\n\s*/g, ' ')); }); // a line break next to <sup> matters ("125\nI"); otherwise pieces join with a space
     var onlyStart = nKnown <= 1 && lastGood === i;
     return { tags: out, nKnown: nKnown, end: lastGood, emptyBeforeStart: onlyStart && ownStart };
   }
@@ -245,7 +245,11 @@
     f.url = g('UR');
     f.abstract = g('AB') || g('N2');
     f.language = g('LA'); f.edition = g('ET'); f.genre = g('M3');
-    f.database = g('DP') || g('DB'); f.accession = g('AN'); // JSTOR, EBSCOhost, ProQuest: MLA's second container, Chicago's stand-in for a URL
+    f.database = g('DP') || g('DB'); f.accession = g('AN');
+    if (/^(GENERIC|GEN)$/.test(ty)) { // Crossref's RIS: a book, a chapter or an encyclopedia entry all come as GENERIC
+      if (f.container && (f.pages || f.isbn.length) && !f.volume && !f.issue) f.type = 'book-chapter';
+      else if (!f.container && f.isbn.length) f.type = 'book'; // a publisher alone is not enough: preprints have one too
+    } // JSTOR, EBSCOhost, ProQuest: MLA's second container, Chicago's stand-in for a URL
     return message(f);
   }
 
@@ -358,7 +362,7 @@
     t = t.replace(/\u0001/g, '\\').replace(/\u0002/g, '~').replace(/\u0003/g, '^').replace(/\u0004/g, '{').replace(/\u0005/g, '}')
       .replace(/\u0006/g, '$').replace(/\u0007/g, "'").replace(/\u0008/g, '"').replace(/\u0012/g, '`').replace(/\u0013/g, '~');
     if (typeof t.normalize === 'function') t = t.normalize('NFC');
-    t = trim(t.replace(/\s+/g, ' ')).replace(/\u000E\u000F|\u0010\u0011/g, '');
+    t = trim(/<[a-z]/i.test(t) ? t.replace(/[ \t]+/g, ' ').replace(/ ?\n[ \n]*/g, '\n') : t.replace(/\s+/g, ' ')).replace(/\u000E\u000F|\u0010\u0011/g, ''); // a line break next to <sup> matters ("125\nI"); otherwise whitespace collapses
     if (html && /[\u000E-\u0011<]/.test(t)) { // escape text, keep HTML tags already in the field (Crossref's <scp>, <i>)
       var TAG = /<\/?[a-zA-Z][\w:-]*(?:\s[^<>]*)?\/?>/g, esc = function (x) {
         return x.replace(/&(?!(#\d+|#x[\da-fA-F]+|[a-zA-Z]\w*);)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -570,6 +574,7 @@
     f.type = BIB_TYPES[type] || 'other';
     var note = g('note');
     if (f.type === 'other' && /^(preprint|dataset|software)$/i.test(note)) f.type = { preprint: 'posted-content', dataset: 'dataset', software: 'software' }[note.toLowerCase()];
+    if (type === 'misc' && f.type === 'other' && fl.isbn && !fl.volume && !fl.number) f.type = (fl.booktitle || fl.journal) ? 'book-chapter' : 'book'; // Crossref's @misc for books and encyclopedia entries
     f.authors = bibNames(fl.author); f.editors = bibNames(fl.editor);
     f.authorOthers = bibOthers(fl.author); f.editorOthers = bibOthers(fl.editor);
     f.title = gh('title'); f.subtitle = gh('subtitle');

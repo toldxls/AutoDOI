@@ -920,6 +920,16 @@
   }
   // Preprint servers whose DOIs are registered by a hosting service (California Digital Library)
   var PREPRINT_PREFIX = { '10.31223': 'EarthArXiv', '10.32942': 'EcoEvoRxiv' };
+  // Preprint servers by DOI shape. A record from a file or a search that names no journal and carries one of these DOIs is a
+  // preprint whatever type the exporter wrote (Crossref's own RIS says GENERIC and its BibTeX @article for bioRxiv)
+  var PREPRINT_DOI = [
+    [/^10\.1101\/(?:\d{4}\.\d{2}\.\d{2}\.\d+|\d{5,7})(?:v\d+)?$/i, 'bioRxiv'], [/^10\.31234\//i, 'PsyArXiv'], [/^10\.31219\//i, 'OSF Preprints'], [/^10\.31235\//i, 'SocArXiv'],
+    [/^10\.31222\//i, 'MetaArXiv'], [/^10\.31224\//i, 'engrXiv'], [/^10\.31730\//i, 'AfricArXiv'], [/^10\.21203\/rs\./i, 'Research Square'], [/^10\.26434\/chemrxiv/i, 'ChemRxiv'],
+    [/^10\.20944\/preprints/i, 'Preprints.org'], [/^10\.31223\//i, 'EarthArXiv'], [/^10\.32942\//i, 'EcoEvoRxiv'], [/^10\.22541\/(?:au|essoar)/i, 'Authorea'], [/^10\.36227\/techrxiv/i, 'TechRxiv'],
+    [/^10\.2139\/ssrn/i, 'SSRN'], [/^10\.48550\/arxiv/i, 'arXiv'], [/^10\.1590\/scielopreprints/i, 'SciELO Preprints'], [/^10\.5194\/egusphere-/i, 'EGUsphere'], [/^10\.5194\/[a-z]+-\d{4}-\d+(?:-[a-z]+\d*)?$/i, 'Copernicus discussion paper'],
+    [/^10\.1002\/essoar/i, 'ESSOAr'], [/^10\.33774\//i, 'Cambridge Open Engage'], [/^10\.12688\//i, ''] // F1000: a journal, kept as is
+  ];
+  function preprintServerOf(doi) { if (!doi) return ''; for (var i = 0; i < PREPRINT_DOI.length; i++) if (PREPRINT_DOI[i][0].test(doi)) return PREPRINT_DOI[i][1]; return ''; }
 
   function hasName(p) { return !!(p.family || p.given); }
   // author / editor as deposited: a list of people; null entries and non-lists ("Smith", {}) are not people
@@ -1013,8 +1023,11 @@
     if (/^\d{4}$/.test(r.volume) && r.year && r.years.concat(r.year).indexOf(r.volume) !== -1) { // Fieldiana: volume "2010", issue "52"
       r.volume = r.issue; r.issue = '';
     }
+    var srv = preprintServerOf(r.doi);
+    if (srv && !r.container && /^(?:journal-article|other|book|monograph)$/.test(r.type)) { r.type = type = 'posted-content'; } // a file or search record that names no journal
     if (/^(?:posted-content|preprint)$/.test(type) && !r.container) {
       var pre = PREPRINT_PREFIX[String(r.doi).split('/')[0].toLowerCase()];
+      if (!pre) pre = preprintServerOf(r.doi) || '';
       if (pre) r.institution = pre;
       else if (!r.institution && /Center for Open Science/i.test(r.publisher) && m['group-title']) r.institution = clean(m['group-title']);
       else if (!r.institution && /California Digital Library/i.test(r.publisher) && m['group-title']) r.institution = clean(m['group-title']);
