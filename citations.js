@@ -149,8 +149,9 @@
   function fromOpenAlex(w) {
     var loc = w.primary_location || (w.locations && w.locations[0]) || {};
     var src = loc.source || {};
-    var typeMap = { article: src.type === 'journal' || !src.type ? 'journal-article' : 'journal-article', preprint: 'posted-content', 'book-chapter': 'book-chapter',
-      book: 'book', dissertation: 'dissertation', dataset: 'dataset', report: 'report', 'paratext': 'other', 'peer-review': 'other', 'reference-entry': 'book-chapter' };
+    var typeMap = { article: 'journal-article', preprint: 'posted-content', 'book-chapter': 'book-chapter', 'conference-paper': 'proceedings-article', 'conference-abstract': 'journal-article',
+      book: 'book', dissertation: 'dissertation', dataset: 'dataset', report: 'report', standard: 'standard', editorial: 'journal-article', letter: 'journal-article', erratum: 'journal-article',
+      review: 'journal-article', paratext: 'other', 'peer-review': 'peer-review', 'reference-entry': 'reference-entry', 'supplementary-materials': 'other', libguides: 'other', grant: 'other' };
     var type = typeMap[w.type] || 'other';
     if (w.type === 'article' && src.type === 'repository') type = 'posted-content';
     if (w.type === 'article' && (src.type === 'conference' || /proceedings/i.test(src.display_name || ''))) type = 'proceedings-article';
@@ -1023,6 +1024,8 @@
     if (/^\d{4}$/.test(r.volume) && r.year && r.years.concat(r.year).indexOf(r.volume) !== -1) { // Fieldiana: volume "2010", issue "52"
       r.volume = r.issue; r.issue = '';
     }
+    // A DOI built on an ISBN is a book, or a chapter when it carries a part number: 10.1007/978-3-031-49200-6 and 10.1007/978-3-031-49200-6_21
+    if (r.type === 'other' && /\/97[89]-?\d[-\d]{9,}(?:_\d+)?$/i.test(r.doi)) r.type = type = /_\d+$/.test(r.doi) ? 'book-chapter' : 'book';
     // Report publishers whose DOIs Crossref's exports write as @book without an ISBN: USGS, OSTI, DTIC, IDB, NIST
     if (r.type === 'book' && !r.isbn && /^10\.(?:3133|2172|21236|18235|6028)\//i.test(r.doi)) r.type = type = 'report';
     var srv = preprintServerOf(r.doi);

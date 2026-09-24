@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-yMUyebSCvq75UFlWu4C2DV8B1Vmku+uenOeYC4Vso7U=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-xGX5nkmPeiyBNUElav09NDdo2YjZjJPuKnBnrR0SXmM=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Yq2+0NBKA8wYPboBPqMPGzcvDQCefQ/957MG2l189P4=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-xGX5nkmPeiyBNUElav09NDdo2YjZjJPuKnBnrR0SXmM=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -445,8 +445,9 @@
   function fromOpenAlex(w) {
     var loc = w.primary_location || (w.locations && w.locations[0]) || {};
     var src = loc.source || {};
-    var typeMap = { article: src.type === 'journal' || !src.type ? 'journal-article' : 'journal-article', preprint: 'posted-content', 'book-chapter': 'book-chapter',
-      book: 'book', dissertation: 'dissertation', dataset: 'dataset', report: 'report', 'paratext': 'other', 'peer-review': 'other', 'reference-entry': 'book-chapter' };
+    var typeMap = { article: 'journal-article', preprint: 'posted-content', 'book-chapter': 'book-chapter', 'conference-paper': 'proceedings-article', 'conference-abstract': 'journal-article',
+      book: 'book', dissertation: 'dissertation', dataset: 'dataset', report: 'report', standard: 'standard', editorial: 'journal-article', letter: 'journal-article', erratum: 'journal-article',
+      review: 'journal-article', paratext: 'other', 'peer-review': 'peer-review', 'reference-entry': 'reference-entry', 'supplementary-materials': 'other', libguides: 'other', grant: 'other' };
     var type = typeMap[w.type] || 'other';
     if (w.type === 'article' && src.type === 'repository') type = 'posted-content';
     if (w.type === 'article' && (src.type === 'conference' || /proceedings/i.test(src.display_name || ''))) type = 'proceedings-article';
@@ -1319,6 +1320,8 @@
     if (/^\d{4}$/.test(r.volume) && r.year && r.years.concat(r.year).indexOf(r.volume) !== -1) { // Fieldiana: volume "2010", issue "52"
       r.volume = r.issue; r.issue = '';
     }
+    // A DOI built on an ISBN is a book, or a chapter when it carries a part number: 10.1007/978-3-031-49200-6 and 10.1007/978-3-031-49200-6_21
+    if (r.type === 'other' && /\/97[89]-?\d[-\d]{9,}(?:_\d+)?$/i.test(r.doi)) r.type = type = /_\d+$/.test(r.doi) ? 'book-chapter' : 'book';
     // Report publishers whose DOIs Crossref's exports write as @book without an ISBN: USGS, OSTI, DTIC, IDB, NIST
     if (r.type === 'book' && !r.isbn && /^10\.(?:3133|2172|21236|18235|6028)\//i.test(r.doi)) r.type = type = 'report';
     var srv = preprintServerOf(r.doi);
