@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZPToMMfhzBbQy3WaW0G5aPusy2B8HHAjoNctly+FAW8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-qy2r02O9fOcoz8KrxwOplv3cwUnpW33eQ3CR/UIkbaE=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ZPToMMfhzBbQy3WaW0G5aPusy2B8HHAjoNctly+FAW8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-YIc9x3+zYzq8nXxgz/+ioQgJ5TSX3/sq/bMFj/ouvXw=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -6060,6 +6060,40 @@
   });
 
   $('export-input').addEventListener('input', function () { clearTimeout(previewTimer); previewTimer = setTimeout(updateSplitPreview, 250); });
+  // A paste from Word, Google Docs or a browser carries sub- and superscripts as HTML, which a textarea would drop
+  // (Ca₁₉Fe²⁺Al₄ would arrive as Ca19Fe2+Al4). When the HTML holds any, the text is rebuilt from it with Unicode
+  // sub- and superscripts, keeping the paragraph and line breaks; otherwise the browser's plain paste is left alone.
+  function htmlToPlainWithScripts(html) {
+    var doc = new DOMParser().parseFromString('<body>' + html, 'text/html'), out = '';
+    var BLOCK = /^(P|DIV|LI|TR|H[1-6]|BLOCKQUOTE|TABLE|UL|OL|PRE|SECTION|ARTICLE|TD|TH|DD|DT)$/;
+    (function walk(n, mode) {
+      for (var c = n.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) { var t = c.nodeValue.replace(/\s+/g, ' '); out += mode ? A.toScript(t, mode) : t; continue; }
+        if (c.nodeType !== 1) continue;
+        var tag = c.tagName;
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'HEAD' || tag === 'TITLE') continue;
+        if (tag === 'BR') { out += '\n'; continue; }
+        var va = /vertical-align\s*:\s*(sub|super)\b/i.exec(c.getAttribute('style') || '');
+        var m = tag === 'SUB' || (va && va[1].toLowerCase() === 'sub') ? 'sub' : tag === 'SUP' || (va && va[1].toLowerCase() === 'super') ? 'sup' : mode;
+        var block = BLOCK.test(tag);
+        if (block && out && !/\n$/.test(out)) out += '\n';
+        walk(c, m);
+        if (block && !/\n$/.test(out)) out += '\n';
+      }
+    })(doc.body, '');
+    return out.replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
+  }
+  $('export-input').addEventListener('paste', function (ev) {
+    var dt = ev.clipboardData; if (!dt) return;
+    var html = dt.getData('text/html');
+    if (!html || !/<(?:sub|sup)\b|vertical-align\s*:\s*(?:sub|super)\b/i.test(html)) return; // nothing to keep: the browser pastes the plain text
+    var text = htmlToPlainWithScripts(html); if (!text.trim()) return;
+    ev.preventDefault();
+    var ta = this, s = ta.selectionStart, e = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+    ta.selectionStart = ta.selectionEnd = s + text.length;
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   (function () { var sm = store.get('splitmode'); if (sm && /^(auto|lines|blank|numbered)$/.test(sm)) $('split-mode').value = sm; })();
   $('speed-hint').addEventListener('click', function () {
     var d = document.querySelector('details.settings'); d.open = true; $('polite-email').focus(); d.scrollIntoView({ block: 'center' });
@@ -6213,7 +6247,7 @@
       row.node.className = 'match ' + level;
       var o = row.out; o.innerHTML = '';
       o.appendChild(chipFor(level, via, src));
-      o.appendChild(el('span', 't', rec.title || '(untitled record)'));
+      var tt = el('span', 't'); if (rec.title) tt.innerHTML = A.titleHtml(rec); else tt.textContent = '(untitled record)'; o.appendChild(tt); // formulas and deposited markup shown, as on the DOI tab
       var dl = (rec.doi || rec.isbn) ? outLink(rec, 'doi-link', '') : null;
       if (dl) { dl.appendChild(el('code', '', rec.doi || rec.isbn)); o.appendChild(dl); } else o.appendChild(el('code', '', ''));
       row.dupChip = el('span', 'chip warn', ''); row.dupChip.hidden = true; row.dupChip.title = 'Same record as an earlier ticked line; left out of the export';

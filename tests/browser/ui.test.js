@@ -250,6 +250,23 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('export output holds the matched record'), /Kucsko/.test(outText) && /RIS|EndNote|BibTeX/.test(outText), outText.slice(0, 200));
   await axeCheck('Export tab with matches');
 
+  // 8b. A rich paste (Word, Google Docs) keeps its sub- and superscripts as Unicode; a plain paste is untouched
+  await page.fill('#export-input', '');
+  await page.evaluate(function () {
+    var ta = document.getElementById('export-input'), dt = new DataTransfer();
+    dt.setData('text/html', '<html><body><p class=MsoNormal>Uher, P. and Bačík, P., 2026. Modraite, Ca<sub>19</sub>Fe<sup>2+</sup>Al<sub>4</sub>(Al<sub>7</sub>Fe<sup>2+</sup>)(SiO<sub>4</sub>)<sub>10</sub>, a new mineral. <i>American Mineralogist</i>.<o:p></o:p></p><p class=MsoNormal>Second, R., 2020. Water, H<span style="vertical-align:sub">2</span>O. <i>Nature</i>.</p></body></html>');
+    dt.setData('text/plain', 'Uher, P. and Bačík, P., 2026. Modraite, Ca19Fe2+Al4(Al7Fe2+)(SiO4)10, a new mineral. American Mineralogist.\r\nSecond, R., 2020. Water, H2O. Nature.');
+    ta.focus(); ta.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+  var pasted = await page.inputValue('#export-input');
+  check(name('a rich paste keeps sub- and superscripts as Unicode'), /Ca\u2081\u2089Fe\u00b2\u207aAl\u2084\(Al\u2087Fe\u00b2\u207a\)\(SiO\u2084\)\u2081\u2080/.test(pasted) && /H\u2082O/.test(pasted), JSON.stringify(pasted).slice(0, 200));
+  check(name('a rich paste keeps its paragraphs as lines'), pasted.split('\n').filter(Boolean).length === 2 && !/<|MsoNormal/.test(pasted), JSON.stringify(pasted).slice(0, 200));
+  await page.evaluate(function () {
+    var ta = document.getElementById('export-input'), dt = new DataTransfer(); ta.value = '';
+    dt.setData('text/html', '<p>Plain, P. (2020). No scripts here. <i>Journal</i>.</p>'); dt.setData('text/plain', 'Plain, P. (2020). No scripts here. Journal.');
+    ta.focus(); ta.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+  check(name('a paste without scripts is left to the browser'), (await page.inputValue('#export-input')) === '', JSON.stringify(await page.inputValue('#export-input')));
   // 9. File import: a RIS file and a BibTeX file are read directly, no lookup
   await page.fill('#export-input', '');
   var before = s.state.requests.length;

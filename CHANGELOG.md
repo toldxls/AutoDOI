@@ -4,6 +4,7 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 
 ## Unreleased
 
+- A reference pasted from Word, Google Docs or a browser keeps its sub- and superscripts: when the clipboard's HTML carries any, the text is rebuilt from it with Unicode forms (Ca₁₉Fe²⁺Al₄) and its paragraphs as lines; a plain paste is untouched. The matched record's title on a row now shows formulas and deposited markup as the DOI tab does.
 - In the reference matcher, words of your pasted reference that the matched record does not contain are marked, with the record's own spelling in the tooltip when it is one letter away: a misspelt journal ("Aerican Mineralogist"), a wrong year or a wrong page now shows on the row instead of being silently corrected in the output.
 ## 1.7.0 - 2026-09-24
 
