@@ -1842,31 +1842,82 @@
       .filter(function (w) { return w.length >= 3; });
   }
 
+  // Spelling folded the same way on both sides, so British and American forms compare equal (behaviour/behavior,
+  // sulphide/sulfide, palaeo/paleo, modelling/modeling, centre/center, -isation/-ization); only equality is ever tested
+  function foldSpelling(w) {
+    return w.replace(/sulph/g, 'sulf').replace(/ae|oe/g, 'e').replace(/our$/, 'or').replace(/i[sz]ation$/, 'ization').replace(/i[sz]e[sd]?$/, 'ize')
+      .replace(/y[sz]e[sd]?$/, 'yze').replace(/re$/, 'er').replace(/ll/g, 'l').replace(/mme$/, 'm').replace(/logue$/, 'log').replace(/^grey$/, 'gray');
+  }
+  // Damerau-Levenshtein distance, stopping once it exceeds max
+  function editDistance(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    var prev = [], cur = [], i, j;
+    for (j = 0; j <= b.length; j++) prev[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      cur = [i]; var rowMin = i;
+      for (j = 1; j <= b.length; j++) {
+        var cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        var v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, (prev2 ? prev2[j - 2] : Infinity) + 1);
+        cur[j] = v; if (v < rowMin) rowMin = v;
+      }
+      if (rowMin > max) return max + 1;
+      var prev2 = prev; prev = cur;
+    }
+    return prev[b.length];
+  }
+  // Is this title word in the reference text? Exactly, within a typo or two ("fuids" for "fluids", the ligature dropped),
+  // or as a hyphenated compound written solid on one side ("calc-alkaline" / "calcalkaline")
+  function wordFound(word, i, words, hay, haySet) {
+    if (haySet[word]) return true;
+    if (words[i + 1] && haySet[word + words[i + 1]]) return true;
+    if (words[i - 1] && haySet[words[i - 1] + word]) return true;
+    var max = word.length >= 9 ? 2 : word.length >= 5 ? 1 : 0, k;
+    for (k = 0; k + 1 < hay.length; k++) if (hay[k] + hay[k + 1] === word) return true;
+    if (!max) return false;
+    for (k = 0; k < hay.length; k++) if (editDistance(hay[k], word, max) <= max) return true;
+    return false;
+  }
+  function titleScore(title, hay, haySet) {
+    var words = tokens(title).map(foldSpelling);
+    if (!words.length) return 0;
+    var hit = 0;
+    for (var i = 0; i < words.length; i++) if (wordFound(words[i], i, words, hay, haySet)) hit++;
+    return hit / words.length;
+  }
   // How well does a found record explain the reference text the user pasted? 0..1
   function matchConfidence(refText, record, opts) {
     record = harden(record && record.authors ? record : normalize(record || {}));
     opts = opts || {};
     var r = record.authors ? record : normalize(record);
-    var hay = ' ' + tokens(refText).join(' ') + ' ';
-    var tt = tokens(r.title);
-    if (!tt.length) return 0;
-    var hit = tt.filter(function (w) { return hay.indexOf(' ' + w + ' ') !== -1; }).length;
-    var score = hit / tt.length;
+    var hay = tokens(refText).map(foldSpelling), haySet = {};
+    hay.forEach(function (w) { haySet[w] = true; });
+    var title = marksToText(r.title);
+    if (!tokens(title).length) return 0;
+    var score = titleScore(title, hay, haySet);
+    // a reference often drops the subtitle: "Screw rotations and glide mirrors" for "Screw rotations and glide mirrors: Crystallography in Fourier space"
+    var main = title.split(/:\s+/)[0];
+    if (main !== title && tokens(main).length >= 3) score = Math.max(score, titleScore(main, hay, haySet));
     if (opts.titleOnly) return Math.max(0, Math.min(1, score)); // the Find tab has no year or author to check
-    var yearsInRef = (String(refText).match(/\b(1[5-9]|20)\d{2}\b/g) || []).map(Number);
+    // the first person named: an organisation deposited as first author cannot be checked against a name list
+    var persons = r.authors.filter(function (p) { return !p.literal; });
+    var authorOk = true;
+    if (persons.length) {
+      var fam = tokens(persons[0].family).map(foldSpelling)[0];
+      if (fam && !haySet[fam] && !(fam.length >= 5 && hay.some(function (h) { return editDistance(h, fam, 1) <= 1; }))) authorOk = false; // "Safna" for "Safina"
+    }
+    // "(1964a)" is a year; "1573-1588" is a page range, but only a real year check can tell, so every four-digit token counts
+    var yearsInRef = (String(refText).match(/\b(?:1[5-9]|20)\d{2}(?=[a-z]?\b)/g) || []).map(Number);
     var recYears = (r.years && r.years.length ? r.years : (r.year ? [r.year] : [])).map(Number);
     if (recYears.length && yearsInRef.length) {
       var near = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
       if (!near) score -= 0.35;                                                          // a different year is a different record
       else if (!yearsInRef.some(function (x) { return recYears.indexOf(x) !== -1; })) score -= 0.05; // online vs print year
-    } else if (recYears.length) score -= 0.15;
+    } else if (recYears.length) score -= authorOk ? 0.08 : 0.15;                         // no year given: the author carries more weight
     // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
     var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
     if ((NOTICE.test(r.title) || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
-    if (r.authors.length) {
-      var fam = tokens(r.authors[0].family)[0];
-      if (fam && hay.indexOf(' ' + fam + ' ') === -1) score -= 0.15;
-    }
+    if (!authorOk) score -= 0.15;
     return Math.max(0, Math.min(1, score));
   }
 
