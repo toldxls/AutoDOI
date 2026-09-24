@@ -4,6 +4,9 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 
 ## Unreleased
 
+## 1.3.0 - 2026-09-24
+
+- A database or platform name carried by an imported file (RIS `DP` or `DB`, EndNote `%W`) and its accession number (`AN`, `%M`) are now kept. MLA prints the database as the second container with the location ("pp. 69–88. JSTOR, www.jstor.org/stable/41403188."), Chicago prints it in place of a URL when there is no DOI ("Project MUSE.", "ProQuest (13865986)."), APA uses it as a dissertation's archive when the file names no publisher, and the RIS and EndNote exports write it back. Six more of the style authorities' published examples now reproduce exactly (72 in all).
 ## 1.2.1 - 2026-09-24
 
 - A journal article's issue month and day now come from Crossref's print date when its year matches, not from the earliest (usually online) date, so Vancouver, Chicago, MLA and IEEE print the issue date PubMed and the journal print ("Nature. 2013 Aug;500(7460):54-8."). The first canary run caught this against the live page and opened its issue as designed.

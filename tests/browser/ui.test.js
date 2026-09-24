@@ -92,7 +92,7 @@ async function newPage(browser, base, dark) {
   return { ctx: ctx, page: page, state: state };
 }
 
-var RIS_FILE = ['TY  - JOUR', 'AU  - Kucsko, G.', 'AU  - Maurer, P. C.', 'AU  - Yao, N. Y.', 'TI  - Nanometre-scale thermometry in a living cell', 'JO  - Nature', 'PY  - 2013', 'VL  - 500', 'IS  - 7460', 'SP  - 54', 'EP  - 58', 'DO  - 10.1038/nature12373', 'ER  - ', ''].join('\r\n');
+var RIS_FILE = ['TY  - JOUR', 'AU  - Kucsko, G.', 'AU  - Maurer, P. C.', 'AU  - Yao, N. Y.', 'TI  - Nanometre-scale thermometry in a living cell', 'JO  - Nature', 'PY  - 2013', 'VL  - 500', 'IS  - 7460', 'SP  - 54', 'EP  - 58', 'DO  - 10.1038/nature12373', 'DP  - JSTOR', 'AN  - 41403188', 'ER  - ', ''].join('\r\n');
 var BIB_FILE = '@article{vaswani2017attention,\n  author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki},\n  title = {Attention is all you need},\n  journal = {Advances in Neural Information Processing Systems},\n  year = {2017},\n  volume = {30},\n  pages = {5998--6008}\n}\n';
 
 // Everything the page does, once per colour scheme; axe runs on each tab once it has content
@@ -264,6 +264,8 @@ async function runFlows(browser, base, dark, cslReady) {
   outText = await textOf('#export-output');
   check(name('export output holds both file records'), /Nanometre-scale thermometry/.test(outText) && /Attention is all you need/.test(outText) && /Vaswani/.test(outText), outText.slice(0, 300));
   check(name('the file input is cleared for the next pick'), (await page.inputValue('#export-file-input')) === '');
+  var exportsText = await page.evaluate(function () { return Array.prototype.map.call(document.querySelectorAll('#export-output textarea, #export-output pre, #export-output code'), function (e) { return e.value || e.textContent; }).join('\n'); });
+  check(name('the database name from the RIS file is written back into the RIS export'), /DP {2}- JSTOR/.test(exportsText) && /AN {2}- 41403188/.test(exportsText), exportsText.slice(0, 300));
   await page.locator('#split-details summary').click();
   await axeCheck('Export tab with file records and split list open');
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));

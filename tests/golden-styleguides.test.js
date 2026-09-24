@@ -41,7 +41,7 @@ function record(ex) {
     page: m.pages ? String(m.pages) : undefined, 'article-number': m.articleNumber ? String(m.articleNumber) : undefined,
     publisher: m.publisher || undefined, 'publisher-location': m.place || undefined, 'edition-number': m.edition ? String(m.edition) : undefined,
     DOI: m.doi || undefined, URL: m.url || undefined, institution: m.institution ? [{ name: m.institution }] : undefined, degree: m.genre ? [m.genre] : undefined,
-    'number-of-pages': m.numPages ? String(m.numPages) : undefined, accessed: acc ? { 'date-parts': [[acc.year].concat(acc.month ? [acc.month].concat(acc.day ? [acc.day] : []) : [])] } : undefined
+    'number-of-pages': m.numPages ? String(m.numPages) : undefined, database: m.database || undefined, accession: m.accession || undefined, accessed: acc ? { 'date-parts': [[acc.year].concat(acc.month ? [acc.month].concat(acc.day ? [acc.day] : []) : [])] } : undefined
   };
   Object.keys(msg).forEach(function (k) { if (msg[k] === undefined) delete msg[k]; });
   var r = A.normalize(msg);
@@ -55,7 +55,6 @@ function record(ex) {
 // Examples whose printed form needs a datum no source AutoDOI reads (Crossref, OpenAlex, doi.org, RIS/BibTeX files) can supply.
 // They are reported, not silently passed, so the list stays visible.
 var NOT_APPLICABLE = [
-  [/EBSCOhost|Project MUSE|JSTOR|HathiTrust|Cambridge Core|Oxford Handbooks Online|ProQuest \(/, 'database or platform name'],
   [/\bc\d{4}\b/, 'copyright-only year'],
   [/\b(Winter|Spring|Summer|Fall|Autumn)\b/i, 'season in the date'],
   [/Effective |Last modified /, 'a labelled date taken from the page wording'],

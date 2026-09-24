@@ -932,6 +932,13 @@
     if (typeof d !== 'string') return '';
     return d.replace(TAG_RE, '').replace(/^\s+|\s+$/g, '').replace(/[.,;]+$/, '').replace(/\s+$/, '');
   }
+  // First value of a tag kept from an imported file, for a record that did not come through the parsers' field mapping
+  function rawTagOf(m, src, tags, src2, tags2) {
+    var raw = m.raw && typeof m.raw === 'object' ? m.raw : null; if (!raw) return '';
+    var list = m.source === src2 ? tags2 : m.source === src ? tags : [];
+    for (var i = 0; i < list.length; i++) { var v = raw[list[i]]; v = Array.isArray(v) ? v[0] : v; if (v) return String(v); }
+    return '';
+  }
   function normalize(m) {
     var dp = datePartsOf(m);
     var doi = cleanDoi(m.DOI || m.doi);
@@ -990,6 +997,8 @@
       abstract: cleanAbstract(m.abstract || ''),
       language: clean(m.language || ''),
       event: clean((m.event && m.event.name) || ''),
+      database: clean(m.database || m.archive || rawTagOf(m, 'ris', ['DP', 'DB'], 'enw', ['W']) || ''),   // the database or platform a file says the record came from (RIS DP/DB, EndNote %W, CSL archive)
+      accession: clean(m.accession || m.archive_location || rawTagOf(m, 'ris', ['AN'], 'enw', ['M']) || ''), // its accession number there (RIS AN, EndNote %M)
       publishedDoi: relDoi(m.relation, 'is-preprint-of'),
       preprintDoi: relDoi(m.relation, 'has-preprint'),
       source: m.source || 'crossref',
@@ -1200,7 +1209,7 @@
         var deg = /m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
         var school = r.institution || r.publisher || r.container;
         label = T(deg + (school ? ', ' + school : '')); host = '';
-        if (r.publisher && r.publisher !== school) archive = r.publisher; // "ProQuest Dissertations & Theses Global", "UA Campus Repository"
+        archive = r.publisher && r.publisher !== school ? r.publisher : r.database; // "ProQuest Dissertations & Theses Global", "UA Campus Repository"
         if (r.number) pre = ' (' + T(/publication no/i.test(r.number) ? r.number : 'Publication No. ' + r.number) + ')';
       }
       if (k === 'report' && r.number) pre = ' (' + T((r.series ? r.series + ' ' : '') + (r.series || /\b(no|number|rep|report|pub)\b/i.test(r.number) ? '' : 'Report No. ') + r.number) + ')';
@@ -1259,8 +1268,13 @@
       if (when) contParts.push(T(when));
       if (r.pages) contParts.push(T(pp(r.pages)));
     }
-    if (link) contParts.push(T(link));
-    if (contParts.length) out.push(contParts.join(', ') + '.');
+    if (r.database) { // MLA 9: the database or platform is a second container, holding the location: "pp. 69-88. JSTOR, www.jstor.org/stable/41403188."
+      if (contParts.length) out.push(contParts.join(', ') + '.');
+      out.push(T(r.database) + (link ? ', ' + T(link) : '') + '.');
+    } else {
+      if (link) contParts.push(T(link));
+      if (contParts.length) out.push(contParts.join(', ') + '.');
+    }
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
@@ -1311,7 +1325,10 @@
       if (host) out.push(T(dot(host)));
       if (k === 'web' && !r.year && accessedDate(r)) out.push('Accessed ' + accessedDate(r) + '.'); // an undated page is cited by the day it was read
     }
-    if (link) out.push(T(link) + '.');
+    // CMOS: a DOI first; for a source consulted in a commercial database, the database name (with any accession number) stands in for a URL
+    if (r.doi) out.push(T(link) + '.');
+    else if (r.database) out.push(T(r.database + (r.accession ? ' (' + r.accession + ')' : '')) + '.');
+    else if (link) out.push(T(link) + '.');
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
@@ -1701,7 +1718,12 @@
     // tags AutoDOI does not model, carried over from an imported RIS / EndNote record
     rawTags(r, 'ris', ['KW'], 'enw', ['K']).forEach(function (v) { add('KW', v); });
     rawTags(r, 'ris', ['N1'], 'enw', ['Z']).forEach(function (v) { add('N1', v); });
-    ['AN', 'L1', 'L2', 'Y2', 'M3', 'DB', 'CN'].forEach(function (t) { rawTags(r, 'ris', [t]).forEach(function (v) { add(t, v); }); });
+    var rawDB = rawTags(r, 'ris', ['DB']), fromDB = !rawTags(r, 'ris', ['DP']).length && rawDB.indexOf(r.database) !== -1; // a DB-only file stays DB
+    if (!fromDB) add('DP', r.database);
+    add('AN', r.accession);
+    ['L1', 'L2', 'Y2', 'M3'].forEach(function (t) { rawTags(r, 'ris', [t]).forEach(function (v) { add(t, v); }); });
+    rawDB.forEach(function (v) { if (fromDB || v !== r.database) add('DB', v); });
+    rawTags(r, 'ris', ['CN']).forEach(function (v) { add('CN', v); });
     L.push('ER  - ');
     return L.join('\r\n') + '\r\n';
   }
@@ -1740,7 +1762,8 @@
     rawTags(r, 'enw', ['K'], 'ris', ['KW']).forEach(function (v) { add('%K', v); });
     var notes = rawTags(r, 'enw', ['Z'], 'ris', ['N1']);
     if (notes.length) add('%Z', notes.join('; '));                // %Z is a single field
-    ['M', 'L', 'F', '1', '2', '3', '4'].forEach(function (t) { var v = rawTags(r, 'enw', [t]); if (v.length) add('%' + t, v.join('; ')); });
+    add('%W', r.database); add('%M', r.accession);
+    ['L', 'F', '1', '2', '3', '4'].forEach(function (t) { var v = rawTags(r, 'enw', [t]); if (v.length) add('%' + t, v.join('; ')); });
     return L.join('\n') + '\n';
   }
 
@@ -1764,7 +1787,7 @@
   // Every field the formatters read, coerced to the type they expect.  Records from normalize() already have this
   // shape; this guards a caller's hand-built record, so a stray null, number or array cannot throw or leak
   var STR_FIELDS = ['type', 'doi', 'url', 'title', 'subtitle', 'container', 'series', 'number', 'shortContainer', 'institution', 'edition', 'numPages', 'genre',
-    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event'];
+    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession'];
   var ANY_PUA = /[\uE000-\uF8FF]/g;
   function str(v) { return v === undefined || v === null || typeof v === 'boolean' || (typeof v === 'number' && !isFinite(v)) ? '' : Array.isArray(v) ? v.map(str).filter(Boolean).join(' ') : typeof v === 'object' ? '' : String(v); }
   function harden(record) {

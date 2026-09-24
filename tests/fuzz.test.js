@@ -111,7 +111,7 @@ for (var r2 = 0; r2 < 4; r2++) {
 
 // 3. Records with hostile field values through every style and export
 var HOSTILE = ['', null, undefined, 0, 1e21, -1, NaN, true, [], {}, ['a', 'b'], { a: 1 }, '<script>alert(1)</script>', '<img src=x onerror=alert(1)>', '&lt;i&gt;x&lt;/i&gt;', '', '\u0000', '‮evil', 'A'.repeat(10000), '  ', '\n\n', '..', ',,', '&&', '%s%s%n', '{}', '${x}', '<mml:math><mml:mi>x</mml:mi></mml:math>', '10.1000/<b>x</b>', 'javascript:alert(1)', '“”‘’', '(', ')', '[', '];', '1-', '-2', 'e5', '2020-13-45', '99999'];
-var FIELDS = ['title', 'subtitle', 'container', 'shortContainer', 'series', 'number', 'institution', 'edition', 'numPages', 'genre', 'year', 'month', 'day', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'doi', 'url', 'language', 'event', 'type'];
+var FIELDS = ['title', 'subtitle', 'container', 'shortContainer', 'series', 'number', 'institution', 'edition', 'numPages', 'genre', 'year', 'month', 'day', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'doi', 'url', 'language', 'event', 'type', 'database', 'accession'];
 var base = A.normalize(JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'w.json'), 'utf8')).message);
 for (var k = 0; k < 400; k++) {
   var r = JSON.parse(JSON.stringify(base)), n = 1 + Math.floor(rnd() * 4);

@@ -1861,7 +1861,8 @@
       "url": null,
       "accessed": null,
       "type": "Book consulted in an electronic format",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 7. Borel, *Fact-Checking*, 104–5."
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 7. Borel, *Fact-Checking*, 104–5.",
+      "database": "EBSCOhost"
     }
   },
   {
@@ -1933,7 +1934,8 @@
       "url": null,
       "accessed": null,
       "type": "Journal article",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 6. Hebert, “Island of Bolsö,” 311.; no DOI"
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 6. Hebert, “Island of Bolsö,” 311.; no DOI",
+      "database": "EBSCOhost"
     }
   },
   {
@@ -2043,7 +2045,9 @@
       "url": null,
       "accessed": null,
       "type": "Thesis or dissertation",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 2. Blajer de la Garza, “House,” 93."
+      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); shortened note: 2. Blajer de la Garza, “House,” 93.",
+      "database": "ProQuest",
+      "accession": "13865986"
     }
   },
   {
@@ -2330,7 +2334,8 @@
       "url": null,
       "accessed": null,
       "type": "Journal article",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no DOI; shortened note: 6. LaSalle, “Conundrum,” 101.; the page’s note has a stray space inside the italic journal title; normalised"
+      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no DOI; shortened note: 6. LaSalle, “Conundrum,” 101.; the page’s note has a stray space inside the italic journal title; normalised",
+      "database": "Project MUSE"
     }
   },
   {
@@ -2706,7 +2711,8 @@
       "url": "hdl.handle.net/2027/coo.31924079574368",
       "accessed": null,
       "type": "Book on a website",
-      "notes": "two containers (book, then database); hyphen (not en dash) in page range as printed"
+      "notes": "two containers (book, then database); hyphen (not en dash) in page range as printed",
+      "database": "HathiTrust Digital Library"
     }
   },
   {
@@ -2740,7 +2746,8 @@
       "url": "www.jstor.org/stable/41403188",
       "accessed": null,
       "type": "Journal Article in a Database",
-      "notes": "no DOI; lowercase season; database as second container; hyphen in page range as printed"
+      "notes": "no DOI; lowercase season; database as second container; hyphen in page range as printed",
+      "database": "JSTOR"
     }
   },
   {
@@ -2881,7 +2888,8 @@
       "url": null,
       "accessed": null,
       "type": "chapter in an anthology with page numbers and a DOI",
-      "notes": "en dash in page range on this page; platform (Cambridge Core) as second container; publisher abbreviated UP"
+      "notes": "en dash in page range on this page; platform (Cambridge Core) as second container; publisher abbreviated UP",
+      "database": "Cambridge Core"
     }
   },
   {
@@ -2920,7 +2928,8 @@
       "url": null,
       "accessed": null,
       "type": "chapter in an anthology with a DOI (no page numbers)",
-      "notes": "editors truncated with et al.; month with year; in the page HTML the container title is split across two adjacent italic spans (break after “c.”); merged here into one italic span"
+      "notes": "editors truncated with et al.; month with year; in the page HTML the container title is split across two adjacent italic spans (break after “c.”); merged here into one italic span",
+      "database": "Oxford Handbooks Online"
     }
   },
   {

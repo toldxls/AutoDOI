@@ -143,6 +143,7 @@
     set('DOI', f.doi); set('URL', f.url || (f.doi ? 'https://doi.org/' + f.doi : ''));
     set('abstract', f.abstract); set('language', f.language); set('edition', f.edition); set('genre', f.genre);
     set('number-of-pages', f.numPages);
+    set('database', f.database); set('accession', f.accession);
     if (f.institution) m.institution = [{ name: f.institution }];
     if (f.protectWords && f.protectWords.length) m['protect-words'] = f.protectWords;
     if (f.event) m.event = { name: f.event };
@@ -244,6 +245,7 @@
     f.url = g('UR');
     f.abstract = g('AB') || g('N2');
     f.language = g('LA'); f.edition = g('ET'); f.genre = g('M3');
+    f.database = g('DP') || g('DB'); f.accession = g('AN'); // JSTOR, EBSCOhost, ProQuest: MLA's second container, Chicago's stand-in for a URL
     return message(f);
   }
 
@@ -272,6 +274,7 @@
     f.doi = doiOf(all('R').join(' ')) || doiOf(all('U').join(' '));
     f.url = g('U');
     f.abstract = g('X'); f.language = g('G'); f.edition = g('7'); f.genre = g('9');
+    f.database = g('W'); f.accession = g('M'); // %W database provider, %M accession number
     return message(f);
   }
 

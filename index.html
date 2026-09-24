@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-wMqovmE7woTdUyn8c7REG0vIVowDavcaLh9AM6VG+hs=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-tuaeT2E4vaQFSBcube5QF5yhy5GcE+06ifGIVv5/v48=' 'sha256-Lkuee7vGHIwcrqOnnu8ub1YulD6TC2dNJTackNuMe8c=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-8QPth39Zsj8JPLKa6WmpC0oj+/D5YNxvhDX5J+KX1bY=' 'sha256-wHwfDHhS7f9/dI0CrLf71C6LNkbgw6tyUlRkS/OHxAk=' 'sha256-MepDclLhK2aQuDwJ5enjrF42AtzXMUI1fGYB/2YdZQ4=' 'sha256-Eghaa4VdkbwKajOnzu64t0/DAuYlu8xWlNRY6toUam8=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -1228,6 +1228,13 @@
     if (typeof d !== 'string') return '';
     return d.replace(TAG_RE, '').replace(/^\s+|\s+$/g, '').replace(/[.,;]+$/, '').replace(/\s+$/, '');
   }
+  // First value of a tag kept from an imported file, for a record that did not come through the parsers' field mapping
+  function rawTagOf(m, src, tags, src2, tags2) {
+    var raw = m.raw && typeof m.raw === 'object' ? m.raw : null; if (!raw) return '';
+    var list = m.source === src2 ? tags2 : m.source === src ? tags : [];
+    for (var i = 0; i < list.length; i++) { var v = raw[list[i]]; v = Array.isArray(v) ? v[0] : v; if (v) return String(v); }
+    return '';
+  }
   function normalize(m) {
     var dp = datePartsOf(m);
     var doi = cleanDoi(m.DOI || m.doi);
@@ -1286,6 +1293,8 @@
       abstract: cleanAbstract(m.abstract || ''),
       language: clean(m.language || ''),
       event: clean((m.event && m.event.name) || ''),
+      database: clean(m.database || m.archive || rawTagOf(m, 'ris', ['DP', 'DB'], 'enw', ['W']) || ''),   // the database or platform a file says the record came from (RIS DP/DB, EndNote %W, CSL archive)
+      accession: clean(m.accession || m.archive_location || rawTagOf(m, 'ris', ['AN'], 'enw', ['M']) || ''), // its accession number there (RIS AN, EndNote %M)
       publishedDoi: relDoi(m.relation, 'is-preprint-of'),
       preprintDoi: relDoi(m.relation, 'has-preprint'),
       source: m.source || 'crossref',
@@ -1496,7 +1505,7 @@
         var deg = /m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
         var school = r.institution || r.publisher || r.container;
         label = T(deg + (school ? ', ' + school : '')); host = '';
-        if (r.publisher && r.publisher !== school) archive = r.publisher; // "ProQuest Dissertations & Theses Global", "UA Campus Repository"
+        archive = r.publisher && r.publisher !== school ? r.publisher : r.database; // "ProQuest Dissertations & Theses Global", "UA Campus Repository"
         if (r.number) pre = ' (' + T(/publication no/i.test(r.number) ? r.number : 'Publication No. ' + r.number) + ')';
       }
       if (k === 'report' && r.number) pre = ' (' + T((r.series ? r.series + ' ' : '') + (r.series || /\b(no|number|rep|report|pub)\b/i.test(r.number) ? '' : 'Report No. ') + r.number) + ')';
@@ -1555,8 +1564,13 @@
       if (when) contParts.push(T(when));
       if (r.pages) contParts.push(T(pp(r.pages)));
     }
-    if (link) contParts.push(T(link));
-    if (contParts.length) out.push(contParts.join(', ') + '.');
+    if (r.database) { // MLA 9: the database or platform is a second container, holding the location: "pp. 69-88. JSTOR, www.jstor.org/stable/41403188."
+      if (contParts.length) out.push(contParts.join(', ') + '.');
+      out.push(T(r.database) + (link ? ', ' + T(link) : '') + '.');
+    } else {
+      if (link) contParts.push(T(link));
+      if (contParts.length) out.push(contParts.join(', ') + '.');
+    }
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
@@ -1607,7 +1621,10 @@
       if (host) out.push(T(dot(host)));
       if (k === 'web' && !r.year && accessedDate(r)) out.push('Accessed ' + accessedDate(r) + '.'); // an undated page is cited by the day it was read
     }
-    if (link) out.push(T(link) + '.');
+    // CMOS: a DOI first; for a source consulted in a commercial database, the database name (with any accession number) stands in for a URL
+    if (r.doi) out.push(T(link) + '.');
+    else if (r.database) out.push(T(r.database + (r.accession ? ' (' + r.accession + ')' : '')) + '.');
+    else if (link) out.push(T(link) + '.');
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
@@ -1997,7 +2014,12 @@
     // tags AutoDOI does not model, carried over from an imported RIS / EndNote record
     rawTags(r, 'ris', ['KW'], 'enw', ['K']).forEach(function (v) { add('KW', v); });
     rawTags(r, 'ris', ['N1'], 'enw', ['Z']).forEach(function (v) { add('N1', v); });
-    ['AN', 'L1', 'L2', 'Y2', 'M3', 'DB', 'CN'].forEach(function (t) { rawTags(r, 'ris', [t]).forEach(function (v) { add(t, v); }); });
+    var rawDB = rawTags(r, 'ris', ['DB']), fromDB = !rawTags(r, 'ris', ['DP']).length && rawDB.indexOf(r.database) !== -1; // a DB-only file stays DB
+    if (!fromDB) add('DP', r.database);
+    add('AN', r.accession);
+    ['L1', 'L2', 'Y2', 'M3'].forEach(function (t) { rawTags(r, 'ris', [t]).forEach(function (v) { add(t, v); }); });
+    rawDB.forEach(function (v) { if (fromDB || v !== r.database) add('DB', v); });
+    rawTags(r, 'ris', ['CN']).forEach(function (v) { add('CN', v); });
     L.push('ER  - ');
     return L.join('\r\n') + '\r\n';
   }
@@ -2036,7 +2058,8 @@
     rawTags(r, 'enw', ['K'], 'ris', ['KW']).forEach(function (v) { add('%K', v); });
     var notes = rawTags(r, 'enw', ['Z'], 'ris', ['N1']);
     if (notes.length) add('%Z', notes.join('; '));                // %Z is a single field
-    ['M', 'L', 'F', '1', '2', '3', '4'].forEach(function (t) { var v = rawTags(r, 'enw', [t]); if (v.length) add('%' + t, v.join('; ')); });
+    add('%W', r.database); add('%M', r.accession);
+    ['L', 'F', '1', '2', '3', '4'].forEach(function (t) { var v = rawTags(r, 'enw', [t]); if (v.length) add('%' + t, v.join('; ')); });
     return L.join('\n') + '\n';
   }
 
@@ -2060,7 +2083,7 @@
   // Every field the formatters read, coerced to the type they expect.  Records from normalize() already have this
   // shape; this guards a caller's hand-built record, so a stray null, number or array cannot throw or leak
   var STR_FIELDS = ['type', 'doi', 'url', 'title', 'subtitle', 'container', 'series', 'number', 'shortContainer', 'institution', 'edition', 'numPages', 'genre',
-    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event'];
+    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession'];
   var ANY_PUA = /[\uE000-\uF8FF]/g;
   function str(v) { return v === undefined || v === null || typeof v === 'boolean' || (typeof v === 'number' && !isFinite(v)) ? '' : Array.isArray(v) ? v.map(str).filter(Boolean).join(' ') : typeof v === 'object' ? '' : String(v); }
   function harden(record) {
@@ -3992,6 +4015,7 @@
     set('DOI', f.doi); set('URL', f.url || (f.doi ? 'https://doi.org/' + f.doi : ''));
     set('abstract', f.abstract); set('language', f.language); set('edition', f.edition); set('genre', f.genre);
     set('number-of-pages', f.numPages);
+    set('database', f.database); set('accession', f.accession);
     if (f.institution) m.institution = [{ name: f.institution }];
     if (f.protectWords && f.protectWords.length) m['protect-words'] = f.protectWords;
     if (f.event) m.event = { name: f.event };
@@ -4093,6 +4117,7 @@
     f.url = g('UR');
     f.abstract = g('AB') || g('N2');
     f.language = g('LA'); f.edition = g('ET'); f.genre = g('M3');
+    f.database = g('DP') || g('DB'); f.accession = g('AN'); // JSTOR, EBSCOhost, ProQuest: MLA's second container, Chicago's stand-in for a URL
     return message(f);
   }
 
@@ -4121,6 +4146,7 @@
     f.doi = doiOf(all('R').join(' ')) || doiOf(all('U').join(' '));
     f.url = g('U');
     f.abstract = g('X'); f.language = g('G'); f.edition = g('7'); f.genre = g('9');
+    f.database = g('W'); f.accession = g('M'); // %W database provider, %M accession number
     return message(f);
   }
 
@@ -4632,7 +4658,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.2.1'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.3.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -5164,7 +5190,8 @@
       'container-title': r.container || undefined, 'container-title-short': r.shortContainer || undefined,
       volume: r.volume || undefined, issue: r.issue || undefined, page: r.pages || undefined,
       publisher: r.publisher || undefined, 'publisher-place': r.place || undefined,
-      DOI: r.doi || undefined, URL: r.url || undefined, ISSN: r.issn || undefined, ISBN: r.isbn || undefined };
+      DOI: r.doi || undefined, URL: r.url || undefined, ISSN: r.issn || undefined, ISBN: r.isbn || undefined,
+      source: r.database || undefined, archive_location: r.accession || undefined };
     if (r.year) it.issued = { 'date-parts': [[Number(r.year)].concat(r.month ? [r.month] : []).concat(r.day ? [r.day] : [])] };
     if (A.kind(r) === 'thesis') { it.genre = r.genre || 'Ph.D. thesis'; it.publisher = r.publisher || r.institution || undefined; }
     if (A.kind(r) === 'report' && r.series) { it['collection-title'] = r.series; }

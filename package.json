@@ -1,6 +1,6 @@
 {
   "name": "autodoi",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "private": true,
   "description": "DOI to reference formats, DOI finder, and reference-list conversion to EndNote/RIS/BibTeX, in the browser",
   "license": "MIT",
