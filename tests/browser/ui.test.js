@@ -235,7 +235,7 @@ async function runFlows(browser, base, dark, cslReady) {
   // 8. Reference matching and export
   await page.click('#tab-export');
   await page.selectOption('#split-mode', 'lines');
-  await page.fill('#export-input', 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54-58.\nVaswani A, Shazeer N, Parmar N. Attention is all you need. Advances in Neural Information Processing Systems. 2017;30:5998-6008.');
+  await page.fill('#export-input', 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Naturee, 500(7460), 54-58.\nVaswani A, Shazeer N, Parmar N. Attention is all you need. Advances in Neural Information Processing Systems. 2017;30:5998-6008.'); // "Naturee": a typo the record should expose
   await page.waitForFunction(function () { return /2 references/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
   check(name('split count reports two references'), /2 references/.test(await textOf('#split-count')), await textOf('#split-count'));
   await page.click('#export-go');
@@ -243,6 +243,8 @@ async function runFlows(browser, base, dark, cslReady) {
   var status = await textOf('#export-status');
   check(name('status counts one good and one unmatched'), /1 good/.test(status) && /1 not matched/.test(status), status);
   check(name('one row is a good match'), (await page.locator('#export-matches .match.good').count()) === 1);
+  var marks = page.locator('#export-matches .match.good .in mark');
+  check(name('the misspelt journal is marked in the pasted text with the record\'s spelling'), (await marks.count()) === 1 && /^Naturee$/.test(await marks.first().textContent()) && /nature/.test(await marks.first().getAttribute('title')), (await page.locator('#export-matches .match.good .in').innerHTML()).slice(0, 300));
   check(name('the wrong-paper row is not ticked and offers a fix box'), (await page.locator('#export-matches .match.bad, #export-matches .match.warn').count()) === 1 && (await page.locator('#export-matches .match.good input[type=checkbox]').first().isChecked()));
   var outText = await textOf('#export-output');
   check(name('export output holds the matched record'), /Kucsko/.test(outText) && /RIS|EndNote|BibTeX/.test(outText), outText.slice(0, 200));

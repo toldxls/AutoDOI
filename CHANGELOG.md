@@ -4,6 +4,7 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 
 ## Unreleased
 
+- In the reference matcher, words of your pasted reference that the matched record does not contain are marked, with the record's own spelling in the tooltip when it is one letter away: a misspelt journal ("Aerican Mineralogist"), a wrong year or a wrong page now shows on the row instead of being silently corrected in the output.
 ## 1.7.0 - 2026-09-24
 
 - References in Cyrillic, CJK and Greek scripts are now graded properly. The grader's tokeniser dropped every non-Latin letter, so a Russian or Japanese record could never score against the reference that cited it, whatever Crossref found. Words of any script now count, CJK text is read as overlapping character pairs, a Cyrillic name also matches its Latin transliteration in a record ("Пароникян" and "Paronikyan"), and ё is е. Two script-independent gaps found alongside: a compact citation with no title (authors, journal, year, volume and page, the norm in Russian physics journals and in "Physica B 211 (1995) 52") is graded by those four agreeing, a journal's own Crossref record, whose title is the journal name every reference contains, is never a match, and the page and the Sheets script now ask Crossref for `original-title`, the native-script title it holds beside an English translation for Chinese and Japanese journals, and grade against it.
