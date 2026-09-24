@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-DI+37xbVHTy1z+7FHaMGl/NdCwdCrKy36SAF9zluRmg=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-SoN+13YLohSIgxmhMQKf1c8zjG0gitUUoPZzhverxeY=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-DI+37xbVHTy1z+7FHaMGl/NdCwdCrKy36SAF9zluRmg=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-T0anyY1dtL/wA72178/zrDcLMzi/8HaYNglI4HhF8TI=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -158,6 +158,8 @@
   .match .in { font-family: var(--serif); color: var(--muted); font-size: 14px; }
   .match .in mark { background: var(--warn-soft); color: var(--ink); border-bottom: 1px dotted var(--warn); border-radius: 2px; padding: 0 1px; cursor: help; } /* a word the matched record does not contain */
   .match .in mark.accent { background: var(--accent-soft); border-bottom-color: var(--accent); } /* the same word, with the record's diacritics */
+  .case-changes { margin-top: 10px; font-size: 13.5px; color: var(--muted); } .case-changes summary { cursor: pointer; } .case-changes .case-line { margin: 6px 0 0 12px; line-height: 2; }
+  .match .note { overflow-wrap: anywhere; } .match .note .btn { white-space: normal; text-align: left; max-width: 100%; }
   .match .out { margin-top: 6px; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .match .out .t { font-family: var(--serif); font-size: 15px; }
   .match .out code { font-family: var(--mono); font-size: 12.5px; }
@@ -5627,6 +5629,31 @@
       current.html = all.map(function (h) { return '<p>' + h + '</p>'; }).join('');
       current.text = all.map(htmlToText).join('\n');
       list.innerHTML = current.html;
+      renderCaseChanges(list, records);
+    }
+    // Sentence case / Title Case changed words in the list's titles: shown, and one click keeps a word's capitals (remembered, as on the DOI tab)
+    function renderCaseChanges(container, recs) {
+      var changed = [];
+      recs.forEach(function (r, i) { if (!r.titleTokens) return; var ws = []; r.titleTokens.forEach(function (t) { if (t.kind === 'word' && t.changed && ws.indexOf(t.text) === -1) ws.push(t.text); }); if (ws.length) changed.push({ i: i, r: r, words: ws }); });
+      if (!changed.length) return;
+      var det = document.createElement('details'); det.className = 'case-changes';
+      var sum = document.createElement('summary'); sum.textContent = (caseState.mode === 'title' ? 'Title Case' : 'Sentence case') + ' changed words in ' + changed.length + ' title' + (changed.length > 1 ? 's' : '') + ' (click a word to keep it as the publisher wrote it)';
+      det.appendChild(sum);
+      changed.forEach(function (c) {
+        var line = el('div', 'case-line'), orig = c.r.originalTitle || c.r.title;
+        line.appendChild(document.createTextNode((c.r.authors[0] ? c.r.authors[0].family + (c.r.year ? ' ' + c.r.year : '') : 'Reference ' + (c.i + 1)) + ': '));
+        c.words.forEach(function (w, k) {
+          var b = button(w, 'small', function () {
+            var key = w.toLowerCase(), original = (orig.match(new RegExp('(^|[^\\p{L}])(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![\\p{L}])', 'iu')) || [])[2] || w;
+            lowerSet.delete(key); protectSet.add(original.charAt(0) === original.charAt(0).toLowerCase() ? original : original); capSet(protectSet); saveSets();
+            if (currentRecord) showCitation(currentRecord, currentChip); if (rebuildBatch) rebuildBatch();
+          });
+          b.title = 'Keep “' + w + '” as the publisher wrote it and remember it';
+          line.appendChild(b); if (k < c.words.length - 1) line.appendChild(document.createTextNode(' '));
+        });
+        det.appendChild(line);
+      });
+      container.appendChild(det);
     }
     function build() {
       store.set('liststyle', sel.value);
@@ -5910,7 +5937,8 @@
   var ABBR_END = /(^|[\s(.])([A-Za-z]|al|Jr|Sr|St|Co|Mt|Ft|Dr|cf|vs|sp|Acad|Am|Amer|Ann|Assoc|Biol|Bull|Can|Chem|Col|Comp|Dept|Ecol|Environ|Evol|Fm|Geogr|Geol|Geophys|Hist|Inst|Int|Intl|Lett|Mag|Mem|Mineral|Mus|Nat|Natl|Palaeontol|Paleontol|Petrol|Phys|Proc|Publ|Res|Rev|Sci|Ser|Soc|Spec|Suppl|Surv|Trans|Univ|Vert|Vol|Zool|ed|eds|Eds|vol|no|pp|et al)\.$/;
   var DOI_URL_END = /(https?:\/\/\S+|doi:\s*\S+|10\.\d{4,9}\/\S+)$/i;
   var AUTHOR_START = new RegExp('^(' + PARTICLES + ')?[' + UC + '][' + WC + ']+(,\\s+[' + UC + ']|\\s+[' + UC + ']{1,3}[,.\\s]|\\s+(and|&)\\s)' + // Smith, J. / Smith JA, / Smith and
-    '|^([' + UC + ']\\.\\s?){1,3}[' + UC + '][' + WC + ']+[,\\s]');                                                                       // J. A. Smith,
+    '|^([' + UC + ']\\.\\s?){1,3}[' + UC + '][' + WC + ']+[,\\s]' +                                                                       // J. A. Smith,
+    '|^[\\u0590-\\u05FF\\u0600-\\u06FF][\\u0590-\\u05FF\\u0600-\\u06FF\\s.,\\u060C\\u061B]{2,60}?\\(?(?:1[5-9]|20)\\d{2}[\\u0647\\u05D4]?\\)?[.,:\\s]'); // Arabic / Hebrew: a name run, then the year (no capitals to go by)
   function hasEndPunct(line) { if (/,[\u201D"\u2019']$/.test(line)) return false; return /[.)\]”"?!]$/.test(line) && (!ABBR_END.test(line) || /\d\s*pp?\.$/.test(line)); } // "369 p." ends a book reference
   // Does the text read like a whole reference? It ends with a DOI/URL, or with a page / article number and a full stop.
   function complete(chunk) {
@@ -6022,9 +6050,16 @@
     }
     var isbn = A.extractIsbn(String(refText).replace(/10\.\d{4,9}\/\S+/g, ' ')); // an ISBN inside a chapter DOI (10.1007/978-…) is not the book being cited
     if (isbn) { try { var b = await lookupIsbn(isbn); return { record: b, conf: 1, via: 'isbn' }; } catch (e) { /* search */ } }
-    var best = null, bestConf = 0, via = 'search';
+    var best = null, bestConf = 0, via = 'search', seen = [];
     var pick = function (hits) {
-      hits.forEach(function (h) { var c = A.matchConfidence(refText, h); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
+      hits.forEach(function (h) { var c = A.matchConfidence(refText, h); seen.push({ h: h, c: c }); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
+    };
+    // a runner-up that scores nearly as well as the winner is offered on the row ("Not this one?"): an erratum and its paper,
+    // a preprint and its journal version, the same title in a journal and in proceedings
+    var runnerUp = function () {
+      var key = function (r) { return (r.doi || r.title || '').toLowerCase(); };
+      var alts = seen.filter(function (x) { return best && x.h !== best && key(x.h) !== key(best) && x.c >= 0.5 && bestConf - x.c < 0.15; }).sort(function (a, b) { return b.c - a.c; });
+      return alts.length ? { record: alts[0].h, conf: alts[0].c } : null;
     };
     var errors = [];
     try { pick(await search({ 'query.bibliographic': refText }, 3)); } catch (e) { errors.push('Crossref: ' + e.message); }
@@ -6042,7 +6077,7 @@
       if (errors.length === 2) throw new Error('Both lookups failed (' + errors.join('; ') + '). Wait a moment and use the fix box.');
       return { record: null, conf: 0 };
     }
-    return { record: best, conf: bestConf, via: via };
+    return { record: best, conf: bestConf, via: via, alt: runnerUp() };
   }
 
   var P = window.AutoDOIParsers;
@@ -6065,6 +6100,19 @@
   });
 
   $('export-input').addEventListener('input', function () { clearTimeout(previewTimer); previewTimer = setTimeout(updateSplitPreview, 250); });
+  // Text copied out of a PDF or an email sometimes arrives with its UTF-8 bytes read as Windows-1252 ("BaÄÃ­k", "â€™").
+  // The damage is mechanical: the characters are turned back into bytes and decoded as UTF-8; anything that is not valid
+  // UTF-8, or holds a real character outside Latin-1, is left alone.
+  var CP1252 = { 0x80: 0x20AC, 0x82: 0x201A, 0x83: 0x0192, 0x84: 0x201E, 0x85: 0x2026, 0x86: 0x2020, 0x87: 0x2021, 0x88: 0x02C6, 0x89: 0x2030, 0x8A: 0x0160, 0x8B: 0x2039, 0x8C: 0x0152, 0x8E: 0x017D, 0x91: 0x2018, 0x92: 0x2019, 0x93: 0x201C, 0x94: 0x201D, 0x95: 0x2022, 0x96: 0x2013, 0x97: 0x2014, 0x98: 0x02DC, 0x99: 0x2122, 0x9A: 0x0161, 0x9B: 0x203A, 0x9C: 0x0153, 0x9E: 0x017E, 0x9F: 0x0178 };
+  var CP1252_BACK = {}; Object.keys(CP1252).forEach(function (b) { CP1252_BACK[CP1252[b]] = Number(b); });
+  var MOJIBAKE = /[Â-ß][\u0080-¿‘’‚“”„†‡•–—€…ŠšŽžŒœˆ˜™‰‹›Ÿƒ]|â€/;
+  function repairMojibake(text) {
+    text = String(text || '');
+    if (!MOJIBAKE.test(text) || typeof TextDecoder === 'undefined') return text;
+    var bytes = [], i, c;
+    for (i = 0; i < text.length; i++) { c = text.charCodeAt(i); if (c <= 0xFF) bytes.push(c); else if (CP1252_BACK[c] !== undefined) bytes.push(CP1252_BACK[c]); else return text; }
+    try { var fixed = new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes)); return fixed.length < text.length && !MOJIBAKE.test(fixed) ? fixed : text; } catch (e) { return text; }
+  }
   // A paste from Word, Google Docs or a browser carries sub- and superscripts as HTML, which a textarea would drop
   // (Ca₁₉Fe²⁺Al₄ would arrive as Ca19Fe2+Al4). When the HTML holds any, the text is rebuilt from it with Unicode
   // sub- and superscripts, keeping the paragraph and line breaks; otherwise the browser's plain paste is left alone.
@@ -6090,9 +6138,10 @@
   }
   $('export-input').addEventListener('paste', function (ev) {
     var dt = ev.clipboardData; if (!dt) return;
-    var html = dt.getData('text/html');
-    if (!html || !/<(?:sub|sup)\b|vertical-align\s*:\s*(?:sub|super)\b/i.test(html)) return; // nothing to keep: the browser pastes the plain text
-    var text = htmlToPlainWithScripts(html); if (!text.trim()) return;
+    var html = dt.getData('text/html'), text;
+    if (html && /<(?:sub|sup)\b|vertical-align\s*:\s*(?:sub|super)\b/i.test(html)) text = htmlToPlainWithScripts(html);
+    else { var plain = dt.getData('text/plain'), fixed = repairMojibake(plain); if (fixed === plain) return; text = fixed; $('export-status').textContent = 'Repaired garbled characters in the pasted text.'; } // nothing to keep or repair: the browser pastes the plain text
+    if (!text || !text.trim()) return;
     ev.preventDefault();
     var ta = this, s = ta.selectionStart, e = ta.selectionEnd;
     ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
@@ -6246,6 +6295,19 @@
       });
       return n;
     }
+    // "Not this one?": a runner-up the matcher scored nearly as well, one click away
+    function offerAlternative(row, raw, alt) {
+      var r = alt.record, line = el('div', 'note'); line.style.marginTop = '6px';
+      line.appendChild(document.createTextNode('Not this one? '));
+      var b = button((r.title || '(untitled)').slice(0, 90) + (r.title && r.title.length > 90 ? '…' : '') + (r.year ? ' (' + r.year + ')' : '') + (r.container ? ', ' + r.container : ''), '', function () {
+        var conf = A.matchConfidence(raw, r), clash = yearConflict(raw, r);
+        setRow(row, r, clash ? 'bad' : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad', clash ? 'year' : 'search');
+        line.remove(); build();
+      });
+      b.title = 'Use this record instead' + (r.doi ? ': ' + r.doi : '');
+      line.appendChild(b);
+      row.out.appendChild(line);
+    }
     function recordWords(rec) {
       var set = {}, orig = {}, add = function (v) { if (!v) return; var raw = A.stripTags(String(v)); (raw.match(DIFF_WORD) || []).forEach(function (w) { var k = diffFold(w); set[k] = true; if (!orig[k] || (hasAccent(w) && !hasAccent(orig[k]))) orig[k] = w.normalize ? w.normalize('NFC') : w; }); };
       [rec.title, rec.originalTitle, rec.subtitle, rec.container, rec.shortContainer, rec.publisher, rec.place, rec.institution, rec.series, rec.doi, rec.url, rec.year, rec.volume, rec.issue, rec.pages, rec.articleNumber, rec.edition, rec.isbn, rec.issn].forEach(add);
@@ -6255,28 +6317,48 @@
     }
     function markDifferences(inEl, raw, rec) {
       var rw = recordWords(rec), set = rw.set, keys = Object.keys(set), last = 0, m, marked = 0;
+      var toks = []; DIFF_WORD.lastIndex = 0; while ((m = DIFF_WORD.exec(raw))) toks.push({ w: m[0], at: m.index, end: m.index + m[0].length });
       // a word broken by a line-break hyphen in a PDF paste ("min- eralogist") is one word when the halves join to a record word
       var joined = {}, jm, JOIN_RE = /([\p{L}]{2,})-\s+([\p{L}]{2,})/gu;
       try { while ((jm = JOIN_RE.exec(raw))) if (set[diffFold(jm[1] + jm[2])]) { joined[jm.index] = true; joined[jm.index + jm[0].length - jm[2].length] = true; } } catch (e) { /* no Unicode classes: no joining */ }
       // an abbreviation is the start of a record word: "Mineral." for Mineralogist, "Geol" for Geology, "Contrib" for Contributions
       var abbreviates = function (f) { if (f.length < 4) return false; for (var k = 0; k < keys.length; k++) if (keys[k].length > f.length && keys[k].indexOf(f) === 0) return true; return false; };
+      // initials: for a surname the text names, the first initial beside it must agree with the record's given name
+      var givenOf = {}, dup = {};
+      rec.authors.concat(rec.editors).forEach(function (p) { if (!p.family || p.literal || !p.given) return; var k = diffFold(p.family.split(/\s+/).pop()); if (givenOf[k]) dup[k] = true; givenOf[k] = p.given; });
+      var wrongInitial = {};
+      toks.forEach(function (t, ti) {
+        var k = diffFold(t.w), given = givenOf[k]; if (!given || dup[k]) return;
+        var want = diffFold(given).charAt(0), got = null, gi = -1, nx = toks[ti + 1], between = nx ? raw.slice(t.end, nx.at) : '';
+        if (nx && /^,?\s*$/.test(between) && /^[A-ZÀ-Þ](?:[A-ZÀ-Þ]{0,2}|[a-z]?)$/.test(nx.w) && raw.charAt(nx.end) !== ',' || nx && /^,?\s*$/.test(between) && /^[A-ZÀ-Þ]$/.test(nx.w)) { got = nx.w; gi = ti + 1; } // "Uher, P." / "Uher P" / "Uher PJ"
+        else { var pi = ti - 1; while (pi >= 0 && /^[A-ZÀ-Þ]$/.test(toks[pi].w) && /^\.?\s?$/.test(raw.slice(toks[pi].end, toks[pi + 1].at))) pi--; if (pi < ti - 1) { got = toks[pi + 1].w; gi = pi + 1; } } // "P. Uher"
+        if (got && want && diffFold(got).charAt(0) !== want) wrongInitial[gi] = given;
+      });
       inEl.textContent = '';
-      DIFF_WORD.lastIndex = 0;
-      while ((m = DIFF_WORD.exec(raw))) {
-        var w = m[0], f = diffFold(w), isNum = /^\d+$/.test(f);
-        if (joined[m.index]) continue;
-        if (!set[f] && !isNum && abbreviates(f)) continue;
-        // the same word, but the record spells it with diacritics the text left out: "Bacik" for "Bačík"
-        var accent = set[f] && !isNum && f.length >= 3 && rw.orig[f] && hasAccent(rw.orig[f]) && !hasAccent(w) ? rw.orig[f] : '';
-        var show = accent || (!set[f] && (isNum ? f.length >= 2 && f.length <= 5 : f.length >= 4 && !DIFF_SKIP.test(f)));
-        if (!show) continue;
-        var near = ''; if (!accent && !isNum && f.length >= 5) for (var k = 0; k < keys.length; k++) if (keys[k].length >= 5 && oneEditApart(f, keys[k])) { near = keys[k]; break; }
-        inEl.appendChild(document.createTextNode(raw.slice(last, m.index)));
-        var mk = document.createElement('mark'); mk.textContent = w;
-        if (accent) { mk.className = 'accent'; mk.title = 'The matched record spells it \u201C' + accent + '\u201D'; }
-        else mk.title = near ? 'The matched record has \u201C' + near + '\u201D' : 'Not in the matched record';
-        inEl.appendChild(mk); last = m.index + w.length; marked++;
-      }
+      toks.forEach(function (t, ti) {
+        var w = t.w, f = diffFold(w), isNum = /^\d+$/.test(f), title = '', cls = '';
+        if (wrongInitial[ti] !== undefined) { title = 'The matched record’s given name is “' + wrongInitial[ti] + '”'; }
+        else {
+          if (joined[t.at]) return;
+          if (!set[f] && !isNum && abbreviates(f)) return;
+          // the same word, but the record spells it with diacritics the text left out: "Bacik" for "Bačík"
+          var accent = set[f] && !isNum && f.length >= 3 && rw.orig[f] && hasAccent(rw.orig[f]) && !hasAccent(w) ? rw.orig[f] : '';
+          var shortName = f.length === 3 && /^[A-ZÀ-Þ]/.test(w) && raw.charAt(t.end) !== '.' && !DIFF_SKIP.test(f); // Yao, Kim, Noh
+          var show = accent || (!set[f] && (isNum ? f.length >= 2 && f.length <= 5 : (f.length >= 4 || shortName) && !DIFF_SKIP.test(f)));
+          if (!show) return;
+          if (accent) { cls = 'accent'; title = 'The matched record spells it “' + accent + '”'; }
+          else {
+            var near = ''; if (!isNum && f.length >= 5) for (var k = 0; k < keys.length; k++) if (keys[k].length >= 5 && oneEditApart(f, keys[k])) { near = keys[k]; break; }
+            if (near) title = 'The matched record has “' + near + '”';
+            else if (isNum && f.length === 4 && /^(1[5-9]|20)\d\d$/.test(f) && rec.year) title = 'Your text says ' + w + '; the record says ' + rec.year;
+            else title = 'The matched record does not have this';
+          }
+        }
+        inEl.appendChild(document.createTextNode(raw.slice(last, t.at)));
+        var mk = document.createElement('mark'); mk.textContent = w; mk.title = title; mk.setAttribute('aria-label', w + ': ' + title);
+        if (cls) mk.className = cls;
+        inEl.appendChild(mk); last = t.end; marked++;
+      });
       inEl.appendChild(document.createTextNode(raw.slice(last)));
       return marked;
     }
@@ -6385,6 +6467,7 @@
             if (rest.length >= 40 && (yearConflict(rest, res.record) || A.matchConfidence(rest, res.record, { titleOnly: true }) < 0.4)) { level = 'warn'; via = 'doicheck'; }
           }
           setRow(row, res.record, level, via);
+          if (res.alt && !direct) offerAlternative(row, it.text, res.alt);
           if (looksMerged(it.text)) { // never lose a reference silently
             var mc = el('span', 'chip warn', 'May be two references'); mc.title = 'This line seems to contain two references. Put each on its own line (or separate them with a blank line) and run again.';
             row.out.insertBefore(mc, row.out.children[1] || null);

@@ -4,6 +4,12 @@ const html = require('fs').readFileSync(require('path').join(ROOT, 'index.html')
 const a = html.indexOf('  // Lines that are nothing but an identifier'), b = html.indexOf('  async function resolve(refText)');
 const splitReferences = new Function(html.slice(a, b) + '; return splitReferences;')();
 let pass = 0, fail = 0;
+// Arabic and Hebrew references open with a name run and a year, with no capitals to go by
+[['Arabic, one per line', 'العمري، محمد أحمد (2019). التغيرات المناخية وأثرها على الزراعة في اليمن. مجلة الدراسات الجغرافية، 12(3)، 45-67.\nالحسني، فاطمة (2020). إدارة الموارد المائية في المناطق الجافة. مجلة العلوم البيئية، 8، 101-120.\nالخطيب، أحمد (2018). التصحر في شمال أفريقيا. مجلة البحوث الجغرافية، 5(1)، 1-20.', 3],
+ ['Hebrew, one per line', 'כהן, י. (2015). גיאולוגיה של הנגב. כתב עת למדעי כדור הארץ, 22, 33-48.\nלוי, ד. (2017). מים בישראל. מחקרים בגיאוגרפיה, 9(2), 5-19.\nמזרחי, ר. (2019). אקלים המזרח התיכון. אופקים בגיאוגרפיה, 41, 77-90.', 3]].forEach(c => {
+  const r = splitReferences(c[1], 'auto'); if (r.length === c[2]) pass++; else { fail++; console.log('FAIL rtl ' + c[0], r.length, '!=', c[2], JSON.stringify(r).slice(0, 200)); }
+});
+
 // Two references glued into one line are separated; semicolons inside one reference are not
 const glued = [
   ['physics semicolon pair', 'L.J. Campbell et al., Physica B 211 (1995) 52; S. Askenazy, Physica B 216 (1996) 221.', 2],

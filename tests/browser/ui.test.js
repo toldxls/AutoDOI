@@ -75,7 +75,10 @@ async function mockNetwork(page, base, log) {
       var doi = decodeURIComponent(m[1]);
       return doi.toLowerCase() === work.message.DOI.toLowerCase() ? json(route, work) : json(route, { status: 'error', message: 'Resource not found.' }, 404);
     }
-    if (/api\.crossref\.org\/works\?/.test(url)) return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message], 'total-results': 1 } });
+    if (/api\.crossref\.org\/works\?/.test(url)) { // a twin with the same title and another DOI: the runner-up the row offers
+      var twin = JSON.parse(JSON.stringify(work.message)); twin.DOI = '10.1038/nature12373-twin'; twin.title = [twin.title[0] + ' (II)']; twin.URL = 'https://doi.org/10.1038/nature12373-twin';
+      return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message, twin], 'total-results': 2 } });
+    }
     if (/doi\.org\//.test(url)) return route.fulfill({ status: 404, contentType: 'text/html', body: 'DOI not found' });
     // OpenAlex, Europe PMC, NLM Catalog, Open Library, JabRef lists, other CSL styles: nothing to say
     return json(route, {}, 404);
@@ -243,6 +246,23 @@ async function runFlows(browser, base, dark, cslReady) {
   var status = await textOf('#export-status');
   check(name('status counts one good and one unmatched'), /1 good/.test(status) && /1 not matched/.test(status), status);
   check(name('one row is a good match'), (await page.locator('#export-matches .match.good').count()) === 1);
+  var offer = page.locator('#export-matches .match.good .note:has-text("Not this one?") button');
+  check(name('a close runner-up is offered on the row'), (await offer.count()) === 1 && /\(II\)/.test(await offer.first().textContent()), await page.locator('#export-matches .match.good').innerHTML());
+  await offer.first().click();
+  await page.waitForFunction(function () { return /nature12373-twin/.test(document.querySelector('#export-matches .match .out code').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  check(name('choosing the runner-up swaps the record'), /nature12373-twin/.test(await page.locator('#export-matches .match .out code').first().textContent()) && (await page.locator('#export-matches .match .note:has-text("Not this one?")').count()) === 0, await page.locator('#export-matches .match').first().innerHTML());
+  await page.evaluate(function () { var s = document.getElementById('case-select'); s.value = 'title'; s.dispatchEvent(new Event('change', { bubbles: true })); }); // the control sits on the DOI tab
+  await page.waitForSelector('#export-output details.case-changes', { timeout: 10000 });
+  var caseWords = await page.locator('#export-output details.case-changes button').allTextContents();
+  check(name('Title Case changes are listed under the reference list'), caseWords.length >= 3 && caseWords.indexOf('Thermometry') !== -1, caseWords.join(' '));
+  await page.locator('#export-output details.case-changes summary').click();
+  await page.locator('#export-output details.case-changes button', { hasText: 'Thermometry' }).click();
+  await page.waitForFunction(function () { var d = document.querySelector('#export-output details.case-changes'); return !d || Array.prototype.every.call(d.querySelectorAll('button'), function (b) { return b.textContent !== 'Thermometry'; }); }, null, { timeout: 10000 });
+  var listText = await page.locator('#export-output .reflist').textContent();
+  check(name('clicking a word keeps the publisher\'s capital and drops it from the list'), /thermometry/.test(listText) && !/Thermometry/.test(listText), listText.slice(0, 200));
+  await page.evaluate(function () { document.getElementById('clear-words').click(); var s = document.getElementById('case-select'); s.value = 'none'; s.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.click('#export-go');
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
   var marks = page.locator('#export-matches .match.good .in mark');
   check(name('the misspelt journal is marked in the pasted text with the record\'s spelling'), (await marks.count()) === 1 && /^Naturee$/.test(await marks.first().textContent()) && /nature/.test(await marks.first().getAttribute('title')), (await page.locator('#export-matches .match.good .in').innerHTML()).slice(0, 300));
   check(name('the wrong-paper row is not ticked and offers a fix box'), (await page.locator('#export-matches .match.bad, #export-matches .match.warn').count()) === 1 && (await page.locator('#export-matches .match.good input[type=checkbox]').first().isChecked()));
@@ -257,6 +277,14 @@ async function runFlows(browser, base, dark, cslReady) {
   var lentText = await page.evaluate(function () { return Array.prototype.map.call(document.querySelectorAll('#export-output textarea, #export-output pre, #export-output code'), function (e) { return e.value || e.textContent; }).join('\n') + '\n' + document.querySelector('#export-output').textContent; });
   check(name('a diacritic typed in the reference is lent to the record and reaches the exports'), /Kučsko/.test(lentText) && !/Kucsko/.test(lentText.replace(/kucsko\d*/gi, '')), lentText.slice(0, 200));
   check(name('the lent name is not marked as a difference'), (await page.locator('#export-matches .match.good .in mark').count()) === 0, await page.locator('#export-matches .match.good .in').innerHTML());
+  // 8a2. A plain paste with UTF-8 read as Windows-1252 is repaired
+  await page.fill('#export-input', '');
+  await page.evaluate(function () {
+    var ta = document.getElementById('export-input'), dt = new DataTransfer();
+    dt.setData('text/plain', 'Ba\u00c4\u008dk, P., \u00c5\u00a0koda, R. (2026). Modraite \u00e2\u20ac\u201c Mal\u00c3\u00a9 Karpaty. American Mineralogist.');
+    ta.focus(); ta.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+  });
+  check(name('garbled UTF-8 in a plain paste is repaired'), /Ba\u010dk, P\., \u0160koda, R\. \(2026\)\. Modraite \u2013 Mal\u00e9 Karpaty/.test(await page.inputValue('#export-input')), JSON.stringify(await page.inputValue('#export-input')));
   // 8b. A rich paste (Word, Google Docs) keeps its sub- and superscripts as Unicode; a plain paste is untouched
   await page.fill('#export-input', '');
   await page.evaluate(function () {
