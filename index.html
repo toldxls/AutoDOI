@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-i3S2xCVOviaiE2FD4RYgPI1LdhlpZ+XG+/5att7or1I=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-mVjx4R0m9D7VNjmFI6C+iPfKxtWwD/7AZ6OHPwdcNMo=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -4904,7 +4904,26 @@
       $('panel-' + t).hidden = t !== name;
     });
     store.set('tab', name);
+    carryRecord(name);
   }
+  // The record you are working with follows you: a looked-up DOI fills the Find fields and the References box when they
+  // are empty (once per record; the text is selected on focus, so typing or pasting replaces it), and a hit or a matched
+  // row replaces the example on the DOI tab.  A DOI you looked up yourself is never replaced unless you press Format.
+  var carried = {};
+  function carryRecord(tab) {
+    var r = currentRecord; if (!r || currentSource === 'sample' || currentSource === 'none') return;
+    var key = r.doi || r.isbn || r.title || '';
+    if (tab === 'find' && !$('find-title').value.trim() && !$('find-journal').value.trim() && carried.find !== key && r.title) {
+      carried.find = key; prefill($('find-title'), A.stripTags(A.titleHtml(r))); prefill($('find-journal'), r.container || '');
+    }
+    if (tab === 'export' && currentSource !== 'batch' && !$('export-input').value.trim() && carried.export !== key && r.doi) {
+      carried.export = key; prefill($('export-input'), r.doi); updateSplitPreview();
+    }
+  }
+  function prefill(input, text) { input.value = text; input.dataset.prefill = text; }
+  ['find-title', 'find-journal', 'export-input'].forEach(function (id) {
+    $(id).addEventListener('focus', function () { if (this.value && this.value === this.dataset.prefill) this.select(); });
+  });
   TABS.forEach(function (t, i) {
     $('tab-' + t).addEventListener('click', function () { showTab(t); });
     $('tab-' + t).addEventListener('keydown', function (ev) {
@@ -5257,7 +5276,7 @@
     if (mode === 'csl' && rebuildBatch) rebuildBatch(); // the reference-list menu gains the new journal style
     fillStyleSelect();
     if (typeof updateBookmarklet === 'function') updateBookmarklet();
-    if (currentRecord && !currentChip && typeof setUrl === 'function') setUrl(currentRecord.doi || currentRecord.isbn || ''); // the example card carries a chip
+    if (currentRecord && currentSource !== 'sample' && typeof setUrl === 'function') setUrl(currentRecord.doi || currentRecord.isbn || ''); // the example never goes into the address bar
     if (currentRecord) showCitation(currentRecord, currentChip);
   }
   $('style-select').addEventListener('change', function () {
@@ -5823,6 +5842,14 @@
 
   /* ---------- 1. DOI -> reference ---------- */
   var currentRecord = null, currentChip = null;
+  var currentSource = 'sample'; // 'sample', 'lookup' (typed or pasted), 'find' (a hit), 'batch' (a matched row) or 'none' (cleared)
+  function adoptRecord(r, source, chip, force) { // a hit or a row takes the DOI tab, unless a DOI you looked up is there
+    if (!force && currentSource === 'lookup') return false;
+    lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = r.doi || r.isbn || ''; $('doi-status').textContent = ''; $('doi-status').className = 'status';
+    currentSource = source; showCitation(r, chip); setUrl(r.doi || r.isbn || '');
+    return true;
+  }
+  function formatHere(r, source) { adoptRecord(r, source, null, true); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus(); }
   function showCitation(r0, chip) {
     currentRecord = r0; currentChip = chip || null;
     var r = withCase(r0);
@@ -5918,7 +5945,7 @@
       history.replaceState(null, '', u);
     } catch (e) { /* file:// or sandbox */ }
   }
-  function clearResult() { currentRecord = null; currentChip = null; $('doi-result').innerHTML = ''; setUrl(''); }
+  function clearResult() { currentRecord = null; currentChip = null; currentSource = 'none'; $('doi-result').innerHTML = ''; setUrl(''); }
 
   var lookupSeq = 0;
   async function lookup(text) {
@@ -5933,7 +5960,7 @@
           status.textContent = 'Looking up ISBN ' + isbn + '…';
           var book = await lookupIsbn(isbn);
           if (seq !== lookupSeq) return;
-          $('doi-input').value = isbn; showCitation(book); setUrl(isbn); status.textContent = book.doi ? '' : 'No DOI for this book; record from Open Library.';
+          $('doi-input').value = isbn; currentSource = 'lookup'; showCitation(book); setUrl(isbn); status.textContent = book.doi ? '' : 'No DOI for this book; record from Open Library.';
           return;
         }
         var pm = A.extractPmid(text);
@@ -5944,7 +5971,7 @@
       status.textContent = 'Looking up ' + doi + '…';
       var r = await fetchRecord(doi);
       if (seq !== lookupSeq) return; // a newer lookup has started
-      showCitation(r); setUrl(doi);
+      currentSource = 'lookup'; showCitation(r); setUrl(doi);
       status.textContent = '';
     } catch (e) {
       if (seq === lookupSeq) { clearResult(); showError(status, 'lookup', e, doi || ''); }
@@ -5983,6 +6010,7 @@
       status.textContent = hits.length + ' best matches, most likely first' + (viaOA ? ' (Crossref and OpenAlex)' : '') + '.';
       hits.forEach(function (r) { r.conf = titleSimilarity(title, r.title); });
       hits.sort(function (a, b) { return b.conf - a.conf; });
+      if (hits[0].conf >= 0.95) adoptRecord(hits[0], 'find', el('span', 'chip good', 'Found by title'));
       hits.forEach(function (r) {
         var conf = r.conf;
         var h = el('div', 'hit');
@@ -5999,9 +6027,7 @@
         act.appendChild(el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : 'Weak'));
         act.appendChild(paperLinks(r));
         act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
-        act.appendChild(button('Format', 'primary', function () {
-          lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = r.doi; $('doi-status').textContent = ''; showCitation(r); setUrl(r.doi); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus();
-        }));
+        act.appendChild(button('Format', 'primary', function () { formatHere(r, 'find'); }));
         h.appendChild(act);
         list.appendChild(h);
       });
@@ -6422,6 +6448,7 @@
     }
     $('export-go').disabled = true; $('export-stop').hidden = false;
     var rows = []; // { rec, box, node, out, idx, dupChip, raw, keep }
+    var batchAdopted = false; // the first good row of a batch replaces the example on the DOI tab
     var nFile = items.filter(function (x) { return x.kind === 'rec'; }).length, nText = items.length - nFile;
 
     function chipFor(level, via, src) {
@@ -6624,6 +6651,7 @@
       var dl = (rec.doi || rec.isbn) ? outLink(rec, 'doi-link', '') : null;
       if (dl) { dl.appendChild(el('code', '', rec.doi || rec.isbn)); o.appendChild(dl); } else o.appendChild(el('code', '', ''));
       o.appendChild(paperLinks(rec));
+      var fmt = button('Format', '', function () { formatHere(rec, 'batch'); }); fmt.title = 'Show this record on the DOI tab, in every style'; o.appendChild(fmt);
       row.dupChip = el('span', 'chip warn', ''); row.dupChip.hidden = true; row.dupChip.title = 'Same record as an earlier ticked line; left out of the export';
       o.appendChild(row.dupChip);
       var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level === 'good'; inc.id = 'inc-' + mySeq + '-' + row.idx; // amber "check" rows wait for you to tick them
@@ -6632,6 +6660,7 @@
       o.appendChild(lab);
       inc.addEventListener('change', function () { if (inc.checked && row.keep) row.keep.checked = false; build(); });
       row.rec = rec; row.box = inc;
+      if (level === 'good' && !batchAdopted) batchAdopted = adoptRecord(rec, 'batch', el('span', 'chip good', 'From your references')) || batchAdopted;
       if (row.raw && (level === 'good' || level === 'warn')) { adoptDiacritics(rec, row.raw); var inEl = row.node.querySelector('.in'); if (inEl) markDifferences(inEl, row.raw, rec); }
       if (rec.publishedDoi) {
         var pn = el('div', 'note'); pn.style.marginTop = '6px';

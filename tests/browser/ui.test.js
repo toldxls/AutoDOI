@@ -171,6 +171,22 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('exactly one Crossref lookup for the DOI'), crossrefCalls === 1, crossrefCalls);
   await axeCheck('DOI tab with a result');
 
+  // The looked-up record follows you to the other tabs' empty fields
+  await page.click('#tab-find');
+  check(name('Find fields are prefilled from the looked-up record'), (await page.inputValue('#find-title')) === 'Nanometre-scale thermometry in a living cell' && (await page.inputValue('#find-journal')) === 'Nature', (await page.inputValue('#find-title')) + ' / ' + (await page.inputValue('#find-journal')));
+  await page.focus('#find-title');
+  check(name('focusing a prefilled field selects it, so typing replaces it'), await page.evaluate(function () { var i = document.getElementById('find-title'); return i.selectionStart === 0 && i.selectionEnd === i.value.length; }));
+  await page.click('#tab-export');
+  check(name('the References box is prefilled with the DOI'), (await page.inputValue('#export-input')) === '10.1038/nature12373', await page.inputValue('#export-input'));
+  await page.waitForFunction(function () { return /1 reference/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  check(name('the prefilled DOI counts as one reference'), /1 reference/.test(await textOf('#split-count')), await textOf('#split-count'));
+  await page.fill('#export-input', '');
+  await page.click('#tab-find'); await page.fill('#find-title', ''); await page.fill('#find-journal', '');
+  await page.click('#tab-cite');
+  await page.click('#tab-find');
+  check(name('a cleared field is not prefilled again for the same record'), (await page.inputValue('#find-title')) === '', await page.inputValue('#find-title'));
+  await page.click('#tab-cite');
+
   // Single-style mode and copy
   await page.selectOption('#style-select', 'apa');
   await page.waitForFunction(function () { return !/MLA/.test(document.querySelector('#doi-result').textContent); });
@@ -250,6 +266,7 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForSelector('#find-results .hit', { timeout: 15000 });
   check(name('find shows a hit with a Title match chip'), /Title match/.test(await page.locator('#find-results .hit').first().textContent()));
   check(name('find hit shows the DOI'), /10\.1038\/nature12373/.test(await textOf('#find-results')));
+  check(name('the top hit replaces the example on the DOI tab'), (await page.locator('#doi-result .chip:has-text("Found by title")').count()) === 1 && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /[?&]q=10\.1038/.test(page.url()), page.url());
   await axeCheck('Find tab with results');
   await page.locator('#find-results .hit button:has-text("Format")').first().click();
   check(name('Format jumps to the DOI tab with the record'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /Kucsko/.test(await textOf('#doi-result')));
@@ -265,6 +282,11 @@ async function runFlows(browser, base, dark, cslReady) {
   var status = await textOf('#export-status');
   check(name('status counts one good and one unmatched'), /1 good/.test(status) && /1 not matched/.test(status), status);
   check(name('one row is a good match'), (await page.locator('#export-matches .match.good').count()) === 1);
+  check(name('the first good row replaces the DOI tab record'), (await page.locator('#doi-result .chip:has-text("From your references")').count()) === 1 && /Kucsko/.test(await textOf('#doi-result')));
+  await page.locator('#export-matches .match.good button:has-text("Format")').click();
+  check(name('Format on a row opens it on the DOI tab'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && (await page.locator('#doi-result .chip:has-text("From your references")').count()) === 0);
+  await page.click('#tab-export');
+  check(name('coming back keeps the pasted references'), /Naturee/.test(await page.inputValue('#export-input')));
   var zone = page.locator('#export-output .export-zone');
   check(name('the export sits in its own bordered box with the download buttons'), (await zone.count()) === 1 && /Your export/.test(await zone.textContent()) && (await zone.locator('button.fill:has-text("Download")').count()) >= 3 && (await zone.locator('.reflist').count()) === 1, await page.locator('#export-output').innerHTML().then(function (h) { return h.slice(0, 300); }));
   check(name('the export box is distinct in colour'), await page.evaluate(function () { var z = document.querySelector('#export-output .export-zone'), m = document.querySelector('#export-matches .match'); var zs = getComputedStyle(z); return zs.borderTopWidth === '2px' && zs.borderTopColor !== getComputedStyle(m).borderTopColor && zs.backgroundColor !== getComputedStyle(m).backgroundColor; }));
