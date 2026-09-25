@@ -80,6 +80,10 @@ async function mockNetwork(page, base, log) {
       return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message, twin], 'total-results': 2 } });
     }
     if (/doi\.org\//.test(url)) return route.fulfill({ status: 404, contentType: 'text/html', body: 'DOI not found' });
+    var up = url.match(/api\.unpaywall\.org\/v2\/(.+?)\?email=/); // a free copy of the sample paper, from the publisher
+    if (up) return decodeURIComponent(up[1]).toLowerCase() === work.message.DOI.toLowerCase()
+      ? json(route, { doi: work.message.DOI, is_oa: true, best_oa_location: { url: 'https://www.nature.com/articles/nature12373.pdf', url_for_pdf: 'https://www.nature.com/articles/nature12373.pdf', url_for_landing_page: 'https://doi.org/10.1038/nature12373', version: 'publishedVersion', host_type: 'publisher' } })
+      : json(route, { HTTP_status_code: 404, error: true }, 404);
     // OpenAlex, Europe PMC, NLM Catalog, Open Library, JabRef lists, other CSL styles: nothing to say
     return json(route, {}, 404);
   });
@@ -118,7 +122,8 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('sample record renders at rest'), /Kucsko/.test(await textOf('#doi-result')));
   check(name('bug link carries the version'), versionInUrl.test(await page.locator('#link-bug').getAttribute('href')));
   check(name('no page errors on load'), s.state.errors.length === 0, s.state.errors.join(' | '));
-  check(name('no lookup left the page on load'), !s.state.requests.some(function (u) { return /api\.crossref|openalex|ebi\.ac\.uk|ncbi|jabref/i.test(u); }), s.state.requests.join(', '));
+  check(name('no lookup left the page on load'), !s.state.requests.some(function (u) { return /api\.crossref|openalex|unpaywall|ebi\.ac\.uk|ncbi|jabref/i.test(u); }), s.state.requests.join(', '));
+  check(name('the example record offers to look for a free copy without doing so'), (await page.locator('#doi-result button:has-text("Free copy?")').count()) === 1);
   check(name('colour scheme applied'), (await page.evaluate(function () { return getComputedStyle(document.body).backgroundColor; })) === (dark ? 'rgb(20, 23, 27)' : 'rgb(245, 246, 243)'), await page.evaluate(function () { return getComputedStyle(document.body).backgroundColor; }));
   await axeCheck('DOI tab at rest');
 
@@ -146,6 +151,20 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('lookup renders every built-in style'), ['APA', 'MLA', 'Chicago', 'Harvard', 'Vancouver', 'IEEE'].every(function (st) { return text.indexOf(st) !== -1; }), text.slice(0, 300));
   check(name('lookup shows export formats'), /BibTeX/.test(text) && /RIS/.test(text) && /EndNote/.test(text));
   check(name('View article links through doi.org'), (await page.locator('#doi-result a[href="https://doi.org/10.1038/nature12373"]').count()) >= 1);
+  await page.waitForSelector('#doi-result a.free', { timeout: 10000 }).catch(function () {});
+  var freeLink = page.locator('#doi-result a.free');
+  check(name('a free copy from Unpaywall is offered as a Free PDF button'), (await freeLink.count()) === 1 && (await freeLink.getAttribute('href')) === 'https://www.nature.com/articles/nature12373.pdf' && /Free PDF/.test(await freeLink.textContent()) && /published version/.test(await freeLink.getAttribute('title')), await page.locator('#doi-result .record-head').innerHTML());
+  check(name('the free copy was asked of Unpaywall with a contact address'), s.state.requests.some(function (u) { return /api\.unpaywall\.org\/v2\/10\.1038\/nature12373\?email=/.test(u); }), s.state.requests.filter(function (u) { return /unpaywall/.test(u); }).join(', '));
+  check(name('no Via library button until a library link is set'), (await page.locator('#doi-result a:has-text("Via library")').count()) === 0);
+  await page.locator('details.settings summary').click(); // the field sits in the closed Settings panel
+  await page.fill('#library-link', 'https://ezproxy.example.edu/login?url='); await page.dispatchEvent('#library-link', 'change');
+  var lib = page.locator('#doi-result a:has-text("Via library")');
+  check(name('a library link adds a Via library button through the proxy'), (await lib.count()) === 1 && (await lib.getAttribute('href')) === 'https://ezproxy.example.edu/login?url=https://doi.org/10.1038/nature12373', await lib.getAttribute('href'));
+  await page.fill('#library-link', 'https://resolver.example.edu/openurl?id=doi:{doi}'); await page.dispatchEvent('#library-link', 'change');
+  check(name('a {doi} template fills the DOI in'), (await page.locator('#doi-result a:has-text("Via library")').getAttribute('href')) === 'https://resolver.example.edu/openurl?id=doi:10.1038/nature12373', await page.locator('#doi-result a:has-text("Via library")').getAttribute('href'));
+  await page.fill('#library-link', ''); await page.dispatchEvent('#library-link', 'change');
+  check(name('clearing the library link removes the button'), (await page.locator('#doi-result a:has-text("Via library")').count()) === 0);
+  await page.locator('details.settings summary').click();
   check(name('Report it link is prefilled with the DOI'), /doi=10\.1038%2Fnature12373/.test(await page.locator('#doi-result a:has-text("Report it")').getAttribute('href')));
   check(name('URL now carries ?q='), /[?&]q=10\.1038/.test(page.url()), page.url());
   var crossrefCalls = s.state.requests.filter(function (u) { return /api\.crossref\.org\/works\/10\.1038/.test(u); }).length;
@@ -246,6 +265,18 @@ async function runFlows(browser, base, dark, cslReady) {
   var status = await textOf('#export-status');
   check(name('status counts one good and one unmatched'), /1 good/.test(status) && /1 not matched/.test(status), status);
   check(name('one row is a good match'), (await page.locator('#export-matches .match.good').count()) === 1);
+  var zone = page.locator('#export-output .export-zone');
+  check(name('the export sits in its own bordered box with the download buttons'), (await zone.count()) === 1 && /Your export/.test(await zone.textContent()) && (await zone.locator('button.fill:has-text("Download")').count()) >= 3 && (await zone.locator('.reflist').count()) === 1, await page.locator('#export-output').innerHTML().then(function (h) { return h.slice(0, 300); }));
+  check(name('the export box is distinct in colour'), await page.evaluate(function () { var z = document.querySelector('#export-output .export-zone'), m = document.querySelector('#export-matches .match'); var zs = getComputedStyle(z); return zs.borderTopWidth === '2px' && zs.borderTopColor !== getComputedStyle(m).borderTopColor && zs.backgroundColor !== getComputedStyle(m).backgroundColor; }));
+  var jump = page.locator('#export-status button:has-text("Go to export")');
+  check(name('the status line offers a button down to the export'), (await jump.count()) === 1);
+  await jump.click();
+  check(name('Go to export focuses the export box'), (await page.evaluate(function () { return document.activeElement && document.activeElement.id; })) === 'export-zone');
+  var rowFree = page.locator('#export-matches .match.good button:has-text("Free copy?")');
+  check(name('a matched row offers to look for a free copy'), (await rowFree.count()) === 1);
+  await rowFree.click();
+  await page.waitForSelector('#export-matches .match.good a.free', { timeout: 10000 }).catch(function () {});
+  check(name('the row shows the Free PDF button once found'), (await page.locator('#export-matches .match.good a.free[href="https://www.nature.com/articles/nature12373.pdf"]').count()) === 1, await page.locator('#export-matches .match.good .out').innerHTML());
   var offer = page.locator('#export-matches .match.good .note:has-text("Not this one?") button');
   check(name('a close runner-up is offered on the row'), (await offer.count()) === 1 && /\(II\)/.test(await offer.first().textContent()), await page.locator('#export-matches .match.good').innerHTML());
   await offer.first().click();

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-CZADpq+GdNDNHK6KUIhCcdxkyVuyy9BsFFWCIUmf47k=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-i3S2xCVOviaiE2FD4RYgPI1LdhlpZ+XG+/5att7or1I=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -13,6 +13,7 @@
     --ground: #F5F6F3; --surface: #FFFFFF; --ink: #1C2128; --muted: #5F6B78; --line: #D6DBE0;
     --accent: #1E5EB8; --accent-ink: #FFFFFF; --accent-soft: #E4EDFA;
     --good: #276B43; --warn: #8A5509; --bad: #A83A34; --good-soft: #E3F1E8; --warn-soft: #FBEEDB; --bad-soft: #F8E4E2; /* ≥ 5:1 on their soft backgrounds */
+    --export: #6A3BA3; --export-ink: #FFFFFF; --export-soft: #F3EEFA; /* the export box on the References tab */
     --code-bg: #F0F2F5; --shadow: 0 1px 2px rgba(20, 30, 40, .06), 0 6px 20px rgba(20, 30, 40, .05);
     --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
     --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
@@ -24,6 +25,7 @@
       --ground: #14171B; --surface: #1C2127; --ink: #E6E9EC; --muted: #98A3AE; --line: #2C343D;
       --accent: #7FAAF2; --accent-ink: #0F1A2B; --accent-soft: #1F2E44;
       --good: #5DBB7F; --warn: #E0A44A; --bad: #E07B72; --good-soft: #1B2F24; --warn-soft: #34281A; --bad-soft: #3A2220;
+      --export: #C4A7F0; --export-ink: #17102A; --export-soft: #241C36;
       --code-bg: #12161A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.25);
     }
   }
@@ -32,7 +34,8 @@
     --ground: #14171B; --surface: #1C2127; --ink: #E6E9EC; --muted: #98A3AE; --line: #2C343D;
     --accent: #7FAAF2; --accent-ink: #0F1A2B; --accent-soft: #1F2E44;
     --good: #5DBB7F; --warn: #E0A44A; --bad: #E07B72; --good-soft: #1B2F24; --warn-soft: #34281A; --bad-soft: #3A2220;
-    --code-bg: #12161A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.25);
+    --export: #C4A7F0; --export-ink: #17102A; --export-soft: #241C36;
+      --code-bg: #12161A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.25);
   }
 
   * { box-sizing: border-box; }
@@ -135,6 +138,23 @@
   pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.5; background: var(--code-bg); border: 1px solid var(--line);
     border-radius: 8px; padding: 12px 14px; margin: 0; overflow-x: auto; white-space: pre; }
   .export { margin-top: 12px; }
+  /* The References tab's export box: bordered and tinted in its own colour so it reads as the place to go once the rows are checked */
+  .export-zone { margin-top: 24px; border: 2px solid var(--export); border-radius: 12px; background: var(--export-soft); padding: 14px 18px 18px; box-shadow: var(--shadow); }
+  .export-zone .zone-head { display: flex; align-items: baseline; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 4px; }
+  .export-zone .zone-title { font-weight: 600; font-size: 17px; color: var(--export); letter-spacing: -0.01em; }
+  .export-zone .zone-sub { font-size: 13px; color: var(--muted); }
+  .export-zone .zone-hint { font-size: 13px; color: var(--muted); margin: 0 0 8px; max-width: 70ch; }
+  .export-zone .export { margin-top: 16px; }
+  .export-zone .section-label { color: var(--export); }
+  .export-zone .btn { border-color: var(--export); color: var(--export); background: var(--surface); }
+  .export-zone .btn.fill { background: var(--export); color: var(--export-ink); }
+  .export-zone .btn.copied { border-color: var(--good); color: var(--good); background: var(--surface); }
+  .export-zone select { border-color: var(--export); }
+  .export-zone pre.code, .export-zone .reflist { border-color: var(--export); }
+  .export-zone .export .head { padding-bottom: 6px; }
+  .btn.jump { border-color: var(--export); color: var(--export); }
+  .btn.free { border-color: var(--good); color: var(--good); text-decoration: none; }
+  .paper-note { font-size: 12.5px; color: var(--muted); }
   .export .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
   .export .head .actions { display: flex; gap: 6px; flex-wrap: wrap; min-width: 0; max-width: 100%; }
   .export .head { min-width: 0; }
@@ -168,6 +188,7 @@
   details.settings summary { cursor: pointer; }
   details.settings .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
   details.settings input { max-width: 320px; padding: 6px 10px; font-size: 13px; }
+  details.settings input#library-link { max-width: 520px; font-family: var(--mono); font-size: 12.5px; }
   .feedback { margin: 28px 0 0; font-size: 13px; color: var(--muted); }
   .feedback a { color: var(--accent); text-decoration: none; }
   .feedback a:hover { text-decoration: underline; }
@@ -192,7 +213,7 @@
 
   <!-- ===== 1. DOI -> reference ===== -->
   <section class="panel" id="panel-cite" role="tabpanel" aria-labelledby="tab-cite">
-    <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, an ISBN, or any text containing one. Show every built-in style, pick one, or search 10,000 journal styles. Copy gives plain text; Rich keeps italics for Word and Google Docs.</p>
+    <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, an ISBN, or any text containing one. Show every built-in style, pick one, or search 10,000 journal styles. Copy gives plain text; Rich keeps italics for Word and Google Docs. A free, legal copy of the paper is looked up on Unpaywall and offered as a Free PDF button when one exists; a library proxy set under Settings adds a Via library button.</p>
     <form class="bar" id="form-cite">
       <input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI">
       <button class="btn primary" type="submit" id="doi-go">Look up</button>
@@ -274,6 +295,10 @@
       <input type="text" id="openalex-key" placeholder="OpenAlex key" autocomplete="off">
     </div>
     <div class="row">
+      <label for="library-link">Library link (optional): your library's proxy prefix, e.g. <code>https://ezproxy.example.edu/login?url=</code>, or a template with <code>{doi}</code> or <code>{url}</code>. Adds a "Via library" button beside each record that opens the paper through your subscription. Stays in this browser.</label>
+      <input type="text" id="library-link" placeholder="https://ezproxy.example.edu/login?url=" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="row">
       <button class="btn small" type="button" id="clear-words">Forget remembered title words</button>
       <label class="check" for="opt-formulas"><input type="checkbox" id="opt-formulas" checked> Format chemical formulas and isotopes in titles (Fe₂O₃, Fe³⁺, ⁴⁰Ar/³⁹Ar)</label>
     </div>
@@ -292,7 +317,7 @@
     <a href="https://github.com/toldxls/AutoDOI" target="_blank" rel="noopener">Source on GitHub</a> ·
     <a href="https://github.com/toldxls/AutoDOI/blob/main/CHANGELOG.md" target="_blank" rel="noopener" title="What changed in each version">AutoDOI <span id="app-version"></span></a>
   </p>
-  <p class="fineprint">Titles are shown as the publisher deposited them unless you choose Sentence case or Title Case above; unknown words such as taxa and place names keep their capitals, and you can click any word in the heading to override. Metadata comes live from api.crossref.org and doi.org; nothing is stored on a server. Journal styles come from the <a href="https://citationstyles.org/">Citation Style Language</a> project (CC BY-SA 3.0) and are rendered in your browser by <a href="https://github.com/Juris-M/citeproc-js">citeproc-js</a>.</p>
+  <p class="fineprint">Titles are shown as the publisher deposited them unless you choose Sentence case or Title Case above; unknown words such as taxa and place names keep their capitals, and you can click any word in the heading to override. Metadata comes live from api.crossref.org and doi.org; free copies of papers are found through <a href="https://unpaywall.org/">Unpaywall</a> and OpenAlex, which index only copies the publishers or authors made open; nothing is stored on a server. Journal styles come from the <a href="https://citationstyles.org/">Citation Style Language</a> project (CC BY-SA 3.0) and are rendered in your browser by <a href="https://github.com/Juris-M/citeproc-js">citeproc-js</a>.</p>
   </footer>
 </div>
 
@@ -4895,6 +4920,11 @@
   $('openalex-key').value = store.get('oakey') || '';
   $('openalex-key').addEventListener('change', function () { store.set('oakey', this.value.trim()); if (this.value.trim()) { oaBlockedUntil = 0; store.set('oaBlocked', '0'); } });
   $('polite-email').addEventListener('change', function () { store.set('email', $('polite-email').value.trim()); });
+  $('library-link').value = store.get('library') || '';
+  $('library-link').addEventListener('change', function () {
+    store.set('library', this.value.trim());
+    if (currentRecord) showCitation(currentRecord, currentChip); if (rebuildBatch) rebuildBatch(); // the Via library buttons appear or go
+  });
   function polite(url) {
     var e = ($('polite-email').value || '').trim();
     return e ? url + (url.indexOf('?') === -1 ? '?' : '&') + 'mailto=' + encodeURIComponent(e) : url;
@@ -5534,6 +5564,79 @@
     return a;
   }
 
+  /* ---------- the paper itself: the user's library proxy, and a free copy from Unpaywall (OpenAlex as a second source) ----------
+   * Only copies the publisher or the authors made open are offered: Unpaywall and OpenAlex index publisher OA, repositories
+   * and author manuscripts, nothing else.  A library link set under Settings sends a click through the user's own subscription. */
+  var UNPAYWALL_EMAIL = 'unpaywall@autodoi.invalid'; // Unpaywall asks for a contact address on every call; the polite email is used when set
+  function libraryHref(r) {
+    var t = ($('library-link').value || '').trim(), href = articleHref(r);
+    if (!t || !href || !/^https?:\/\//i.test(t)) return '';
+    if (/\{doi\}/.test(t)) return r.doi ? t.replace(/\{doi\}/g, r.doi.split('/').map(encodeURIComponent).join('/')) : '';
+    if (/\{url\}/.test(t)) return t.replace(/\{url\}/g, encodeURIComponent(href));
+    return t + href; // an EZproxy prefix: "https://ezproxy.example.edu/login?url=" + the doi.org link
+  }
+  function libraryLink(r) {
+    var href = libraryHref(r); if (!href) return null;
+    var a = el('a', 'btn small', 'Via library \u2197'); a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.textDecoration = 'none';
+    a.title = 'Opens this work through the library link set under Settings';
+    return a;
+  }
+  var freeCopyCache = {}; // doi -> promise of { url, pdf, version, host, via } or null
+  function findFreeCopy(doi) {
+    var key = doi.toLowerCase();
+    if (freeCopyCache[key]) return freeCopyCache[key];
+    return (freeCopyCache[key] = (async function () {
+      var path = doi.split('/').map(encodeURIComponent).join('/'), askOpenAlex = true;
+      try {
+        var email = ($('polite-email').value || '').trim() || UNPAYWALL_EMAIL;
+        var res = await fetchRetry('https://api.unpaywall.org/v2/' + path + '?email=' + encodeURIComponent(email));
+        if (res.ok) {
+          var u = await res.json(), b = u && u.best_oa_location;
+          if (b && (b.url_for_pdf || b.url)) return { url: b.url_for_pdf || b.url, pdf: !!b.url_for_pdf, version: b.version, host: b.host_type === 'repository' ? (b.repository_institution || 'a repository') : 'the publisher', via: 'Unpaywall' };
+          if (u && u.is_oa === false) askOpenAlex = false; // Unpaywall knows the DOI and knows no free copy
+        } else if (res.status !== 404 && res.status !== 422) throw new Error('Unpaywall returned ' + res.status);
+      } catch (e) { logError('unpaywall', e, doi); }
+      if (askOpenAlex && oaAvailable()) {
+        try {
+          var r2 = await oaFetch('https://api.openalex.org/works/' + encodeURIComponent('https://doi.org/' + doi) + '?select=open_access,best_oa_location');
+          if (r2.ok) {
+            var w = await r2.json(), bl = w.best_oa_location || {}, oa = w.open_access || {}, u2 = bl.pdf_url || oa.oa_url || bl.landing_page_url;
+            if ((oa.is_oa || bl.is_oa) && u2) return { url: u2, pdf: !!bl.pdf_url, version: bl.version, host: bl.source && bl.source.display_name ? bl.source.display_name : 'a repository', via: 'OpenAlex' };
+          }
+        } catch (e) { if (!/allowance/.test(e.message)) logError('openalex-oa', e, doi); }
+      }
+      return null;
+    })());
+  }
+  function versionLabel(v) { return v === 'publishedVersion' ? 'the published version' : v === 'acceptedVersion' ? 'the accepted manuscript' : v === 'submittedVersion' ? 'the submitted manuscript (preprint)' : 'a copy'; }
+  // Buttons that get the paper itself: Via library when a link is set, and a free copy from Unpaywall / OpenAlex.
+  // opts.auto looks the free copy up at once (a record on the DOI tab); otherwise a Free copy? button asks on click
+  // (matcher rows and Find hits), so a batch of 300 references makes no lookups nobody asked for.
+  function paperLinks(r, opts) {
+    opts = opts || {};
+    var frag = document.createDocumentFragment();
+    var lib = libraryLink(r); if (lib) frag.appendChild(lib);
+    if (!r.doi) return frag;
+    var slot = el('span', 'paper'); slot.style.display = 'inline-flex'; slot.style.alignItems = 'center'; frag.appendChild(slot);
+    function show(found) {
+      slot.innerHTML = '';
+      if (found) {
+        var a = el('a', 'btn small free', (found.pdf ? 'Free PDF' : 'Free copy') + ' \u2197'); a.href = found.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.title = 'Opens ' + versionLabel(found.version) + ' from ' + found.host + ', found by ' + found.via;
+        slot.appendChild(a);
+      } else {
+        var n = el('span', 'paper-note', 'No free copy found'); n.title = 'Neither Unpaywall nor OpenAlex lists an open access copy. Try the publisher page, or set a library link under Settings.'; slot.appendChild(n);
+      }
+    }
+    function look(b) {
+      if (b) { b.disabled = true; b.textContent = 'Looking\u2026'; }
+      findFreeCopy(r.doi).then(show, function () { show(null); });
+    }
+    if (opts.auto) { slot.appendChild(el('span', 'paper-note', 'Looking for a free copy\u2026')); look(); }
+    else { var b = button('Free copy?', '', look); b.title = 'Looks for a free, legal copy on Unpaywall and OpenAlex'; slot.appendChild(b); }
+    return frag;
+  }
+
   /* ---------- rendering ---------- */
   function el(tag, cls, text) {
     var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e;
@@ -5574,6 +5677,7 @@
     if (r.namesUnsure) { var nu = el('span', 'chip warn', 'Check authors / editors'); nu.title = 'Open Library lists these names without saying whether they are authors or editors.'; side.appendChild(nu); }
     var view = outLink(r, 'btn small');
     if (view) { view.style.textDecoration = 'none'; side.appendChild(view); }
+    if (opts.paper) side.appendChild(paperLinks(r, { auto: opts.paper === 'auto' }));
     head.appendChild(side);
     box.appendChild(head);
     if (r.publishedDoi && opts.onSwap) {
@@ -5610,7 +5714,7 @@
     head.appendChild(el('span', 'section-label', label)).style.margin = '0';
     var act = el('div', 'actions');
     act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
-    act.appendChild(button('Download .' + ext, '', function () { download(base + '.' + ext, text); }));
+    act.appendChild(button('Download .' + ext, 'fill', function () { download(base + '.' + ext, text); }));
     head.appendChild(act);
     wrap.appendChild(head);
     var pre = el('pre', 'code', text); pre.tabIndex = 0; pre.setAttribute('role', 'region'); pre.setAttribute('aria-label', label + ' text'); // scrollable: reachable by keyboard
@@ -5724,7 +5828,7 @@
     var r = withCase(r0);
     var out = $('doi-result'); out.innerHTML = '';
     var only = styleState.mode === 'all' ? null : styleState.mode === 'csl' ? [] : [styleState.mode];
-    var box = renderRecord(r, { chip: chip, styles: only, onSwap: function (doi) { $('doi-input').value = doi; lookup(doi); } });
+    var box = renderRecord(r, { chip: chip, styles: only, paper: r0 === SAMPLE ? 'ask' : 'auto', onSwap: function (doi) { $('doi-input').value = doi; lookup(doi); } }); // the example at rest makes no lookup on load
     out.appendChild(box);
     if (needsAbbr(r0) && !r0.abbrTried) {
       r0.abbrTried = true;
@@ -5893,6 +5997,7 @@
         h.appendChild(left);
         var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.flexWrap = 'wrap';
         act.appendChild(el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : 'Weak'));
+        act.appendChild(paperLinks(r));
         act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
         act.appendChild(button('Format', 'primary', function () {
           lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = r.doi; $('doi-status').textContent = ''; showCitation(r); setUrl(r.doi); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus();
@@ -6343,11 +6448,18 @@
       });
       var kept = rows.filter(function (row) { return row.keep && row.keep.checked; }).map(function (row) { return row.raw; });
       if (!recs.length && !kept.length) return;
-      out.appendChild(el('div', 'section-label', 'Export · ' + recs.length + ' record' + (recs.length !== 1 ? 's' : '') + (kept.length ? ' + ' + kept.length + ' kept as written' : '') + (caseState.mode !== 'none' && caseState.words ? ' · titles in ' + (caseState.mode === 'sentence' ? 'sentence case' : 'Title Case') : '')));
+      // The export box: its own colour and border, so that once the rows are checked it is plain where to go
+      var zone = el('section', 'export-zone'); zone.id = 'export-zone'; zone.tabIndex = -1; zone.setAttribute('aria-labelledby', 'export-zone-title');
+      var zh = el('div', 'zone-head');
+      var zt = el('span', 'zone-title', 'Your export'); zt.id = 'export-zone-title'; zh.appendChild(zt);
+      zh.appendChild(el('span', 'zone-sub', recs.length + ' record' + (recs.length !== 1 ? 's' : '') + (kept.length ? ' + ' + kept.length + ' kept as written' : '') + (caseState.mode !== 'none' && caseState.words ? ' · titles in ' + (caseState.mode === 'sentence' ? 'sentence case' : 'Title Case') : '')));
+      zone.appendChild(zh);
+      zone.appendChild(el('p', 'zone-hint', 'Copy the reference list in any style, or download the .enw, .ris or .bib file for EndNote, Zotero or Mendeley. Only the rows ticked above are included.'));
+      out.appendChild(zone);
       recs = withCaseAll(recs);
-      renderRefList(out, recs, kept);
-      if (recs.length) renderExports(out, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
-      if (kept.length) out.appendChild(el('p', 'status', kept.length + ' reference' + (kept.length > 1 ? 's are' : ' is') + ' kept exactly as pasted in the reference list above; ' + (kept.length > 1 ? 'they are' : 'it is') + ' not in the EndNote / RIS / BibTeX files because no record was found.'));
+      renderRefList(zone, recs, kept);
+      if (recs.length) renderExports(zone, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
+      if (kept.length) zone.appendChild(el('p', 'status', kept.length + ' reference' + (kept.length > 1 ? 's are' : ' is') + ' kept exactly as pasted in the reference list above; ' + (kept.length > 1 ? 'they are' : 'it is') + ' not in the EndNote / RIS / BibTeX files because no record was found.'));
     }
     rebuildBatch = build;
     // Words of the pasted reference that the matched record does not contain are marked, with the record's own spelling
@@ -6511,6 +6623,7 @@
       var tt = el('span', 't'); if (rec.title) tt.innerHTML = A.titleHtml(rec); else tt.textContent = '(untitled record)'; o.appendChild(tt); // formulas and deposited markup shown, as on the DOI tab
       var dl = (rec.doi || rec.isbn) ? outLink(rec, 'doi-link', '') : null;
       if (dl) { dl.appendChild(el('code', '', rec.doi || rec.isbn)); o.appendChild(dl); } else o.appendChild(el('code', '', ''));
+      o.appendChild(paperLinks(rec));
       row.dupChip = el('span', 'chip warn', ''); row.dupChip.hidden = true; row.dupChip.title = 'Same record as an earlier ticked line; left out of the export';
       o.appendChild(row.dupChip);
       var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level === 'good'; inc.id = 'inc-' + mySeq + '-' + row.idx; // amber "check" rows wait for you to tick them
@@ -6634,15 +6747,21 @@
     var summary = (nFile && !nText ? nGood + ' records read from the file' + (nFile > 1 ? 's' : '') : parts.join(', ')) + '.';
     if (batchStopped) summary = 'Stopped after ' + items.length + ': ' + summary;
     $('export-go').disabled = false; $('export-stop').hidden = true;
-    status.textContent = summary;
+    function showSummary(extra) { // the summary, with a button down to the export box when there is one
+      status.textContent = summary + (extra || '');
+      if (!matched.length) return;
+      status.appendChild(document.createTextNode(' '));
+      status.appendChild(button('Go to export \u2193', 'jump', function () { var z = $('export-zone'); if (z) { z.scrollIntoView({ behavior: 'smooth', block: 'start' }); z.focus({ preventScroll: true }); } }));
+    }
+    showSummary();
     build(); // show the export now; journal abbreviations are filled in afterwards
     var needs = matched.map(function (f) { return f.rec; }).filter(needsAbbr);
     if (needs.length) {
-      status.textContent = summary + ' Adding journal abbreviations…';
+      showSummary(' Adding journal abbreviations…');
       var timeout = new Promise(function (r) { setTimeout(function () { r(false); }, 30000); });
       Promise.race([enrichAbbr(needs).catch(function () { return false; }), timeout]).then(function (changed) {
         if (!current()) return;
-        status.textContent = summary;
+        showSummary();
         if (changed) build();
       });
     }
