@@ -130,19 +130,21 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('no lookup left the page on load'), !s.state.requests.some(function (u) { return /api\.crossref|openalex|unpaywall|ebi\.ac\.uk|ncbi|jabref/i.test(u); }), s.state.requests.join(', '));
   check(name('the example record offers to look for a free copy without doing so'), (await page.locator('#doi-result button:has-text("Free copy?")').count()) === 1);
   check(name('colour scheme applied'), (await page.evaluate(function () { return getComputedStyle(document.body).backgroundColor; })) === (dark ? 'rgb(20, 23, 27)' : 'rgb(245, 246, 243)'), await page.evaluate(function () { return getComputedStyle(document.body).backgroundColor; }));
-  await axeCheck('DOI tab at rest');
+  check(name('the References tab is first and opens by default'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && await page.isVisible('#panel-export') && (await page.locator('nav[role=tablist] button').first().getAttribute('id')) === 'tab-export');
+  await axeCheck('References tab at rest');
 
   // 2. Tabs: mouse, keyboard, aria state, persistence
   await page.click('#tab-find');
   check(name('click selects Find tab'), (await page.getAttribute('#tab-find', 'aria-selected')) === 'true' && await page.isHidden('#panel-cite') && await page.isVisible('#panel-find'));
   await page.focus('#tab-find'); await page.keyboard.press('ArrowRight');
-  check(name('ArrowRight moves to Export tab and focuses it'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && (await page.evaluate(function () { return document.activeElement.id; })) === 'tab-export');
+  check(name('ArrowRight moves to the DOI tab and focuses it'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.evaluate(function () { return document.activeElement.id; })) === 'tab-cite');
   await page.keyboard.press('Home');
-  check(name('Home returns to the first tab'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true');
+  check(name('Home returns to the first tab, References'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true');
   await page.keyboard.press('End');
+  check(name('End goes to the last tab, DOI → reference'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true');
   await page.reload({ waitUntil: 'load' });
-  check(name('selected tab survives a reload'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && await page.isVisible('#panel-export'));
-  await axeCheck('Export tab empty');
+  check(name('selected tab survives a reload'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && await page.isVisible('#panel-cite'));
+  await axeCheck('DOI tab at rest');
   await page.click('#tab-find'); await axeCheck('Find tab empty');
   await page.locator('details.settings summary').click(); await axeCheck('Settings open'); await page.locator('details.settings summary').click();
 
@@ -434,7 +436,7 @@ async function mobileFlows(browser, base) {
   }
   await page.goto(base, { waitUntil: 'load' });
   check(name('viewport meta present'), /width=device-width/.test(await page.locator('meta[name="viewport"]').getAttribute('content')));
-  await fits('DOI tab at rest');
+  await fits('References tab at rest');
   var tabsRight = await page.evaluate(function () { return Math.round(document.querySelector('[role=tablist]').getBoundingClientRect().right); });
   check(name('tab strip fits the screen'), tabsRight <= DEVICE_W, tabsRight + 'px');
   await page.tap('#tab-find'); await fits('Find tab');
