@@ -146,7 +146,12 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('selected tab survives a reload'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && await page.isVisible('#panel-cite'));
   await axeCheck('DOI tab at rest');
   await page.click('#tab-find'); await axeCheck('Find tab empty');
-  await page.locator('details.settings summary').click(); await axeCheck('Settings open'); await page.locator('details.settings summary').click();
+  check(name('a Settings button sits in the header'), (await page.locator('header #settings-toggle').count()) === 1 && await page.isHidden('#settings-panel'));
+  await page.click('#settings-toggle');
+  check(name('Settings opens under the header and the button shows it is open'), await page.isVisible('#settings-panel') && (await page.getAttribute('#settings-toggle', 'aria-expanded')) === 'true' && (await page.evaluate(function () { var p = document.getElementById('settings-panel').getBoundingClientRect(), n = document.querySelector('nav[role=tablist]').getBoundingClientRect(); return p.bottom <= n.top; })));
+  await axeCheck('Settings open');
+  await page.keyboard.press('Escape');
+  check(name('Escape closes Settings and returns focus to the button'), await page.isHidden('#settings-panel') && (await page.evaluate(function () { return document.activeElement.id; })) === 'settings-toggle');
 
   // 3. DOI lookup through the form
   await page.click('#tab-cite');
@@ -164,7 +169,7 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('no Free PDF button points at the unlicensed publisher copy'), (await page.locator('#doi-result a[href="https://www.nature.com/articles/nature12373.pdf"]').count()) === 0);
   check(name('the free copy was asked of Unpaywall with a contact address'), s.state.requests.some(function (u) { return /api\.unpaywall\.org\/v2\/10\.1038\/nature12373\?email=/.test(u); }), s.state.requests.filter(function (u) { return /unpaywall/.test(u); }).join(', '));
   check(name('no Via library button until a library link is set'), (await page.locator('#doi-result a:has-text("Via library")').count()) === 0);
-  await page.locator('details.settings summary').click(); // the field sits in the closed Settings panel
+  await page.click('#settings-toggle'); // the field sits in the closed Settings panel
   await page.fill('#library-link', 'https://ezproxy.example.edu/login?url='); await page.dispatchEvent('#library-link', 'change');
   var lib = page.locator('#doi-result a:has-text("Via library")');
   check(name('a library link adds a Via library button through the proxy'), (await lib.count()) === 1 && (await lib.getAttribute('href')) === 'https://ezproxy.example.edu/login?url=https://doi.org/10.1038/nature12373', await lib.getAttribute('href'));
@@ -172,7 +177,7 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('a {doi} template fills the DOI in'), (await page.locator('#doi-result a:has-text("Via library")').getAttribute('href')) === 'https://resolver.example.edu/openurl?id=doi:10.1038/nature12373', await page.locator('#doi-result a:has-text("Via library")').getAttribute('href'));
   await page.fill('#library-link', ''); await page.dispatchEvent('#library-link', 'change');
   check(name('clearing the library link removes the button'), (await page.locator('#doi-result a:has-text("Via library")').count()) === 0);
-  await page.locator('details.settings summary').click();
+  await page.click('#settings-toggle');
   check(name('Report it link is prefilled with the DOI'), /doi=10\.1038%2Fnature12373/.test(await page.locator('#doi-result a:has-text("Report it")').getAttribute('href')));
   check(name('URL now carries ?q='), /[?&]q=10\.1038/.test(page.url()), page.url());
   var crossrefCalls = s.state.requests.filter(function (u) { return /api\.crossref\.org\/works\/10\.1038/.test(u); }).length;

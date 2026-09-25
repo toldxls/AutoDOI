@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-agbZ0ccvl5h9faodjcuB0GjdYe1hVr9xpuSUyqfV5E4=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-DexXHXXfYcP4VpdnXopb+B9C9gsxthL1iNWP9c2p9tw=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -188,11 +188,14 @@
   .match .out .t { font-family: var(--serif); font-size: 15px; }
   .match .out code { font-family: var(--mono); font-size: 12.5px; }
 
-  details.settings { margin-top: 36px; color: var(--muted); font-size: 13px; }
-  details.settings summary { cursor: pointer; }
-  details.settings .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
-  details.settings input { max-width: 320px; padding: 6px 10px; font-size: 13px; }
-  details.settings input#library-link { max-width: 520px; font-family: var(--mono); font-size: 12.5px; }
+  .settings-toggle { margin-left: auto; align-self: center; }
+  .settings-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .settings { margin: 0 0 20px; padding: 12px 18px 16px; border: 1px solid var(--accent); border-radius: 10px; background: var(--surface); color: var(--muted); font-size: 13px; box-shadow: var(--shadow); }
+  .settings .row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .settings .row:first-child { margin-top: 0; }
+  .settings input { max-width: 320px; padding: 6px 10px; font-size: 13px; }
+  .settings input#library-link { max-width: 520px; font-family: var(--mono); font-size: 12.5px; }
+  header { align-items: center; }
   .feedback { margin: 28px 0 0; font-size: 13px; color: var(--muted); }
   .feedback a { color: var(--accent); text-decoration: none; }
   .feedback a:hover { text-decoration: underline; }
@@ -206,9 +209,34 @@
   <header>
     <h1 class="brand">Auto<span>DOI</span></h1>
     <div class="tag">Crossref and DataCite metadata, formatted for pasting</div>
+    <button class="btn small settings-toggle" type="button" id="settings-toggle" aria-expanded="false" aria-controls="settings-panel"><span aria-hidden="true">⚙</span> Settings</button>
   </header>
 
   <main>
+  <section class="settings" id="settings-panel" aria-labelledby="settings-toggle" hidden>
+    <div class="row">
+      <label for="polite-email">Contact email for Crossref's polite pool (optional, faster and more reliable; stays in this browser)</label>
+      <input type="text" id="polite-email" placeholder="you@example.org" autocomplete="off">
+    </div>
+    <div class="row">
+      <label for="openalex-key">OpenAlex API key (optional, free from openalex.org; gives you your own daily search allowance; stays in this browser)</label>
+      <input type="text" id="openalex-key" placeholder="OpenAlex key" autocomplete="off">
+    </div>
+    <div class="row">
+      <label for="library-link">Library link (optional): your library's proxy prefix, e.g. <code>https://ezproxy.example.edu/login?url=</code>, or a template with <code>{doi}</code> or <code>{url}</code>. Adds a "Via library" button beside each record that opens the paper through your subscription. Stays in this browser.</label>
+      <input type="text" id="library-link" placeholder="https://ezproxy.example.edu/login?url=" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="row">
+      <button class="btn small" type="button" id="clear-words">Forget remembered title words</button>
+      <label class="check" for="opt-formulas"><input type="checkbox" id="opt-formulas" checked> Format chemical formulas and isotopes in titles (Fe₂O₃, Fe³⁺, ⁴⁰Ar/³⁹Ar)</label>
+    </div>
+    <div class="row">
+      <span>Bookmarklet: drag this to your bookmarks bar, then click it on any journal article page to cite it here.</span>
+      <a class="bookmarklet" id="bookmarklet" href="#">Cite with AutoDOI</a>
+    </div>
+    <div class="row"><span>Link directly to a lookup with <code>?q=</code>, for example <code id="qexample"></code>.</span></div>
+  </section>
+
   <nav role="tablist" aria-label="Mode">
     <button role="tab" id="tab-export" aria-selected="true" aria-controls="panel-export">References → any style</button>
     <button role="tab" id="tab-find" aria-selected="false" aria-controls="panel-find">Find a DOI</button>
@@ -287,31 +315,6 @@
     <p class="status" id="doi-status" role="status" aria-live="polite"></p>
     <div id="doi-result"></div>
   </section>
-
-  <details class="settings">
-    <summary>Settings</summary>
-    <div class="row">
-      <label for="polite-email">Contact email for Crossref's polite pool (optional, faster and more reliable; stays in this browser)</label>
-      <input type="text" id="polite-email" placeholder="you@example.org" autocomplete="off">
-    </div>
-    <div class="row">
-      <label for="openalex-key">OpenAlex API key (optional, free from openalex.org; gives you your own daily search allowance; stays in this browser)</label>
-      <input type="text" id="openalex-key" placeholder="OpenAlex key" autocomplete="off">
-    </div>
-    <div class="row">
-      <label for="library-link">Library link (optional): your library's proxy prefix, e.g. <code>https://ezproxy.example.edu/login?url=</code>, or a template with <code>{doi}</code> or <code>{url}</code>. Adds a "Via library" button beside each record that opens the paper through your subscription. Stays in this browser.</label>
-      <input type="text" id="library-link" placeholder="https://ezproxy.example.edu/login?url=" autocomplete="off" spellcheck="false">
-    </div>
-    <div class="row">
-      <button class="btn small" type="button" id="clear-words">Forget remembered title words</button>
-      <label class="check" for="opt-formulas"><input type="checkbox" id="opt-formulas" checked> Format chemical formulas and isotopes in titles (Fe₂O₃, Fe³⁺, ⁴⁰Ar/³⁹Ar)</label>
-    </div>
-    <div class="row">
-      <span>Bookmarklet: drag this to your bookmarks bar, then click it on any journal article page to cite it here.</span>
-      <a class="bookmarklet" id="bookmarklet" href="#">Cite with AutoDOI</a>
-    </div>
-    <div class="row"><span>Link directly to a lookup with <code>?q=</code>, for example <code id="qexample"></code>.</span></div>
-  </details>
 
   </main>
   <footer>
@@ -4939,6 +4942,12 @@
   (function () { var h = (location.hash || '').replace('#', ''); showTab(TABS.indexOf(h) !== -1 ? h : (store.get('tab') || 'export')); })();
 
   /* ---------- settings ---------- */
+  function openSettings(open) {
+    var panel = $('settings-panel'), btn = $('settings-toggle');
+    panel.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  $('settings-toggle').addEventListener('click', function () { openSettings($('settings-panel').hidden); if (!$('settings-panel').hidden) $('polite-email').focus(); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('settings-panel').hidden) { openSettings(false); $('settings-toggle').focus(); } });
   $('polite-email').value = store.get('email') || '';
   $('openalex-key').value = store.get('oakey') || '';
   $('openalex-key').addEventListener('change', function () { store.set('oakey', this.value.trim()); if (this.value.trim()) { oaBlockedUntil = 0; store.set('oaBlocked', '0'); } });
@@ -6399,7 +6408,7 @@
   });
   (function () { var sm = store.get('splitmode'); if (sm && /^(auto|lines|blank|numbered)$/.test(sm)) $('split-mode').value = sm; })();
   $('speed-hint').addEventListener('click', function () {
-    var d = document.querySelector('details.settings'); d.open = true; $('polite-email').focus(); d.scrollIntoView({ block: 'center' });
+    openSettings(true); $('polite-email').focus(); $('settings-panel').scrollIntoView({ block: 'center' });
   });
   $('polite-email').addEventListener('input', function () { if (this.value.trim()) $('speed-hint').hidden = true; });
   $('split-mode').addEventListener('change', function () { store.set('splitmode', this.value); updateSplitPreview(); });
