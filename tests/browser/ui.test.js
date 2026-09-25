@@ -80,10 +80,15 @@ async function mockNetwork(page, base, log) {
       return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message, twin], 'total-results': 2 } });
     }
     if (/doi\.org\//.test(url)) return route.fulfill({ status: 404, contentType: 'text/html', body: 'DOI not found' });
-    var up = url.match(/api\.unpaywall\.org\/v2\/(.+?)\?email=/); // a free copy of the sample paper, from the publisher
-    if (up) return decodeURIComponent(up[1]).toLowerCase() === work.message.DOI.toLowerCase()
-      ? json(route, { doi: work.message.DOI, is_oa: true, best_oa_location: { url: 'https://www.nature.com/articles/nature12373.pdf', url_for_pdf: 'https://www.nature.com/articles/nature12373.pdf', url_for_landing_page: 'https://doi.org/10.1038/nature12373', version: 'publishedVersion', host_type: 'publisher' } })
-      : json(route, { HTTP_status_code: 404, error: true }, 404);
+    var up = url.match(/api\.unpaywall\.org\/v2\/(.+?)\?email=/); // as Unpaywall really answers for the sample paper: a stale unlicensed publisher copy first, a PubMed Central copy after it
+    if (up) {
+      var bronze = { url: 'https://www.nature.com/articles/nature12373.pdf', url_for_pdf: 'https://www.nature.com/articles/nature12373.pdf', url_for_landing_page: 'https://doi.org/10.1038/nature12373', version: 'publishedVersion', host_type: 'publisher', license: null };
+      var pmc = { url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/4221854', url_for_pdf: null, url_for_landing_page: 'https://www.ncbi.nlm.nih.gov/pmc/articles/4221854', version: 'submittedVersion', host_type: 'repository', repository_institution: 'PubMed Central', license: null };
+      var upDoi = decodeURIComponent(up[1]).toLowerCase();
+      if (upDoi === work.message.DOI.toLowerCase()) return json(route, { doi: work.message.DOI, is_oa: true, oa_status: 'bronze', best_oa_location: bronze, oa_locations: [bronze, pmc] });
+      if (upDoi === work.message.DOI.toLowerCase() + '-twin') return json(route, { doi: upDoi, is_oa: true, oa_status: 'bronze', best_oa_location: bronze, oa_locations: [bronze] }); // publisher copy only
+      return json(route, { HTTP_status_code: 404, error: true }, 404);
+    }
     // OpenAlex, Europe PMC, NLM Catalog, Open Library, JabRef lists, other CSL styles: nothing to say
     return json(route, {}, 404);
   });
@@ -153,7 +158,8 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('View article links through doi.org'), (await page.locator('#doi-result a[href="https://doi.org/10.1038/nature12373"]').count()) >= 1);
   await page.waitForSelector('#doi-result a.free', { timeout: 10000 }).catch(function () {});
   var freeLink = page.locator('#doi-result a.free');
-  check(name('a free copy from Unpaywall is offered as a Free PDF button'), (await freeLink.count()) === 1 && (await freeLink.getAttribute('href')) === 'https://www.nature.com/articles/nature12373.pdf' && /Free PDF/.test(await freeLink.textContent()) && /published version/.test(await freeLink.getAttribute('title')), await page.locator('#doi-result .record-head').innerHTML());
+  check(name('the repository copy is offered over the stale publisher one, as an accepted manuscript'), (await freeLink.count()) === 1 && (await freeLink.getAttribute('href')) === 'https://www.ncbi.nlm.nih.gov/pmc/articles/4221854' && /Free copy \(accepted manuscript\)/.test(await freeLink.textContent()) && /PubMed Central/.test(await freeLink.getAttribute('title')), await page.locator('#doi-result .record-head').innerHTML());
+  check(name('no Free PDF button points at the unlicensed publisher copy'), (await page.locator('#doi-result a[href="https://www.nature.com/articles/nature12373.pdf"]').count()) === 0);
   check(name('the free copy was asked of Unpaywall with a contact address'), s.state.requests.some(function (u) { return /api\.unpaywall\.org\/v2\/10\.1038\/nature12373\?email=/.test(u); }), s.state.requests.filter(function (u) { return /unpaywall/.test(u); }).join(', '));
   check(name('no Via library button until a library link is set'), (await page.locator('#doi-result a:has-text("Via library")').count()) === 0);
   await page.locator('details.settings summary').click(); // the field sits in the closed Settings panel
@@ -298,11 +304,15 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('a matched row offers to look for a free copy'), (await rowFree.count()) === 1);
   await rowFree.click();
   await page.waitForSelector('#export-matches .match.good a.free', { timeout: 10000 }).catch(function () {});
-  check(name('the row shows the Free PDF button once found'), (await page.locator('#export-matches .match.good a.free[href="https://www.nature.com/articles/nature12373.pdf"]').count()) === 1, await page.locator('#export-matches .match.good .out').innerHTML());
+  check(name('the row shows the free copy button once found'), (await page.locator('#export-matches .match.good a.free[href="https://www.ncbi.nlm.nih.gov/pmc/articles/4221854"]').count()) === 1, await page.locator('#export-matches .match.good .out').innerHTML());
   var offer = page.locator('#export-matches .match.good .note:has-text("Not this one?") button');
   check(name('a close runner-up is offered on the row'), (await offer.count()) === 1 && /\(II\)/.test(await offer.first().textContent()), await page.locator('#export-matches .match.good').innerHTML());
   await offer.first().click();
   await page.waitForFunction(function () { return /nature12373-twin/.test(document.querySelector('#export-matches .match .out code').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  await page.locator('#export-matches .match button:has-text("Free copy?")').first().click(); // the twin: Unpaywall lists only an unlicensed publisher copy
+  await page.waitForSelector('#export-matches .match a.unsure', { timeout: 10000 }).catch(function () {});
+  var unsure = page.locator('#export-matches .match a.unsure');
+  check(name('a publisher-only unlicensed copy is offered as Maybe free, not Free PDF'), (await unsure.count()) === 1 && /Maybe free/.test(await unsure.textContent()) && /may be paywalled/.test(await unsure.getAttribute('title')) && (await page.locator('#export-matches .match a.free').count()) === 0, await page.locator('#export-matches .match .out').first().innerHTML());
   check(name('choosing the runner-up swaps the record'), /nature12373-twin/.test(await page.locator('#export-matches .match .out code').first().textContent()) && (await page.locator('#export-matches .match .note:has-text("Not this one?")').count()) === 0, await page.locator('#export-matches .match').first().innerHTML());
   await page.evaluate(function () { var s = document.getElementById('case-select'); s.value = 'title'; s.dispatchEvent(new Event('change', { bubbles: true })); }); // the control sits on the DOI tab
   await page.waitForSelector('#export-output details.case-changes', { timeout: 10000 });
