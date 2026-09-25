@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-RW1w/WSALeBUb5CRKyIDgIg1MUvQVshBXVMOjY5WnU8=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-agbZ0ccvl5h9faodjcuB0GjdYe1hVr9xpuSUyqfV5E4=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -211,14 +211,15 @@
   <main>
   <nav role="tablist" aria-label="Mode">
     <button role="tab" id="tab-export" aria-selected="true" aria-controls="panel-export">References → any style</button>
+    <button role="tab" id="tab-find" aria-selected="false" aria-controls="panel-find">Find a DOI</button>
     <button role="tab" id="tab-cite" aria-selected="false" aria-controls="panel-cite">DOI → reference</button>
   </nav>
 
   <!-- ===== 1. References -> any style ===== -->
   <section class="panel" id="panel-export" role="tabpanel" aria-labelledby="tab-export">
-    <p class="lead">Paste one reference, a bare title, or a whole list, in any style and however messy, and get it back clean: as a reference list in APA, Vancouver, Chicago or any of 10,000 journal styles, or as <strong>.enw</strong>, <strong>.ris</strong> or BibTeX for EndNote, Zotero and Mendeley. Each reference is matched against Crossref (with OpenAlex as a second opinion) and graded green, amber or red so you can see what to check; anything unmatched is kept exactly as you pasted it. You can also drop a .ris, .enw or .bib file, which is read directly with no lookup and re-exported in any style.</p>
+    <p class="lead">Paste one reference or a whole list, in any style and however messy, and get it back clean: as a reference list in APA, Vancouver, Chicago or any of 10,000 journal styles, or as <strong>.enw</strong>, <strong>.ris</strong> or BibTeX for EndNote, Zotero and Mendeley. Each reference is matched against Crossref (with OpenAlex as a second opinion) and graded green, amber or red so you can see what to check; anything unmatched is kept exactly as you pasted it. You can also drop a .ris, .enw or .bib file, which is read directly with no lookup and re-exported in any style.</p>
     <form id="form-export">
-      <textarea id="export-input" aria-label="References or file contents" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Vaswani A, et al. Attention is all you need. NeurIPS 2017.&#10;Deep learning, Nature"></textarea>
+      <textarea id="export-input" aria-label="References or file contents" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Vaswani A, et al. Attention is all you need. NeurIPS 2017."></textarea>
       <div class="split-bar">
         <span id="split-count" role="status" aria-live="polite"></span>
         <label class="check" for="split-mode">Layout
@@ -243,6 +244,20 @@
     <p class="status" id="oa-notice" hidden>OpenAlex's free daily search allowance for your network is used up, so references are matched with Crossref only until midnight UTC. A free OpenAlex API key in Settings gives you your own allowance.</p>
     <div class="matches" id="export-matches"></div>
     <div id="export-output"></div>
+  </section>
+
+  <!-- ===== 2. Find a DOI ===== -->
+  <section class="panel" id="panel-find" role="tabpanel" aria-labelledby="tab-find" hidden>
+    <p class="lead">Paste a paper title and, if you have it, the journal name. The best matches come back with their DOIs; pick one to format it.</p>
+    <form class="bar two" id="form-find">
+      <div><label class="field" for="find-title">Title</label>
+        <input type="text" id="find-title" placeholder="Nanometre-scale thermometry in a living cell" autocomplete="off"></div>
+      <div><label class="field" for="find-journal">Journal (optional)</label>
+        <input type="text" id="find-journal" placeholder="Nature" autocomplete="off"></div>
+      <div><span class="field" aria-hidden="true">&nbsp;</span><button class="btn primary" type="submit" id="find-go">Search</button></div>
+    </form>
+    <p class="status" id="find-status" role="status" aria-live="polite"></p>
+    <div class="results" id="find-results"></div>
   </section>
 
   <!-- ===== 3. DOI -> reference ===== -->
@@ -4884,7 +4899,7 @@
   });
 
   /* ---------- tabs ---------- */
-  var TABS = ['export', 'cite']; // in the order the tabs are shown: References → any style first
+  var TABS = ['export', 'find', 'cite']; // in the order the tabs are shown: References → any style first
   function showTab(name) {
     if (TABS.indexOf(name) === -1) name = 'cite';
     TABS.forEach(function (t) {
@@ -4895,19 +4910,22 @@
     store.set('tab', name);
     carryRecord(name);
   }
-  // The record you are working with follows you: a looked-up DOI fills the References box when it is empty (once per
-  // record; the text is selected on focus, so typing or pasting replaces it), and a matched row replaces the example on
-  // the DOI tab.  A DOI you looked up yourself is never replaced unless you press Format.
+  // The record you are working with follows you: a looked-up DOI fills the Find fields and the References box when they
+  // are empty (once per record; the text is selected on focus, so typing or pasting replaces it), and a hit or a matched
+  // row replaces the example on the DOI tab.  A DOI you looked up yourself is never replaced unless you press Format.
   var carried = {};
   function carryRecord(tab) {
     var r = currentRecord; if (!r || currentSource === 'sample' || currentSource === 'none') return;
     var key = r.doi || r.isbn || r.title || '';
+    if (tab === 'find' && !$('find-title').value.trim() && !$('find-journal').value.trim() && carried.find !== key && r.title) {
+      carried.find = key; prefill($('find-title'), A.stripTags(A.titleHtml(r))); prefill($('find-journal'), r.container || '');
+    }
     if (tab === 'export' && currentSource !== 'batch' && !$('export-input').value.trim() && carried.export !== key && r.doi) {
       carried.export = key; prefill($('export-input'), r.doi); updateSplitPreview();
     }
   }
   function prefill(input, text) { input.value = text; input.dataset.prefill = text; }
-  ['export-input'].forEach(function (id) {
+  ['find-title', 'find-journal', 'export-input'].forEach(function (id) {
     $(id).addEventListener('focus', function () { if (this.value && this.value === this.dataset.prefill) this.select(); });
   });
   TABS.forEach(function (t, i) {
@@ -5851,8 +5869,8 @@
 
   /* ---------- 1. DOI -> reference ---------- */
   var currentRecord = null, currentChip = null;
-  var currentSource = 'sample'; // 'sample', 'lookup' (typed or pasted), 'batch' (a matched row) or 'none' (cleared)
-  function adoptRecord(r, source, chip, force) { // a matched row takes the DOI tab, unless a DOI you looked up is there
+  var currentSource = 'sample'; // 'sample', 'lookup' (typed or pasted), 'find' (a hit), 'batch' (a matched row) or 'none' (cleared)
+  function adoptRecord(r, source, chip, force) { // a hit or a row takes the DOI tab, unless a DOI you looked up is there
     if (!force && currentSource === 'lookup') return false;
     lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = r.doi || r.isbn || ''; $('doi-status').textContent = ''; $('doi-status').className = 'status';
     currentSource = source; showCitation(r, chip); setUrl(r.doi || r.isbn || '');
@@ -5988,6 +6006,61 @@
   }
   $('form-cite').addEventListener('submit', function (ev) { ev.preventDefault(); lookup($('doi-input').value); });
   $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.toDoi($('doi-input').value) || A.extractPmid($('doi-input').value)) lookup($('doi-input').value); }, 0); });
+
+  /* ---------- 2. Find a DOI ---------- */
+  $('form-find').addEventListener('submit', async function (ev) {
+    ev.preventDefault();
+    var title = $('find-title').value.trim(), journal = $('find-journal').value.trim();
+    var status = $('find-status'), list = $('find-results');
+    status.className = 'status'; list.innerHTML = '';
+    if (!title) { status.textContent = 'Enter a title to search for.'; status.className = 'status err'; return; }
+    status.textContent = 'Searching Crossref…'; $('find-go').disabled = true;
+    try {
+      var hits = await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6);
+      var viaOA = false;
+      hits = hits.filter(function (r) { return r.title; });
+      // Short or common titles ("Deep learning") drown in relevance ranking: ask again, most-cited first, and keep exact titles only
+      if (!hits.some(function (r) { return titleSimilarity(title, r.title) >= 0.95; })) {
+        try {
+          var extra = { 'query.bibliographic': title, sort: 'is-referenced-by-count', order: 'desc' };
+          if (journal) extra.filter = 'container-title:' + journal.replace(/,/g, ' ').replace(/\s+/g, ' ').trim(); // commas separate Crossref filters
+          var cited = (await search(extra, 20)).filter(function (r) { return r.title && titleSimilarity(title, r.title) >= 0.95; });
+          var seenD = {}; hits.forEach(function (r) { seenD[(r.doi || '').toLowerCase()] = 1; });
+          hits = cited.filter(function (r) { return !seenD[(r.doi || '').toLowerCase()]; }).slice(0, 3).concat(hits);
+        } catch (e) { /* keep the first results */ }
+      }
+      if (!hits.length || Math.max.apply(null, hits.map(function (r) { return titleSimilarity(title, r.title); })) < 0.8) {
+        try { var oa = (await openAlexSearch(title + (journal ? ' ' + journal : ''), 5)).filter(function (r) { return r.title; }); if (oa.length) { hits = hits.concat(oa); viaOA = true; } } catch (e) { /* Crossref results only */ }
+      }
+      if (!hits.length) { status.textContent = 'No matches at Crossref or OpenAlex. Try fewer words from the title.'; return; }
+      if (Math.max.apply(null, hits.map(function (r) { return titleSimilarity(title, r.title); })) < 0.6) status.className = 'status err';
+      status.textContent = hits.length + ' best matches, most likely first' + (viaOA ? ' (Crossref and OpenAlex)' : '') + '.';
+      hits.forEach(function (r) { r.conf = titleSimilarity(title, r.title); });
+      hits.sort(function (a, b) { return b.conf - a.conf; });
+      if (hits[0].conf >= 0.95) adoptRecord(hits[0], 'find', el('span', 'chip good', 'Found by title'));
+      hits.forEach(function (r) {
+        var conf = r.conf;
+        var h = el('div', 'hit');
+        var left = el('div');
+        var tdiv = el('div', 't');
+        var tl = outLink(r, 'title-link', r.title || '(untitled)'); tdiv.appendChild(tl || document.createTextNode(r.title || '(untitled)'));
+        left.appendChild(tdiv);
+        var m = el('div', 'm');
+        m.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + ' · '));
+        m.appendChild(el('code', '', r.doi));
+        left.appendChild(m);
+        h.appendChild(left);
+        var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.flexWrap = 'wrap';
+        act.appendChild(el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : 'Weak'));
+        act.appendChild(paperLinks(r));
+        act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
+        act.appendChild(button('Format', 'primary', function () { formatHere(r, 'find'); }));
+        h.appendChild(act);
+        list.appendChild(h);
+      });
+    } catch (e) { showError(status, 'find', e); }
+    finally { $('find-go').disabled = false; }
+  });
 
   /* ---------- 3. References -> any style ---------- */
   // Lines that are nothing but an identifier are always their own reference
@@ -6181,34 +6254,18 @@
     var isbn = A.extractIsbn(String(refText).replace(/10\.\d{4,9}\/\S+/g, ' ')); // an ISBN inside a chapter DOI (10.1007/978-…) is not the book being cited
     if (isbn) { try { var b = await lookupIsbn(isbn); return { record: b, conf: 1, via: 'isbn' }; } catch (e) { /* search */ } }
     var best = null, bestConf = 0, via = 'search', seen = [];
-    // A bare title ("Deep learning", "Nanometre-scale thermometry in a living cell, Nature") has no author or year to grade
-    // by, so it is graded by the title alone, both ways: every word of the record's title in the text and every word of
-    // the text in the title, a trailing ", Journal" allowed.  A longer title that merely contains the words stays amber.
-    var bareText = String(refText).trim(), bare = !/\b(1[5-9]|20)\d{2}\b/.test(bareText) && bareText.length < 160;
-    var bareHead = bare ? bareText.replace(/,\s*[^,]{2,40}$/, '') : bareText; // "…, Nature" → the title
-    var bareConf = function (h) {
-      if (!bare || !h.title) return 0;
-      var sim = Math.max(titleSimilarity(bareText, h.title), titleSimilarity(bareHead, h.title));
-      return Math.min(sim, A.matchConfidence(bareText, h, { titleOnly: true }));
-    };
     var pick = function (hits) {
-      hits.forEach(function (h) { var c = Math.max(A.matchConfidence(refText, h), bareConf(h)); seen.push({ h: h, c: c }); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
+      hits.forEach(function (h) { var c = A.matchConfidence(refText, h); seen.push({ h: h, c: c }); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
     };
-    // Runners-up are offered on the row ("Not this one?").  On a good row only a near tie: an erratum and its paper, a
-    // preprint and its journal version, the same title in a journal and in proceedings.  On a row to check, or with no good
-    // match, every candidate that scored at all, so a half-remembered title still gets a list to choose from.
-    var runnersUp = function (loose) {
-      var key = function (r) { return (r.doi || r.title || '').toLowerCase(); }, keys = {}, out = [];
-      seen.filter(function (x) { return best && x.h !== best && key(x.h) !== key(best) && (loose ? x.c >= 0.25 : (x.c >= 0.5 && bestConf - x.c < 0.15)); })
-        .sort(function (a, b) { return b.c - a.c; })
-        .forEach(function (x) { var k = key(x.h); if (!keys[k]) { keys[k] = 1; out.push({ record: x.h, conf: x.c }); } });
-      return out.slice(0, 4);
+    // a runner-up that scores nearly as well as the winner is offered on the row ("Not this one?"): an erratum and its paper,
+    // a preprint and its journal version, the same title in a journal and in proceedings
+    var runnerUp = function () {
+      var key = function (r) { return (r.doi || r.title || '').toLowerCase(); };
+      var alts = seen.filter(function (x) { return best && x.h !== best && key(x.h) !== key(best) && x.c >= 0.5 && bestConf - x.c < 0.15; }).sort(function (a, b) { return b.c - a.c; });
+      return alts.length ? { record: alts[0].h, conf: alts[0].c } : null;
     };
     var errors = [];
-    try { pick(await search({ 'query.bibliographic': refText }, bare ? 6 : 3)); } catch (e) { errors.push('Crossref: ' + e.message); }
-    if (bare && (!best || bestConf < 0.8)) { // short or common titles ("Deep learning") drown in relevance ranking: ask again most-cited first, exact titles only
-      try { pick((await search({ 'query.bibliographic': bareHead, sort: 'is-referenced-by-count', order: 'desc' }, 10)).filter(function (h) { return h.title && titleSimilarity(bareHead, h.title) >= 0.9; })); } catch (e) { /* keep the first results */ }
-    }
+    try { pick(await search({ 'query.bibliographic': refText }, 3)); } catch (e) { errors.push('Crossref: ' + e.message); }
     if (!best || bestConf < 0.5) { // second opinion from OpenAlex
       try {
         var oa = await openAlexSearch(refText, 3), before = bestConf;
@@ -6223,7 +6280,7 @@
       if (errors.length === 2) throw new Error('Both lookups failed (' + errors.join('; ') + '). Wait a moment and use the fix box.');
       return { record: null, conf: 0 };
     }
-    return { record: best, conf: bestConf, via: via, alts: runnersUp(false), more: runnersUp(true) };
+    return { record: best, conf: bestConf, via: via, alt: runnerUp() };
   }
 
   var P = window.AutoDOIParsers;
@@ -6505,20 +6562,17 @@
       });
       return n;
     }
-    // "Not this one?": the other candidates the matcher scored, each one click away
-    function offerAlternatives(row, raw, alts) {
-      var line = el('div', 'note candidates'); line.style.marginTop = '6px';
-      line.appendChild(document.createTextNode(alts.length > 1 ? 'Not this one? Other candidates: ' : 'Not this one? '));
-      alts.forEach(function (alt) {
-        var r = alt.record;
-        var b = button((r.title || '(untitled)').slice(0, 90) + (r.title && r.title.length > 90 ? '…' : '') + (r.year ? ' (' + r.year + ')' : '') + (r.container ? ', ' + r.container : ''), '', function () {
-          var conf = A.matchConfidence(raw, r), clash = yearConflict(raw, r);
-          setRow(row, r, clash ? 'bad' : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad', clash ? 'year' : 'search');
-          line.remove(); build();
-        });
-        b.title = 'Use this record instead' + (r.doi ? ': ' + r.doi : '');
-        line.appendChild(b);
+    // "Not this one?": a runner-up the matcher scored nearly as well, one click away
+    function offerAlternative(row, raw, alt) {
+      var r = alt.record, line = el('div', 'note'); line.style.marginTop = '6px';
+      line.appendChild(document.createTextNode('Not this one? '));
+      var b = button((r.title || '(untitled)').slice(0, 90) + (r.title && r.title.length > 90 ? '…' : '') + (r.year ? ' (' + r.year + ')' : '') + (r.container ? ', ' + r.container : ''), '', function () {
+        var conf = A.matchConfidence(raw, r), clash = yearConflict(raw, r);
+        setRow(row, r, clash ? 'bad' : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad', clash ? 'year' : 'search');
+        line.remove(); build();
       });
+      b.title = 'Use this record instead' + (r.doi ? ': ' + r.doi : '');
+      line.appendChild(b);
       row.out.appendChild(line);
     }
     function recordWords(rec) {
@@ -6624,7 +6678,6 @@
       var dl = (rec.doi || rec.isbn) ? outLink(rec, 'doi-link', '') : null;
       if (dl) { dl.appendChild(el('code', '', rec.doi || rec.isbn)); o.appendChild(dl); } else o.appendChild(el('code', '', ''));
       o.appendChild(paperLinks(rec));
-      if (rec.doi) o.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, rec.doi); }));
       var fmt = button('Format', '', function () { formatHere(rec, 'batch'); }); fmt.title = 'Show this record on the DOI tab, in every style'; o.appendChild(fmt);
       row.dupChip = el('span', 'chip warn', ''); row.dupChip.hidden = true; row.dupChip.title = 'Same record as an earlier ticked line; left out of the export';
       o.appendChild(row.dupChip);
@@ -6724,7 +6777,7 @@
             if (rest.length >= 40 && (yearConflict(rest, res.record) || A.matchConfidence(rest, res.record, { titleOnly: true }) < 0.4)) { level = 'warn'; via = 'doicheck'; }
           }
           setRow(row, res.record, level, via);
-          var cands = level === 'good' ? res.alts : res.more; if (cands && cands.length && !direct) offerAlternatives(row, it.text, cands);
+          if (res.alt && !direct) offerAlternative(row, it.text, res.alt);
           if (looksMerged(it.text)) { // never lose a reference silently
             var mc = el('span', 'chip warn', 'May be two references'); mc.title = 'This line seems to contain two references. Put each on its own line (or separate them with a blank line) and run again.';
             row.out.insertBefore(mc, row.out.children[1] || null);

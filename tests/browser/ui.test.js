@@ -77,9 +77,7 @@ async function mockNetwork(page, base, log) {
     }
     if (/api\.crossref\.org\/works\?/.test(url)) { // a twin with the same title and another DOI: the runner-up the row offers
       var twin = JSON.parse(JSON.stringify(work.message)); twin.DOI = '10.1038/nature12373-twin'; twin.title = [twin.title[0] + ' (II)']; twin.URL = 'https://doi.org/10.1038/nature12373-twin';
-      var third = JSON.parse(JSON.stringify(work.message)); third.DOI = '10.1038/nature12373-third'; third.URL = 'https://doi.org/10.1038/nature12373-third'; // the same title a year later: a near tie too
-      ['issued', 'published-print', 'published-online', 'created', 'published'].forEach(function (k) { if (third[k] && third[k]['date-parts']) third[k]['date-parts'] = [[2014, 7, 31]]; });
-      return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message, twin, third], 'total-results': 3 } });
+      return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message, twin], 'total-results': 2 } });
     }
     if (/doi\.org\//.test(url)) return route.fulfill({ status: 404, contentType: 'text/html', body: 'DOI not found' });
     var up = url.match(/api\.unpaywall\.org\/v2\/(.+?)\?email=/); // as Unpaywall really answers for the sample paper: a stale unlicensed publisher copy first, a PubMed Central copy after it
@@ -136,12 +134,9 @@ async function runFlows(browser, base, dark, cslReady) {
   await axeCheck('References tab at rest');
 
   // 2. Tabs: mouse, keyboard, aria state, persistence
-  check(name('only two tabs remain'), (await page.locator('nav[role=tablist] button').count()) === 2 && (await page.locator('#tab-find').count()) === 0);
-  await page.click('#tab-cite');
-  check(name('click selects the DOI tab'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && await page.isHidden('#panel-export') && await page.isVisible('#panel-cite'));
-  await page.focus('#tab-cite'); await page.keyboard.press('ArrowLeft');
-  check(name('ArrowLeft moves to the References tab and focuses it'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && (await page.evaluate(function () { return document.activeElement.id; })) === 'tab-export');
-  await page.keyboard.press('ArrowRight');
+  await page.click('#tab-find');
+  check(name('click selects Find tab'), (await page.getAttribute('#tab-find', 'aria-selected')) === 'true' && await page.isHidden('#panel-cite') && await page.isVisible('#panel-find'));
+  await page.focus('#tab-find'); await page.keyboard.press('ArrowRight');
   check(name('ArrowRight moves to the DOI tab and focuses it'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.evaluate(function () { return document.activeElement.id; })) === 'tab-cite');
   await page.keyboard.press('Home');
   check(name('Home returns to the first tab, References'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true');
@@ -150,6 +145,7 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.reload({ waitUntil: 'load' });
   check(name('selected tab survives a reload'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && await page.isVisible('#panel-cite'));
   await axeCheck('DOI tab at rest');
+  await page.click('#tab-find'); await axeCheck('Find tab empty');
   await page.locator('details.settings summary').click(); await axeCheck('Settings open'); await page.locator('details.settings summary').click();
 
   // 3. DOI lookup through the form
@@ -184,16 +180,19 @@ async function runFlows(browser, base, dark, cslReady) {
   await axeCheck('DOI tab with a result');
 
   // The looked-up record follows you to the other tabs' empty fields
+  await page.click('#tab-find');
+  check(name('Find fields are prefilled from the looked-up record'), (await page.inputValue('#find-title')) === 'Nanometre-scale thermometry in a living cell' && (await page.inputValue('#find-journal')) === 'Nature', (await page.inputValue('#find-title')) + ' / ' + (await page.inputValue('#find-journal')));
+  await page.focus('#find-title');
+  check(name('focusing a prefilled field selects it, so typing replaces it'), await page.evaluate(function () { var i = document.getElementById('find-title'); return i.selectionStart === 0 && i.selectionEnd === i.value.length; }));
   await page.click('#tab-export');
   check(name('the References box is prefilled with the DOI'), (await page.inputValue('#export-input')) === '10.1038/nature12373', await page.inputValue('#export-input'));
-  await page.focus('#export-input');
-  check(name('focusing the prefilled box selects it, so typing replaces it'), await page.evaluate(function () { var i = document.getElementById('export-input'); return i.selectionStart === 0 && i.selectionEnd === i.value.length; }));
   await page.waitForFunction(function () { return /1 reference/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
   check(name('the prefilled DOI counts as one reference'), /1 reference/.test(await textOf('#split-count')), await textOf('#split-count'));
   await page.fill('#export-input', '');
+  await page.click('#tab-find'); await page.fill('#find-title', ''); await page.fill('#find-journal', '');
   await page.click('#tab-cite');
-  await page.click('#tab-export');
-  check(name('a cleared box is not prefilled again for the same record'), (await page.inputValue('#export-input')) === '', await page.inputValue('#export-input'));
+  await page.click('#tab-find');
+  check(name('a cleared field is not prefilled again for the same record'), (await page.inputValue('#find-title')) === '', await page.inputValue('#find-title'));
   await page.click('#tab-cite');
 
   // Single-style mode and copy
@@ -267,20 +266,17 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('error path leaves no unhandled page errors'), s.state.errors.length === 0, s.state.errors.join(' | '));
   await axeCheck('DOI tab with an error');
 
-  // 7. A bare title on the References tab: matched, DOI copied, candidates listed, Format
-  await page.click('#tab-export');
-  await page.selectOption('#split-mode', 'lines');
-  await page.fill('#export-input', 'Nanometre-scale thermometry in a living cell, Nature');
-  await page.click('#export-go');
-  await page.waitForFunction(function () { return !document.querySelector('#export-go').disabled && document.querySelector('#export-matches .match .out code'); }, null, { timeout: 30000 });
-  check(name('a bare title matches its record'), /10\.1038\/nature12373/.test(await page.locator('#export-matches .match .out code').first().textContent()) && (await page.locator('#export-matches .match.good').count()) === 1, await textOf('#export-status'));
-  check(name('a bare title that matched well is not searched a second time'), !s.state.requests.some(function (u) { return /api\.crossref\.org\/works\?.*sort=is-referenced-by-count/.test(u); }), s.state.requests.filter(function (u) { return /sort=/.test(u); }).join(', '));
-  await page.locator('#export-matches .match button:has-text("Copy DOI")').first().click();
-  check(name('Copy DOI puts the DOI on the clipboard'), (await page.evaluate(function () { return navigator.clipboard.readText(); })) === '10.1038/nature12373');
-  var cands = page.locator('#export-matches .match .candidates button');
-  check(name('the other candidates are listed on the row'), (await cands.count()) === 2 && (await cands.allTextContents()).some(function (t) { return /\(II\)/.test(t); }) && (await cands.allTextContents()).some(function (t) { return /\(2014\)/.test(t); }), (await cands.allTextContents()).join(' | '));
-  await axeCheck('References tab with a bare-title match');
-  await page.locator('#export-matches .match button:has-text("Format")').first().click();
+  // 7. Find a DOI, then Format
+  await page.click('#tab-find');
+  await page.fill('#find-title', 'Nanometre-scale thermometry in a living cell');
+  await page.fill('#find-journal', 'Nature');
+  await page.click('#find-go');
+  await page.waitForSelector('#find-results .hit', { timeout: 15000 });
+  check(name('find shows a hit with a Title match chip'), /Title match/.test(await page.locator('#find-results .hit').first().textContent()));
+  check(name('find hit shows the DOI'), /10\.1038\/nature12373/.test(await textOf('#find-results')));
+  check(name('the top hit replaces the example on the DOI tab'), (await page.locator('#doi-result .chip:has-text("Found by title")').count()) === 1 && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /[?&]q=10\.1038/.test(page.url()), page.url());
+  await axeCheck('Find tab with results');
+  await page.locator('#find-results .hit button:has-text("Format")').first().click();
   check(name('Format jumps to the DOI tab with the record'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /Kucsko/.test(await textOf('#doi-result')));
 
   // 8. Reference matching and export
@@ -312,8 +308,8 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForSelector('#export-matches .match.good a.free', { timeout: 10000 }).catch(function () {});
   check(name('the row shows the free copy button once found'), (await page.locator('#export-matches .match.good a.free[href="https://www.ncbi.nlm.nih.gov/pmc/articles/4221854"]').count()) === 1, await page.locator('#export-matches .match.good .out').innerHTML());
   var offer = page.locator('#export-matches .match.good .note:has-text("Not this one?") button');
-  check(name('close runners-up are offered on the row'), (await offer.count()) === 2 && (await offer.allTextContents()).some(function (t) { return /\(II\)/.test(t); }), 'offered ' + (await offer.count()) + ': ' + (await offer.allTextContents()).join(' | ') + ' // ' + (await page.locator('#export-matches .match.good .note').allTextContents()).join(' || '));
-  await offer.filter({ hasText: '(II)' }).first().click();
+  check(name('a close runner-up is offered on the row'), (await offer.count()) === 1 && /\(II\)/.test(await offer.first().textContent()), await page.locator('#export-matches .match.good').innerHTML());
+  await offer.first().click();
   await page.waitForFunction(function () { return /nature12373-twin/.test(document.querySelector('#export-matches .match .out code').textContent); }, null, { timeout: 5000 }).catch(function () {});
   await page.locator('#export-matches .match button:has-text("Free copy?")').first().click(); // the twin: Unpaywall lists only an unlicensed publisher copy
   await page.waitForSelector('#export-matches .match a.unsure', { timeout: 10000 }).catch(function () {});
@@ -443,6 +439,7 @@ async function mobileFlows(browser, base) {
   await fits('References tab at rest');
   var tabsRight = await page.evaluate(function () { return Math.round(document.querySelector('[role=tablist]').getBoundingClientRect().right); });
   check(name('tab strip fits the screen'), tabsRight <= DEVICE_W, tabsRight + 'px');
+  await page.tap('#tab-find'); await fits('Find tab');
   await page.tap('#tab-export'); await fits('Export tab');
   await page.tap('#tab-cite');
   await page.fill('#doi-input', '10.1038/nature12373'); await page.tap('#doi-go');
