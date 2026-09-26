@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-+xZo/6d6p782Dyc+nW8TZWW7MZZLLIXybJFSEXZJQo0=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-4DZcGFT00yCvheNZgw//CmYjVuloL25kDOXtcbUNVEs=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -234,6 +234,10 @@
     <div class="row">
       <label for="library-link">Library link (optional): your library's proxy prefix, e.g. <code>https://ezproxy.example.edu/login?url=</code>, or a template with <code>{doi}</code> or <code>{url}</code>. Adds a "Via library" button beside each record that opens the paper through your subscription. Stays in this browser.</label>
       <input type="text" id="library-link" placeholder="https://ezproxy.example.edu/login?url=" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="row">
+      <label for="csl-locale">Language of journal styles: the terms a style prints ("and", "edited by", "retrieved", month names) in the 10,000 journal styles; the built-in APA, MLA, Chicago, Harvard, Vancouver and IEEE stay English</label>
+      <select id="csl-locale" aria-label="Language of journal styles"></select>
     </div>
     <div class="row">
       <button class="btn small" type="button" id="clear-words">Forget remembered title words</button>
@@ -5496,7 +5500,15 @@
   var CSL_STYLES_COMMIT = '8947960dc3c5133a873d77342c77c67300a2bc18'; // citation-style-language/styles, 2026-09-23
   var CSL_LOCALES_COMMIT = 'a89adece41013402236e2c9020972d7e931fbab8'; // citation-style-language/locales, 2026-09-10
   var CSL_REPO = 'https://raw.githubusercontent.com/citation-style-language/styles/' + CSL_STYLES_COMMIT + '/';
-  var CSL_LOCALE = 'https://raw.githubusercontent.com/citation-style-language/locales/' + CSL_LOCALES_COMMIT + '/locales-en-US.xml';
+  var CSL_LOCALE_BASE = 'https://raw.githubusercontent.com/citation-style-language/locales/' + CSL_LOCALES_COMMIT + '/locales-';
+  var CSL_LOCALE = CSL_LOCALE_BASE + 'en-US.xml';
+  // The locales the CSL project publishes at the pinned commit, as the Settings menu offers them; en-US is the fallback citeproc gets for anything else
+  var CSL_LOCALES = [['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['af-ZA', 'Afrikaans'], ['ar', 'Arabic'], ['bg-BG', 'Bulgarian'], ['ca-AD', 'Catalan'], ['zh-CN', 'Chinese (simplified)'], ['zh-TW', 'Chinese (traditional)'],
+    ['hr-HR', 'Croatian'], ['cs-CZ', 'Czech'], ['da-DK', 'Danish'], ['nl-NL', 'Dutch'], ['et-EE', 'Estonian'], ['fi-FI', 'Finnish'], ['fr-FR', 'French'], ['fr-CA', 'French (Canada)'], ['de-DE', 'German'], ['de-AT', 'German (Austria)'], ['de-CH', 'German (Switzerland)'],
+    ['el-GR', 'Greek'], ['he-IL', 'Hebrew'], ['hi-IN', 'Hindi'], ['hu-HU', 'Hungarian'], ['is-IS', 'Icelandic'], ['id-ID', 'Indonesian'], ['it-IT', 'Italian'], ['ja-JP', 'Japanese'], ['ko-KR', 'Korean'], ['la', 'Latin'], ['lv-LV', 'Latvian'], ['lt-LT', 'Lithuanian'],
+    ['nb-NO', 'Norwegian (bokmål)'], ['nn-NO', 'Norwegian (nynorsk)'], ['fa-IR', 'Persian'], ['pl-PL', 'Polish'], ['pt-PT', 'Portuguese'], ['pt-BR', 'Portuguese (Brazil)'], ['ro-RO', 'Romanian'], ['ru-RU', 'Russian'], ['sr-Cyrl-RS', 'Serbian (Cyrillic)'], ['sr-Latn-RS', 'Serbian (Latin)'],
+    ['sk-SK', 'Slovak'], ['sl-SI', 'Slovenian'], ['es-ES', 'Spanish'], ['es-CL', 'Spanish (Chile)'], ['es-MX', 'Spanish (Mexico)'], ['sv-SE', 'Swedish'], ['th-TH', 'Thai'], ['tr-TR', 'Turkish'], ['uk-UA', 'Ukrainian'], ['vi-VN', 'Vietnamese'], ['cy-GB', 'Welsh']];
+  function localeCode() { var v = store.get('locale') || 'en-US'; return CSL_LOCALES.some(function (l) { return l[0] === v; }) ? v : 'en-US'; }
   var CITEPROC = 'https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js';
 
   async function fetchText(url) { var res = await fetch(url); if (!res.ok) throw new Error('Could not load ' + url.split('/').pop() + ' (' + res.status + ')'); return res.text(); }
@@ -5589,9 +5601,16 @@
     }
     csl.xml[name] = xml; return xml;
   }
-  async function getLocale() {
-    if (!csl.locale) { var t = await fetchText(CSL_LOCALE); if (!/<locale[\s>]/.test(t)) throw new Error('The citation locale file looked wrong; try again later.'); csl.locale = t; }
-    return csl.locale;
+  async function getLocale(code) {
+    code = code || 'en-US'; csl.locales = csl.locales || {};
+    if (!csl.locales[code]) { var t = await fetchText(code === 'en-US' ? CSL_LOCALE : CSL_LOCALE_BASE + code + '.xml'); if (!/<locale[\s>]/.test(t)) throw new Error('The citation locale file looked wrong; try again later.'); csl.locales[code] = t; }
+    if (code === 'en-US') csl.locale = t || csl.locales[code];
+    return csl.locales[code];
+  }
+  function localeFor(lang) { // what citeproc asks for: the chosen locale, a sibling of the same language, or en-US
+    var ls = csl.locales || {}; if (ls[lang]) return ls[lang];
+    var base = String(lang || '').split('-')[0], k = Object.keys(ls).filter(function (x) { return x.split('-')[0] === base; })[0];
+    return k ? ls[k] : ls['en-US'];
   }
 
   var CSL_TYPES = { journal: 'article-journal', chapter: 'chapter', book: 'book', proceedings: 'paper-conference', preprint: 'article',
@@ -5627,14 +5646,15 @@
     return d.textContent;
   }
   async function cslRender(style, records, opts) {
-    await Promise.all([ensureCiteproc(), getLocale(), getStyleXml(style.name, 0, style.dep === undefined ? false : !!style.dep)]);
+    var lang = localeCode();
+    await Promise.all([ensureCiteproc(), getLocale('en-US'), lang === 'en-US' ? null : getLocale(lang), getStyleXml(style.name, 0, style.dep === undefined ? false : !!style.dep)]);
     if (style.title === style.name) { // came from a ?style= link: pick up the real title and remember it
       var tm = ((csl.own && csl.own[style.name]) || csl.xml[style.name]).match(/<title>([^<]+)<\/title>/);
       if (tm) { style.title = htmlToText(tm[1]).trim(); if (styleState.csl && styleState.csl.name === style.name) setStyle('csl', style); }
     }
     var items = {}, ids = [];
     records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1)); items[it.id] = it; ids.push(it.id); });
-    var eng = new window.CSL.Engine({ retrieveLocale: function () { return csl.locale; }, retrieveItem: function (id) { return items[id]; } }, csl.xml[style.name]);
+    var eng = new window.CSL.Engine({ retrieveLocale: localeFor, retrieveItem: function (id) { return items[id]; } }, csl.xml[style.name], lang, true); // the chosen language overrides the style's default
     eng.updateItems(ids);
     var bib = eng.makeBibliography();
     var entries = ((bib && bib[1]) || []).map(cslEntryHtml);
@@ -5645,7 +5665,7 @@
     if (broken.some(Boolean)) {
       var items2 = {};
       records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1), true); items2[it.id] = it; });
-      var eng2 = new window.CSL.Engine({ retrieveLocale: function () { return csl.locale; }, retrieveItem: function (id) { return items2[id]; } }, csl.xml[style.name]);
+      var eng2 = new window.CSL.Engine({ retrieveLocale: localeFor, retrieveItem: function (id) { return items2[id]; } }, csl.xml[style.name], lang, true);
       eng2.updateItems(ids);
       var bib2 = eng2.makeBibliography();
       if (bib2 && bib2[1]) entries = entries.map(function (e, i) { return broken[i] && bib2[1][i] ? cslEntryHtml(bib2[1][i]) : e; });
@@ -6357,6 +6377,12 @@
       if (seq === lookupSeq) { clearResult(); showError(status, 'lookup', e, doi || ''); }
     } finally { if (seq === lookupSeq) $('doi-go').disabled = false; }
   }
+  (function () { // the language menu: remembered, and the journal-style renderings redraw on a change
+    var sel = $('csl-locale');
+    CSL_LOCALES.forEach(function (l) { var o = document.createElement('option'); o.value = l[0]; o.textContent = l[1] + ' · ' + l[0]; sel.appendChild(o); });
+    sel.value = localeCode();
+    sel.addEventListener('change', function () { store.set('locale', sel.value); if (currentRecord) showCitation(currentRecord, currentChip); if (rebuildBatch) rebuildBatch(); });
+  })();
   $('cite-by-hand').addEventListener('click', function () { // a blank record with the form open: nothing is looked up
     var blank = A.normalize({ type: 'webpage', title: [''] }); blank.editOpen = true; editHook = null;
     lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = ''; $('doi-status').textContent = ''; $('doi-status').className = 'status';

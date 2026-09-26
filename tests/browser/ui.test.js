@@ -40,9 +40,11 @@ var LOCALES_SHA = (html.match(/CSL_LOCALES_COMMIT = '([0-9a-f]{40})'/) || [])[1]
 var STYLE_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/nature.csl';
 var LOCALE_URL = 'https://raw.githubusercontent.com/citation-style-language/locales/' + LOCALES_SHA + '/locales-en-US.xml';
 var DEP_STYLE_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/dependent/nature-geoscience.csl'; // dependent style: rendered with nature.csl as parent
+var HARVARD_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/harvard-cite-them-right.csl'; // a style whose terms ("pp.", "Available at") show the locale
+var LOCALE_DE_URL = 'https://raw.githubusercontent.com/citation-style-language/locales/' + LOCALES_SHA + '/locales-de-DE.xml';
 var upstream = {}; // url -> body
 async function loadUpstream() {
-  var want = { citeproc: CITEPROC_URL, style: STYLE_URL, dependent: DEP_STYLE_URL, locale: LOCALE_URL };
+  var want = { citeproc: CITEPROC_URL, style: STYLE_URL, dependent: DEP_STYLE_URL, locale: LOCALE_URL, harvard: HARVARD_URL, localede: LOCALE_DE_URL };
   fs.mkdirSync(CACHE, { recursive: true });
   for (var k in want) {
     var url = want[k], f = path.join(CACHE, k + '-' + url.split('/').slice(-2).join('_').replace(/[^\w.-]/g, '_'));
@@ -286,6 +288,20 @@ async function runFlows(browser, base, dark, cslReady) {
     await page.selectOption('#style-select', 'all');
   }
 
+  // 4b. The language of journal styles: German turns Harvard's "pp." and "Available at" into "S." and "Verfügbar unter"; back to English restores them
+  if (cslReady) {
+    await page.goto(base + '?q=10.1038/nature12373&style=csl:harvard-cite-them-right', { waitUntil: 'load' });
+    await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && !/Rendering/.test(c.textContent) && /Kucsko/.test(c.textContent); }, null, { timeout: 20000 });
+    var enText = await page.locator('#doi-result .cite .text').first().textContent();
+    check(name('Harvard through citeproc prints English terms'), /pp\. 54/.test(enText) && /Available at:/.test(enText), enText.slice(0, 200));
+    await page.click('#settings-toggle'); await page.selectOption('#csl-locale', 'de-DE'); await page.keyboard.press('Escape');
+    await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && /S\. 54/.test(c.textContent); }, null, { timeout: 20000 });
+    var deText = await page.locator('#doi-result .cite .text').first().textContent();
+    check(name('German prints "S." and "Verfügbar unter" and fetched the German locale'), /Verf\u00fcgbar unter/.test(deText) && s.state.requests.indexOf(LOCALE_DE_URL) !== -1, deText.slice(0, 200));
+    await page.click('#settings-toggle'); await page.selectOption('#csl-locale', 'en-US'); await page.keyboard.press('Escape');
+    await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && /pp\. 54/.test(c.textContent); }, null, { timeout: 20000 });
+    check(name('back to English'), true);
+  }
   // 5. Deep link to a built-in style
   await page.goto(base + '?q=10.1038/nature12373&style=vancouver', { waitUntil: 'load' });
   await page.waitForFunction(function () { return /Kucsko/.test(document.querySelector('#doi-result').textContent) && /Copy/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 15000 });
