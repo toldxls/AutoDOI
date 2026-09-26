@@ -16,7 +16,7 @@ function parses(label, source) {
   check(label + ' parses', res.status === 0, res.stderr);
 }
 
-['citations.js', 'parsers.js', 'sentencecase.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js', 'sw.js']
+['citations.js', 'parsers.js', 'sentencecase.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js', 'sw.js', 'bin/autodoi.js']
   .forEach(function (rel) { parses(rel, read(rel)); });
 
 // Every inline <script> block in index.html (the app code, plus the inlined libraries)

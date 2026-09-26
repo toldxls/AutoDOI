@@ -29,6 +29,19 @@ The record you are working with follows you across the tabs.
 
 `apps-script/Code.gs` and `apps-script/Citations.gs` give the same logic as custom functions: `=DOI_CITE(A2, "apa")`, `=FIND_DOI(B2, C2)`, `=REF_TO_DOI(D2)`, `=REF_TO_RIS(D2)`, plus an export menu. Paste them into *Extensions → Apps Script*, replace the manifest with `apps-script/appsscript.json`, and set `POLITE_EMAIL` at the top of `Code.gs`. Results are cached for six hours; cells that hit the 30-second limit read `Retry` and fill on recalculation.
 
+## Command line
+
+The same library runs in Node 18 or newer. From a checkout:
+
+```
+node bin/autodoi.js 10.1038/nature12373 --style vancouver     # a DOI, arXiv ID, PubMed ID or ISBN in any style; --style all for every one
+node bin/autodoi.js 10.1038/nature12373 --pages 55             # with the in-text citation
+node bin/autodoi.js --match --style ris < references.txt       # match a pasted list at Crossref; good rows as RIS, the rest on stderr
+node bin/autodoi.js --match --json < references.txt            # the records with their grades
+```
+
+`--email you@example.org` (or `AUTODOI_EMAIL`) uses Crossref's polite pool. `require('./citations.js')` gives the library itself: `normalize`, `format`, `formatHtml`, `inTextForms`, `matchConfidence`.
+
 ## Bugs and missing styles
 
 Use **Report a bug** and **Request a journal style** at the foot of the page; they open a prefilled GitHub issue. The **Report it** link under a result carries its DOI, style and the last error messages. Nothing is sent unless you open the report.
