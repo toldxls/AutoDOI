@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-YUtD+yuWHHCyKQhas6aojQv5m6cC64k/0WFZAQdl2Ag=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-vUwTTSCJmnKkefoT9hapU9UMFk78HtwVNiOVdkvJD6A=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -5434,9 +5434,9 @@
   }
 
   /* ---------- downloads ---------- */
-  function download(name, text) {
+  function download(name, text) { // text, or a Blob already typed
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' })); a.download = name;
+    a.href = URL.createObjectURL(text instanceof Blob ? text : new Blob([text], { type: 'text/plain' })); a.download = name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
   }
@@ -6167,7 +6167,7 @@
     var saved = store.get('liststyle') || 'apa';
     sel.value = saved; if (sel.value !== saved) sel.value = 'apa';
     var list = el('div', 'reflist');
-    var current = { html: '', text: '' };
+    var current = { html: '', text: '', entries: [], numbered: false };
     var escT = function (t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
     // In-text citations under each entry, each with its own Copy; numbered styles count by the entry's place in this list.
     // They are shown, not part of what Copy and Rich take, so the pasted list stays a reference list
@@ -6181,6 +6181,7 @@
       if (!numbered) all.sort(function (a, b) { return htmlToText(a.html).localeCompare(htmlToText(b.html)); });
       current.html = all.map(function (e) { return '<p>' + e.html + '</p>'; }).join('');
       current.text = all.map(function (e) { return htmlToText(e.html); }).join('\n');
+      current.entries = all.map(function (e) { return e.html; }); current.numbered = numbered;
       list.innerHTML = current.html;
       if (showInText.checked) Array.prototype.forEach.call(list.querySelectorAll('p'), function (pEl, i) { var line = all[i].forms && inTextLine(all[i].forms); if (line) pEl.insertAdjacentElement('afterend', line); });
       renderCaseChanges(list, records);
@@ -6228,6 +6229,9 @@
     act.appendChild(sel);
     act.appendChild(button('Copy', '', function (b) { copyPlain(b, current.text); }));
     act.appendChild(button('Rich', '', function (b) { copyRich(b, current.html, current.text); }));
+    var wb = button('Word', 'fill', function () { download('references.docx', docxOfList(current.entries, { hanging: !current.numbered })); });
+    wb.title = 'Download the list as a Word document: double spaced, with a hanging indent for author-date styles, italics and sub- and superscripts kept';
+    act.appendChild(wb);
     head.appendChild(act);
     wrap.appendChild(head);
     wrap.appendChild(list);
@@ -6671,6 +6675,56 @@
   }
 
   var P = window.AutoDOIParsers;
+  /* ---------- a Word file of the reference list: one paragraph per entry with a hanging indent, italics, bold, sub- and superscripts ----------
+   * A .docx is a zip of XML parts; the entries are stored uncompressed (they are small), so only a CRC is needed. */
+  var CRC_TABLE = (function () { var t = [], c; for (var n = 0; n < 256; n++) { c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(bytes) { var c = 0xFFFFFFFF; for (var i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function zipStored(files) { // [{name, text}] -> Blob
+    var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+    var u16 = function (v) { return [v & 0xFF, (v >>> 8) & 0xFF]; }, u32 = function (v) { return [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF]; };
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+      var head = new Uint8Array([].concat(u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0)));
+      parts.push(head, name, data);
+      central.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0x21), u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+      offset += head.length + name.length + data.length;
+    });
+    var cdLen = central.reduce(function (n, x) { return n + x.length; }, 0);
+    var eocd = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cdLen), u32(offset), u16(0)));
+    return new Blob(parts.concat(central, [eocd]), { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  }
+  function docxOfList(entriesHtml, opts) { // each entry's HTML (as the Rich copy has it) becomes a paragraph of runs
+    opts = opts || {};
+    var xmlEsc = function (t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    var paras = entriesHtml.map(function (html) {
+      var runs = [];
+      var walk = function (node, fmt) {
+        Array.prototype.forEach.call(node.childNodes, function (n) {
+          if (n.nodeType === 3) { if (n.nodeValue) runs.push({ t: n.nodeValue, f: fmt }); return; }
+          if (n.nodeType !== 1) return;
+          var tag = n.tagName.toLowerCase(), f = Object.assign({}, fmt);
+          if (tag === 'i' || tag === 'em') f.i = true; if (tag === 'b' || tag === 'strong') f.b = true;
+          if (tag === 'sup') f.v = 'superscript'; if (tag === 'sub') f.v = 'subscript';
+          if (tag === 'br') { runs.push({ t: '\n', f: fmt }); return; }
+          walk(n, f);
+        });
+      };
+      walk(inert(html), {});
+      var rPr = function (f) { var p = (f.i ? '<w:i/><w:iCs/>' : '') + (f.b ? '<w:b/><w:bCs/>' : '') + (f.v ? '<w:vertAlign w:val="' + f.v + '"/>' : ''); return p ? '<w:rPr>' + p + '</w:rPr>' : ''; };
+      var body = runs.map(function (r) { return r.t === '\n' ? '<w:r><w:br/></w:r>' : '<w:r>' + rPr(r.f) + '<w:t xml:space="preserve">' + xmlEsc(r.t) + '</w:t></w:r>'; }).join('');
+      return '<w:p><w:pPr>' + (opts.hanging ? '<w:ind w:left="720" w:hanging="720"/>' : '') + '<w:spacing w:after="240" w:line="480" w:lineRule="auto"/></w:pPr>' + body + '</w:p>';
+    });
+    var doc = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + paras.join('') + '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>';
+    var styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:rPrDefault></w:docDefaults></w:styles>';
+    return zipStored([
+      { name: '[Content_Types].xml', text: '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>' },
+      { name: '_rels/.rels', text: '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
+      { name: 'word/_rels/document.xml.rels', text: '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>' },
+      { name: 'word/styles.xml', text: styles },
+      { name: 'word/document.xml', text: doc }
+    ]);
+  }
+
   /* ---------- a Word manuscript: the paragraphs after its References heading ----------
    * A .docx is a zip of XML parts; the central directory names them and DecompressionStream inflates word/document.xml,
    * so no library is needed.  Runs set superscript or subscript become Unicode, as a paste from Word does. */

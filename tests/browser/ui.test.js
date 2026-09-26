@@ -376,6 +376,17 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('IEEE numbers the in-text form by list position'), (await page.locator('#export-output .reflist .intext .form').allTextContents()).join(' | ') === '[1]');
   await page.selectOption('#list-style', 'apa');
   await page.uncheck('#list-intext');
+  // The Word download: a valid .docx whose one paragraph per entry keeps the italics and carries a hanging indent
+  var dlPromise = page.waitForEvent('download', { timeout: 10000 });
+  await page.locator('#export-output .export .actions button:has-text("Word")').click();
+  var dl = await dlPromise, dlPath = await dl.path();
+  var docxBuf = fs.readFileSync(dlPath), docXml = '';
+  (function () { // stored zip entries: find word/document.xml by its local header
+    var i = docxBuf.indexOf('word/document.xml');
+    while (i !== -1) { var hdr = i - 30; if (docxBuf.readUInt32LE(hdr) === 0x04034b50) { var size = docxBuf.readUInt32LE(hdr + 18), nlen = docxBuf.readUInt16LE(hdr + 26), xlen = docxBuf.readUInt16LE(hdr + 28); docXml = docxBuf.slice(hdr + 30 + nlen + xlen, hdr + 30 + nlen + xlen + size).toString('utf8'); break; } i = docxBuf.indexOf('word/document.xml', i + 1); }
+  })();
+  check(name('the Word file is a zip named references.docx with a document part'), dl.suggestedFilename() === 'references.docx' && docxBuf.readUInt32LE(0) === 0x04034b50 && /<w:document /.test(docXml), docXml.slice(0, 120));
+  check(name('each entry is a paragraph with a hanging indent, the journal in italics and the kept line as text'), (docXml.match(/<w:p>/g) || []).length === 2 && /<w:ind w:left="720" w:hanging="720"\/>/.test(docXml) && /<w:rPr><w:i\/><w:iCs\/><\/w:rPr><w:t xml:space="preserve">Nature<\/w:t>/.test(docXml) && /Attention is all you need/.test(docXml), docXml.slice(0, 600));
   await page.waitForFunction(function () { return !document.querySelector('#export-output .reflist .intext'); }, null, { timeout: 5000 });
   var rowFree = page.locator('#export-matches .match.good button:has-text("Free copy?")');
   check(name('a matched row offers to look for a free copy'), (await rowFree.count()) === 1);
