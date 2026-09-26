@@ -71,6 +71,25 @@ var NOT_APPLICABLE = [
 function tidy(s, st) { var t = String(s).replace(/\*/g, '').replace(/\s+/g, ' ').normalize('NFC').trim(); return st === 'mla' ? t.replace(/(\d)[\u2013-](\d)/g, '$1-$2') : t; } // MLA's own examples mix hyphens and en dashes in page ranges
 function loose(s) { return tidy(s).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[‐-―]/g, '-').replace(/\.$/, '').toLowerCase(); }
 var pass = 0, fail = 0, nearly = 0, skipped = 0, shown = 0, perStyle = {}, na = [];
+// The in-text forms the same pages print: APA's parenthetical and narrative citations are printed jointly for a group of
+// examples ("(Grady et al., 2019; Pope & Wall, 2025)"), so each example's own form must be one of the segments; Chicago's
+// notes carry a page locator, read back out of the printed note so the same note can be rebuilt with it
+function noteLocator(note) { var m = note.match(/(?:\(\d{4}\)|\d{4}\)): ([\d\u2013-]+)(?:, e\d+)?[,.]/) || note.match(/\d{4}\), ([\d\u2013-]+)[,.]/); return m ? m[1] : ''; }
+function checkInText(ex, i, st, r) {
+  if (!ex.inText) return;
+  var label = 'in-text #' + i + ' ' + st + ' ' + ex.kind;
+  if (st === 'apa') {
+    var forms = A.inTextForms(r, 'apa', {});
+    var segs = tidy(ex.inText).replace(/^\(|\)$/g, '').split(/;\s*/);
+    if (segs.indexOf(tidy(forms.paren).replace(/^\(|\)$/g, '')) !== -1) pass++; else { fail++; console.log('FAIL ' + label + '\n   got  ' + forms.paren + '\n   want one of ' + ex.inText); }
+    if (ex.inTextNarrative) { if (tidy(ex.inTextNarrative).indexOf(tidy(forms.narrative)) !== -1) pass++; else { fail++; console.log('FAIL ' + label + ' narrative\n   got  ' + forms.narrative + '\n   want in ' + ex.inTextNarrative); } }
+  } else if (st === 'chicago') {
+    var want = tidy(ex.inText).replace(/^\d+\.\s+/, '');
+    if (/Rachel A\. Bay/.test(want)) { na.push(st + ' #' + i + ' note: the guide\'s note misspells the author its bibliography entry prints as Rachael'); return; }
+    var got = tidy(A.inTextForms(r, 'chicago', { pages: noteLocator(want) }).note);
+    if (got === want) pass++; else { fail++; if (showAll || shown++ < 12) console.log('FAIL ' + label + ' note\n   got  ' + got + '\n   want ' + want); }
+  }
+}
 examples.forEach(function (ex, i) {
   var st = STYLE[ex.style];
   if (!st) { skipped++; return; }
@@ -80,6 +99,7 @@ examples.forEach(function (ex, i) {
   if (st === 'vancouver' && ((ex.metadata || {}).authors || []).filter(function (p) { return p && !p.literal; }).length > 6 && !/\bet al\b/.test(ex.expected)) { na.push(st + ' #' + i + ': Citing Medicine\'s list-every-author option'); return; }
   var got;
   try { got = A.format(record(ex), st); } catch (e) { fail++; perStyle[st].fail++; console.log('FAIL #' + i + ' ' + st + ' throws: ' + e.message); return; }
+  checkInText(ex, i, st, record(ex));
   var want = tidy(ex.expected, st);
   if (tidy(got, st) === want) { pass++; perStyle[st].pass++; return; }
   fail++; perStyle[st].fail++;

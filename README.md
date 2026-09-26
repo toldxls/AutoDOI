@@ -1,120 +1,54 @@
 # AutoDOI
 
-Turn a DOI into a reference, find a DOI from a title, and convert pasted references to EndNote or RIS. Metadata comes live from [Crossref](https://api.crossref.org) with a fallback to doi.org content negotiation (covers DataCite DOIs such as Zenodo and Figshare).
+Turn messy references into clean ones. Paste a reference list in any style and get it back matched to Crossref, formatted in APA, Vancouver, Chicago or any of 10,000 journal styles, or exported as RIS, EndNote or BibTeX. Or start from a DOI, a title, or an ISBN.
 
-## Use it
+**Use it:** https://toldxls.github.io/AutoDOI/
 
-**No install.** Open the live page: **https://toldxls.github.io/AutoDOI/** and bookmark it. Everything runs in your browser; nothing is stored on a server. The page talks directly to public scholarly APIs: Crossref and doi.org (metadata), OpenAlex (second search, open access copies), Unpaywall (open access copies), Europe PMC (PubMed IDs), Open Library (ISBNs), the NLM Catalog (journal abbreviations), and GitHub / jsDelivr (journal style files, the citation engine, abbreviation lists). Only the identifiers or text you look up are sent. The page's fonts come from Google Fonts, which sees your address like any web server does; if that matters, use the offline copy, which falls back to system fonts.
+Everything runs in your browser. Nothing is stored on a server, there is no tracking, and only the identifiers or text you look up are sent to the public scholarly APIs (Crossref, doi.org, OpenAlex, Unpaywall, Europe PMC, Open Library, the NLM Catalog). For an offline copy, download `index.html` and open it; style search and title conversion need the `data/` folder beside it.
 
-**Offline copy.** Download `index.html` (Code → Download ZIP, or the raw file) and double-click it. It is a single self-contained file for the built-in styles. Style search and the Titles conversion need the `data/` folder next to it (or the hosted page).
+## The three tabs
 
-## Files
+**References → any style.** Paste one reference or a whole list, however messy, or drop a `.ris`, `.enw` or `.bib` file. Each reference is matched against Crossref (OpenAlex as a second opinion) and graded green, amber or red by how well the record's title, year and first author appear in your text. Only green rows are ticked for export; anything unmatched stays in the list exactly as you pasted it. Rows show what differs from the record (a misspelt journal, a wrong year, missing diacritics), offer a runner-up under *Not this one?*, flag duplicates, preprints and retracted papers, and give a box to paste the right DOI. Export the list in any style or as `.enw`, `.ris` or BibTeX.
 
-| File | What it is |
-| --- | --- |
-| `index.html` | The web tool, single file, with `citations.js`, `parsers.js` and `sentencecase.js` inlined by `build.sh`. |
-| `citations.js` | The formatting library: the only place citation rules live. |
-| `parsers.js` | Reads RIS, EndNote tagged and BibTeX files into records the library can format. |
-| `sentencecase.js` | Sentence case and Title Case conversion that keeps taxa, places and acronyms capitalised. |
-| `data/common-words.js` | About 118,000 common English words that are safe to lowercase; loaded only when you turn on title conversion. Rebuilt by `tools/build-common-words.py`. |
-| `build.sh` | Re-inlines the three library files into `index.html` and refreshes the Apps Script copy. |
-| `data/styles-index.json` | Name and title of every CSL style, from Zotero's style index. Loaded only when you open the style search. |
-| `data/endnote-shortlist.json` | CSL styles whose titles match the `.ens` files in an EndNote 21 Styles folder. |
-| `tools/build-style-index.py` | Regenerates both data files. Pass your EndNote Styles folder to refresh the shortlist. |
-| `apps-script/Code.gs` + `apps-script/Citations.gs` | The same logic as Google Sheets custom functions plus an export menu. |
-| `tools/bump-csl-pin.sh` | Moves the pinned Citation Style Language commits in `index.html` forward and refreshes the style index. |
-| `tests/` | Unit suites (`node tests/run.js`), the browser suite (`tests/browser/ui.test.js`), the weekly canary (`tests/canary.js`, `tests/browser/live.test.js`). |
-| `tests/fixtures/corpus.json` | 600 random real Crossref records of 19 work types for the invariant sweep and the fuzz suite. Rebuilt by `tools/harvest-corpus.sh`. |
-| `CHANGELOG.md` | What changed in each version. The version is shown in the page footer. |
+**Find a DOI.** Title plus optional journal; the best matches come back with a match chip.
 
-After editing `citations.js`, run `./build.sh`; it updates both `index.html` and `apps-script/Citations.gs`.
+**DOI → reference.** Paste a DOI, doi.org link, arXiv ID, PubMed or PMC ID, ISBN, or any text containing one. You get APA 7, MLA 9, Chicago 17, Harvard, Vancouver, IEEE and Annals of Carnegie Museum, plus BibTeX, RIS and EndNote tagged, or search the [Citation Style Language](https://citationstyles.org/) repository for a journal style, rendered by citeproc-js. Under each reference is its in-text citation with its own *Copy*: parenthetical and narrative forms, Chicago's footnote, or the number for Vancouver and IEEE. Type the pages you are citing in *Cite pages* and every form takes them. *Copy* gives plain text, *Rich* keeps italics for Word and Google Docs, *Copy link* gives a URL that reopens the same reference in the same style (`?q=10.1038/nature12373&style=csl:geology`). A retracted paper carries a red **Retracted** chip and a line naming each notice, from Crossref's record with the Retraction Watch database; corrections and expressions of concern are flagged in amber. *Free PDF* opens a legal open-access copy when Unpaywall or OpenAlex knows one; *Via library* appears once you set your library proxy under Settings.
 
-## Web tool
+The record you are working with follows you across the tabs.
 
-1. **References → any style.** Paste one reference or a whole list, in any style and however messy, and get it back clean as a reference list in any of the styles or as `.enw`, `.ris` or BibTeX. Or drop a `.ris`, `.enw` or `.bib` file exported from EndNote, Zotero or Mendeley, or paste its text, and every record is read directly with no lookup, ready to re-export in any style (an EndNote library becomes an Annals of Carnegie Museum reference list in one step). A database or platform named in the file (JSTOR, EBSCOhost, ProQuest) is kept: MLA prints it as the second container and Chicago in place of a URL, as their guides show, and it is written back into the `.ris` and `.enw` exports. Or paste one or more references in any style. As you paste, the tab shows how many references it found (open *Show how it was split* to see each one); if a wrapped list is split wrongly, choose the **Layout**: one reference per line, blank line between references, or numbered list. Explicit layouts split every blank-line and numbered list in a test set of 85 real papers exactly. Each is matched against Crossref, with OpenAlex as a second opinion when Crossref has nothing close (theses, EarthArXiv, DataCite records), and colour-coded green / amber / red by how well the record's title, year and first author appear in your text. Only green rows are ticked for export; amber "check" rows wait for you, and anything not ticked is kept in the reference list exactly as you pasted it, so no reference disappears. A paste from Word or Google Docs keeps its sub- and superscripts (Ca₁₉Fe²⁺Al₄ stays so). A name typed without its diacritics is marked in blue with the record's spelling (Bacik → Bačík), and a name typed with them lends them to a record that lacks them. A wrong initial or short surname is marked with the record's name, a wrong year shows both years, and a runner-up the matcher scored nearly as well is offered under *Not this one?*. Garbled characters from a bad copy (BaÄk) are repaired on paste. Words in your text that the matched record does not contain are marked, with the record's spelling in the tooltip when it is one letter away, so a misspelt journal or a wrong year shows instead of being silently corrected. Weak or missing matches get a box to paste the right DOI or retype the bare title; a fix is graded against your original reference, so a wrong record stays amber. Two references run together on one line are split apart when each half reads as a whole reference (physics-style "…211 (1995) 52; S. Askenazy, Physica B 216 (1996) 221.", or "ibid.", which inherits the previous authors and journal); a line that may hold two but cannot be separated safely is flagged. The status line counts good, to-check and unmatched rows, and **Stop** ends a long batch keeping what is done. Lines that resolve to the same record are flagged as duplicates and left out of the export; preprints offer a swap to the published version. Untick anything wrong, then copy the combined `.enw`, `.ris` or BibTeX text, or a clean reference list re-formatted in any of the styles (alphabetical, or numbered for Vancouver and IEEE). Cmd/Ctrl+Enter submits.
-2. **Find a DOI.** Title plus optional journal. Best matches come back with a match chip; *Format* sends one to the DOI → reference tab, and a hit whose title matches goes there by itself. The record you are working with follows you across the tabs: a DOI looked up on the DOI → reference tab prefills the title and journal here and the References box (selected on focus, so typing replaces it), and a matched reference on the References tab replaces the example on the DOI → reference tab.
-3. **DOI → reference.** Paste a DOI, doi.org link, arXiv ID, PubMed or PMC ID, ISBN, or any text containing one. Books come from Open Library plus Crossref when the book has a DOI. A preprint shows its published version with a one-click swap; a journal article with no volume or pages yet is flagged "Online first". Journal abbreviations for Vancouver and short-form journal styles are filled from the NLM Catalog, then the JabRef lists, when the publisher did not deposit one. **Copy link** gives a URL that opens the same reference in the same style (`?q=…&style=csl:geology`), and the bookmarklet carries your current style. You get APA 7, MLA 9, Chicago 17, Harvard, Vancouver, IEEE and Annals of Carnegie Museum, plus BibTeX, RIS and EndNote tagged. The **Style** dropdown shows all of them, just one, or opens a search across the 10,000+ journal styles of the [Citation Style Language](https://citationstyles.org/) repository (Nature, Geology, American Mineralogist, and so on), rendered in the browser by citeproc-js. Tick *Only the styles that also ship with EndNote* to narrow the search to the 261 styles whose names match EndNote 21's Styles folder. Styles you pick are remembered in the dropdown and in the batch tab's reference list. *Copy* gives plain text. *Rich* keeps the italics for Word and Google Docs. Link straight to a lookup with `?q=`, e.g. `https://toldxls.github.io/AutoDOI/?q=10.1038/nature12373`, or drag the bookmarklet in Settings to your bookmarks bar to cite the article page you are reading. **Getting the paper.** Beside the record, *View article* opens the publisher's page through doi.org, *Free PDF* opens a free, legal copy when [Unpaywall](https://unpaywall.org/) or OpenAlex knows one (publisher open access, a repository copy or the accepted manuscript; the button says which), and *Via library* appears once you set your library's proxy prefix or an OpenURL template under Settings, so a click goes through your own subscription. Matcher rows and Find hits carry a *Free copy?* button that looks only when clicked.
+## Details worth knowing
 
-### Annals of Carnegie Museum style
+- **Titles.** The *Titles* control converts article titles to Sentence case or Title Case, keeping taxa, place names and acronyms; click a highlighted word to override it. Chemical formulas, isotopes and charges are set with real sub- and superscripts (Mg₂SiO₄, Fe³⁺, ⁴⁰Ar/³⁹Ar); turn this off under Settings if a title is misread.
+- **Journal abbreviations** for Vancouver and short-form styles come from the NLM Catalog, then the JabRef lists.
+- **Speed.** Crossref's public pool answers one search at a time (about 2 s per reference). An email under Settings puts you in the polite pool, about three times faster; it goes only to Crossref and OpenAlex.
+- **EndNote styles.** `.ens` files are a closed format and cannot be read; the CSL repository covers most of the same journals, and a checkbox narrows the search to the 261 that ship with EndNote 21. A journal missing from both can be hand-written in `citations.js`, as Annals of Carnegie Museum was (it follows the CMNH authors' guide of 6 January 2010).
+- **Import into EndNote:** *File → Import → File*, option **EndNote Import** for `.enw` or **Reference Manager (RIS)** for `.ris`.
+- **Caveat.** Matching is a search, not parsing. A reference with no Crossref or OpenAlex record returns the nearest wrong paper, so check the chip before importing.
 
-Follows the *Literature Cited* section of the CMNH Publications Authors' Guide (6 January 2010): every author named with no "et al.", initials without spaces (`Rawlins, J.E.`), a comma before "and", periodicals spelled out, `Journal, volume(issue):pages` with no space after the colon, books as `Title. Publisher, Place.`, chapters as `Pp. x-y, in Book (Editors, eds.). Publisher, Place.`, dissertations and web resources per the guide's examples. The in-text form, `(Wible et al. 2002)`, is shown under the reference. DOIs are omitted because the guide does not use them.
+## Google Sheets
 
-Import into EndNote: *File → Import → File*, import option **EndNote Import** for `.enw` or **Reference Manager (RIS)** for `.ris`.
-
-## Google Sheets version
-
-1. In a sheet: *Extensions → Apps Script*.
-2. Replace the default `Code.gs` with `apps-script/Code.gs`. Add a second file named `Citations` and paste `apps-script/Citations.gs`.
-3. In *Project Settings*, tick *Show "appsscript.json" manifest file*, then replace its contents with `apps-script/appsscript.json` (this keeps the Drive permission limited to files the script creates).
-4. Save and reload the spreadsheet. The formulas work immediately; the AutoDOI menu asks for permission the first time you use it.
-
-| Formula | Result |
-| --- | --- |
-| `=DOI_CITE(A2, "apa")` | Reference. Styles: `apa`, `mla`, `chicago`, `harvard`, `vancouver`, `ieee`, `carnegie`, `bibtex`, `ris`, `endnote`. Also accepts arXiv IDs and `PMID: 123` / `PMC123` |
-| `=DOI_CITE(A2:A100, "vancouver")` | Whole column at once. Uncached DOIs are fetched in parallel |
-| `=FIND_DOI(B2, C2)` | Best DOI for title B2 and journal C2 (either may be a range aligned with the titles) |
-| `=FIND_DOI(B2, C2, TRUE)` | DOI, matched title, journal, year and a 0–1 confidence, as a row |
-| `=REF_TO_DOI(D2)` / `=REF_TO_ENW(D2)` / `=REF_TO_RIS(D2)` | From a pasted reference in any style |
-
-Sheets stops a custom function after 30 seconds. On a very long column the cells that did not make it read `Retry`; recalculate (edit any cell) and they fill from the cache built so far. Results are cached for six hours.
-
-Menu **AutoDOI → Export selection as .enw / .ris** matches every selected cell (DOIs or references) and writes one import file to your Drive.
-
-Set `POLITE_EMAIL` at the top of `Code.gs` to your email to get Crossref's faster polite pool.
+`apps-script/Code.gs` and `apps-script/Citations.gs` give the same logic as custom functions: `=DOI_CITE(A2, "apa")`, `=FIND_DOI(B2, C2)`, `=REF_TO_DOI(D2)`, `=REF_TO_RIS(D2)`, plus an export menu. Paste them into *Extensions → Apps Script*, replace the manifest with `apps-script/appsscript.json`, and set `POLITE_EMAIL` at the top of `Code.gs`. Results are cached for six hours; cells that hit the 30-second limit read `Retry` and fill on recalculation.
 
 ## Bugs and missing styles
 
-Use the **Report a bug** and **Request a journal style** links at the bottom of the page. They open a prefilled GitHub issue (a free GitHub account is needed). Below each result, a **Report it** link carries the DOI and style into the bug form so you only have to say what is wrong (the button on the result itself, **View article**, opens the publisher's page through doi.org). When a lookup or a style fails, the error message gets a **Report this** link. The page keeps the last few error messages in memory and adds them, with the AutoDOI version and your browser's version string, to the form's *Version and error details* field; nothing is sent anywhere unless you open a report. There is no analytics or tracking.
+Use **Report a bug** and **Request a journal style** at the foot of the page; they open a prefilled GitHub issue. The **Report it** link under a result carries its DOI, style and the last error messages. Nothing is sent unless you open the report.
 
 ## Development
 
-No dependencies: plain JavaScript files and Node for the tests.
+Plain JavaScript, no runtime dependencies. `citations.js` holds every citation rule, `parsers.js` reads RIS, EndNote and BibTeX, `sentencecase.js` converts titles; `build.sh` inlines them into `index.html` and refreshes the Sheets copy.
 
 ```
-./build.sh              # re-inline citations.js, parsers.js and sentencecase.js into index.html; refresh apps-script/Citations.gs
-npm test                # all unit suites, smoke checks, syntax and version checks; no dependencies
+./build.sh              # after editing any library file
+npm test                # unit suites, smoke checks, syntax and version checks
 npm install && npx playwright install chromium
-npm run test:browser    # the page in headless Chromium, offline with mocked APIs, plus axe accessibility checks
+npm run test:browser    # the built page in headless Chromium, APIs mocked, plus axe accessibility checks
+npm run bench:match     # live matching benchmark against real Crossref (run when the grader or splitter changes)
 ```
 
-The `tests/` folder holds unit suites for the library, parsers and title-case engine, smoke checks for every style and the Sheets script, a syntax and consistency suite, and a splitter benchmark with minimum accuracy thresholds, run against real Crossref records and 85 real papers' printed reference lists in `tests/fixtures/`. Four suites are oracles independent of this project's reading of the rules: `golden-styleguides.test.js` reproduces, exactly, 66 example references published by the style authorities themselves (APA Style, the Chicago Manual of Style guide, the MLA Style Center, NLM's Citing Medicine, the IEEE Reference Guide), collected verbatim with their source URLs in `tests/fixtures/golden-examples.json`; `golden-carnegie.test.js` does the same for the Annals of Carnegie Museum authors' guide; `invariants.test.js` runs 600 random real Crossref records of every work type through every style and export and asserts properties any correct output has (no leaked markup or entities, no doubled punctuation, well-formed RIS, EndNote and BibTeX, and a parse-back round trip); `fuzz.test.js` mutates real export files, reference lists and records and requires that nothing throws, hangs or leaks. `parsers-oracle.test.js` parses Crossref's own RIS and BibTeX renderings of 147 corpus records and compares every field with the record they came from. `openalex-oracle.test.js` and `datacite-oracle.test.js` do the same for the OpenAlex mapping (against the Crossref record of the same DOI) and for DataCite DOIs' CSL JSON (against DataCite's own metadata). `case-sweep.test.js` checks the title converter against the publishers' own casing: sentence-case titles must survive Sentence case unchanged and Title Case titles must keep their capitals. `tests/browser/ui.test.js` drives the built page: tabs, deep links, a lookup, journal styles rendered through citeproc (including a dependent style through its parent), the DOI finder, reference matching, RIS and BibTeX file import, the error path and its bug-report link, and axe on every tab with content, in light and dark mode, plus a phone-width pass for sideways overflow and tap-target size. `tests/sheets-menu.test.js` runs the Sheets menu and formulas against stubbed Apps Script services. GitHub Actions runs all of it on each push, fails if `index.html` was not rebuilt after a library change, and deploys the page to GitHub Pages only when everything passed. Because every push-time test mocks the network, a weekly canary (`.github/workflows/canary.yml`) probes the real Crossref, doi.org, OpenAlex, Europe PMC, NLM Catalog, Open Library, JabRef, jsDelivr and CSL services for the exact fields and behaviours the page relies on, then drives the live page against them; a failure opens an issue labelled `canary` and a later pass closes it.
+The suites include oracles independent of this project's reading of the rules: reference examples and their in-text forms as printed by APA, Chicago, MLA, NLM and IEEE, the Carnegie guide's own examples, 600 random Crossref records of every work type run through every style with invariants and a parse-back round trip, fuzzing, and mapping checks against Crossref, OpenAlex and DataCite. CI runs everything on each push, and a weekly canary probes the real services. See `CONTRIBUTING.md` for where things live and how versions are bumped, `CHANGELOG.md` for what changed.
 
-`tests/csl-compare.js` renders the corpus through the official CSL styles with citeproc and tallies the words that differ from the built-in formatters (`npm run compare:csl`). `tests/browser/match-bench.js` measures reference matching against 152 references as publishers deposited them in Crossref reference lists, each with the DOI it resolved to, plus lowercased, year-less, glued-pair and non-Latin (222 Cyrillic, CJK and Greek references) variants; it drives the real page against the real services and reports green precision and recall (`npm run bench:match`).
-
-Journal styles and the citation locale are loaded from pinned commits of the Citation Style Language repositories, so a style cannot change under you between visits. `./tools/bump-csl-pin.sh` moves the pins to the current upstream and refreshes the style index; commit both. See `CONTRIBUTING.md` for where things live and how versions are bumped.
+Journal styles and the locale are pinned to upstream commits; `tools/bump-csl-pin.sh` moves them. The page has a strict Content Security Policy, loads citeproc with an integrity hash, and passes axe in every tab in light and dark mode.
 
 ## License
 
 MIT. See `LICENSE`.
-
-### Title capitalisation
-
-The **Titles** control beside the style menu converts article titles to *Sentence case* (APA and most science journals) or *Title Case* (MLA, Chicago). A word is lowercased only when it is a common English word; anything unknown, such as *Tyrannosaurus*, *Cretaceous* or *Morrison*, keeps its capitals, along with the capitalised words next to it, so "Late Cretaceous Hell Creek Formation" survives intact. Acronyms and mixed-case terms (DNA, NumPy, mRNA, pH) are never touched. Lowercased words are highlighted in the heading: click one to restore it, or click a capitalised word to force it lowercase. Those choices are remembered in your browser and apply to the batch tab's reference list and exports too.
-
-Titles that are already in sentence case are left untouched. About 400 multi-word names (United States, Gulf of Mexico, Burgess Shale, Natural History Museum, …) and name patterns such as "X Formation", "X Basin" or "X Island" keep their capitals, and species epithets are lowercased after a genus (Tyrannosaurus rex). All-caps titles (common in older museum and society journals) are converted too, keeping short acronyms such as DNA or USGS. Known limit: unfamiliar technical words (new taxon or compound names) keep their capitals; click them to lowercase.
-
-### Chemical formulas, isotopes and taxa in titles
-
-Formulas in titles are set with real subscripts and superscripts: Mg₂SiO₄, (Mg,Fe)SiO₃, Ca₃Zr₂[Fe₂SiO₁₂], CaSO₄·2H₂O, Fe³⁺, SO₄²⁻, ⁴⁰Ar/³⁹Ar, δ¹⁸O, ^[4]Fe coordination. Markup the publisher deposited (`<sub>`, `<sup>`, `<i>` for taxa, MathML) is kept as well. Rich copy and journal styles use true sub/superscript formatting; plain copy, RIS and EndNote files use Unicode characters (Fe₂O₃); BibTeX uses `\textsubscript{}`. Detection only accepts valid element symbols and deliberately leaves alone things like H1N1, 16S rRNA, vitamin B12, 4K, CD4+ and "Mg- and Fe-rich". Turn it off under Settings if a title is misread, and report it with the Report it link. The Sheets functions get the same Unicode output.
-
-## EndNote `.ens` styles
-
-EndNote's own style files are a proprietary binary format that nothing outside EndNote can read, so they cannot be loaded here directly. The Citation Style Language repository covers most of the same journals under the same names; the search box finds them and the EndNote checkbox shows which ones overlap. A journal missing from both can be added as a hand-written style in `citations.js`, as Annals of Carnegie Museum was.
-
-## Accessibility
-
-The page passes the axe-core accessibility checks (landmarks, headings, labels, contrast, keyboard access) in every tab, in light and dark mode; the browser test suite runs them in CI so they stay passing. The tabs follow the ARIA tabs keyboard pattern.
-
-## Security and privacy
-
-The page sends only the identifiers or reference text you look up, to the services listed above. It has a Content Security Policy whose script rule allows only the page's own script blocks by SHA-256 hash (computed by `build.sh`) and the pinned citation engine, which is loaded with a Subresource Integrity hash; it validates downloaded style files, parses any HTML it did not build itself with an inert parser, and never puts pasted text into shareable links or bug reports. The bookmarklet sends only a DOI found on the page, never the page's address.
-
-## Speed
-
-Crossref's public service answers one search at a time, so a batch takes about 2 to 2.5 seconds per reference. Adding your email under Settings puts you in Crossref's "polite" pool, which allows three searches at once: about 0.6 to 1.2 seconds per reference (15 references: 29 s without, 9 s with, measured). The email is only sent to Crossref and OpenAlex and stays in your browser. OpenAlex, used as a second opinion for hard references, now charges credits: without a key your network gets a small free daily allowance, after which AutoDOI uses Crossref alone until midnight UTC; a free OpenAlex API key in Settings gives you your own allowance.
-
-## Caveats
-
-- Reference matching is a search, not parsing. Always check the match chip before importing; a reference with no Crossref or OpenAlex record will return the nearest wrong paper, so use the fix box or untick it.
-- Journal abbreviations come from the NLM Catalog, which covers biomedical and many general journals well but not every geoscience title; the JabRef general and geology lists fill some gaps. Where neither knows the journal, the full title is used.
-- Crossref's public pool occasionally rate-limits bursts. The Sheets version caches; the web tool paces batch requests.

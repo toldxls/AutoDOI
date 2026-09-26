@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-FVPtgMXBQb8zyrA/RNRObIi1HTAQl8Or4agbx8rhvrs=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-DexXHXXfYcP4VpdnXopb+B9C9gsxthL1iNWP9c2p9tw=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-gSXDlg8RrYwpQPMtPBNqpW9cyTwsPGhx4ZasxbjQZM0=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -109,7 +109,8 @@
   .cite .style { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
   .cite .text { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; overflow-wrap: anywhere; }
   .cite .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-  .cite .intext { font-family: var(--sans); font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .cite .intext { font-family: var(--sans); font-size: 12.5px; color: var(--muted); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .cite .intext .form { color: var(--ink); } .cite .intext .btn { padding: 3px 8px; font-size: 11.5px; min-height: 24px; }
   .reflist { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px; }
   .reflist .as-written { border-bottom: 1px dotted var(--warn); }
   .reflist p { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; margin: 10px 0; overflow-wrap: anywhere; }
@@ -122,6 +123,7 @@
   .hit.style { cursor: pointer; padding: 9px 14px; }
   .note { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .note code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .update-note { color: var(--ink); } .update-note .update-hint { color: var(--muted); }
   .fixrow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
   .fixrow input { flex: 1 1 260px; padding: 6px 10px; font-size: 13px; font-family: var(--sans); }
   .chip.info { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
@@ -305,6 +307,8 @@
         <option value="sentence">Sentence case</option>
         <option value="title">Title Case</option>
       </select>
+      <span class="field" style="margin:0 0 0 8px">Cite pages</span>
+      <input type="text" id="cite-pages" placeholder="e.g. 45–47" autocomplete="off" aria-label="Pages to cite in the in-text citation" title="The page or pages you are citing; they go into the in-text citation or footnote under each style" style="width:7em">
       <span class="status" id="style-status" style="margin:0" role="status" aria-live="polite"></span>
     </div>
     <div id="csl-box" hidden>
@@ -500,6 +504,7 @@
       issued: { 'date-parts': [date.length ? date : []] },
       publisher: src.host_organization_name || '',
       ISSN: src.issn_l ? [src.issn_l] : [],
+      is_retracted: w.is_retracted === true,
       source: 'openalex'
     };
     if (type === 'posted-content' && src.display_name) { m.institution = [{ name: src.display_name }]; m['container-title'] = []; }
@@ -1224,6 +1229,31 @@
   }
 
   // Month 1..12 and day 1..31 or 0; seasons (21-24), typos and junk are dropped
+  // Crossref lists the notices that update a work under updated-by (a retraction, a correction, an expression of concern),
+  // with Retraction Watch's entries merged in since 2023; OpenAlex only says whether a work is retracted; some publishers
+  // write RETRACTED: into the title and deposit no notice.  Kept on the record for the page to flag; never printed in a reference.
+  var TITLE_NOTICE_PREFIX = /^\s*(?:retracted(?:\s+article)?|withdrawn)\s*[:\-\u2013\u2014]\s*/i; // "RETRACTED: ...", "WITHDRAWN: ...", "Retracted article: ..."
+  var UPDATE_KINDS = { retraction: 'retraction', partial_retraction: 'retraction', withdrawal: 'retraction', removal: 'retraction',
+    expression_of_concern: 'concern', correction: 'correction', corrigendum: 'correction', erratum: 'correction' };
+  function updatesOf(m) {
+    var out = [], list = m['updated-by'];
+    if (Array.isArray(list)) list.forEach(function (u) {
+      var t = String((u && u.type) || '').toLowerCase().replace(/[\s-]+/g, '_'), kind = UPDATE_KINDS[t];
+      if (!kind) return; // new_edition, new_version, addendum, clarification: nothing wrong with the work
+      var d = (u.updated && u.updated['date-parts'] && u.updated['date-parts'][0]) || [];
+      var month = validMonth(d[1]);
+      out.push({ kind: kind, type: t, label: clean(u.label || ''), doi: cleanDoi(u.DOI || ''), year: d[0] ? String(d[0]) : '', month: month, day: month ? validDay(d[2]) : 0, from: 'crossref' });
+    });
+    var retracted = out.some(function (u) { return u.kind === 'retraction'; });
+    if (!retracted && m.is_retracted === true) out.push({ kind: 'retraction', type: 'retraction', label: 'Retracted', doi: '', year: '', month: 0, day: 0, from: 'openalex' });
+    else if (!retracted && /^\s*(?:retracted|withdrawn)\b/i.test(firstText(m.title) || '')) out.push({ kind: 'retraction', type: 'retraction', label: 'Retracted', doi: '', year: '', month: 0, day: 0, from: 'title' });
+    return out;
+  }
+  function updateOf(m) { // Crossref's update-to on a notice: [{DOI, type, label}]
+    var list = m['update-to']; if (!Array.isArray(list) || !list[0]) return null;
+    var t = String(list[0].type || '').toLowerCase().replace(/[\s-]+/g, '_'), kind = UPDATE_KINDS[t];
+    return kind ? { kind: kind, type: t, label: clean(list[0].label || ''), doi: cleanDoi(list[0].DOI || '') } : null;
+  }
   function validMonth(v) { var n = Number(v); return n >= 1 && n <= 12 && Math.floor(n) === n ? n : 0; }
   function validDay(v) { var n = Number(v); return n >= 1 && n <= 31 && Math.floor(n) === n ? n : 0; }
   function monthName(list, m) { return m >= 1 && m <= 12 ? list[m - 1] : ''; }
@@ -1350,6 +1380,8 @@
       accession: clean(m.accession || m.archive_location || rawTagOf(m, 'ris', ['AN'], 'enw', ['M']) || ''), // its accession number there (RIS AN, EndNote %M)
       publishedDoi: relDoi(m.relation, 'is-preprint-of'),
       preprintDoi: relDoi(m.relation, 'has-preprint'),
+      updates: updatesOf(m), // retractions, corrections and expressions of concern published about this work
+      updateOf: updateOf(m), // when this record is itself such a notice: what it updates
       source: m.source || 'crossref',
       score: m.score
     };
@@ -1910,10 +1942,106 @@
   }
 
   // In-text form for the Carnegie style: (Wible 2000), (Wible and Rawlins 2001), (Wible et al. 2002)
-  function carnegieInText(r) {
+  /* ---------- in-text forms: the parenthetical citation, its narrative form, or the footnote, with an optional page locator ----------
+   * Plain text (no italics), as it goes into a sentence.  opts.pages: "45" or "45-47" as the writer typed it; opts.n: the entry's
+   * number in a numbered list (Vancouver, IEEE), 1 when a single reference is shown. */
+  var ET_AL_FROM = { apa: 3, mla: 3, harvard: 4, chicago: 4, carnegie: 3 }; // the list length from which only the first name is given
+  function citedPeople(r) { return r.authors.length ? r.authors : r.editors; }
+  function famOf(p) { return p.family + (p.literal ? '' : ''); }
+  // "Smith", "Smith and Jones", "Smith, Jones, and Lee", "Smith et al."
+  function whoOf(r, style, and, oxford) {
+    var people = citedPeople(r), fam = people.map(famOf), lim = ET_AL_FROM[style] || 3;
+    if (!fam.length) return '';
+    if (r.authorsOthers || fam.length >= lim) return fam[0] + ' et al.';
+    return joinAnd(fam, and, oxford && fam.length > 2);
+  }
+  // A work with no author is cited by its title: the first words, in quotes for a part of something, plain for a whole work
+  // A shortened title: the main title before a colon when it is short, never cut mid-phrase (CMOS 14.30 leaves that to the writer)
+  function shortTitle(r) {
+    var t = marksToText(r.title || ''), main = t.split(/:\s+/)[0];
+    if (!t) return r.container || r.doi || 'Untitled'; // a figure or table DOI with no title or author of its own: cited by what it belongs to
+    return main !== t && main.split(/\s+/).length <= 5 ? main : t;
+  }
+  function wholeWork(r) { return !/^(journal|chapter|proceedings|web|thesis)$/.test(kind(r)); } // italic in print: a book, report, dataset
+  function shortTitleOf(r) { return wholeWork(r) ? shortTitle(r) : '\u201C' + shortTitle(r) + '\u201D'; }
+  function locOf(pages, form) { // "p. 45" / "pp. 45–47" / "45–47"
+    var p = String(pages || '').trim(); if (!p) return '';
+    return form === 'bare' ? pageRange(p) : pp(p);
+  }
+  function apaInText(r, opts) {
+    var who = whoOf(r, 'apa', '&') || shortTitleOf(r), whoN = whoOf(r, 'apa', 'and') || shortTitleOf(r);
+    var when = (r.year || 'n.d.') + (opts.pages ? ', ' + locOf(opts.pages) : '');
+    return { paren: '(' + who + ', ' + when + ')', narrative: whoN + ' (' + when + ')' };
+  }
+  function mlaInText(r, opts) {
+    var who = whoOf(r, 'mla', 'and') || shortTitleOf(r);
+    return { paren: '(' + who + (opts.pages ? ' ' + locOf(opts.pages, 'bare') : '') + ')' };
+  }
+  function harvardInText(r, opts) {
+    var who = whoOf(r, 'harvard', 'and') || shortTitleOf(r);
+    var when = (r.year || 'no date') + (opts.pages ? ', ' + locOf(opts.pages) : '');
+    return { paren: '(' + who + ' ' + when + ')', narrative: who + ' (' + when + ')' };
+  }
+  function vancouverInText(r, opts) { return { paren: '(' + (opts.n || 1) + ')' }; }
+  function ieeeInText(r, opts) { return { paren: '[' + (opts.n || 1) + (opts.pages ? ', ' + locOf(opts.pages) : '') + ']' }; }
+  // Chicago notes and bibliography (CMOS 17, ch. 14): the full first note, and the shortened form for later notes
+  function chicagoInText(r, opts) {
+    var k = kind(r), loc = opts.pages ? locOf(opts.pages, 'bare') : '';
+    var nm = function (people) { var m = people.length; return m === 0 ? '' : m >= 4 ? nameFullFirst(people[0]) + ' et al.' : joinAnd(people.map(nameFullFirst), 'and', m > 2); };
+    var names = r.authorsOthers && r.authors.length ? nameFullFirst(r.authors[0]) + ' et al.' : nm(r.authors);
+    var edited = !names && r.editors.length;
+    if (edited) names = nm(r.editors) + (r.editors.length > 1 ? ', eds.' : ', ed.');
+    var link = doiLink(r), tail = r.doi ? link : r.database ? r.database + (r.accession ? ' (' + r.accession + ')' : '') : (link || '');
+    var title = marksToText(r.title || '') || shortTitle(r), quoted = function (t, comma) { return '\u201C' + t + (comma && !/[?!]$/.test(t) ? ',' : '') + '\u201D'; };
+    var pub = [r.place, r.publisher].filter(Boolean).join(': ');
+    var out = [], parts;
+    if (k === 'journal') {
+      var s = (r.container || '') + (r.volume ? ' ' + r.volume : '') + (r.issue ? ', no. ' + r.issue : '') + ' (' + (r.year ? (issueMonth(r) ? MONTHS[issueMonth(r) - 1] + ' ' : '') + r.year : 'n.d.') + ')';
+      var pg = loc ? loc + (r.isArticleNumber && r.pages ? ', ' + r.pages : '') : (r.pages ? pageRange(r.pages) : '');
+      if (pg) s += ': ' + pg;
+      out = [names, quoted(title, true) + ' ' + s.replace(/^\s+/, '')];
+      if (tail) out.push(tail);
+    } else if (k === 'book') {
+      var bt = title + (validEdition(r.edition) ? ', ' + editionLabel(r.edition, 'apa') : '');
+      out = [names, bt + ' (' + [pub, r.year || 'n.d.'].filter(Boolean).join(', ') + ')'];
+      if (loc) out.push(loc); if (tail) out.push(tail);
+    } else if (k === 'chapter' || k === 'proceedings') {
+      var inp = r.container ? 'in ' + r.container : '';
+      if (r.editors.length && !edited) inp += (inp ? ', ed. ' : 'ed. ') + joinAnd(r.editors.map(nameFullFirst), 'and', r.editors.length > 2);
+      out = [names, quoted(title, true) + (inp ? ' ' + inp : '') + ' (' + [pub, r.year || 'n.d.'].filter(Boolean).join(', ') + ')'];
+      var cp = loc || (r.pages ? pageRange(r.pages) : ''); if (cp) out.push(cp); if (tail) out.push(tail);
+    } else if (k === 'thesis') {
+      out = [names, quoted(title) + ' (' + [/m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') + ')'];
+      if (loc) out.push(loc); if (tail) out.push(tail);
+    } else if (k === 'web') {
+      var org = citedPeople(r).length && citedPeople(r)[0].literal; // an organisation follows the site name; a person leads
+      out = org ? [quoted(title, true), r.container, names] : [names, quoted(title, true), r.container];
+      if (r.year) out.push((r.month ? MONTHS[r.month - 1] + (r.day ? ' ' + r.day : '') + ', ' : '') + r.year);
+      else if (accessedDate(r)) out.push('accessed ' + accessedDate(r));
+      if (tail) out.push(tail);
+    } else {
+      out = [names, quoted(title, true) + ' ' + [hostOf(r), r.year || 'n.d.'].filter(Boolean).join(', ')];
+      if (loc) out.push(loc); if (tail) out.push(tail);
+    }
+    var note = out.filter(Boolean).join(', ').replace(/,\u201D, /g, ',\u201D ').replace(/\s+/g, ' ') + '.'; // the comma sits inside a closing quote
+    // the short form: surnames, a title of up to four words, the page
+    var fam = citedPeople(r).map(famOf), sn = fam.length ? (r.authorsOthers || fam.length >= 4 ? fam[0] + ' et al.' : joinAnd(fam, 'and', fam.length > 2)) : '';
+    var st = shortTitle(r);
+    var shortNote = (sn ? sn + ', ' : '') + (wholeWork(r) ? st + (loc ? ', ' + loc : '') : '\u201C' + st + (loc ? ',\u201D ' + loc : '\u201D')) + '.';
+    return { note: note, short: shortNote };
+  }
+  function carnegieInText(r, opts) {
+    opts = opts || {};
     var fam = r.authors.map(function (p) { return p.family; });
     var who = fam.length === 0 ? (r.container || 'Anon.') : fam.length === 1 ? fam[0] : fam.length === 2 ? fam[0] + ' and ' + fam[1] : fam[0] + ' et al.';
-    return '(' + who + ' ' + (r.year || 'n.d.') + ')';
+    return '(' + who + ' ' + (r.year || 'n.d.') + (opts.pages ? ':' + locOf(opts.pages, 'bare') : '') + ')';
+  }
+  var IN_TEXT = { apa: apaInText, mla: mlaInText, chicago: chicagoInText, harvard: harvardInText, vancouver: vancouverInText, ieee: ieeeInText,
+    carnegie: function (r, opts) { return { paren: carnegieInText(r, opts) }; } };
+  // {paren, narrative?} for author-date and numeric styles; {note, short} for Chicago's notes
+  function inTextForms(r, styleId, opts) {
+    var fn = IN_TEXT[styleId]; if (!fn) return null;
+    return fn(r, opts || {});
   }
 
   /* ---------- machine formats (plain text) ---------- */
@@ -2126,12 +2254,12 @@
   /* ---------- registry ---------- */
 
   var STYLES = [
-    { id: 'apa', label: 'APA 7th', fn: apa, rich: true },
-    { id: 'mla', label: 'MLA 9th', fn: mla, rich: true },
-    { id: 'chicago', label: 'Chicago 17th', fn: chicago, rich: true },
-    { id: 'harvard', label: 'Harvard', fn: harvard, rich: true },
-    { id: 'vancouver', label: 'Vancouver', fn: vancouver, rich: true },
-    { id: 'ieee', label: 'IEEE', fn: ieee, rich: true },
+    { id: 'apa', label: 'APA 7th', fn: apa, rich: true, inText: function (r, o) { return apaInText(r, o || {}).paren; } },
+    { id: 'mla', label: 'MLA 9th', fn: mla, rich: true, inText: function (r, o) { return mlaInText(r, o || {}).paren; } },
+    { id: 'chicago', label: 'Chicago 17th', fn: chicago, rich: true, inText: function (r, o) { return chicagoInText(r, o || {}).note; }, notes: true },
+    { id: 'harvard', label: 'Harvard', fn: harvard, rich: true, inText: function (r, o) { return harvardInText(r, o || {}).paren; } },
+    { id: 'vancouver', label: 'Vancouver', fn: vancouver, rich: true, inText: function (r, o) { return vancouverInText(r, o || {}).paren; }, numbered: true },
+    { id: 'ieee', label: 'IEEE', fn: ieee, rich: true, inText: function (r, o) { return ieeeInText(r, o || {}).paren; }, numbered: true },
     { id: 'carnegie', label: 'Annals of Carnegie Museum', fn: carnegie, rich: true, inText: carnegieInText }
   ];
   var EXPORTS = [
@@ -2277,7 +2405,10 @@
     var r = record.authors ? record : normalize(record);
     var hay = tokens(refText).map(foldSpelling), haySet = {};
     hay.forEach(function (w) { haySet[w] = true; });
-    var title = marksToText(r.title), score = 0;
+    // A paper Crossref or OpenAlex knows to be retracted often carries a "RETRACTED: " prefix in its deposited title: not a title word the reference
+    // should have, and not the sign of a notice.  Without that knowledge a "Retracted: " title is read as a notice about the paper, as before
+    var retractedPaper = (r.updates || []).some(function (u) { return u.kind === 'retraction' && u.from !== 'title'; });
+    var title = retractedPaper ? marksToText(r.title).replace(TITLE_NOTICE_PREFIX, '') : marksToText(r.title), score = 0;
     if (!tokens(title).length && !tokens(r.originalTitle || '').length) return 0;
     // the record's title, or the original-language title Crossref holds beside a translation; a reference often drops a subtitle
     [title, r.originalTitle ? marksToText(r.originalTitle) : ''].forEach(function (t) {
@@ -2304,7 +2435,8 @@
     } else if (recYears.length) score -= authorOk ? 0.08 : 0.15;                         // no year given: the author carries more weight
     // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
     var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
-    if ((NOTICE.test(r.title) || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
+    // A record Crossref says updates another work is a notice whatever its title; a paper whose own title was prefixed "RETRACTED: " is the paper, flagged on the row
+    if ((NOTICE.test(retractedPaper && !r.updateOf ? title : r.title) || r.updateOf || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
     // A container is never what a reference cites: the journal's own record ("Вестник Пермского университета") shares the journal name with every reference to it
     if (/^(?:journal|journal-issue|journal-volume|book-series|book-set|proceedings-series|report-series|book-track)$/.test(r.type)) score -= 0.5;
     if (!authorOk) score -= 0.15;
@@ -2373,11 +2505,12 @@
     titleText: function (r) { return marksToText(displayTitle(r)); },
     toScript: function (t, kind) { return unicodeScript(String(t), kind === 'sup' ? SUP_MAP : SUB_MAP); },
     autoFormulas: function (s) { return marksToText(autoFormulas(String(s === undefined || s === null ? '' : s).replace(PUA_RE, ''))); }, // plain text in: no markers
-    inText: function (record, styleId) {
+    inText: function (record, styleId, opts) {
       var r = harden(record.authors ? record : normalize(record));
-      for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r);
+      for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r, opts || {});
       return '';
     },
+    inTextForms: function (record, styleId, opts) { return inTextForms(harden(record.authors ? record : normalize(record)), styleId, opts); },
     matchConfidence: matchConfidence,
     STYLES: STYLES,
     EXPORTS: EXPORTS
@@ -4963,7 +5096,7 @@
   }
 
   /* ---------- network ---------- */
-  var SELECT = 'DOI,URL,title,subtitle,original-title,author,editor,container-title,short-container-title,issued,published-print,published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event,relation';
+  var SELECT = 'DOI,URL,title,subtitle,original-title,author,editor,container-title,short-container-title,issued,published-print,published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event,relation,updated-by,update-to';
 
   // Crossref's public pool allows about one request per second per client: serialise and space its calls
   // Crossref's public API has two pools, each allowing one request at a time: searches ("array", 1 per second) and
@@ -5105,7 +5238,7 @@
   }
 
   /* ---------- OpenAlex: second search backend (theses, EarthArXiv, DataCite, grey literature) ---------- */
-  var OA_SELECT = 'id,doi,title,display_name,authorships,publication_year,publication_date,biblio,primary_location,type,ids';
+  var OA_SELECT = 'id,doi,title,display_name,authorships,publication_year,publication_date,biblio,primary_location,type,ids,is_retracted';
   var oaBlockedUntil = Number(store.get('oaBlocked')) || 0;
   function oaUrl(url) { var k = ($('openalex-key') && $('openalex-key').value || '').trim(); return polite(url) + (k ? '&api_key=' + encodeURIComponent(k) : ''); }
   function oaAvailable() { return Date.now() > oaBlockedUntil; }
@@ -5446,7 +5579,7 @@
     Array.prototype.forEach.call(d.querySelectorAll('sub, sup'), function (n) { n.textContent = A.toScript(n.textContent, n.tagName.toLowerCase()); });
     return d.textContent;
   }
-  async function cslRender(style, records) {
+  async function cslRender(style, records, opts) {
     await Promise.all([ensureCiteproc(), getLocale(), getStyleXml(style.name, 0, style.dep === undefined ? false : !!style.dep)]);
     if (style.title === style.name) { // came from a ?style= link: pick up the real title and remember it
       var tm = ((csl.own && csl.own[style.name]) || csl.xml[style.name]).match(/<title>([^<]+)<\/title>/);
@@ -5474,8 +5607,18 @@
     entries = entries.map(function (e) {
       return e.replace(/[,;]?\s*(?:&#38;|&amp;|&|and)?\s*AUTODOIOTHERS\.?/g, ', et al.').replace(/et al\.\s*\./g, 'et al.').replace(/,\s*,\s*et al/g, ', et al');
     });
-    var inText = ''; try { inText = eng.makeCitationCluster(ids.map(function (id) { return { id: id }; })).replace(/,?\s*(?:&#38;|&amp;|&|and)?\s*AUTODOIOTHERS/g, ' et al.'); } catch (e) { inText = ''; }
-    return { entries: entries, inText: inText };
+    // The in-text form: with the pages typed above as a locator; a note style's cluster is the footnote; an author-date style also gets
+    // the narrative form (author outside the parentheses), which citeproc builds from the author-only and suppress-author halves
+    var pages = (opts && opts.pages) || '', xml = csl.xml[style.name] || '';
+    var isNote = /<style[^>]*\sclass="note"/.test(xml), authorDate = /citation-format="author-date"/.test(xml);
+    var tidyOthers = function (t) { return String(t || '').replace(/,?\s*(?:&#38;|&amp;|&|and)?\s*AUTODOIOTHERS/g, ' et al.'); };
+    var cluster = function (extra) { try { return tidyOthers(eng.makeCitationCluster(ids.map(function (id) { var c = { id: id }; if (pages) { c.locator = pages; c.label = 'page'; } return Object.assign(c, extra || {}); }))); } catch (e) { return ''; } };
+    var inText = cluster(), narrative = '';
+    if (authorDate && ids.length === 1 && inText) {
+      var who = htmlToText(cluster({ 'author-only': true })).trim(), rest = htmlToText(cluster({ 'suppress-author': true })).trim();
+      if (who && rest && who !== htmlToText(inText).trim()) narrative = who + ' ' + rest;
+    }
+    return { entries: entries, inText: inText, narrative: narrative, isNote: isNote };
   }
 
   /* ---------- title capitalisation (sentencecase.js + lazily loaded word list) ---------- */
@@ -5535,6 +5678,10 @@
   }
   function withCaseAll(records) { return caseState.mode === 'none' ? records : records.map(withCase); }
   $('case-select').value = ['none', 'sentence', 'title'].indexOf(caseState.mode) !== -1 ? caseState.mode : 'none';
+  var pagesTimer = null;
+  $('cite-pages').addEventListener('input', function () { // re-render the in-text lines with the new locator, a moment after typing stops
+    clearTimeout(pagesTimer); pagesTimer = setTimeout(function () { if (currentRecord) showCitation(currentRecord, currentChip); }, 250);
+  });
   $('case-select').addEventListener('change', function () {
     caseState.mode = this.value; store.set('case', caseState.mode);
     var rerender = function () { if (currentRecord) showCitation(currentRecord, currentChip); if (rebuildBatch) rebuildBatch(); };
@@ -5709,6 +5856,60 @@
     return (fam || 'reference') + (r.year || '');
   }
 
+  /* ---------- retractions, corrections and expressions of concern ----------
+   * Crossref lists them on the work (with Retraction Watch's data since 2023) and OpenAlex says whether a work is retracted.
+   * The flag is a chip beside the record and a line naming each notice; the reference itself is left as the style prints it. */
+  var UPDATE_WORDS = { retraction: 'Retracted', concern: 'Expression of concern', correction: 'Corrected' };
+  var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function dateWords(u) { return u.year ? (u.month ? (u.day ? u.day + ' ' : '') + MONTH_NAMES[u.month - 1] + ' ' : '') + u.year : ''; }
+  function updateChip(r) {
+    var us = r.updates || []; if (!us.length) return null;
+    var worst = us.some(function (u) { return u.kind === 'retraction'; }) ? 'retraction' : us.some(function (u) { return u.kind === 'concern'; }) ? 'concern' : 'correction';
+    var c = el('span', 'chip ' + (worst === 'retraction' ? 'bad' : 'warn'), UPDATE_WORDS[worst]);
+    c.title = worst === 'retraction' ? 'Crossref and Retraction Watch list a retraction of this work. Cite it only knowingly.'
+      : worst === 'concern' ? 'The journal has published an expression of concern about this work.' : 'A correction to this work has been published; check that it does not affect what you cite it for.';
+    return c;
+  }
+  function updateNote(r) { // one line per notice: what, when, and the notice's own DOI to read
+    var us = r.updates || []; if (!us.length && !r.updateOf) return null;
+    var note = el('div', 'note update-note'); note.setAttribute('role', us.some(function (u) { return u.kind === 'retraction'; }) ? 'alert' : 'status');
+    if (r.updateOf) { // the record is itself a notice
+      note.appendChild(document.createTextNode('This is a ' + (r.updateOf.label || r.updateOf.type.replace(/_/g, ' ')).toLowerCase() + ' notice' + (r.updateOf.doi ? ' for ' : '.')));
+      if (r.updateOf.doi) { note.appendChild(el('code', '', r.updateOf.doi)); note.appendChild(document.createTextNode('.')); }
+      return note;
+    }
+    us.forEach(function (u, i) {
+      var what = u.kind === 'retraction' ? (u.type === 'partial_retraction' ? 'Partially retracted' : u.type === 'withdrawal' ? 'Withdrawn' : u.type === 'removal' ? 'Removed' : 'Retracted')
+        : u.kind === 'concern' ? 'Expression of concern published' : 'Correction published';
+      var when = dateWords(u);
+      var line = el('span', '', what + (when ? ' ' + (u.kind === 'retraction' && !/published/.test(what) ? 'on ' : '') + when : '') + (u.doi ? ': ' : '.'));
+      if (i === 0 && u.kind === 'retraction') line.style.fontWeight = '600';
+      note.appendChild(line);
+      if (u.doi) {
+        var a = el('a', 'doi-link', ''); a.href = 'https://doi.org/' + u.doi; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = 'Opens the notice (via doi.org)';
+        a.appendChild(el('code', '', u.doi)); note.appendChild(a);
+      }
+    });
+    if (us.some(function (u) { return u.kind === 'retraction'; })) note.appendChild(el('span', 'update-hint', 'APA and most journals ask you to say so when you cite a retracted work.'));
+    return note;
+  }
+
+  /* ---------- the in-text citation under each reference: parenthetical, narrative, or the footnote, with the pages typed above ---------- */
+  function citePages() { var e = $('cite-pages'); return e ? e.value.trim() : ''; }
+  function inTextLine(forms) { // forms: {paren, narrative} or {note, short}; each form gets its own Copy
+    if (!forms) return null;
+    var line = el('div', 'intext');
+    var add = function (label, text) {
+      if (!text) return;
+      line.appendChild(el('span', 'label', label));
+      line.appendChild(el('span', 'form', text));
+      var b = button('Copy', '', function (btn) { copyPlain(btn, text); }); b.setAttribute('aria-label', 'Copy the ' + label.replace(/:$/, '').toLowerCase()); line.appendChild(b);
+    };
+    add('In text:', forms.paren); add('Narrative:', forms.narrative);
+    add('Note:', forms.note); add('Short note:', forms.short);
+    return line.childNodes.length ? line : null;
+  }
+
   function renderRecord(r, opts) {
     opts = opts || {};
     var box = el('div', 'record');
@@ -5728,6 +5929,7 @@
     var side = el('div', 'actions'); side.style.display = 'flex'; side.style.gap = '6px'; side.style.alignItems = 'center';
     if (opts.chip) side.appendChild(opts.chip);
     if (A.kind(r) === 'journal' && !r.volume && !r.pages && r.year) { var ip = el('span', 'chip info', 'Online first'); ip.title = 'No volume or pages yet: cite as in press / early view'; side.appendChild(ip); }
+    var uc = updateChip(r); if (uc) side.appendChild(uc);
     if (r.source === 'openalex' || r.source === 'openlibrary') side.appendChild(el('span', 'chip', 'via ' + (r.source === 'openalex' ? 'OpenAlex' : 'Open Library')));
     if (r.namesUnsure) { var nu = el('span', 'chip warn', 'Check authors / editors'); nu.title = 'Open Library lists these names without saying whether they are authors or editors.'; side.appendChild(nu); }
     var view = outLink(r, 'btn small');
@@ -5735,6 +5937,7 @@
     if (opts.paper) side.appendChild(paperLinks(r, { auto: opts.paper === 'auto' }));
     head.appendChild(side);
     box.appendChild(head);
+    var un = updateNote(r); if (un) { un.style.padding = '10px 18px'; un.style.borderBottom = '1px solid var(--line)'; box.appendChild(un); }
     if (r.publishedDoi && opts.onSwap) {
       var pubNote = el('div', 'note'); pubNote.style.padding = '10px 18px'; pubNote.style.borderBottom = '1px solid var(--line)';
       pubNote.appendChild(document.createTextNode('This is a preprint. Published version: '));
@@ -5752,7 +5955,7 @@
       row.appendChild(el('div', 'style', s.label));
       var html = A.formatHtml(r, s.id), text = A.stripTags(html);
       var t = el('div', 'text'); t.innerHTML = html;
-      if (s.inText) t.appendChild(el('div', 'intext', 'In text: ' + s.inText(r)));
+      var itl = inTextLine(A.inTextForms(r, s.id, { pages: citePages(), n: 1 })); if (itl) t.appendChild(itl);
       row.appendChild(t);
       var act = el('div', 'actions');
       act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
@@ -5900,10 +6103,10 @@
     if (styleState.mode === 'csl') {
       var row = el('div', 'cite'), t = el('div', 'text', 'Rendering…');
       row.appendChild(el('div', 'style', styleState.csl.title)); row.appendChild(t); box.appendChild(row);
-      cslRender(styleState.csl, [r]).then(function (res) {
+      cslRender(styleState.csl, [r], { pages: citePages() }).then(function (res) {
         var html = res.entries[0] || '', text = htmlToText(html);
         t.innerHTML = html;
-        if (res.inText) t.appendChild(el('div', 'intext', 'In text: ' + htmlToText(res.inText)));
+        var itl = inTextLine(res.isNote ? { note: htmlToText(res.inText).replace(/^\d+\.\s+/, '') } : { paren: htmlToText(res.inText), narrative: res.narrative }); if (itl) t.appendChild(itl);
         var act = el('div', 'actions');
         act.appendChild(button('Copy', '', function (b) { copyPlain(b, text); }));
         act.appendChild(button('Rich', '', function (b) { copyRich(b, html, text); }));
@@ -6688,6 +6891,7 @@
       if (dl) { dl.appendChild(el('code', '', rec.doi || rec.isbn)); o.appendChild(dl); } else o.appendChild(el('code', '', ''));
       o.appendChild(paperLinks(rec));
       var fmt = button('Format', '', function () { formatHere(rec, 'batch'); }); fmt.title = 'Show this record on the DOI tab, in every style'; o.appendChild(fmt);
+      var ruc = updateChip(rec); if (ruc) o.appendChild(ruc);
       row.dupChip = el('span', 'chip warn', ''); row.dupChip.hidden = true; row.dupChip.title = 'Same record as an earlier ticked line; left out of the export';
       o.appendChild(row.dupChip);
       var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level === 'good'; inc.id = 'inc-' + mySeq + '-' + row.idx; // amber "check" rows wait for you to tick them
@@ -6698,6 +6902,7 @@
       row.rec = rec; row.box = inc;
       if (level === 'good' && !batchAdopted) batchAdopted = adoptRecord(rec, 'batch', el('span', 'chip good', 'From your references')) || batchAdopted;
       if (row.raw && (level === 'good' || level === 'warn')) { adoptDiacritics(rec, row.raw); var inEl = row.node.querySelector('.in'); if (inEl) markDifferences(inEl, row.raw, rec); }
+      var run = updateNote(rec); if (run) { run.style.marginTop = '6px'; o.appendChild(run); }
       if (rec.publishedDoi) {
         var pn = el('div', 'note'); pn.style.marginTop = '6px';
         pn.appendChild(document.createTextNode('Preprint; published version: ')); pn.appendChild(el('code', '', rec.publishedDoi));
@@ -6806,9 +7011,11 @@
     var nGood = rows.filter(function (f) { return f.rec && /\bgood\b/.test(f.node.className); }).length;
     var nCheck = rows.filter(function (f) { return f.rec && /\bwarn\b/.test(f.node.className); }).length;
     var nNone = items.length - nGood - nCheck;
+    var nRetracted = matched.filter(function (f) { return (f.rec.updates || []).some(function (u) { return u.kind === 'retraction'; }); }).length;
     var parts = [nGood + ' good'];
     if (nCheck) parts.push(nCheck + ' to check (unticked)');
     if (nNone) parts.push(nNone + ' not matched');
+    if (nRetracted) parts.push(nRetracted + ' retracted');
     var summary = (nFile && !nText ? nGood + ' records read from the file' + (nFile > 1 ? 's' : '') : parts.join(', ')) + '.';
     if (batchStopped) summary = 'Stopped after ' + items.length + ': ' + summary;
     $('export-go').disabled = false; $('export-stop').hidden = true;

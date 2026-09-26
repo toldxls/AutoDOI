@@ -17,6 +17,14 @@ var OUT = path.join(__dirname, 'out');     // screenshot on an unexpected except
 var CACHE = path.join(__dirname, 'cache'); // citeproc, nature.csl, locale (gitignored)
 var html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 var work = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'w.json'), 'utf8')); // Crossref record for 10.1038/nature12373
+// A retracted paper as Crossref returns it (the Wakefield 1998 Lancet article): a title prefix and two Retraction Watch notices
+var retracted = JSON.parse(JSON.stringify(work)); retracted.message.DOI = '10.1016/s0140-6736(97)11096-0'; retracted.message.URL = 'https://doi.org/10.1016/s0140-6736(97)11096-0';
+retracted.message.title = ['RETRACTED: Ileal-lymphoid-nodular hyperplasia, non-specific colitis, and pervasive developmental disorder in children'];
+retracted.message.author = [{ given: 'A. J.', family: 'Wakefield' }, { given: 'S. H.', family: 'Murch' }]; retracted.message['container-title'] = ['The Lancet']; retracted.message.volume = '351'; retracted.message.issue = '9103'; retracted.message.page = '637-641';
+retracted.message.issued = { 'date-parts': [[1998, 2]] }; retracted.message['published-print'] = { 'date-parts': [[1998, 2]] }; delete retracted.message['published-online'];
+retracted.message['updated-by'] = [
+  { DOI: '10.1016/s0140-6736(04)15715-2', type: 'correction', label: 'Correction', source: 'retraction-watch', updated: { 'date-parts': [[2004, 3, 6]] } },
+  { DOI: '10.1016/s0140-6736(10)60175-4', type: 'retraction', label: 'Retraction', source: 'retraction-watch', updated: { 'date-parts': [[2010, 2, 6]] } }];
 var pkgVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 var versionInUrl = new RegExp('AutoDOI%20' + pkgVersion.replace(/\./g, '\\.'));
 var passed = 0, failed = 0, skipped = [];
@@ -73,8 +81,10 @@ async function mockNetwork(page, base, log) {
     var m = url.match(/api\.crossref\.org\/works\/(.+?)(\?|$)/);
     if (m) {
       var doi = decodeURIComponent(m[1]);
+      if (doi.toLowerCase() === retracted.message.DOI) return json(route, retracted);
       return doi.toLowerCase() === work.message.DOI.toLowerCase() ? json(route, work) : json(route, { status: 'error', message: 'Resource not found.' }, 404);
     }
+    if (/api\.crossref\.org\/works\?.*Wakefield/i.test(url)) return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [retracted.message], 'total-results': 1 } });
     if (/api\.crossref\.org\/works\?/.test(url)) { // a twin with the same title and another DOI: the runner-up the row offers
       var twin = JSON.parse(JSON.stringify(work.message)); twin.DOI = '10.1038/nature12373-twin'; twin.title = [twin.title[0] + ' (II)']; twin.URL = 'https://doi.org/10.1038/nature12373-twin';
       return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message, twin], 'total-results': 2 } });
@@ -204,9 +214,25 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.selectOption('#style-select', 'apa');
   await page.waitForFunction(function () { return !/MLA/.test(document.querySelector('#doi-result').textContent); });
   check(name('choosing APA shows only APA'), /APA/.test(await textOf('#doi-result')));
-  await page.locator('#doi-result button:has-text("Copy")').first().click();
+  await page.locator('#doi-result .cite .actions button:has-text("Copy")').first().click();
   var clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
   check(name('Copy puts the APA reference on the clipboard'), /Kucsko, G\./.test(clip) && /\(2013\)/.test(clip), clip.slice(0, 120));
+  // In-text citations: the parenthetical and narrative forms under the reference, with the pages typed in the toolbar
+  var forms = async function () { return page.locator('#doi-result .cite .intext .form').allTextContents(); };
+  check(name('APA shows its in-text and narrative forms'), (await forms()).join(' | ') === '(Kucsko et al., 2013) | Kucsko et al. (2013)', (await forms()).join(' | '));
+  await page.fill('#cite-pages', '55');
+  await page.waitForFunction(function () { return /p\. 55/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 5000 });
+  check(name('typed pages go into both forms'), (await forms()).join(' | ') === '(Kucsko et al., 2013, p. 55) | Kucsko et al. (2013, p. 55)', (await forms()).join(' | '));
+  await page.locator('#doi-result .cite .intext button[aria-label="Copy the in text"]').click();
+  clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
+  check(name('the in-text Copy puts the citation on the clipboard'), clip === '(Kucsko et al., 2013, p. 55)', clip);
+  await page.selectOption('#style-select', 'chicago');
+  await page.waitForFunction(function () { return /Note:/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 5000 });
+  var chiForms = await forms();
+  check(name('Chicago shows the footnote with the page, and its short form'), /^G\. Kucsko et al\., \u201CNanometre-scale thermometry in a living cell,\u201D Nature 500, no\. 7460 \(August 2013\): 55, https:\/\/doi\.org\/10\.1038\/nature12373\.$/.test(chiForms[0]) && chiForms[1] === 'Kucsko et al., \u201CNanometre-scale thermometry in a living cell,\u201D 55.', chiForms.join(' | '));
+  await page.fill('#cite-pages', '');
+  await page.selectOption('#style-select', 'apa');
+  await page.waitForFunction(function () { return !/p\. 55/.test(document.querySelector('#doi-result').textContent) && /APA/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 5000 });
 
   // Title case conversion and word override
   await page.selectOption('#case-select', 'title');
@@ -227,6 +253,7 @@ async function runFlows(browser, base, dark, cslReady) {
     await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && !/Rendering/.test(c.textContent); }, null, { timeout: 20000 });
     var cslText = await page.locator('#doi-result .cite').first().textContent();
     check(name('citeproc renders the Nature style'), /Nature/.test(cslText) && /Kucsko, G\. et al\./.test(cslText) && /500, 54/.test(cslText) && /\(2013\)/.test(cslText), cslText.slice(0, 300));
+    check(name('the numeric journal style shows its in-text number with a Copy'), (await forms()).join(' | ') === '\u00B9' && (await page.locator('#doi-result .cite .intext button').count()) === 1, (await forms()).join(' | '));
     check(name('style select shows the picked style'), /^csl:nature$/.test(await page.inputValue('#style-select')), await page.inputValue('#style-select'));
     check(name('citation engine came from the pinned, integrity-checked URL'), s.state.requests.indexOf(CITEPROC_URL) !== -1 && s.state.requests.indexOf(STYLE_URL) !== -1 && s.state.requests.indexOf(LOCALE_URL) !== -1);
     check(name('no page errors after CSL rendering'), s.state.errors.length === 0, s.state.errors.join(' | '));
@@ -407,6 +434,30 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the database name from the RIS file is written back into the RIS export'), /DP {2}- JSTOR/.test(exportsText) && /AN {2}- 41403188/.test(exportsText), exportsText.slice(0, 300));
   await page.locator('#split-details summary').click();
   await axeCheck('Export tab with file records and split list open');
+  // 10. A retracted paper is flagged on the DOI tab and on a matcher row, with the notices, and the reference itself is left alone
+  await page.click('#tab-cite');
+  await page.fill('#doi-input', '10.1016/s0140-6736(97)11096-0');
+  await page.click('#doi-go');
+  await page.waitForFunction(function () { return /Wakefield/.test(document.querySelector('#doi-result').textContent) && /Copy/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 15000 });
+  check(name('a retracted paper gets a red Retracted chip'), (await page.locator('#doi-result .record-head .chip.bad:has-text("Retracted")').count()) === 1, await page.locator('#doi-result .record-head').innerHTML());
+  var noteText = await page.locator('#doi-result .update-note').textContent();
+  check(name('the note names the retraction with its date and notice DOI'), /Retracted on 6 February 2010: 10\.1016\/s0140-6736\(10\)60175-4/.test(noteText), noteText);
+  check(name('the note names the earlier correction too'), /Correction published 6 March 2004: 10\.1016\/s0140-6736\(04\)15715-2/.test(noteText), noteText);
+  check(name('the notice DOI links through doi.org'), (await page.locator('#doi-result .update-note a[href="https://doi.org/10.1016/s0140-6736(10)60175-4"]').count()) === 1);
+  check(name('the note is announced to screen readers'), (await page.locator('#doi-result .update-note').getAttribute('role')) === 'alert');
+  var apaText = await page.locator('#doi-result .cite .text').first().textContent();
+  check(name('the formatted reference is not rewritten'), /Wakefield/.test(apaText) && !/Retraction published/.test(apaText), apaText);
+  await axeCheck('DOI tab with a retracted record');
+  await page.click('#tab-export');
+  await page.selectOption('#split-mode', 'lines');
+  await page.fill('#export-input', 'Wakefield AJ, Murch SH. Ileal-lymphoid-nodular hyperplasia, non-specific colitis, and pervasive developmental disorder in children. The Lancet. 1998;351(9103):637-641.');
+  await page.click('#export-go');
+  await page.waitForFunction(function () { return /good|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  status = await textOf('#export-status');
+  check(name('the status line counts the retracted row'), /1 retracted/.test(status), status);
+  check(name('the matcher row carries the Retracted chip and the note'), (await page.locator('#export-matches .match .chip.bad:has-text("Retracted")').count()) === 1 && /Retracted on 6 February 2010/.test(await page.locator('#export-matches .match .update-note').textContent()), await page.locator('#export-matches').innerHTML());
+  check(name('the retracted row is still ticked: citing it is the writer\'s call'), await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').isChecked());
+  await axeCheck('Export tab with a retracted row');
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));
   await s.ctx.close();
 }
