@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-A7b5z5sikqanCy5gsVAvfXscY29jecOzMPqheCUGm6s=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-YChjfMSw7fFYxfJS1/xNNtu2dO9Hlu3CJmUO2peoIfk=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -109,8 +109,9 @@
   .cite .style { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding-top: 4px; }
   .cite .text { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; overflow-wrap: anywhere; }
   .cite .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-  .cite .intext { font-family: var(--sans); font-size: 12.5px; color: var(--muted); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
-  .cite .intext .form { color: var(--ink); } .cite .intext .btn { padding: 3px 8px; font-size: 11.5px; min-height: 24px; }
+  .intext { font-family: var(--sans); font-size: 12.5px; color: var(--muted); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+  .intext .form { color: var(--ink); } .intext .btn { padding: 3px 8px; font-size: 11.5px; min-height: 24px; }
+  .reflist .intext { margin: -4px 0 10px; }
   .reflist { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px; }
   .reflist .as-written { border-bottom: 1px dotted var(--warn); }
   .reflist p { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; margin: 10px 0; overflow-wrap: anywhere; }
@@ -5653,11 +5654,12 @@
     var tidyOthers = function (t) { return String(t || '').replace(/,?\s*(?:&#38;|&amp;|&|and)?\s*AUTODOIOTHERS/g, ' et al.'); };
     var cluster = function (extra) { try { return tidyOthers(eng.makeCitationCluster(ids.map(function (id) { var c = { id: id }; if (pages) { c.locator = pages; c.label = 'page'; } return Object.assign(c, extra || {}); }))); } catch (e) { return ''; } };
     var inText = cluster(), narrative = '';
-    if (authorDate && ids.length === 1 && inText) {
-      var who = htmlToText(cluster({ 'author-only': true })).trim(), rest = htmlToText(cluster({ 'suppress-author': true })).trim();
-      if (who && rest && who !== htmlToText(inText).trim()) narrative = who + ' ' + rest;
-    }
-    return { entries: entries, inText: inText, narrative: narrative, isNote: isNote };
+    var one = function (id, extra) { try { return htmlToText(tidyOthers(eng.makeCitationCluster([Object.assign({ id: id }, pages ? { locator: pages, label: 'page' } : {}, extra || {})]))).trim(); } catch (e) { return ''; } };
+    var narrativeOf = function (id, paren) { if (!authorDate || !paren) return ''; var who = one(id, { 'author-only': true }), rest = one(id, { 'suppress-author': true }); return who && rest && who !== paren ? who + ' ' + rest : ''; };
+    if (ids.length === 1 && inText) narrative = narrativeOf(ids[0], htmlToText(inText).trim());
+    var perItem = null; // each entry's own in-text form, numbered by its place in this list
+    if (opts && opts.perItem) { perItem = {}; ids.forEach(function (id) { var pn = one(id); perItem[id] = isNote ? { note: pn.replace(/^\d+\.\s+/, '') } : { paren: pn, narrative: narrativeOf(id, pn) }; }); }
+    return { entries: entries, entryIds: entryIds.map(function (x) { return [].concat(x || [])[0]; }), inText: inText, narrative: narrative, isNote: isNote, perItem: perItem };
   }
 
   /* ---------- title capitalisation (sentencecase.js + lazily loaded word list) ---------- */
@@ -6054,16 +6056,20 @@
     var list = el('div', 'reflist');
     var current = { html: '', text: '' };
     var escT = function (t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    // In-text citations under each entry, each with its own Copy; numbered styles count by the entry's place in this list.
+    // They are shown, not part of what Copy and Rich take, so the pasted list stays a reference list
+    var showInText = document.createElement('input'); showInText.type = 'checkbox'; showInText.id = 'list-intext'; showInText.checked = store.get('listintext') === '1';
+    var showLabel = document.createElement('label'); showLabel.htmlFor = 'list-intext'; showLabel.className = 'check'; showLabel.style.fontSize = '13px'; showLabel.appendChild(showInText); showLabel.appendChild(document.createTextNode(' In-text citations'));
+    showInText.addEventListener('change', function () { store.set('listintext', showInText.checked ? '1' : '0'); build(); });
     // references with no record go in as pasted, alphabetised with the rest (or after the numbered entries)
-    function finish(entriesHtml, numbered) {
-      var all = entriesHtml.slice();
-      if (keptRaw.length) {
-        var raws = keptRaw.map(function (t) { return '<span class="as-written" title="Kept as pasted: no record was found">' + escT(t) + '</span>'; });
-        all = numbered ? all.concat(raws) : all.concat(raws).sort(function (a, b) { return htmlToText(a).localeCompare(htmlToText(b)); });
-      }
-      current.html = all.map(function (h) { return '<p>' + h + '</p>'; }).join('');
-      current.text = all.map(htmlToText).join('\n');
+    function finish(entries, numbered) { // entries: [{html, forms}]
+      var all = entries.slice();
+      if (keptRaw.length) all = all.concat(keptRaw.map(function (t) { return { html: '<span class="as-written" title="Kept as pasted: no record was found">' + escT(t) + '</span>', forms: null }; }));
+      if (!numbered) all.sort(function (a, b) { return htmlToText(a.html).localeCompare(htmlToText(b.html)); });
+      current.html = all.map(function (e) { return '<p>' + e.html + '</p>'; }).join('');
+      current.text = all.map(function (e) { return htmlToText(e.html); }).join('\n');
       list.innerHTML = current.html;
+      if (showInText.checked) Array.prototype.forEach.call(list.querySelectorAll('p'), function (pEl, i) { var line = all[i].forms && inTextLine(all[i].forms); if (line) pEl.insertAdjacentElement('afterend', line); });
       renderCaseChanges(list, records);
     }
     // Sentence case / Title Case changed words in the list's titles: shown, and one click keeps a word's capitals (remembered, as on the DOI tab)
@@ -6095,19 +6101,17 @@
       if (sel.value.indexOf('csl:') === 0) {
         list.textContent = 'Rendering…';
         if (!records.length) { finish([], false); return; }
-        cslRender(recentByName(sel.value.slice(4)), records).then(function (res) {
-          finish(res.entries, /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
+        cslRender(recentByName(sel.value.slice(4)), records, { perItem: showInText.checked }).then(function (res) {
+          finish(res.entries.map(function (h, i) { return { html: h, forms: res.perItem ? res.perItem[res.entryIds[i]] || null : null }; }), /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
         }, function (e) { logError('citeproc-list', e, sel.value.slice(4)); list.textContent = e.message; });
         return;
       }
       var numbered = sel.value === 'vancouver' || sel.value === 'ieee';
-      var items = records.map(function (r, i) { return A.formatHtml(r, sel.value, numbered ? i + 1 : undefined); });
-      if (!numbered) { // alphabetical by first author, as most author-date styles want
-        items = items.slice().sort(function (a, b) { return A.stripTags(a).localeCompare(A.stripTags(b)); });
-      }
-      finish(items, numbered);
+      var items = records.map(function (r, i) { return { html: A.formatHtml(r, sel.value, numbered ? i + 1 : undefined), forms: showInText.checked ? A.inTextForms(r, sel.value, { n: i + 1 }) : null }; });
+      finish(items, numbered); // alphabetical by first author for author-date styles, in list order for numbered ones
     }
     sel.addEventListener('change', build);
+    act.appendChild(showLabel);
     act.appendChild(sel);
     act.appendChild(button('Copy', '', function (b) { copyPlain(b, current.text); }));
     act.appendChild(button('Rich', '', function (b) { copyRich(b, current.html, current.text); }));

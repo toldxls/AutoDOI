@@ -339,6 +339,24 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the status line offers a button down to the export'), (await jump.count()) === 1);
   await jump.click();
   check(name('Go to export focuses the export box'), (await page.evaluate(function () { return document.activeElement && document.activeElement.id; })) === 'export-zone');
+  // In-text citations under the list's entries: off by default, numbered by list position, never part of what Copy takes
+  check(name('the list shows no in-text lines until asked'), (await page.locator('#export-output .reflist .intext').count()) === 0);
+  await page.check('#list-intext');
+  await page.waitForSelector('#export-output .reflist .intext', { timeout: 5000 });
+  var listForms = await page.locator('#export-output .reflist .intext .form').allTextContents();
+  check(name('APA entries get their in-text and narrative forms; the kept line gets none'), listForms.join(' | ') === '(Kucsko et al., 2013) | Kucsko et al. (2013)' && (await page.locator('#export-output .reflist p').count()) === 2, listForms.join(' | '));
+  await page.locator('#export-output .reflist button:has-text("Copy")').first().click();
+  clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
+  check(name('an in-text Copy on the list copies that form'), clip === '(Kucsko et al., 2013)', clip);
+  await page.locator('#export-output .export .actions button:has-text("Copy")').first().click();
+  clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
+  check(name('the list Copy leaves the in-text forms out'), /Kucsko, G\./.test(clip) && !/\(Kucsko et al\., 2013\)/.test(clip), clip.slice(0, 200));
+  await page.selectOption('#list-style', 'ieee');
+  await page.waitForFunction(function () { return /\[1\]/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  check(name('IEEE numbers the in-text form by list position'), (await page.locator('#export-output .reflist .intext .form').allTextContents()).join(' | ') === '[1]');
+  await page.selectOption('#list-style', 'apa');
+  await page.uncheck('#list-intext');
+  await page.waitForFunction(function () { return !document.querySelector('#export-output .reflist .intext'); }, null, { timeout: 5000 });
   var rowFree = page.locator('#export-matches .match.good button:has-text("Free copy?")');
   check(name('a matched row offers to look for a free copy'), (await rowFree.count()) === 1);
   await rowFree.click();
