@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-4DZcGFT00yCvheNZgw//CmYjVuloL25kDOXtcbUNVEs=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-oDkkfSY1oFDd7rmhiQMbj8R73WW+TgHc28NgKlc+020=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -5563,7 +5563,7 @@
     hits.slice(0, 30).forEach(function (h) {
       var e = h[1], d = el('div', 'hit style'); d.tabIndex = 0;
       d.appendChild(el('div', 't', e[1]));
-      d.appendChild(el('div', 'm', e[0] + (csl.mine.has(e[0]) ? ' · also ships with EndNote' : '')));
+      d.appendChild(el('div', 'm', e[0] + (csl.mine && csl.mine.has(e[0]) ? ' · also ships with EndNote' : ''))); // the EndNote shortlist may still be loading
       d.setAttribute('role', 'button');
       var pick = function () { setStyle('csl', { name: e[0], title: e[1], dep: e[2] === 1 }); $('csl-box').hidden = true; $('style-select').focus(); };
       d.addEventListener('click', pick);
@@ -6146,6 +6146,9 @@
       }).join(x.id === 'bibtex' ? '\n\n' : (x.id === 'ris' ? '' : '\n'));
       container.appendChild(renderExport(x.label + (records.length > 1 ? ' · ' + records.length + ' records' : ''), x.ext, text, base));
     });
+    // CSL JSON: what Zotero, citeproc and most reference tools read directly
+    var cslText = JSON.stringify(records.map(function (r, i) { var it = toCsl(r, r.doi || 'ref-' + (i + 1)); Object.keys(it).forEach(function (k) { if (it[k] === undefined) delete it[k]; }); return it; }), null, 2);
+    container.appendChild(renderExport('CSL JSON' + (records.length > 1 ? ' · ' + records.length + ' records' : ''), 'json', cslText, base));
   }
 
   function renderRefList(container, records, keptRaw) {
@@ -6908,6 +6911,17 @@
       recs = withCaseAll(recs);
       renderRefList(zone, recs, kept);
       if (recs.length) renderExports(zone, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
+      // Your text as pasted, each matched and ticked line with its DOI link at the end, as Crossref's Simple Text Query returns a list
+      var textRows = rows.filter(function (row) { return row.raw; });
+      if (textRows.length && textRows.some(function (row) { return row.rec && row.rec.doi && row.box.checked; })) {
+        var withDois = textRows.map(function (row) {
+          var doi = row.rec && row.box.checked ? row.rec.doi : '';
+          return doi && row.raw.toLowerCase().indexOf(doi.toLowerCase()) === -1 ? row.raw.replace(/\s+$/, '') + ' https://doi.org/' + doi : row.raw;
+        }).join('\n');
+        var tx = renderExport('Your text with DOIs added', 'txt', withDois, 'references-with-dois');
+        tx.querySelector('.head').appendChild(el('span', 'zone-sub', 'Each line as you pasted it, with the DOI link of its ticked match at the end'));
+        zone.appendChild(tx);
+      }
       if (kept.length) zone.appendChild(el('p', 'status', kept.length + ' reference' + (kept.length > 1 ? 's are' : ' is') + ' kept exactly as pasted in the reference list above; ' + (kept.length > 1 ? 'they are' : 'it is') + ' not in the EndNote / RIS / BibTeX files because no record was found.'));
     }
     rebuildBatch = build;

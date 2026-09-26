@@ -349,6 +349,10 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.click('#tab-export');
   check(name('coming back keeps the pasted references'), /Naturee/.test(await page.inputValue('#export-input')));
   var zone = page.locator('#export-output .export-zone');
+  var textDois = await page.locator('#export-output .export:has(.section-label:has-text("Your text with DOIs")) pre').textContent();
+  check(name('the pasted text comes back with the DOI appended to the matched line only'), textDois === 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Naturee, 500(7460), 54-58. https://doi.org/10.1038/nature12373\nVaswani A, Shazeer N, Parmar N. Attention is all you need. Advances in Neural Information Processing Systems. 2017;30:5998-6008.', JSON.stringify(textDois));
+  var cslJson = await page.locator('#export-output .export:has(.section-label:has-text("CSL JSON")) pre').textContent();
+  check(name('CSL JSON export holds the ticked record'), (function () { try { var j = JSON.parse(cslJson); return j.length === 1 && j[0].DOI === '10.1038/nature12373' && j[0].type === 'article-journal' && j[0].author[0].family === 'Kucsko'; } catch (e) { return false; } })(), cslJson.slice(0, 200));
   check(name('the export sits in its own bordered box with the download buttons'), (await zone.count()) === 1 && /Your export/.test(await zone.textContent()) && (await zone.locator('button.fill:has-text("Download")').count()) >= 3 && (await zone.locator('.reflist').count()) === 1, await page.locator('#export-output').innerHTML().then(function (h) { return h.slice(0, 300); }));
   check(name('the export box is distinct in colour'), await page.evaluate(function () { var z = document.querySelector('#export-output .export-zone'), m = document.querySelector('#export-matches .match'); var zs = getComputedStyle(z); return zs.borderTopWidth === '2px' && zs.borderTopColor !== getComputedStyle(m).borderTopColor && zs.backgroundColor !== getComputedStyle(m).backgroundColor; }));
   var jump = page.locator('#export-status button:has-text("Go to export")');
