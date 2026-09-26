@@ -477,6 +477,17 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the database name from the RIS file is written back into the RIS export'), /DP {2}- JSTOR/.test(exportsText) && /AN {2}- 41403188/.test(exportsText), exportsText.slice(0, 300));
   await page.locator('#split-details summary').click();
   await axeCheck('Export tab with file records and split list open');
+  // 9b. A Word manuscript: the paragraphs after its References heading, and nothing else, land in the box and are matched
+  await page.fill('#export-input', '');
+  var beforeDocx = s.state.requests.length;
+  await page.setInputFiles('#export-file-input', [{ name: 'manuscript.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'manuscript.docx')) }]);
+  await page.waitForFunction(function () { return /Read 2 paragraphs/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  var docxText = await page.inputValue('#export-input');
+  check(name('the manuscript gives up its two references and nothing else'), docxText === 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54-58.\nVaswani A, Shazeer N, Parmar N. Attention is all you need. Advances in Neural Information Processing Systems. 2017;30:5998-6008.', JSON.stringify(docxText));
+  status = await textOf('#export-status');
+  check(name('the status says where the references came from and matches them'), /Read 2 paragraphs after "References" in manuscript\.docx\. 1 good, 1 not matched/.test(status) && (await page.inputValue('#split-mode')) === 'lines', status);
+  check(name('the document itself never left the browser'), !s.state.requests.slice(beforeDocx).some(function (u) { return /kernite|thermometry%20of/i.test(u); }));
+  await page.fill('#export-input', '');
   // 10. A retracted paper is flagged on the DOI tab and on a matcher row, with the notices, and the reference itself is left alone
   await page.click('#tab-cite');
   await page.fill('#doi-input', '10.1016/s0140-6736(97)11096-0');

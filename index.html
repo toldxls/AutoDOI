@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-oDkkfSY1oFDd7rmhiQMbj8R73WW+TgHc28NgKlc+020=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-YUtD+yuWHHCyKQhas6aojQv5m6cC64k/0WFZAQdl2Ag=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -277,8 +277,8 @@
       <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
         <button class="btn primary" type="submit" id="export-go">Match and export</button>
         <button class="btn" type="button" id="export-stop" hidden>Stop</button>
-        <button class="btn" type="button" id="export-file">Open a .ris / .enw / .bib file…</button>
-        <input type="file" id="export-file-input" accept=".ris,.enw,.bib,.txt,.bibtex,text/plain" multiple hidden>
+        <button class="btn" type="button" id="export-file" title="A .ris, .enw or .bib export is read record by record; a Word manuscript gives up the paragraphs after its References heading">Open a .ris / .enw / .bib / .docx file…</button>
+        <input type="file" id="export-file-input" accept=".ris,.enw,.bib,.txt,.bibtex,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
         <span class="status" id="export-status" style="margin:0" role="status" aria-live="polite"></span>
       </div>
     </form>
@@ -6671,12 +6671,87 @@
   }
 
   var P = window.AutoDOIParsers;
+  /* ---------- a Word manuscript: the paragraphs after its References heading ----------
+   * A .docx is a zip of XML parts; the central directory names them and DecompressionStream inflates word/document.xml,
+   * so no library is needed.  Runs set superscript or subscript become Unicode, as a paste from Word does. */
+  async function zipEntries(buf) { // {name: Uint8Array} for every stored or deflated entry
+    var b = new Uint8Array(buf), dv = new DataView(buf), n = b.length, eocd = -1;
+    for (var i = n - 22; i >= Math.max(0, n - 65558); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error('not a zip file');
+    var count = dv.getUint16(eocd + 10, true), cd = dv.getUint32(eocd + 16, true), out = {}, td = new TextDecoder();
+    for (var k = 0, pos = cd; k < count; k++) {
+      if (dv.getUint32(pos, true) !== 0x02014b50) break;
+      var method = dv.getUint16(pos + 10, true), csize = dv.getUint32(pos + 20, true), nlen = dv.getUint16(pos + 28, true), xlen = dv.getUint16(pos + 30, true), clen = dv.getUint16(pos + 32, true), off = dv.getUint32(pos + 42, true);
+      var name = td.decode(b.subarray(pos + 46, pos + 46 + nlen));
+      var lnlen = dv.getUint16(off + 26, true), lxlen = dv.getUint16(off + 28, true), start = off + 30 + lnlen + lxlen;
+      var data = b.subarray(start, start + csize);
+      if (method === 8) data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      else if (method !== 0) throw new Error('unsupported zip compression ' + method);
+      out[name] = data; pos += 46 + nlen + xlen + clen;
+    }
+    return out;
+  }
+  function docxParagraphs(xml) { // [{text, style}] in document order; tabs and breaks become spaces; sub/superscript runs become Unicode
+    var out = [], re = /<w:p[\s>][\s\S]*?<\/w:p>/g, m;
+    var unesc = function (t) { return t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, function (x, d) { return String.fromCodePoint(Number(d)); }).replace(/&#x([0-9a-f]+);/gi, function (x, h) { return String.fromCodePoint(parseInt(h, 16)); }).replace(/&amp;/g, '&'); };
+    while ((m = re.exec(xml))) {
+      var para = m[0], style = (para.match(/<w:pStyle w:val="([^"]+)"/) || [])[1] || '', text = '';
+      var runRe = /<w:r[\s>][\s\S]*?<\/w:r>|<w:tab\/>|<w:br\/>|<w:cr\/>/g, r;
+      while ((r = runRe.exec(para))) {
+        if (r[0] === '<w:tab/>' || r[0] === '<w:br/>' || r[0] === '<w:cr/>') { text += ' '; continue; }
+        var run = r[0], va = (run.match(/<w:vertAlign w:val="(superscript|subscript)"/) || [])[1], t = '';
+        var tRe = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>|<w:br\/>/g, tm;
+        while ((tm = tRe.exec(run))) t += tm[1] === undefined ? ' ' : unesc(tm[1]);
+        if (/<w:vanish\/>|<w:del[\s>]/.test(run)) continue; // hidden or deleted text
+        text += va && A.toScript ? A.toScript(t, va === 'superscript' ? 'sup' : 'sub') : t;
+      }
+      text = text.replace(/\s+/g, ' ').trim();
+      if (text) out.push({ text: text, style: style });
+    }
+    return out;
+  }
+  var REF_HEADING = /^(?:\d+\.?\s*)?(?:references?|literature cited|bibliography|works cited|reference list|references cited|cited literature|sources|notes and references|references and notes)\s*[:.]?$/i;
+  var NEXT_HEADING = /^(?:\d+\.?\s*)?(?:tables?|figures?|figure (?:captions|legends)|captions|legends|appendix|appendices|supplementary(?: material| information| data)?|supplemental(?: material| information)?|acknowledg?ements?|author contributions|funding|data availability|competing interests|conflicts? of interest|glossary|index|about the authors?)\s*[:.]?$/i;
+  function referenceSection(paras) { // the paragraphs after a References heading up to the next section; or the year-bearing paragraphs when there is none
+    var start = -1;
+    for (var i = 0; i < paras.length; i++) if (paras[i].text.length <= 40 && REF_HEADING.test(paras[i].text)) start = i; // the last such heading: an abstract's "References: 42" would not be one
+    if (start < 0) return { refs: paras.filter(function (p) { return /\b(?:1[5-9]|20)\d{2}\b/.test(p.text) && p.text.length >= 40 && !/^(?:Figure|Fig\.|Table)\s*\d/i.test(p.text); }).map(function (p) { return p.text; }), heading: '' };
+    var refs = [];
+    for (var j = start + 1; j < paras.length; j++) {
+      var p = paras[j];
+      if (p.text.length <= 40 && (NEXT_HEADING.test(p.text) || /^Heading/i.test(p.style)) && refs.length) break;
+      if (p.text.length <= 40 && /^Heading|^Title/i.test(p.style)) continue;
+      refs.push(p.text);
+    }
+    return { refs: refs, heading: paras[start].text };
+  }
+  async function docxReferences(buf) {
+    var parts = await zipEntries(buf), td = new TextDecoder('utf-8');
+    if (!parts['word/document.xml']) throw new Error('no word/document.xml inside: not a Word document');
+    var paras = docxParagraphs(td.decode(parts['word/document.xml']));
+    var sec = referenceSection(paras);
+    if (!sec.refs.length) { // a notes style keeps its references in footnotes or endnotes
+      ['word/footnotes.xml', 'word/endnotes.xml'].forEach(function (nm) { if (parts[nm]) sec.refs = sec.refs.concat(docxParagraphs(td.decode(parts[nm])).map(function (p) { return p.text; }).filter(function (t) { return t.length >= 20; })); });
+      if (sec.refs.length) sec.heading = 'notes';
+    }
+    return sec;
+  }
+  function isDocx(f) { return /\.docx$/i.test(f.name || '') || f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'; }
   function readFiles(files) {
     var list = Array.prototype.slice.call(files || []);
     if (!list.length) return;
-    Promise.all(list.map(function (f) { return P && P.decodeBytes && f.arrayBuffer ? f.arrayBuffer().then(P.decodeBytes) : f.text(); })).then(function (texts) {
+    var notes = [];
+    Promise.all(list.map(function (f) {
+      if (isDocx(f)) return f.arrayBuffer().then(docxReferences).then(function (sec) {
+        if (!sec.refs.length) throw new Error('No reference list found in ' + f.name + ': no References heading, and no paragraph with a year.');
+        notes.push(sec.refs.length + ' paragraphs ' + (sec.heading === 'notes' ? 'from the notes of ' : sec.heading ? 'after "' + sec.heading + '" in ' : 'with a year in ') + f.name);
+        return sec.refs.join('\n');
+      });
+      return P && P.decodeBytes && f.arrayBuffer ? f.arrayBuffer().then(P.decodeBytes) : f.text();
+    })).then(function (texts) {
       var ta = $('export-input');
       ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + texts.join('\n\n');
+      if (notes.length) { $('split-mode').value = 'lines'; store.set('splitmode', 'lines'); docxNote = notes.join('; '); } // one paragraph per reference
       updateSplitPreview();
       $('form-export').dispatchEvent(new Event('submit', { cancelable: true })); // also works while a batch is running
     }, function (e) { logError('file-read', e); $('export-status').textContent = 'Could not read that file: ' + e.message; });
@@ -6845,7 +6920,7 @@
     return items;
   }
 
-  var batchStopped = false, batchRestoring = false;
+  var batchStopped = false, batchRestoring = false, docxNote = '';
   $('export-stop').addEventListener('click', function () { batchStopped = true; $('export-stop').hidden = true; $('export-status').textContent = 'Stopping…'; });
   $('form-export').addEventListener('submit', async function (ev) {
     ev.preventDefault();
@@ -7226,6 +7301,7 @@
     if (nRetracted) parts.push(nRetracted + ' retracted');
     var summary = (nFile && !nText ? nGood + ' records read from the file' + (nFile > 1 ? 's' : '') : parts.join(', ')) + '.';
     if (fromMemory) summary = 'Your list from last time, as you left it: ' + summary;
+    if (docxNote) { summary = 'Read ' + docxNote + '. ' + summary; docxNote = ''; }
     if (batchStopped) summary = 'Stopped after ' + items.length + ': ' + summary;
     $('export-go').disabled = false; $('export-stop').hidden = true;
     function showSummary(extra) { // the summary, with a button down to the export box when there is one
