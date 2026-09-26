@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-gSXDlg8RrYwpQPMtPBNqpW9cyTwsPGhx4ZasxbjQZM0=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-XDcgq/eAaCTWLC3IrPEY7GervFhbBm36ZiVKTEg+JvE=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -5081,6 +5081,11 @@
   }
   $('settings-toggle').addEventListener('click', function () { openSettings($('settings-panel').hidden); if (!$('settings-panel').hidden) $('polite-email').focus(); });
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('settings-panel').hidden) { openSettings(false); $('settings-toggle').focus(); } });
+  document.addEventListener('pointerdown', function (ev) { // a click anywhere outside the panel closes it, like a menu; judged before the click so a link that opens Settings is not undone by its own click
+    if ($('settings-panel').hidden) return;
+    if (ev.target && (ev.target.closest('#settings-panel') || ev.target.closest('#settings-toggle'))) return;
+    openSettings(false);
+  });
   $('polite-email').value = store.get('email') || '';
   $('openalex-key').value = store.get('oakey') || '';
   $('openalex-key').addEventListener('change', function () { store.set('oakey', this.value.trim()); if (this.value.trim()) { oaBlockedUntil = 0; store.set('oaBlocked', '0'); } });

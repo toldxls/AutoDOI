@@ -162,6 +162,11 @@ async function runFlows(browser, base, dark, cslReady) {
   await axeCheck('Settings open');
   await page.keyboard.press('Escape');
   check(name('Escape closes Settings and returns focus to the button'), await page.isHidden('#settings-panel') && (await page.evaluate(function () { return document.activeElement.id; })) === 'settings-toggle');
+  await page.click('#settings-toggle');
+  await page.click('#settings-panel #polite-email');
+  check(name('a click inside Settings leaves it open'), await page.isVisible('#settings-panel'));
+  await page.locator('main p.lead:visible').first().click();
+  check(name('a click outside Settings closes it'), await page.isHidden('#settings-panel') && (await page.getAttribute('#settings-toggle', 'aria-expanded')) === 'false');
 
   // 3. DOI lookup through the form
   await page.click('#tab-cite');
