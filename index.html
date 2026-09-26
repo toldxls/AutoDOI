@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-YChjfMSw7fFYxfJS1/xNNtu2dO9Hlu3CJmUO2peoIfk=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-+xZo/6d6p782Dyc+nW8TZWW7MZZLLIXybJFSEXZJQo0=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AutoDOI</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231E5EB8'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif' font-weight='700' font-size='21' fill='%23fff'%3ED%3C/text%3E%3C/svg%3E">
@@ -112,6 +112,12 @@
   .intext { font-family: var(--sans); font-size: 12.5px; color: var(--muted); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
   .intext .form { color: var(--ink); } .intext .btn { padding: 3px 8px; font-size: 11.5px; min-height: 24px; }
   .reflist .intext { margin: -4px 0 10px; }
+  .edit-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 12px; padding: 12px 18px 14px; border-bottom: 1px solid var(--line); background: var(--surface); font-family: var(--sans); }
+  .edit-form label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+  .edit-form input, .edit-form textarea, .edit-form select { font-size: 13.5px; padding: 5px 8px; font-family: var(--sans); }
+  .edit-form textarea { min-height: 58px; line-height: 1.4; }
+  .edit-form .span2 { grid-column: 1 / -1; } .edit-form .buttons { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .edit-form .hint { font-size: 12px; color: var(--muted); }
   .reflist { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px; }
   .reflist .as-written { border-bottom: 1px dotted var(--warn); }
   .reflist p { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; margin: 10px 0; overflow-wrap: anywhere; }
@@ -298,6 +304,7 @@
       <input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI">
       <button class="btn primary" type="submit" id="doi-go">Look up</button>
     </form>
+    <p class="status" style="margin:-4px 0 10px"><button type="button" class="linkish" id="cite-by-hand">Write a reference by hand</button> for a source with no DOI, or press <em>Edit</em> on any record to correct it.</p>
     <div class="toolbar">
       <span class="field" style="margin:0">Style</span>
       <select id="style-select" aria-label="Output style"></select>
@@ -5951,6 +5958,78 @@
     return line.childNodes.length ? line : null;
   }
 
+  /* ---------- editing a record: a form over the fields the styles use; Apply rebuilds the record through the same normaliser
+   * the sources go through, so every derived field (kind, page kind, years) stays consistent; a source with no DOI starts blank ---------- */
+  var EDIT_KINDS = [['journal', 'Journal article', 'journal-article'], ['book', 'Book', 'book'], ['chapter', 'Book chapter', 'book-chapter'], ['proceedings', 'Conference paper', 'proceedings-article'],
+    ['thesis', 'Thesis', 'dissertation'], ['preprint', 'Preprint', 'posted-content'], ['report', 'Report', 'report'], ['web', 'Web page', 'webpage'], ['dataset', 'Dataset', 'dataset'],
+    ['software', 'Software', 'software'], ['standard', 'Standard', 'standard'], ['generic', 'Other', 'other']];
+  var ORG_WORDS = /\b(?:university|institute|institution|society|organi[sz]ation|committee|group|association|agency|department|ministry|inc\.?|ltd\.?|council|bureau|office|foundation|museum|survey|centre|center|laboratory|company|corporation|consortium|team|project|authority|commission|board|service|program|programme|collaboration|editors?)\b/i;
+  function peopleLines(list) { return (list || []).map(function (p) { return p.literal ? p.family : p.family + (p.given ? ', ' + p.given : '') + (p.suffix ? ', ' + p.suffix : ''); }).join('\n'); }
+  function parsePeople(text) { // one per line: "Family, Given[, Jr.]", "Given Family", or an organisation as written
+    return String(text || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
+      var parts = l.split(/\s*,\s*/);
+      if (parts.length >= 2) return { family: parts[0], given: parts[1], suffix: parts[2] || undefined };
+      if (ORG_WORDS.test(l) || l.split(/\s+/).length > 4 || l.split(/\s+/).length === 1) return { name: l };
+      var sp = A.splitName(l); return sp && sp.family ? { family: sp.family, given: sp.given || '' } : { name: l };
+    });
+  }
+  function editForm(r, onApply, onCancel) {
+    var f = document.createElement('form'); f.className = 'edit-form'; f.setAttribute('aria-label', 'Edit this reference');
+    var seqId = 'ed' + (++editSeq) + '-';
+    var field = function (key, label, value, kind, cls, hint) {
+      var lab = el('label', cls || ''); lab.htmlFor = seqId + key;
+      lab.appendChild(document.createTextNode(label));
+      var inp = document.createElement(kind === 'area' ? 'textarea' : kind === 'select' ? 'select' : 'input');
+      if (kind === 'text') inp.type = 'text';
+      inp.id = seqId + key; inp.name = key;
+      if (kind === 'select') EDIT_KINDS.forEach(function (k) { var o = document.createElement('option'); o.value = k[0]; o.textContent = k[1]; inp.appendChild(o); });
+      inp.value = value || '';
+      if (hint) { var h = el('span', 'hint', hint); lab.appendChild(h); }
+      lab.appendChild(inp); f.appendChild(lab); return inp;
+    };
+    var kindNow = A.kind(r); if (!EDIT_KINDS.some(function (k) { return k[0] === kindNow; })) kindNow = 'generic';
+    var ins = {};
+    ins.kind = field('kind', 'Type', kindNow, 'select');
+    ins.title = field('title', 'Title', r.title, 'text', 'span2');
+    ins.authors = field('authors', 'Authors', peopleLines(r.authors), 'area', '', 'One per line: Family, Given. An organisation as written.');
+    ins.editors = field('editors', 'Editors', peopleLines(r.editors), 'area', '', 'One per line, as for authors.');
+    ins.container = field('container', 'Journal, book or site', r.container, 'text');
+    ins.year = field('year', 'Year', r.year, 'text'); ins.month = field('month', 'Month (1–12)', r.month ? String(r.month) : '', 'text'); ins.day = field('day', 'Day', r.day ? String(r.day) : '', 'text');
+    ins.volume = field('volume', 'Volume', r.volume, 'text'); ins.issue = field('issue', 'Issue', r.issue, 'text'); ins.pages = field('pages', 'Pages or article number', r.pages, 'text');
+    ins.publisher = field('publisher', 'Publisher', r.publisher, 'text'); ins.place = field('place', 'Place', r.place, 'text'); ins.edition = field('edition', 'Edition', r.edition, 'text');
+    ins.institution = field('institution', 'Institution or repository', r.institution, 'text'); ins.genre = field('genre', 'Degree or report type', r.genre, 'text');
+    ins.doi = field('doi', 'DOI', r.doi, 'text'); ins.url = field('url', 'URL', r.doi ? '' : r.url, 'text'); ins.isbn = field('isbn', 'ISBN', r.isbn, 'text');
+    ins.accessed = field('accessed', 'Accessed (YYYY-MM-DD)', r.accessed && r.accessed.year ? [r.accessed.year, r.accessed.month, r.accessed.day].filter(Boolean).map(function (x, i) { return i ? String(x).padStart(2, '0') : x; }).join('-') : '', 'text');
+    var buttons = el('div', 'buttons');
+    var apply = document.createElement('button'); apply.type = 'submit'; apply.className = 'btn primary small'; apply.textContent = 'Apply'; buttons.appendChild(apply);
+    buttons.appendChild(button('Cancel', '', function () { onCancel(); }));
+    buttons.appendChild(el('span', 'hint', 'The record is rebuilt from these fields; nothing is sent anywhere.'));
+    f.appendChild(buttons);
+    f.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var v = function (k) { return ins[k].value.trim(); };
+      var kindSel = EDIT_KINDS.filter(function (k) { return k[0] === v('kind'); })[0] || EDIT_KINDS[EDIT_KINDS.length - 1];
+      var y = Number(v('year')), mo = Number(v('month')), d = Number(v('day'));
+      var acc = v('accessed').match(/^(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?$/);
+      var msg = { type: kindSel[2], title: [v('title')], author: parsePeople(v('authors')), editor: parsePeople(v('editors')),
+        'container-title': v('container') ? [v('container')] : [], issued: { 'date-parts': [y ? [y].concat(mo ? [mo].concat(d ? [d] : []) : []) : []] },
+        volume: v('volume'), issue: v('issue'), page: v('pages'), publisher: v('publisher'), 'publisher-location': v('place'), edition: v('edition'),
+        institution: v('institution') ? [{ name: v('institution') }] : undefined, degree: v('genre') ? [v('genre')] : undefined,
+        DOI: v('doi'), URL: v('url') || (v('doi') ? '' : ''), ISBN: v('isbn') ? [v('isbn')] : [],
+        accessed: acc ? { 'date-parts': [[Number(acc[1])].concat(acc[2] ? [Number(acc[2])].concat(acc[3] ? [Number(acc[3])] : []) : [])] } : undefined };
+      if (kindSel[0] === 'preprint' && v('container')) { msg.institution = [{ name: v('container') }]; msg['container-title'] = []; } // a preprint's server is its host, not a journal
+      Object.keys(msg).forEach(function (k) { if (msg[k] === undefined || msg[k] === '') delete msg[k]; });
+      var nr = A.normalize(msg);
+      ['updates', 'updateOf', 'issn', 'language', 'abstract', 'series', 'originalTitle', 'database', 'accession', 'event', 'publishedDoi', 'preprintDoi'].forEach(function (k) { if ((nr[k] === '' || nr[k] === null || (Array.isArray(nr[k]) && !nr[k].length)) && r[k]) nr[k] = r[k]; });
+      if (nr.container === r.container && r.shortContainer) nr.shortContainer = r.shortContainer;
+      if (r.protectWords) nr.protectWords = r.protectWords;
+      nr.source = 'edited'; nr.abbrTried = r.abbrTried;
+      onApply(nr);
+    });
+    return f;
+  }
+  var editSeq = 0;
+
   function renderRecord(r, opts) {
     opts = opts || {};
     var box = el('div', 'record');
@@ -5973,11 +6052,22 @@
     var uc = updateChip(r); if (uc) side.appendChild(uc);
     if (r.source === 'openalex' || r.source === 'openlibrary') side.appendChild(el('span', 'chip', 'via ' + (r.source === 'openalex' ? 'OpenAlex' : 'Open Library')));
     if (r.namesUnsure) { var nu = el('span', 'chip warn', 'Check authors / editors'); nu.title = 'Open Library lists these names without saying whether they are authors or editors.'; side.appendChild(nu); }
+    var editBox = null;
+    if (opts.onEdit) {
+      var eb = button('Edit', '', function () {
+        if (editBox) { editBox.remove(); editBox = null; eb.setAttribute('aria-expanded', 'false'); return; }
+        editBox = editForm(opts.editSource || r, function (nr) { opts.onEdit(nr); }, function () { editBox.remove(); editBox = null; eb.setAttribute('aria-expanded', 'false'); eb.focus(); });
+        head.insertAdjacentElement('afterend', editBox); eb.setAttribute('aria-expanded', 'true'); editBox.querySelector('input[name=title]').focus();
+      });
+      eb.title = 'Correct any field of this record, or fill in a missing one'; eb.setAttribute('aria-expanded', 'false'); side.appendChild(eb);
+    }
     var view = outLink(r, 'btn small');
     if (view) { view.style.textDecoration = 'none'; side.appendChild(view); }
     if (opts.paper) side.appendChild(paperLinks(r, { auto: opts.paper === 'auto' }));
     head.appendChild(side);
     box.appendChild(head);
+    if (opts.onEdit && opts.editOpen) { eb.click(); }
+    if (opts.formOnly) return box;
     var un = updateNote(r); if (un) { un.style.padding = '10px 18px'; un.style.borderBottom = '1px solid var(--line)'; box.appendChild(un); }
     if (r.publishedDoi && opts.onSwap) {
       var pubNote = el('div', 'note'); pubNote.style.padding = '10px 18px'; pubNote.style.borderBottom = '1px solid var(--line)';
@@ -6131,13 +6221,21 @@
     currentSource = source; showCitation(r, chip); setUrl(r.doi || r.isbn || '');
     return true;
   }
-  function formatHere(r, source) { adoptRecord(r, source, null, true); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus(); }
+  var editHook = null; // set when a batch row was sent here with Format: an edit here goes back into that row
+  function formatHere(r, source, onEdited) { editHook = onEdited || null; adoptRecord(r, source, null, true); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus(); }
   function showCitation(r0, chip) {
     currentRecord = r0; currentChip = chip || null;
     var r = withCase(r0);
     var out = $('doi-result'); out.innerHTML = '';
     var only = styleState.mode === 'all' ? null : styleState.mode === 'csl' ? [] : [styleState.mode];
-    var box = renderRecord(r, { chip: chip, styles: only, paper: r0 === SAMPLE ? 'ask' : 'auto', onSwap: function (doi) { $('doi-input').value = doi; lookup(doi); } }); // the example at rest makes no lookup on load
+    var box = renderRecord(r, { chip: chip, styles: only, paper: r0 === SAMPLE ? 'ask' : 'auto', onSwap: function (doi) { $('doi-input').value = doi; lookup(doi); },
+      editSource: r0, editOpen: !!r0.editOpen, formOnly: !!r0.editOpen, onEdit: function (nr) { // the edited record takes the tab; a row it came from takes it too
+        delete r0.editOpen;
+        if (currentSource === 'sample' || currentSource === 'none') currentSource = 'lookup';
+        $('doi-input').value = nr.doi || nr.isbn || ''; $('doi-status').textContent = ''; setUrl(nr.doi || nr.isbn || '');
+        showCitation(nr, el('span', 'chip info', 'Edited'));
+        if (editHook) editHook(nr);
+      } }); // the example at rest makes no lookup on load
     out.appendChild(box);
     if (needsAbbr(r0) && !r0.abbrTried) {
       r0.abbrTried = true;
@@ -6231,7 +6329,7 @@
 
   var lookupSeq = 0;
   async function lookup(text) {
-    var status = $('doi-status'); status.className = 'status';
+    var status = $('doi-status'); status.className = 'status'; editHook = null;
     var seq = ++lookupSeq;
     $('doi-go').disabled = true;
     try {
@@ -6259,6 +6357,11 @@
       if (seq === lookupSeq) { clearResult(); showError(status, 'lookup', e, doi || ''); }
     } finally { if (seq === lookupSeq) $('doi-go').disabled = false; }
   }
+  $('cite-by-hand').addEventListener('click', function () { // a blank record with the form open: nothing is looked up
+    var blank = A.normalize({ type: 'webpage', title: [''] }); blank.editOpen = true; editHook = null;
+    lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = ''; $('doi-status').textContent = ''; $('doi-status').className = 'status';
+    currentSource = 'lookup'; showCitation(blank, el('span', 'chip info', 'By hand')); setUrl('');
+  });
   $('form-cite').addEventListener('submit', function (ev) { ev.preventDefault(); lookup($('doi-input').value); });
   $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.toDoi($('doi-input').value) || A.extractPmid($('doi-input').value)) lookup($('doi-input').value); }, 0); });
 
@@ -6738,7 +6841,7 @@
     function chipFor(level, via, src) {
       var label = via === 'doi' ? 'From DOI' : via === 'isbn' ? 'From ISBN' : via === 'file' ? 'From ' + fileLabel(src) + ' file' :
         via === 'year' ? 'Year differs' : via === 'doicheck' ? 'DOI disagrees with text' : via === 'untitled' ? 'No title in file' :
-        via === 'openalex' ? (level === 'good' ? 'Good match · OpenAlex' : 'Check match · OpenAlex') : via === 'fixed' ? 'Fixed' :
+        via === 'openalex' ? (level === 'good' ? 'Good match · OpenAlex' : 'Check match · OpenAlex') : via === 'fixed' ? 'Fixed' : via === 'edited' ? 'Edited' :
         level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : via === 'none' ? 'No good match' : 'Weak match';
       var c = el('span', 'chip ' + level, label);
       if (via === 'year') c.title = 'The reference names a different year from this record; probably the wrong paper. Left out unless you tick it.';
@@ -6944,7 +7047,9 @@
       var dl = (rec.doi || rec.isbn) ? outLink(rec, 'doi-link', '') : null;
       if (dl) { dl.appendChild(el('code', '', rec.doi || rec.isbn)); o.appendChild(dl); } else o.appendChild(el('code', '', ''));
       o.appendChild(paperLinks(rec));
-      var fmt = button('Format', '', function () { formatHere(rec, 'batch'); }); fmt.title = 'Show this record on the DOI tab, in every style'; o.appendChild(fmt);
+      var onEdited = function (nr) { if (!current()) return; setRow(row, nr, row.level === 'bad' ? 'warn' : row.level, 'edited', src); if (row.fixRow && row.level !== 'bad') { row.fixRow.remove(); row.fixRow = null; } build(); }; // an edit on the DOI tab lands back here
+      var fmt = button('Format', '', function () { formatHere(rec, 'batch', onEdited); });
+      fmt.title = 'Show this record on the DOI tab, in every style, or edit it there'; o.appendChild(fmt);
       var ruc = updateChip(rec); if (ruc) o.appendChild(ruc);
       row.dupChip = el('span', 'chip warn', ''); row.dupChip.hidden = true; row.dupChip.title = 'Same record as an earlier ticked line; left out of the export';
       o.appendChild(row.dupChip);
@@ -6957,7 +7062,7 @@
       inc.addEventListener('change', function () { if (inc.checked && row.keep) row.keep.checked = false; if (row.raw) batchMem.remember(row.raw, { inc: inc.checked }); build(); });
       row.rec = rec; row.box = inc; row.level = level; row.via = via;
       if (row.raw && src === undefined) batchMem.remember(row.raw, { record: rec, level: level, via: via, inc: inc.checked }); // not file records: they need no lookup
-      if (level === 'good' && !batchAdopted) batchAdopted = adoptRecord(rec, 'batch', el('span', 'chip good', 'From your references')) || batchAdopted;
+      if (level === 'good' && !batchAdopted && adoptRecord(rec, 'batch', el('span', 'chip good', 'From your references'))) { batchAdopted = true; editHook = onEdited; }
       if (row.raw && (level === 'good' || level === 'warn')) { adoptDiacritics(rec, row.raw); var inEl = row.node.querySelector('.in'); if (inEl) markDifferences(inEl, row.raw, rec); }
       var run = updateNote(rec); if (run) { run.style.marginTop = '6px'; o.appendChild(run); }
       if (rec.publishedDoi) {

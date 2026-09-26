@@ -502,7 +502,39 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.goto(clip, { waitUntil: 'load' });
   await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
   check(name('the link opens the References tab with the list rebuilt from its DOIs'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && /1 good/.test(await textOf('#export-status')) && (await page.locator('#export-matches .match .chip:has-text("From DOI")').count()) === 1 && (await page.locator('#export-zone').count()) === 1, await textOf('#export-status'));
-  await page.fill('#export-input', ''); // leave nothing behind for the next flow in this context
+  // 12. Editing a record, and writing one by hand
+  await page.click('#tab-cite');
+  check(name('the record offers an Edit button'), (await page.locator('#doi-result .record-head button:has-text("Edit")').count()) === 1);
+  await page.locator('#doi-result .record-head button:has-text("Edit")').click();
+  await page.waitForSelector('#doi-result form.edit-form', { timeout: 5000 });
+  check(name('the form opens on the record\'s fields with the title focused'), (await page.inputValue('#doi-result form.edit-form input[name=title]')).indexOf('Ileal-lymphoid') !== -1 && (await page.inputValue('#doi-result form.edit-form input[name=year]')) === '1998' && (await page.evaluate(function () { return document.activeElement.name; })) === 'title');
+  await axeCheck('DOI tab with the edit form open');
+  await page.fill('#doi-result form.edit-form input[name=title]', 'A corrected title');
+  await page.fill('#doi-result form.edit-form input[name=year]', '1999');
+  await page.fill('#doi-result form.edit-form textarea[name=authors]', 'Wakefield, A. J.\nWorld Health Organization');
+  await page.locator('#doi-result form.edit-form button:has-text("Apply")').click();
+  await page.waitForFunction(function () { return /A corrected title/.test(document.querySelector('#doi-result').textContent) && !document.querySelector('#doi-result form.edit-form'); }, null, { timeout: 5000 });
+  var apaEdited = await page.locator('#doi-result .cite .text').first().textContent();
+  check(name('Apply rebuilds the record: new title, year and an organisation author, chip says Edited'), /Wakefield, A\. J\., & World Health Organization\. \(1999\)\. A corrected title\./.test(apaEdited) && (await page.locator('#doi-result .record-head .chip:has-text("Edited")').count()) === 1, apaEdited);
+  check(name('the edit keeps the retraction notices'), (await page.locator('#doi-result .record-head .chip.bad:has-text("Retracted")').count()) === 1);
+  await page.click('#tab-export');
+  check(name('the edit went back into the matcher row it came from'), /A corrected title/.test(await page.locator('#export-matches .match').first().textContent()) && (await page.locator('#export-matches .match .chip:has-text("Edited")').count()) === 1 && /A corrected title/.test(await page.locator('#export-output .reflist').textContent()), await page.locator('#export-matches .match').first().textContent());
+  await page.click('#tab-cite');
+  await page.click('#cite-by-hand');
+  await page.waitForSelector('#doi-result form.edit-form', { timeout: 5000 });
+  check(name('By hand opens an empty form and no styles yet'), (await page.inputValue('#doi-result form.edit-form input[name=title]')) === '' && (await page.locator('#doi-result .cite').count()) === 0 && (await page.locator('#doi-result .record-head .chip:has-text("By hand")').count()) === 1);
+  await page.selectOption('#doi-result form.edit-form select[name=kind]', 'web');
+  await page.fill('#doi-result form.edit-form input[name=title]', 'Privacy policy');
+  await page.fill('#doi-result form.edit-form textarea[name=authors]', 'Google');
+  await page.fill('#doi-result form.edit-form input[name=container]', 'Privacy & Terms');
+  await page.fill('#doi-result form.edit-form input[name=year]', '2023'); await page.fill('#doi-result form.edit-form input[name=month]', '11'); await page.fill('#doi-result form.edit-form input[name=day]', '15');
+  await page.fill('#doi-result form.edit-form input[name=url]', 'https://policies.google.com/privacy');
+  await page.locator('#doi-result form.edit-form button:has-text("Apply")').click();
+  await page.waitForFunction(function () { return /Privacy policy/.test(document.querySelector('#doi-result').textContent) && document.querySelectorAll('#doi-result .cite').length > 0; }, null, { timeout: 5000 });
+  var apaHand = await page.locator('#doi-result .cite .text').first().textContent();
+  check(name('a web page written by hand formats in APA with its full date and URL'), /^Google\. \(2023, November 15\)\. Privacy policy\. Privacy & Terms\. https:\/\/policies\.google\.com\/privacy/.test(apaHand), apaHand);
+  check(name('no lookup was made for a reference written by hand'), !s.state.requests.slice(beforeReload).some(function (u) { return /api\.crossref\.org\/works\?|openalex\.org\/works\?/.test(u); }));
+  await page.click('#tab-export'); await page.fill('#export-input', ''); // leave nothing behind for the next flow in this context
   await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));
   await s.ctx.close();
