@@ -16,7 +16,7 @@ function parses(label, source) {
   check(label + ' parses', res.status === 0, res.stderr);
 }
 
-['citations.js', 'parsers.js', 'sentencecase.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js']
+['citations.js', 'parsers.js', 'sentencecase.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js', 'sw.js']
   .forEach(function (rel) { parses(rel, read(rel)); });
 
 // Every inline <script> block in index.html (the app code, plus the inlined libraries)
@@ -40,6 +40,9 @@ var inLog = (read('CHANGELOG.md').match(/^## \[?v?(\d+\.\d+\.\d+)/m) || [])[1];
 check('package.json version is semver', /^\d+\.\d+\.\d+$/.test(pkg), pkg);
 check('index.html APP_VERSION matches package.json (' + pkg + ')', inPage === pkg, 'page says ' + inPage);
 check('CHANGELOG.md top entry matches package.json (' + pkg + ')', inLog === pkg, 'changelog says ' + inLog);
+var inSw = (read('sw.js').match(/var VERSION = '([^']+)'/) || [])[1];
+check('sw.js VERSION matches package.json (' + pkg + '), so an update replaces the old cache', inSw === pkg, 'sw.js says ' + inSw);
+check('manifest.webmanifest is valid JSON with an icon', (function () { try { var mf = JSON.parse(read('manifest.webmanifest')); return mf.name === 'AutoDOI' && mf.icons.length > 0 && fs.existsSync(path.join(ROOT, mf.icons[0].src)); } catch (e) { return false; } })());
 
 // Page metadata that is easy to lose in a big edit
 check('index.html has a favicon', /<link rel="icon" href="data:image\/svg\+xml,/.test(html));

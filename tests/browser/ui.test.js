@@ -135,6 +135,8 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.goto(base, { waitUntil: 'load' });
   check(name('title is AutoDOI'), (await page.title()) === 'AutoDOI');
   check(name('favicon link present'), await page.locator('link[rel="icon"]').count() === 1);
+  check(name('the page links its web app manifest and the manifest is served'), (await page.locator('link[rel="manifest"]').getAttribute('href')) === 'manifest.webmanifest' && (await page.evaluate(function () { return fetch('manifest.webmanifest').then(function (r) { return r.ok && r.json(); }).then(function (m) { return m && m.name === 'AutoDOI'; }); })));
+  check(name('the service worker is served but not registered over plain http'), (await page.evaluate(function () { return fetch('sw.js').then(function (r) { return r.ok; }); })) && !(await page.evaluate(function () { return navigator.serviceWorker ? navigator.serviceWorker.getRegistrations().then(function (r) { return r.length > 0; }) : false; })));
   check(name('footer shows the package version'), (await textOf('#app-version')) === 'v' + pkgVersion, await textOf('#app-version'));
   check(name('sample record renders at rest'), /Kucsko/.test(await textOf('#doi-result')));
   check(name('bug link carries the version'), versionInUrl.test(await page.locator('#link-bug').getAttribute('href')));

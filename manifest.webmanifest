@@ -1,0 +1,11 @@
+{
+  "name": "AutoDOI",
+  "short_name": "AutoDOI",
+  "description": "Turn messy references into clean ones: match a list to Crossref, format it in any style, export RIS, EndNote, BibTeX or Word.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f3",
+  "theme_color": "#1E5EB8",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

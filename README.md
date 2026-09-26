@@ -4,7 +4,7 @@ Turn messy references into clean ones. Paste a reference list in any style and g
 
 **Use it:** https://toldxls.github.io/AutoDOI/
 
-Everything runs in your browser. Nothing is stored on a server, there is no tracking, and only the identifiers or text you look up are sent to the public scholarly APIs (Crossref, doi.org, OpenAlex, Unpaywall, Europe PMC, Open Library, the NLM Catalog). For an offline copy, download `index.html` and open it; style search and title conversion need the `data/` folder beside it.
+Everything runs in your browser. Nothing is stored on a server, there is no tracking, and only the identifiers or text you look up are sent to the public scholarly APIs (Crossref, doi.org, OpenAlex, Unpaywall, Europe PMC, Open Library, the NLM Catalog). Install it as an app from the browser menu and it works offline once visited, journal styles you have used included; or download `index.html` and open it, which needs the `data/` folder beside it for style search and title conversion.
 
 ## The three tabs
 
