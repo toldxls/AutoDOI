@@ -463,6 +463,29 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the matcher row carries the Retracted chip and the note'), (await page.locator('#export-matches .match .chip.bad:has-text("Retracted")').count()) === 1 && /Retracted on 6 February 2010/.test(await page.locator('#export-matches .match .update-note').textContent()), await page.locator('#export-matches').innerHTML());
   check(name('the retracted row is still ticked: citing it is the writer\'s call'), await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').isChecked());
   await axeCheck('Export tab with a retracted row');
+  // 11. The list comes back on the next visit, rebuilt from memory with no lookup; ticks are remembered; a link rebuilds it from its DOIs
+  var beforeReload = s.state.requests.length;
+  await page.goto(base, { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
+  status = await textOf('#export-status');
+  check(name('the last list is back and rebuilt at once'), /Your list from last time/.test(status) && /1 good/.test(status) && /Wakefield/.test(await page.inputValue('#export-input')), status);
+  check(name('rebuilding it made no lookup'), !s.state.requests.slice(beforeReload).some(function (u) { return /api\.crossref\.org|api\.openalex\.org\/works\?/.test(u); }), s.state.requests.slice(beforeReload).filter(function (u) { return /crossref|openalex/.test(u); }).join(', ')); // the free-copy lookup for the DOI tab's record may still ask OpenAlex
+  check(name('the rebuilt row keeps its record and its retraction flag'), (await page.locator('#export-matches .match.good').count()) === 1 && (await page.locator('#export-matches .match .chip.bad:has-text("Retracted")').count()) === 1);
+  await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').uncheck();
+  await page.waitForFunction(function () { return !document.querySelector('#export-zone'); }, null, { timeout: 5000 });
+  await page.goto(base, { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
+  check(name('an unticked row stays unticked after a reload'), !(await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').isChecked()) && (await page.locator('#export-zone').count()) === 0);
+  await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').check();
+  await page.waitForSelector('#export-zone', { timeout: 5000 });
+  await page.locator('#export-zone button:has-text("Copy link")').click();
+  clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
+  check(name('Copy link carries the DOIs of the ticked rows and nothing pasted'), clip === base + '?refs=' + encodeURIComponent('10.1016/s0140-6736(97)11096-0'), clip);
+  await page.goto(clip, { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
+  check(name('the link opens the References tab with the list rebuilt from its DOIs'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && /1 good/.test(await textOf('#export-status')) && (await page.locator('#export-matches .match .chip:has-text("From DOI")').count()) === 1 && (await page.locator('#export-zone').count()) === 1, await textOf('#export-status'));
+  await page.fill('#export-input', ''); // leave nothing behind for the next flow in this context
+  await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));
   await s.ctx.close();
 }
