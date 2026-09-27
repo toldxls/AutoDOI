@@ -2,7 +2,7 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
-## Unreleased
+## 1.8.0 - 2026-09-26
 
 - A command line and an installable library. `bin/autodoi.js` (`npx autodoi` once published, or `node bin/autodoi.js` from a checkout) formats DOIs, arXiv IDs, PubMed IDs and ISBNs in any built-in style or export (`--style vancouver`, `--style ris`, `--style all`), adds the in-text citation with `--pages`, and with `--match` reads references from stdin, matches each at Crossref with the page's grader and prints the good ones as an RIS, BibTeX or EndNote file or in a style, reporting the rest on stderr; `--json` gives the records with grades; `--email` or `AUTODOI_EMAIL` joins Crossref's polite pool; a retracted paper is flagged on stderr. `package.json` now names `citations.js` as the package's main module and the CLI as its `bin`, with a `files` list, so `npm publish` would ship the three library files and the CLI (the package is still marked private). `tests/cli.test.js` runs it offline against a stubbed Crossref.
 - The page can be installed as an app and works offline once visited. A web app manifest and a service worker (`sw.js`, over https only) keep the page, its data files and the pinned citation engine, styles and locales; the page itself is fetched from the network first so an update arrives as soon as it is deployed, the data files are served from the cache and refreshed behind, and lookups always go to the network. The worker's version is checked against the page's so an update replaces the old cache.
