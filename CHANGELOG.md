@@ -5,6 +5,7 @@ Versions follow [semver](https://semver.org/). The version shown in the page foo
 ## Unreleased
 
 - The References tab's example list cites Watson and Crick (1953) in place of a NeurIPS paper Crossref does not hold, which came back amber; its lead is shorter.
+- "Keep as written in the list" no longer wraps onto three lines: the fix row's width rule for its text box also caught the checkbox.
 
 ## 1.9.0 - 2026-09-27
 

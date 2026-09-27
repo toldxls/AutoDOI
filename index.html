@@ -146,7 +146,7 @@
   .note code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
   .update-note { color: var(--ink); } .update-note .update-hint { color: var(--muted); }
   .fixrow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-  .fixrow input { flex: 1 1 260px; padding: 6px 10px; font-size: 13px; font-family: var(--sans); }
+  .fixrow input[type=text] { flex: 1 1 260px; padding: 6px 10px; font-size: 13px; font-family: var(--sans); } /* the text box only: the Keep checkbox beside its label must not take a box's width */
   .chip.info { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
   .tok { appearance: none; border: 0; background: none; padding: 0 1px; margin: 0; font: inherit; color: inherit; cursor: pointer; border-radius: 3px; }
   .tok.changed { background: var(--accent-soft); color: var(--accent); }
