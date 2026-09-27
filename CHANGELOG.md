@@ -2,6 +2,10 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## Unreleased
+
+- The References tab's example list cites Watson and Crick (1953) in place of a NeurIPS paper Crossref does not hold, which came back amber; its lead is shorter.
+
 ## 1.9.0 - 2026-09-27
 
 ### Changed
