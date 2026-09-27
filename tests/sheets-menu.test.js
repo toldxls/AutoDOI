@@ -20,7 +20,7 @@ function fakeFetch(url) {
 }
 var ctx = {
   console: console, Date: Date, JSON: JSON, Math: Math, String: String, Array: Array, Object: Object, RegExp: RegExp, Error: Error, encodeURIComponent: encodeURIComponent, decodeURIComponent: decodeURIComponent,
-  CacheService: { getScriptCache: function () { var m = {}; return { get: function (k) { return m[k] || null; }, put: function (k, v) { m[k] = v; } }; } },
+  CacheService: (function () { var m = {}; return { getScriptCache: function () { return { get: function (k) { return m[k] || null; }, put: function (k, v) { m[k] = v; } }; } }; })(), // one cache across calls, as Apps Script's is
   Utilities: { sleep: function () { state.sleeps++; }, formatDate: function () { return '2026-09-23 1200'; }, base64Encode: function (s) { return Buffer.from(String(s)).toString('base64'); }, computeDigest: function (a, s) { return s; }, DigestAlgorithm: {}, Charset: {} },
   Session: { getScriptTimeZone: function () { return 'UTC'; } },
   UrlFetchApp: { fetch: fakeFetch, fetchAll: function (reqs) { return reqs.map(function (r) { return fakeFetch(r.url); }); } },

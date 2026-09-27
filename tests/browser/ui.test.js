@@ -246,7 +246,7 @@ async function runFlows(browser, base, dark, cslReady) {
   // Title case conversion and word override
   await page.selectOption('#case-select', 'title');
   await page.waitForFunction(function () { return /Nanometre-Scale Thermometry in a Living Cell/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 10000 });
-  check(name('Title Case converts the heading'), true);
+  check(name('Title Case converts the heading'), /Nanometre-Scale Thermometry in a Living Cell/.test(await textOf('#doi-result')));
   await page.selectOption('#case-select', 'none');
   await page.selectOption('#style-select', 'all');
 
@@ -302,7 +302,7 @@ async function runFlows(browser, base, dark, cslReady) {
     check(name('German prints "S." and "Verfügbar unter" and fetched the German locale'), /Verf\u00fcgbar unter/.test(deText) && s.state.requests.indexOf(LOCALE_DE_URL) !== -1, deText.slice(0, 200));
     await page.click('#settings-toggle'); await page.selectOption('#csl-locale', 'en-US'); await page.keyboard.press('Escape');
     await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && /pp\. 54/.test(c.textContent); }, null, { timeout: 20000 });
-    check(name('back to English'), true);
+    check(name('back to English'), /pp\. 54/.test(await page.locator('#doi-result .cite .text').first().textContent()));
   }
   // 5. Deep link to a built-in style
   await page.goto(base + '?q=10.1038/nature12373&style=vancouver', { waitUntil: 'load' });
@@ -321,18 +321,26 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('error path leaves no unhandled page errors'), s.state.errors.length === 0, s.state.errors.join(' | '));
   await axeCheck('DOI tab with an error');
 
-  // 7. Find a DOI, then Format
+  // 7. Find a DOI, then click a hit to format it
   await page.click('#tab-find');
-  await page.fill('#find-title', 'Nanometre-scale thermometry in a living cell');
-  await page.fill('#find-journal', 'Nature');
+  check(name('the Search button stands on the same foot as the title box'), await page.evaluate(function () { var b = document.querySelector('#find-go').getBoundingClientRect(), t = document.querySelector('#find-title').getBoundingClientRect(); return Math.abs(b.bottom - t.bottom) <= 1 && Math.abs(b.top - t.top) <= 2; }), await page.evaluate(function () { var b = document.querySelector('#find-go').getBoundingClientRect(), t = document.querySelector('#find-title').getBoundingClientRect(); return 'button ' + b.top + '-' + b.bottom + ', input ' + t.top + '-' + t.bottom; }));
+  await page.fill('#find-title', ''); await page.fill('#find-journal', '');
+  await page.focus('#find-title'); await page.keyboard.press('Tab');
+  check(name('Tab in the empty title box fills in the example and keeps the focus'), (await page.inputValue('#find-title')) === 'Nanometre-scale thermometry in a living cell' && (await page.evaluate(function () { return document.activeElement.id; })) === 'find-title');
+  await page.keyboard.press('Tab');
+  check(name('a second Tab moves on to the journal box'), (await page.evaluate(function () { return document.activeElement.id; })) === 'find-journal');
+  await page.keyboard.press('Tab');
+  check(name('Tab fills the journal example too'), (await page.inputValue('#find-journal')) === 'Nature');
   await page.click('#find-go');
   await page.waitForSelector('#find-results .hit', { timeout: 15000 });
   check(name('find shows a hit with a Title match chip'), /Title match/.test(await page.locator('#find-results .hit').first().textContent()));
   check(name('find hit shows the DOI'), /10\.1038\/nature12373/.test(await textOf('#find-results')));
   check(name('the top hit replaces the example on the DOI tab'), (await page.locator('#doi-result .chip:has-text("Found by title")').count()) === 1 && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /[?&]q=10\.1038/.test(page.url()), page.url());
+  check(name('hits carry no Format button: the card itself is the control'), (await page.locator('#find-results .hit button.btn:has-text("Format")').count()) === 0 && (await page.locator('#find-results .hit.pickable').count()) >= 1);
   await axeCheck('Find tab with results');
-  await page.locator('#find-results .hit button:has-text("Format")').first().click();
-  check(name('Format jumps to the DOI tab with the record'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /Kucsko/.test(await textOf('#doi-result')));
+  await page.locator('#find-results .hit.pickable').first().click({ position: { x: 24, y: 10 } });
+  check(name('clicking a hit jumps to the DOI tab with the record'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /Kucsko/.test(await textOf('#doi-result')));
+  check(name('the picked hit stays lit'), (await page.locator('#find-results .hit.picked').count()) === 1);
 
   // 8. Reference matching and export
   await page.click('#tab-export');
@@ -357,6 +365,15 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('CSL JSON export holds the ticked record'), (function () { try { var j = JSON.parse(cslJson); return j.length === 1 && j[0].DOI === '10.1038/nature12373' && j[0].type === 'article-journal' && j[0].author[0].family === 'Kucsko'; } catch (e) { return false; } })(), cslJson.slice(0, 200));
   check(name('the export sits in its own bordered box with the download buttons'), (await zone.count()) === 1 && /Your export/.test(await zone.textContent()) && (await zone.locator('button.fill:has-text("Download")').count()) >= 3 && (await zone.locator('.reflist').count()) === 1, await page.locator('#export-output').innerHTML().then(function (h) { return h.slice(0, 300); }));
   check(name('the export box is distinct in colour'), await page.evaluate(function () { var z = document.querySelector('#export-output .export-zone'), m = document.querySelector('#export-matches .match'); var zs = getComputedStyle(z); return zs.borderTopWidth === '2px' && zs.borderTopColor !== getComputedStyle(m).borderTopColor && zs.backgroundColor !== getComputedStyle(m).backgroundColor; }));
+  check(name('a matched row has no Include label; it is lit as being in the export'), (await page.locator('#export-matches .match label:has-text("Include")').count()) === 0 && (await page.locator('#export-matches .match.good.included').count()) === 1 && /In the export/.test(await page.locator('#export-matches .match.good .pick').textContent()));
+  await page.locator('#export-matches .match.good').click({ position: { x: 10, y: 6 } });
+  await page.waitForFunction(function () { return !document.querySelector('#export-matches .match.good.included'); }, null, { timeout: 5000 }); // the kept-as-written line still gives the export box something to hold
+  check(name('a click on the row takes it out of the export and dims it'), (await page.locator('#export-matches .match.good.included').count()) === 0 && /Click to include/.test(await page.locator('#export-matches .match.good .pick').textContent()) && !(await page.locator('#export-matches .match.good input[type=checkbox][id^=inc-]').isChecked()));
+  await page.locator('#export-matches .match.good .out .t').click(); // a click on the record's title: the same toggle
+  await page.waitForSelector('#export-zone', { timeout: 5000 });
+  check(name('a click on the row puts it back'), (await page.locator('#export-matches .match.good.included').count()) === 1);
+  await page.locator('#export-matches .match.good button:has-text("Copy DOI"), #export-matches .match.good .out code').first().click().catch(function () {});
+  check(name('a click on a control or link inside the row does not toggle it'), (await page.locator('#export-matches .match.good.included').count()) === 1);
   var jump = page.locator('#export-status button:has-text("Go to export")');
   check(name('the status line offers a button down to the export'), (await jump.count()) === 1);
   await jump.click();
@@ -533,12 +550,12 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the last list is back and rebuilt at once'), /Your list from last time/.test(status) && /1 good/.test(status) && /Wakefield/.test(await page.inputValue('#export-input')), status);
   check(name('rebuilding it made no lookup'), !s.state.requests.slice(beforeReload).some(function (u) { return /api\.crossref\.org|api\.openalex\.org\/works\?/.test(u); }), s.state.requests.slice(beforeReload).filter(function (u) { return /crossref|openalex/.test(u); }).join(', ')); // the free-copy lookup for the DOI tab's record may still ask OpenAlex
   check(name('the rebuilt row keeps its record and its retraction flag'), (await page.locator('#export-matches .match.good').count()) === 1 && (await page.locator('#export-matches .match .chip.bad:has-text("Retracted")').count()) === 1);
-  await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').uncheck();
+  await page.locator('#export-matches .match').first().click({ position: { x: 10, y: 6 } });
   await page.waitForFunction(function () { return !document.querySelector('#export-zone'); }, null, { timeout: 5000 });
   await page.goto(base, { waitUntil: 'load' });
   await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
   check(name('an unticked row stays unticked after a reload'), !(await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').isChecked()) && (await page.locator('#export-zone').count()) === 0);
-  await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').check();
+  await page.locator('#export-matches .match').first().click({ position: { x: 10, y: 6 } });
   await page.waitForSelector('#export-zone', { timeout: 5000 });
   await page.locator('#export-zone button:has-text("Copy link")').click();
   clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
@@ -553,17 +570,28 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForSelector('#doi-result form.edit-form', { timeout: 5000 });
   check(name('the form opens on the record\'s fields with the title focused'), (await page.inputValue('#doi-result form.edit-form input[name=title]')).indexOf('Ileal-lymphoid') !== -1 && (await page.inputValue('#doi-result form.edit-form input[name=year]')) === '1998' && (await page.evaluate(function () { return document.activeElement.name; })) === 'title');
   await axeCheck('DOI tab with the edit form open');
+  check(name('the form has no Apply button'), (await page.locator('#doi-result form.edit-form button:has-text("Apply")').count()) === 0 && (await page.locator('#doi-result form.edit-form button:has-text("Done")').count()) === 1);
   await page.fill('#doi-result form.edit-form input[name=title]', 'A corrected title');
+  await page.waitForFunction(function () { return /A corrected title/.test(document.querySelector('#doi-result .cite .text').textContent); }, null, { timeout: 5000 });
+  check(name('the reference follows as you type, with the form still open and the title box still focused'), (await page.locator('#doi-result form.edit-form').count()) === 1 && (await page.evaluate(function () { return document.activeElement.name; })) === 'title');
   await page.fill('#doi-result form.edit-form input[name=year]', '1999');
   await page.fill('#doi-result form.edit-form textarea[name=authors]', 'Wakefield, A. J.\nWorld Health Organization');
-  await page.locator('#doi-result form.edit-form button:has-text("Apply")').click();
-  await page.waitForFunction(function () { return /A corrected title/.test(document.querySelector('#doi-result').textContent) && !document.querySelector('#doi-result form.edit-form'); }, null, { timeout: 5000 });
+  await page.waitForFunction(function () { return /World Health Organization\. \(1999\)/.test(document.querySelector('#doi-result .cite .text').textContent); }, null, { timeout: 5000 });
   var apaEdited = await page.locator('#doi-result .cite .text').first().textContent();
-  check(name('Apply rebuilds the record: new title, year and an organisation author, chip says Edited'), /Wakefield, A\. J\., & World Health Organization\. \(1999\)\. A corrected title\./.test(apaEdited) && (await page.locator('#doi-result .record-head .chip:has-text("Edited")').count()) === 1, apaEdited);
+  check(name('each change rebuilds the record: new title, year and an organisation author, chip says Edited'), /Wakefield, A\. J\., & World Health Organization\. \(1999\)\. A corrected title\./.test(apaEdited) && (await page.locator('#doi-result .record-head .chip:has-text("Edited")').count()) === 1, apaEdited);
   check(name('the edit keeps the retraction notices'), (await page.locator('#doi-result .record-head .chip.bad:has-text("Retracted")').count()) === 1);
+  await page.locator('#doi-result form.edit-form button:has-text("Done")').click();
+  await page.waitForFunction(function () { return !document.querySelector('#doi-result form.edit-form'); }, null, { timeout: 5000 });
+  check(name('Done closes the editor and keeps the edited record'), /A corrected title/.test(await page.locator('#doi-result .cite .text').first().textContent()));
+  await page.locator('#doi-result .record-head .meta').click({ position: { x: 4, y: 4 } });
+  await page.waitForSelector('#doi-result form.edit-form', { timeout: 5000 });
+  check(name('a click on the byline opens the editor on the authors'), (await page.evaluate(function () { return document.activeElement.name; })) === 'authors');
+  await page.locator('#doi-result form.edit-form button:has-text("Done")').click();
+  await page.waitForFunction(function () { return !document.querySelector('#doi-result form.edit-form'); }, null, { timeout: 5000 });
   await page.click('#tab-export');
   check(name('the edit went back into the matcher row it came from'), /A corrected title/.test(await page.locator('#export-matches .match').first().textContent()) && (await page.locator('#export-matches .match .chip:has-text("Edited")').count()) === 1 && /A corrected title/.test(await page.locator('#export-output .reflist').textContent()), await page.locator('#export-matches .match').first().textContent());
   await page.click('#tab-cite');
+  check(name('Write a reference by hand sits below the result, not under the search box'), await page.evaluate(function () { var h = document.querySelector('.by-hand-line').getBoundingClientRect(), r = document.querySelector('#doi-result').getBoundingClientRect(), f = document.querySelector('#form-cite').getBoundingClientRect(); return h.top >= r.bottom && h.top - f.bottom > 100; }));
   await page.click('#cite-by-hand');
   await page.waitForSelector('#doi-result form.edit-form', { timeout: 5000 });
   check(name('By hand opens an empty form and no styles yet'), (await page.inputValue('#doi-result form.edit-form input[name=title]')) === '' && (await page.locator('#doi-result .cite').count()) === 0 && (await page.locator('#doi-result .record-head .chip:has-text("By hand")').count()) === 1);
@@ -573,8 +601,7 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.fill('#doi-result form.edit-form input[name=container]', 'Privacy & Terms');
   await page.fill('#doi-result form.edit-form input[name=year]', '2023'); await page.fill('#doi-result form.edit-form input[name=month]', '11'); await page.fill('#doi-result form.edit-form input[name=day]', '15');
   await page.fill('#doi-result form.edit-form input[name=url]', 'https://policies.google.com/privacy');
-  await page.locator('#doi-result form.edit-form button:has-text("Apply")').click();
-  await page.waitForFunction(function () { return /Privacy policy/.test(document.querySelector('#doi-result').textContent) && document.querySelectorAll('#doi-result .cite').length > 0; }, null, { timeout: 5000 });
+  await page.waitForFunction(function () { return /policies\.google\.com/.test(document.querySelector('#doi-result').textContent) && document.querySelectorAll('#doi-result .cite').length > 0; }, null, { timeout: 5000 });
   var apaHand = await page.locator('#doi-result .cite .text').first().textContent();
   check(name('a web page written by hand formats in APA with its full date and URL'), /^Google\. \(2023, November 15\)\. Privacy policy\. Privacy & Terms\. https:\/\/policies\.google\.com\/privacy/.test(apaHand), apaHand);
   check(name('no lookup was made for a reference written by hand'), !s.state.requests.slice(beforeReload).some(function (u) { return /api\.crossref\.org\/works\?|openalex\.org\/works\?/.test(u); }));

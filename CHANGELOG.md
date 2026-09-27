@@ -2,6 +2,29 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.9.0 - 2026-09-27
+
+### Changed
+
+- **Click a hit to format it.** On Find a DOI the whole result card is the control, lit on hover and once picked; there is no Format button.
+- **Click a row to include it.** On the References tab a matched row goes into the export when clicked anywhere on it and is tinted while it is in; the Include checkbox is gone (it remains for keyboards and screen readers, unseen).
+- **Editing follows as you type.** Click the title or the byline of a record, or press *Edit*, and the reference rebuilds under each keystroke; *Done* closes the editor and *Undo changes* restores the record. There is no Apply.
+- **Tab fills in the example.** In an empty box on any tab, Tab fills in the example the box shows, so it can be tried in one keystroke; a second Tab moves on as usual.
+- *Write a reference by hand* moved from under the DOI box to the foot of the tab. The Search button on Find a DOI stands on the same line as its boxes.
+
+### Fixed
+
+From an adversarial review of the whole codebase:
+
+- The grader no longer greens a paper whose title names a different part ("Part I" against "Part II") or a one-word title ("Introduction") whose volume and page disagree.
+- A `?q=` link's lookup is no longer replaced by a remembered list or a title hit that finishes first; a `?refs=` link keeps a DOI holding a comma or a percent sign.
+- The Word download strips characters XML forbids, so Word opens it; the editor keeps a report number and a book's page count.
+- The splitter: a stray indented line no longer turns the paste into a hanging-indent layout, a publisher's place or an editor line no longer opens a new reference, numbered lists run past 999, the same DOI twice in one reference is one reference, a list of plain URLs in one-per-line mode stays a list, and a long single-line paste no longer freezes the tab.
+- A corrupted remembered list no longer stops the page from loading; reading a Word manuscript no longer changes the remembered layout; a damaged Word file says so.
+- A free-copy lookup that got no answer is asked again next time; the service worker no longer caches a 404 or 5xx page as the offline copy.
+- The command line: `--match` with references as arguments prints in APA, an ISBN lookup keeps author, year and publisher, `--match` with nothing on a terminal says so instead of waiting, and unknown or valueless options are errors.
+- The library: a DOI followed by a very long tail is stripped in linear time, a versioned arXiv DOI loses its version, an object-valued field is empty rather than "[object Object]", a null record formats as an empty one, a brace in a DOI or URL keeps the BibTeX entry balanced, a line break in a hand-built field is one space in RIS, and "Press, William H." and "SMITH JA" are read as people.
+
 ## 1.8.0 - 2026-09-26
 
 ### New

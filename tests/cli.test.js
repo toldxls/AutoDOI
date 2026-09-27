@@ -3,6 +3,7 @@ var ROOT = require('path').resolve(__dirname, '..');
 // returns it, so the formatting, the matching path, the grades and the exit codes are checked without the network.
 var fs = require('fs'), path = require('path');
 var cli = require(path.join(ROOT, 'bin', 'autodoi.js'));
+var A = require(path.join(ROOT, 'citations.js'));
 var work = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'w.json'), 'utf8'));
 let pass = 0, fail = 0;
 const eq = (label, got, exp) => { if (got === exp) pass++; else { fail++; console.log('FAIL', label, '\n   got ', JSON.stringify(got), '\n   want', JSON.stringify(exp)); } };
@@ -15,6 +16,8 @@ global.fetch = async function (url, opts) {
   if (/api\.crossref\.org\/works\//.test(url)) return bad(404);
   if (/api\.crossref\.org\/works\?/.test(url)) return ok({ message: { items: /Nanometre|thermometry/i.test(decodeURIComponent(url)) ? [work.message] : [] } });
   if (/doi\.org\//.test(url)) return bad(404);
+  if (/openlibrary\.org\/search\.json\?isbn=9780198534532&fields=/.test(url)) return ok({ docs: [{ key: '/works/OL1W', title: 'Introduction to the Theory of Numbers', author_name: ['G. H. Hardy', 'E. M. Wright'], publisher: ['Clarendon Press'], publish_place: ['Oxford'], first_publish_year: 1938, number_of_pages_median: 426, isbn: ['9780198534532'] }] });
+  if (/openlibrary\.org/.test(url)) return ok({ docs: [] });
   return bad(404);
 };
 function io(stdin) { var o = { outs: [], errs: [], stdin: async function () { return stdin || ''; } }; o.out = function (s) { o.outs.push(s); }; o.err = function (s) { o.errs.push(s); }; return o; }
@@ -50,6 +53,24 @@ function io(stdin) { var o = { outs: [], errs: [], stdin: async function () { re
   eq('match --json: grades and DOIs', j.length === 2 && j[0].grade === 'good' && j[0].record.doi === '10.1038/nature12373' && j[1].grade === 'none', true);
   t = io(); await cli.run(['--match', '--style', 'vancouver', 'Kucsko G, Maurer PC, Yao NY, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500(7460):54-58.'], t);
   eq('match from arguments in a numbered style', /^1\. Kucsko G/.test(t.outs[0]), true);
+  t = io(); code = await cli.run(['--match', 'Kucsko G, Maurer PC, Yao NY, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500(7460):54-58.'], t);
+  eq('match from arguments in the default APA style prints the reference', code === 0 && t.outs.length === 1 && /^Kucsko, G\., Maurer, P\. C\./.test(t.outs[0]), true);
+  t = io(); t.tty = function () { return true; }; code = await cli.run(['--match'], t);
+  eq('match with nothing on a terminal stdin: a message and exit 2, not a wait', code === 2 && t.errs[0] === 'Nothing to match: pipe references on stdin or give them as arguments.', true);
+  // an ISBN goes to the Open Library work search, whose record shape carries the names, year, publisher and place
+  t = io(); code = await cli.run(['978-0-19-853453-2'], t);
+  eq('ISBN: author, year, publisher and place from the Open Library work search', t.outs[0], 'Hardy, G. H., & Wright, E. M. (1938). Introduction to the Theory of Numbers. Clarendon Press.');
+  eq('ISBN exit 0', code, 0);
+  eq('ISBN: the search endpoint with the fields A.fromOpenLibrary reads', calls.some(function (u) { return /openlibrary\.org\/search\.json\?isbn=9780198534532&fields=key,title,subtitle,author_name,publisher,first_publish_year,publish_year,publish_place,number_of_pages_median,isbn$/.test(u); }), true);
+  eq('the usage example ISBN has a valid check digit', A.extractIsbn(fs.readFileSync(path.join(ROOT, 'bin', 'autodoi.js'), 'utf8').match(/97[89][-\d]+/)[0]), '9780198534532');
+  // options
+  t = io(); code = await cli.run(['10.1038/nature12373', '--sytle', 'apa'], t);
+  eq('an unknown option: named on stderr and exit 2', code === 2 && /^Unknown option --sytle/.test(t.errs[0]), true);
+  t = io(); code = await cli.run(['10.1038/nature12373', '--style'], t);
+  eq('a value-taking flag without a value: exit 2', code === 2 && /^Option --style needs a value/.test(t.errs[0]), true);
+  t = io(); code = await cli.run(['--match', '--email'], t);
+  eq('--email without a value: exit 2', code === 2 && /^Option --email needs a value/.test(t.errs[0]), true);
+  eq('parseArgs: -p at the end is an error, not pages "undefined"', cli.parseArgs(['x', '-p']).error, 'Option -p needs a value');
   eq('splitRefs: blank lines join wrapped lines', cli.splitRefs('A b\nc d\n\nE f').length, 2);
   eq('splitRefs: one per line otherwise', cli.splitRefs('A\nB\nC').length, 3);
   console.log(pass + ' passed, ' + fail + ' failed'); process.exitCode = fail ? 1 : 0;

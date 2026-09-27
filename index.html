@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Q7vpv3S/UAK+m8tOR3ofncJ/fdChNEdVSNfuIHP52Pw=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-iMMhfKM9sb8SFhgUMdYql/ll3yp3vsK5EkJiv7gUBPM=' 'sha256-wnXDtuOE+E/pUVoTHVj77fBNwnkROsIwqWCLpUlAwn4=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-IH6IICvjpPds15HqDpKrgoSXfKv7J1CWRC2XEqzk1Rs=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -62,7 +62,15 @@
   .panel[hidden] { display: none; }
   .lead { color: var(--muted); margin: 0 0 14px; max-width: 65ch; }
 
-  form.bar { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
+  form.bar { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; } /* the button's foot sits on the inputs' foot, whatever labels sit above them */
+  form.bar .btn { line-height: 1.5; }
+  .tabwrap { position: relative; }
+  .tabwrap .tab-hint { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11.5px; color: var(--muted); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; pointer-events: none; opacity: 0; transition: opacity .15s; white-space: nowrap; }
+  .tabwrap.area .tab-hint { top: auto; bottom: 12px; right: 22px; transform: none; }
+  .tabwrap :is(input, textarea):focus:placeholder-shown + .tab-hint { opacity: 1; } /* an empty field with the example showing: Tab fills it in */
+  @media (max-width: 640px) { .tabwrap .tab-hint { display: none; } }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   form.bar.two { grid-template-columns: 1fr 1fr auto; }
   @media (max-width: 640px) { form.bar, form.bar.two { grid-template-columns: 1fr; } }
   input[type="text"], textarea { width: 100%; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line);
@@ -98,6 +106,8 @@
   .record-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap;
     padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--accent-soft); }
   .record-head .title { font-family: var(--serif); font-size: 17px; line-height: 1.35; margin: 0; }
+  .record-head .editable { cursor: text; border-radius: 4px; }
+  .record-head .editable:hover { outline: 1px dashed var(--accent); outline-offset: 3px; }
   .record-head .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .record-head .meta code { font-family: var(--mono); font-size: 12.5px; }
   .chip { display: inline-block; font-size: 11.5px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase;
@@ -120,6 +130,8 @@
   .edit-form textarea { min-height: 58px; line-height: 1.4; }
   .edit-form .span2 { grid-column: 1 / -1; } .edit-form .buttons { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .edit-form .hint { font-size: 12px; color: var(--muted); }
+  .edit-form input:focus, .edit-form textarea:focus, .edit-form select:focus { border-color: var(--accent); }
+  .by-hand-line { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); }
   .reflist { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px; }
   .reflist .as-written { border-bottom: 1px dotted var(--warn); }
   .reflist p { font-family: var(--serif); font-size: 15.5px; line-height: 1.55; margin: 10px 0; overflow-wrap: anywhere; }
@@ -186,10 +198,26 @@
   .hit .m { color: var(--muted); font-size: 13px; margin-top: 3px; }
   .hit .m code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
   @media (max-width: 640px) { .hit { grid-template-columns: 1fr; } }
+  /* a search hit is picked by clicking anywhere on it; the picked one stays lit */
+  .hit.pickable { cursor: pointer; transition: border-color .12s, background-color .12s; }
+  .hit.pickable:hover, .hit.pickable:focus-visible { border-color: var(--accent); background: var(--accent-soft); }
+  .hit.picked { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+  .hit .pick, .match .pick { font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .hit button.pick { appearance: none; border: 0; background: none; padding: 4px 6px; font: inherit; font-size: 12.5px; font-weight: 500; color: var(--accent); cursor: pointer; border-radius: 4px; }
 
   .matches { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
   .match { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; border-left: 4px solid var(--line); }
   .match.good { border-left-color: var(--good); } .match.warn { border-left-color: var(--warn); } .match.bad { border-left-color: var(--bad); }
+  /* a matched row goes into the export when clicked anywhere on it, and is lit while it is in */
+  .match.pickable { cursor: pointer; transition: border-color .12s, background-color .12s; }
+  .match.pickable:hover { border-color: var(--accent); }
+  .match.included { background: var(--accent-soft); border-color: var(--accent); }
+  .match.pickable:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .match .pick { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
+  .match.included .pick { color: var(--accent); }
+  .match .pick::before { content: ''; width: 14px; height: 14px; border: 1.5px solid currentColor; border-radius: 4px; box-sizing: border-box; display: inline-block; }
+  .match.included .pick::before { background: var(--accent); border-color: var(--accent); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5l2.5 2.5 4.5-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-size: 12px; background-position: center; background-repeat: no-repeat; }
+  .match .in, .match .out .t, .match .note, .match .fixrow, .match .case-changes { cursor: auto; } /* text stays selectable; the card's own surface toggles */
   .match .in { font-family: var(--serif); color: var(--muted); font-size: 14px; }
   .match .in mark { background: var(--warn-soft); color: var(--ink); border-bottom: 1px dotted var(--warn); border-radius: 2px; padding: 0 1px; cursor: help; } /* a word the matched record does not contain */
   .match .in mark.accent { background: var(--accent-soft); border-bottom-color: var(--accent); } /* the same word, with the record's diacritics */
@@ -262,7 +290,7 @@
   <section class="panel" id="panel-export" role="tabpanel" aria-labelledby="tab-export">
     <p class="lead">Paste one reference or a whole list, in any style and however messy, and get it back clean: as a reference list in APA, Vancouver, Chicago or any of 10,000 journal styles, or as <strong>.enw</strong>, <strong>.ris</strong> or BibTeX for EndNote, Zotero and Mendeley. Each reference is matched against Crossref (with OpenAlex as a second opinion) and graded green, amber or red so you can see what to check; anything unmatched is kept exactly as you pasted it. You can also drop a .ris, .enw or .bib file, which is read directly with no lookup and re-exported in any style.</p>
     <form id="form-export">
-      <textarea id="export-input" aria-label="References or file contents" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Vaswani A, et al. Attention is all you need. NeurIPS 2017."></textarea>
+      <div class="tabwrap area"><textarea id="export-input" aria-label="References or file contents" aria-description="Empty: press Tab to fill in the example" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Vaswani A, et al. Attention is all you need. NeurIPS 2017."></textarea><span class="tab-hint" aria-hidden="true">Tab ↹ fills in the example</span></div>
       <div class="split-bar">
         <span id="split-count" role="status" aria-live="polite"></span>
         <label class="check" for="split-mode">Layout
@@ -291,13 +319,13 @@
 
   <!-- ===== 2. Find a DOI ===== -->
   <section class="panel" id="panel-find" role="tabpanel" aria-labelledby="tab-find" hidden>
-    <p class="lead">Paste a paper title and, if you have it, the journal name. The best matches come back with their DOIs; pick one to format it.</p>
+    <p class="lead">Paste a paper title and, if you have it, the journal name. The best matches come back with their DOIs; click one to format it.</p>
     <form class="bar two" id="form-find">
       <div><label class="field" for="find-title">Title</label>
-        <input type="text" id="find-title" placeholder="Nanometre-scale thermometry in a living cell" autocomplete="off"></div>
+        <span class="tabwrap"><input type="text" id="find-title" placeholder="Nanometre-scale thermometry in a living cell" autocomplete="off" aria-description="Empty: press Tab to fill in the example"><span class="tab-hint" aria-hidden="true">Tab ↹ fills in the example</span></span></div>
       <div><label class="field" for="find-journal">Journal (optional)</label>
-        <input type="text" id="find-journal" placeholder="Nature" autocomplete="off"></div>
-      <div><span class="field" aria-hidden="true">&nbsp;</span><button class="btn primary" type="submit" id="find-go">Search</button></div>
+        <span class="tabwrap"><input type="text" id="find-journal" placeholder="Nature" autocomplete="off" aria-description="Empty: press Tab to fill in the example"><span class="tab-hint" aria-hidden="true">Tab ↹ fills in</span></span></div>
+      <div><button class="btn primary" type="submit" id="find-go">Search</button></div>
     </form>
     <p class="status" id="find-status" role="status" aria-live="polite"></p>
     <div class="results" id="find-results"></div>
@@ -307,10 +335,9 @@
   <section class="panel" id="panel-cite" role="tabpanel" aria-labelledby="tab-cite" hidden>
     <p class="lead">Paste a DOI, a doi.org link, an arXiv ID, a PubMed ID, an ISBN, or any text containing one. Show every built-in style, pick one, or search 10,000 journal styles. Copy gives plain text; Rich keeps italics for Word and Google Docs. A free, legal copy of the paper is looked up on Unpaywall and offered as a Free PDF button when one exists; a library proxy set under Settings adds a Via library button.</p>
     <form class="bar" id="form-cite">
-      <input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI">
+      <div class="tabwrap"><input type="text" class="mono" id="doi-input" placeholder="10.1038/nature12373" autocomplete="off" spellcheck="false" aria-label="DOI" aria-description="Empty: press Tab to fill in the example"><span class="tab-hint" aria-hidden="true">Tab ↹ fills in the example</span></div>
       <button class="btn primary" type="submit" id="doi-go">Look up</button>
     </form>
-    <p class="status" style="margin:-4px 0 10px"><button type="button" class="linkish" id="cite-by-hand">Write a reference by hand</button> for a source with no DOI, or press <em>Edit</em> on any record to correct it.</p>
     <div class="toolbar">
       <span class="field" style="margin:0">Style</span>
       <select id="style-select" aria-label="Output style"></select>
@@ -332,6 +359,7 @@
     </div>
     <p class="status" id="doi-status" role="status" aria-live="polite"></p>
     <div id="doi-result"></div>
+    <p class="status by-hand-line">No DOI? <button type="button" class="linkish" id="cite-by-hand">Write a reference by hand</button> for a web page, report or anything else, or click any field of the record above to correct it.</p>
   </section>
 
   </main>
@@ -394,7 +422,7 @@
     var s = String(text).replace(DOI_TAG_RE, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     var m = s.match(DOI_RE);
     if (!m) return null;
-    var doi = m[0];
+    var doi = m[0].slice(0, 1000); // the tail loop below rescans the candidate each pass; no DOI is anywhere near this long
     // a DOI inside a link: "?query" and "#fragment" belong to the URL, and reserved characters arrive percent-encoded
     if (/https?:\/\/[^\s"'<>]*$/i.test(s.slice(0, m.index))) {
       doi = doi.replace(/[?#].*$/, '');
@@ -410,6 +438,7 @@
     if (!/^10\.\d{4,9}\/./.test(doi)) return null; // nothing left after the prefix
     // bioRxiv / medRxiv landing pages: 10.1101/2020.03.24.20042937v3.full -> 10.1101/2020.03.24.20042937
     if (/^10\.1101\//.test(doi)) doi = doi.replace(/(?:v\d+)?(?:\.(?:full|abstract|full-text|supplementary-material|article-info|article-metrics)(?:\.pdf(?:\+html)?)?)?$/i, '');
+    if (/^10\.48550\/arxiv\./i.test(doi)) doi = doi.replace(/v\d+$/, ''); // DataCite registers only the unversioned arXiv DOI, as toDoi gives for a link
     return doi;
   }
 
@@ -576,7 +605,7 @@
   var TAG_RE = /<\/?[A-Za-z][\w:.-]*(?:\s[^<>]*)?\/?>|<\x21--[\s\S]*?--\x3e/g;
   // Tags removed, entities decoded, whitespace collapsed; private-use formatting markers removed unless keepMarks
   function cleanText(s, keepMarks) {
-    if (s === undefined || s === null) return '';
+    if (s === undefined || s === null || (typeof s === 'object' && !Array.isArray(s))) return ''; // "[object Object]" is not text
     var t = String(s);
     if (t.indexOf('lt;') !== -1) { t = t.replace(ENCODED_TAG, '<$1>'); ENCODED_TAG.lastIndex = 0; } // "&lt;i&gt;" is markup, not text
     t = decodeEntities(t.replace(TAG_RE, ''))
@@ -2083,6 +2112,7 @@
   }
   var BIB_ESC = { '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}',
     '&': '\\&', '%': '\\%', '$': '\\$', '#': '\\#', '_': '\\_' };
+  function bibUrl(s) { return String(s || '').replace(/[{}]/g, encodeURIComponent); } // a brace in a DOI or URL would unbalance the entry; percent-encoded it still resolves
   function bibEsc(s) { return String(s).replace(/[\\{}~^&%$#_]/g, function (c) { return BIB_ESC[c]; }); }
   // braces keep "World Health Organization" as one name; escaped first so the braces survive
   // BibTeX's three-part form puts the suffix second: "King, Jr., Martin Luther"
@@ -2156,8 +2186,8 @@
     add('address', r.place);
     add('issn', r.issn, true);
     add('isbn', r.isbn, true);
-    add('doi', r.doi, true);
-    add('url', doiLink(r), true);
+    add('doi', bibUrl(r.doi), true);
+    add('url', bibUrl(doiLink(r)), true);
     if (k === 'preprint') add('note', 'Preprint');
     if (k === 'dataset') add('note', 'Dataset');
     if (k === 'software') add('note', 'Software');
@@ -2285,13 +2315,13 @@
   // Every field the formatters read, coerced to the type they expect.  Records from normalize() already have this
   // shape; this guards a caller's hand-built record, so a stray null, number or array cannot throw or leak
   var STR_FIELDS = ['type', 'doi', 'url', 'title', 'subtitle', 'container', 'series', 'number', 'shortContainer', 'institution', 'edition', 'numPages', 'genre',
-    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession', 'originalTitle'];
+    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession', 'originalTitle', 'titleMarked'];
   var ANY_PUA = /[\uE000-\uF8FF]/g;
   function str(v) { return v === undefined || v === null || typeof v === 'boolean' || (typeof v === 'number' && !isFinite(v)) ? '' : Array.isArray(v) ? v.map(str).filter(Boolean).join(' ') : typeof v === 'object' ? '' : String(v); }
   function harden(record) {
     var r = {}, k;
     for (k in record) if (Object.prototype.hasOwnProperty.call(record, k)) r[k] = record[k];
-    STR_FIELDS.forEach(function (f) { r[f] = str(r[f]); });
+    STR_FIELDS.forEach(function (f) { r[f] = str(r[f]).replace(/\s+/g, ' ').trim(); }); // a line break inside a field would break RIS and EndNote
     if (!/^\d{4}[a-z]?$/.test(r.year)) r.year = (r.year.match(/\d{4}/) || [''])[0];
     r.month = r.month > 0 && r.month <= 12 ? Math.floor(Number(r.month)) : 0;
     r.day = r.month && r.day > 0 && r.day <= 31 ? Math.floor(Number(r.day)) : 0;
@@ -2308,6 +2338,7 @@
     return r;
   }
   function format(record, styleId, num) {
+    record = record || {};
     var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
     var all = STYLES.concat(EXPORTS);
     for (var i = 0; i < all.length; i++) {
@@ -2323,6 +2354,7 @@
   // behind esc(): a field that somehow carried markup cannot become an element in the page)
   var HTML_ALLOWED = /<(?!\/?(?:i|sub|sup|span)>|span style="font-style:normal">)/g;
   function formatHtml(record, styleId, num) {
+    record = record || {};
     var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
     for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, num).replace(HTML_ALLOWED, '&lt;').replace(ANY_PUA, '');
     throw new Error('Unknown text style: ' + styleId);
@@ -2457,8 +2489,15 @@
     // A reference with no title ("Бабичев А.В. и др. // Письма в ЖТФ. 2020. Т. 46. № 9. С. 35", "Smith J. Nature 500:54 (2013)"):
     // author, year, volume and first page agreeing with the record is a specific enough match; three of the four is one to check
     var STOP_PREFIX = /^(?:with|from|that|this|into|over|under|these|those|there|their|what|when|where|which|while|other|about|after|before|between)$/;
-    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
-      var raw = String(refText).replace(/^\s*(?:\[\d{1,3}\]|\d{1,3}[.)])\s+/, ''), nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); }); // a list number is not a volume
+    // "Part I" and "Part II", "Volume 1" and "Volume 2" share every word but the one that tells them apart, which the tokeniser drops as too
+    // short: a numbered part named on both sides with different numbers is a different paper
+    var PART = /\b(part|pt|vol|volume|chapter|ch|section|sect|paper|no|number|book|step|phase|stage)\.?\s*([ivxl]+|\d+)\b/gi, ROMAN = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10, xi: 11, xii: 12 };
+    var LABEL = { pt: 'part', volume: 'vol', ch: 'chapter', sect: 'section', number: 'no' };
+    var partsOf = function (t) { var out = {}, pm; PART.lastIndex = 0; while ((pm = PART.exec(t))) { var lab = pm[1].toLowerCase(), num = pm[2].toLowerCase(); out[LABEL[lab] || lab] = out[LABEL[lab] || lab] || {}; out[LABEL[lab] || lab][ROMAN[num] || Number(num)] = 1; } return out; };
+    var recParts = partsOf(title), refParts = partsOf(String(refText));
+    Object.keys(recParts).forEach(function (lab) { if (refParts[lab] && !Object.keys(recParts[lab]).some(function (n) { return refParts[lab][n]; })) score -= 0.3; });
+    var numbers = function () { // does the reference carry the record's volume and first page?
+      var raw = String(refText).replace(/^\s*(?:\[\d{1,4}\]|\d{1,4}[.)])\s+/, ''); // a list number is not a volume
       var volText = raw.replace(/(\d)\s*\(\d{1,4}\)/g, '$1').replace(/(?:\bno\.?|\u2116|\bissue)\s*\d+/gi, ''); // "5(12)", "no. 12": an issue is not a volume
       var volOk = r.volume && new RegExp('(^|[^\\d])' + r.volume.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\d])').test(volText);
       var firstPage = (r.pages.match(/^[A-Za-z]?\d+/) || [''])[0];
@@ -2466,6 +2505,13 @@
       // "15-25" is one page range, not volume 25 and page 15
       var rangeRe = /(\d+)\s*[-\u2013\u2212]\s*(\d+)/g, rg;
       while (volOk && pageOk && (rg = rangeRe.exec(raw))) { var ends = [rg[1], rg[2]]; if (ends.indexOf(String(r.volume)) !== -1 && ends.indexOf(firstPage.replace(/^0+/, '')) !== -1) { volOk = false; } }
+      return { raw: raw, volOk: !!volOk, pageOk: !!pageOk };
+    };
+    // A one-word title ("Introduction", "Editorial", "Preface") is found in almost any reference on the subject: it is the record only
+    // when the volume and first page agree too; otherwise it is one to check
+    if (tokens(title).length <= 1 && !r.originalTitle && score > 0.6) { var nn = numbers(); if (!(nn.volOk && nn.pageOk)) score = 0.6; }
+    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
+      var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
       var known = {}; // the record's author names and journal words; whatever else the reference says of five letters or more is a title
       r.authors.forEach(function (p) { tokens(p.family).forEach(function (w) { known[foldSpelling(w)] = 1; }); });
       var jwords = tokens(r.container + ' ' + r.shortContainer).filter(function (w) { return w.length >= 4 && !/^\d+$/.test(w); }).map(foldSpelling);
@@ -2520,11 +2566,12 @@
     toScript: function (t, kind) { return unicodeScript(String(t), kind === 'sup' ? SUP_MAP : SUB_MAP); },
     autoFormulas: function (s) { return marksToText(autoFormulas(String(s === undefined || s === null ? '' : s).replace(PUA_RE, ''))); }, // plain text in: no markers
     inText: function (record, styleId, opts) {
+      record = record || {};
       var r = harden(record.authors ? record : normalize(record));
       for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r, opts || {});
       return '';
     },
-    inTextForms: function (record, styleId, opts) { return inTextForms(harden(record.authors ? record : normalize(record)), styleId, opts); },
+    inTextForms: function (record, styleId, opts) { record = record || {}; return inTextForms(harden(record.authors ? record : normalize(record)), styleId, opts); },
     matchConfidence: matchConfidence,
     STYLES: STYLES,
     EXPORTS: EXPORTS
@@ -4300,11 +4347,14 @@
     s = trim(s);
     if (!s) return null;
     if (/,\s*$/.test(s)) return { name: trim(s.replace(/,\s*$/, '')) };
-    if (ORG_WORDS.test(s) && (s.indexOf(',') === -1 || ORG_WORDS.test(s.split(',')[0]))) return { name: s }; // "History, C.M. of N." never
     var parts = s.split(',').map(trim);
+    // "Press, William H." and "Service, Robert" are people: one capitalised word, then initials or a given name; "Geological Survey, Ohio" is not
+    var personShaped = parts.length > 1 && /^[A-Z][^\s]*$/.test(parts[0]) && /^(?:[A-Z][a-z]+|[A-Z]\.?)(?:[\s.\-]*[A-Z]\.?)*$/.test(parts[1]);
+    if (ORG_WORDS.test(s) && (parts.length === 1 || (ORG_WORDS.test(parts[0]) && !personShaped))) return { name: s }; // "History, C.M. of N." never
     if (parts.length === 1) {
       var toks = s.split(/\s+/), ini = toks[toks.length - 1], fam = toks.slice(0, -1).join(' ');
-      if (toks.length > 1 && /^[A-Z]{1,3}$/.test(ini) && /[a-z]/.test(fam)) return { family: fam, given: ini.split('').join('. ') + '.' };
+      // "Smith JA", or "SMITH JA" deposited in capitals: a family longer than the initials (normalize title-cases it)
+      if (toks.length > 1 && /^[A-Z]{1,3}$/.test(ini) && (/[a-z]/.test(fam) || (toks.length === 2 && fam.length >= 3 && fam.length > ini.length))) return { family: fam, given: ini.split('').join('. ') + '.' };
       return nameFromNatural(s);
     }
     var p = { family: parts[0], given: parts[1] };
@@ -4997,7 +5047,15 @@
    * pasted line, with its record, grade and your ticks, so running it again makes no lookup.  Stays in this browser. ---------- */
   var batchMem = (function () {
     var m = null, timer = null, CAP = 400;
-    function load() { if (!m) { try { m = JSON.parse(store.get('batch') || 'null') || {}; } catch (e) { m = {}; } m.rows = m.rows || {}; } return m; }
+    function load() { // the stored shape is checked, not trusted: another page on the same origin, or an older version, may have written it
+      if (!m) {
+        try { m = JSON.parse(store.get('batch') || 'null'); } catch (e) { m = null; }
+        if (!m || typeof m !== 'object' || Array.isArray(m)) m = {};
+        if (!m.rows || typeof m.rows !== 'object' || Array.isArray(m.rows)) m.rows = {};
+        if (typeof m.text !== 'string') m.text = '';
+      }
+      return m;
+    }
     function flush() {
       if (!timer) return; clearTimeout(timer); timer = null;
       try {
@@ -5041,7 +5099,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.8.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.9.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -5142,6 +5200,13 @@
   $('library-link').addEventListener('change', function () {
     store.set('library', this.value.trim());
     if (currentRecord) showCitation(currentRecord, currentChip); if (rebuildBatch) rebuildBatch(); // the Via library buttons appear or go
+  });
+  ['export-input', 'find-title', 'find-journal', 'doi-input'].forEach(function (id) { // an empty box: Tab fills in the example it shows, so it can be tried in one keystroke; a second Tab moves on
+    $(id).addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Tab' || ev.shiftKey || ev.altKey || ev.ctrlKey || ev.metaKey || this.value || !this.placeholder) return;
+      ev.preventDefault(); this.value = this.placeholder; this.dispatchEvent(new Event('input', { bubbles: true }));
+      try { this.setSelectionRange(this.value.length, this.value.length); } catch (e) { /* not a text control */ }
+    });
   });
   function polite(url) {
     var e = ($('polite-email').value || '').trim();
@@ -5851,10 +5916,11 @@
     var key = doi.toLowerCase();
     if (freeCopyCache[key]) return freeCopyCache[key];
     return (freeCopyCache[key] = (async function () {
-      var path = doi.split('/').map(encodeURIComponent).join('/'), askOpenAlex = true, locs = [];
+      var path = doi.split('/').map(encodeURIComponent).join('/'), askOpenAlex = true, locs = [], answered = false; // no answer from either source (offline, a timeout) is not 'no free copy'
       try {
         var email = ($('polite-email').value || '').trim() || UNPAYWALL_EMAIL;
         var res = await fetchRetry('https://api.unpaywall.org/v2/' + path + '?email=' + encodeURIComponent(email));
+        if (res.ok || res.status === 404 || res.status === 422) answered = true;
         if (res.ok) {
           var u = await res.json();
           (u && (u.oa_locations || (u.best_oa_location ? [u.best_oa_location] : [])) || []).forEach(function (b) {
@@ -5866,6 +5932,7 @@
       if (askOpenAlex && oaAvailable()) {
         try {
           var r2 = await oaFetch('https://api.openalex.org/works/' + encodeURIComponent('https://doi.org/' + doi) + '?select=open_access,locations');
+          if (r2.ok || r2.status === 404) answered = true;
           if (r2.ok) {
             var w = await r2.json();
             (w.locations || []).filter(function (l) { return l.is_oa; }).forEach(function (l) {
@@ -5875,6 +5942,7 @@
           }
         } catch (e) { if (!/allowance/.test(e.message)) logError('openalex-oa', e, doi); }
       }
+      if (!answered && !locs.length) delete freeCopyCache[key];
       return rankFreeCopies(locs);
     })());
   }
@@ -5980,8 +6048,9 @@
     return line.childNodes.length ? line : null;
   }
 
-  /* ---------- editing a record: a form over the fields the styles use; Apply rebuilds the record through the same normaliser
-   * the sources go through, so every derived field (kind, page kind, years) stays consistent; a source with no DOI starts blank ---------- */
+  /* ---------- editing a record: fields over what the styles use; each change rebuilds the record through the same normaliser
+   * the sources go through, so every derived field (kind, page kind, years) stays consistent, and the reference below follows as you type;
+   * a source with no DOI starts blank ---------- */
   var EDIT_KINDS = [['journal', 'Journal article', 'journal-article'], ['book', 'Book', 'book'], ['chapter', 'Book chapter', 'book-chapter'], ['proceedings', 'Conference paper', 'proceedings-article'],
     ['thesis', 'Thesis', 'dissertation'], ['preprint', 'Preprint', 'posted-content'], ['report', 'Report', 'report'], ['web', 'Web page', 'webpage'], ['dataset', 'Dataset', 'dataset'],
     ['software', 'Software', 'software'], ['standard', 'Standard', 'standard'], ['generic', 'Other', 'other']];
@@ -5995,7 +6064,7 @@
       var sp = A.splitName(l); return sp && sp.family ? { family: sp.family, given: sp.given || '' } : { name: l };
     });
   }
-  function editForm(r, onApply, onCancel) {
+  function editForm(r, onChange, onDone, onRevert) {
     var f = document.createElement('form'); f.className = 'edit-form'; f.setAttribute('aria-label', 'Edit this reference');
     var seqId = 'ed' + (++editSeq) + '-';
     var field = function (key, label, value, kind, cls, hint) {
@@ -6022,13 +6091,7 @@
     ins.institution = field('institution', 'Institution or repository', r.institution, 'text'); ins.genre = field('genre', 'Degree or report type', r.genre, 'text');
     ins.doi = field('doi', 'DOI', r.doi, 'text'); ins.url = field('url', 'URL', r.doi ? '' : r.url, 'text'); ins.isbn = field('isbn', 'ISBN', r.isbn, 'text');
     ins.accessed = field('accessed', 'Accessed (YYYY-MM-DD)', r.accessed && r.accessed.year ? [r.accessed.year, r.accessed.month, r.accessed.day].filter(Boolean).map(function (x, i) { return i ? String(x).padStart(2, '0') : x; }).join('-') : '', 'text');
-    var buttons = el('div', 'buttons');
-    var apply = document.createElement('button'); apply.type = 'submit'; apply.className = 'btn primary small'; apply.textContent = 'Apply'; buttons.appendChild(apply);
-    buttons.appendChild(button('Cancel', '', function () { onCancel(); }));
-    buttons.appendChild(el('span', 'hint', 'The record is rebuilt from these fields; nothing is sent anywhere.'));
-    f.appendChild(buttons);
-    f.addEventListener('submit', function (ev) {
-      ev.preventDefault();
+    var read = function () { // the record as the fields now say, through the same normaliser the sources go through
       var v = function (k) { return ins[k].value.trim(); };
       var kindSel = EDIT_KINDS.filter(function (k) { return k[0] === v('kind'); })[0] || EDIT_KINDS[EDIT_KINDS.length - 1];
       var y = Number(v('year')), mo = Number(v('month')), d = Number(v('day'));
@@ -6042,12 +6105,21 @@
       if (kindSel[0] === 'preprint' && v('container')) { msg.institution = [{ name: v('container') }]; msg['container-title'] = []; } // a preprint's server is its host, not a journal
       Object.keys(msg).forEach(function (k) { if (msg[k] === undefined || msg[k] === '') delete msg[k]; });
       var nr = A.normalize(msg);
-      ['updates', 'updateOf', 'issn', 'language', 'abstract', 'series', 'originalTitle', 'database', 'accession', 'event', 'publishedDoi', 'preprintDoi'].forEach(function (k) { if ((nr[k] === '' || nr[k] === null || (Array.isArray(nr[k]) && !nr[k].length)) && r[k]) nr[k] = r[k]; });
+      ['updates', 'updateOf', 'issn', 'language', 'abstract', 'series', 'originalTitle', 'database', 'accession', 'event', 'publishedDoi', 'preprintDoi', 'number', 'numPages'].forEach(function (k) { if ((nr[k] === '' || nr[k] === null || (Array.isArray(nr[k]) && !nr[k].length)) && r[k]) nr[k] = r[k]; });
       if (nr.container === r.container && r.shortContainer) nr.shortContainer = r.shortContainer;
       if (r.protectWords) nr.protectWords = r.protectWords;
       nr.source = 'edited'; nr.abbrTried = r.abbrTried;
-      onApply(nr);
-    });
+      return nr;
+    };
+    var timer = null, fire = function () { clearTimeout(timer); timer = null; onChange(read()); };
+    f.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(fire, 300); }); // the reference below follows as you type
+    f.addEventListener('change', function (ev) { if (ev.target.tagName === 'SELECT') fire(); });
+    f.addEventListener('submit', function (ev) { ev.preventDefault(); if (timer) fire(); }); // Enter: nothing to submit
+    var buttons = el('div', 'buttons');
+    buttons.appendChild(button('Done', 'primary', function () { if (timer) fire(); onDone(); }));
+    buttons.appendChild(button('Undo changes', '', function () { clearTimeout(timer); timer = null; onRevert(); }));
+    buttons.appendChild(el('span', 'hint', 'The reference below follows as you type; nothing is sent anywhere.'));
+    f.appendChild(buttons);
     return f;
   }
   var editSeq = 0;
@@ -6074,21 +6146,28 @@
     var uc = updateChip(r); if (uc) side.appendChild(uc);
     if (r.source === 'openalex' || r.source === 'openlibrary') side.appendChild(el('span', 'chip', 'via ' + (r.source === 'openalex' ? 'OpenAlex' : 'Open Library')));
     if (r.namesUnsure) { var nu = el('span', 'chip warn', 'Check authors / editors'); nu.title = 'Open Library lists these names without saying whether they are authors or editors.'; side.appendChild(nu); }
-    var editBox = null;
+    var editBox = opts.editForm || null, eb = null; // an editor already open survives the redraw
     if (opts.onEdit) {
-      var eb = button('Edit', '', function () {
-        if (editBox) { editBox.remove(); editBox = null; eb.setAttribute('aria-expanded', 'false'); return; }
-        editBox = editForm(opts.editSource || r, function (nr) { opts.onEdit(nr); }, function () { editBox.remove(); editBox = null; eb.setAttribute('aria-expanded', 'false'); eb.focus(); });
-        head.insertAdjacentElement('afterend', editBox); eb.setAttribute('aria-expanded', 'true'); editBox.querySelector('input[name=title]').focus();
-      });
+      var openEditor = function (focusName) {
+        if (!editBox) editBox = editForm(opts.editSource || r, function (nr) { opts.onEdit(nr, editBox); }, function () { opts.onEditDone(); }, function () { opts.onEditRevert(); });
+        if (!editBox.parentNode) head.insertAdjacentElement('afterend', editBox);
+        eb.setAttribute('aria-expanded', 'true');
+        var fld = editBox.querySelector('[name=' + (focusName || 'title') + ']'); if (fld) fld.focus({ preventScroll: true });
+      };
+      eb = button('Edit', '', function () { if (editBox && editBox.parentNode) opts.onEditDone(); else openEditor('title'); });
       eb.title = 'Correct any field of this record, or fill in a missing one'; eb.setAttribute('aria-expanded', 'false'); side.appendChild(eb);
+      [[title, 'title'], [meta, 'authors']].forEach(function (pair) { // the title and the byline are themselves the way in: click one to edit it
+        pair[0].classList.add('editable'); pair[0].title = 'Click to edit';
+        pair[0].addEventListener('click', function (ev) { if (ev.target.closest('a, button')) return; if (window.getSelection && String(window.getSelection()).length) return; openEditor(pair[1]); });
+      });
     }
     var view = outLink(r, 'btn small');
     if (view) { view.style.textDecoration = 'none'; side.appendChild(view); }
     if (opts.paper) side.appendChild(paperLinks(r, { auto: opts.paper === 'auto' }));
     head.appendChild(side);
     box.appendChild(head);
-    if (opts.onEdit && opts.editOpen) { eb.click(); }
+    if (opts.onEdit && editBox) { head.insertAdjacentElement('afterend', editBox); eb.setAttribute('aria-expanded', 'true'); }
+    else if (opts.onEdit && opts.editOpen) openEditor('title');
     if (opts.formOnly) return box;
     var un = updateNote(r); if (un) { un.style.padding = '10px 18px'; un.style.borderBottom = '1px solid var(--line)'; box.appendChild(un); }
     if (r.publishedDoi && opts.onSwap) {
@@ -6245,27 +6324,46 @@
   var currentRecord = null, currentChip = null;
   var currentSource = 'sample'; // 'sample', 'lookup' (typed or pasted), 'find' (a hit), 'batch' (a matched row) or 'none' (cleared)
   function adoptRecord(r, source, chip, force) { // a hit or a row takes the DOI tab, unless a DOI you looked up is there
-    if (!force && currentSource === 'lookup') return false;
-    lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = r.doi || r.isbn || ''; $('doi-status').textContent = ''; $('doi-status').className = 'status';
+    if (!force && (currentSource === 'lookup' || lookupPending)) return false;
+    lookupSeq++; lookupPending = false; editOrigin = null; $('doi-go').disabled = false; $('doi-input').value = r.doi || r.isbn || ''; $('doi-status').textContent = ''; $('doi-status').className = 'status';
     currentSource = source; showCitation(r, chip); setUrl(r.doi || r.isbn || '');
     return true;
   }
   var editHook = null; // set when a batch row was sent here with Format: an edit here goes back into that row
-  function formatHere(r, source, onEdited) { editHook = onEdited || null; adoptRecord(r, source, null, true); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus(); }
-  function showCitation(r0, chip) {
+  function formatHere(r, source, onEdited) { editHook = onEdited || null; editOrigin = null; adoptRecord(r, source, null, true); showTab('cite'); window.scrollTo({ top: 0 }); $('doi-input').focus(); }
+  var editOrigin = null; // the record as it was when the editor opened, for Undo changes
+  function showCitation(r0, chip, keep) { // keep.form: the open editor, carried across the redraw so typing is not interrupted
+    keep = keep || {};
     currentRecord = r0; currentChip = chip || null;
     var r = withCase(r0);
-    var out = $('doi-result'); out.innerHTML = '';
+    var out = $('doi-result');
+    var focusName = null, selS = 0, selE = 0, ae = document.activeElement;
+    if (keep.form && ae && keep.form.contains(ae)) { focusName = ae.name; try { selS = ae.selectionStart; selE = ae.selectionEnd; } catch (e) { /* a select */ } }
+    out.innerHTML = '';
     var only = styleState.mode === 'all' ? null : styleState.mode === 'csl' ? [] : [styleState.mode];
     var box = renderRecord(r, { chip: chip, styles: only, paper: r0 === SAMPLE ? 'ask' : 'auto', onSwap: function (doi) { $('doi-input').value = doi; lookup(doi); },
-      editSource: r0, editOpen: !!r0.editOpen, formOnly: !!r0.editOpen, onEdit: function (nr) { // the edited record takes the tab; a row it came from takes it too
+      editSource: r0, editOpen: !!r0.editOpen, editForm: keep.form || null, formOnly: !r0.title && !!(r0.editOpen || keep.form), // a blank record shows its styles once it has a title
+      onEdit: function (nr, form) { // the edited record takes the tab as you type; a row it came from takes it too
         delete r0.editOpen;
+        if (!editOrigin) editOrigin = { r: r0, chip: chip || null, source: currentSource };
         if (currentSource === 'sample' || currentSource === 'none') currentSource = 'lookup';
         $('doi-input').value = nr.doi || nr.isbn || ''; $('doi-status').textContent = ''; setUrl(nr.doi || nr.isbn || '');
-        showCitation(nr, el('span', 'chip info', 'Edited'));
+        showCitation(nr, el('span', 'chip info', 'Edited'), { form: form });
         if (editHook) editHook(nr);
+      },
+      onEditDone: function () { // the editor was opened on an earlier redraw: close it on the record as it now stands, and hand the focus to the Edit button
+        editOrigin = null; if (currentRecord) delete currentRecord.editOpen; showCitation(currentRecord, currentChip);
+        var eb2 = $('doi-result').querySelector('.record-head button[aria-expanded]'); if (eb2) eb2.focus({ preventScroll: true });
+      },
+      onEditRevert: function () {
+        var o = editOrigin; editOrigin = null; delete r0.editOpen;
+        if (!o) { showCitation(r0, chip); return; }
+        currentSource = o.source; $('doi-input').value = o.r.doi || o.r.isbn || ''; setUrl(o.r.doi || o.r.isbn || '');
+        showCitation(o.r, o.chip); if (editHook) editHook(o.r);
       } }); // the example at rest makes no lookup on load
     out.appendChild(box);
+    if (focusName) { var back = keep.form.querySelector('[name=' + focusName + ']'); if (back) { back.focus({ preventScroll: true }); try { back.setSelectionRange(selS, selE); } catch (e) { /* a select */ } } }
+    if (!r0.title && (r0.editOpen || keep.form)) return; // nothing to export yet
     if (needsAbbr(r0) && !r0.abbrTried) {
       r0.abbrTried = true;
       enrichAbbr([r0]).then(function (changed) { if (changed && currentRecord === r0) showCitation(r0, chip); });
@@ -6356,10 +6454,10 @@
   }
   function clearResult() { currentRecord = null; currentChip = null; currentSource = 'none'; $('doi-result').innerHTML = ''; setUrl(''); }
 
-  var lookupSeq = 0;
+  var lookupSeq = 0, lookupPending = false;
   async function lookup(text) {
-    var status = $('doi-status'); status.className = 'status'; editHook = null;
-    var seq = ++lookupSeq;
+    var status = $('doi-status'); status.className = 'status'; editHook = null; editOrigin = null;
+    var seq = ++lookupSeq; lookupPending = true; // a restored list or a title hit must not take the tab from a lookup still in flight
     $('doi-go').disabled = true;
     try {
       var doi = A.toDoi(text);
@@ -6384,7 +6482,7 @@
       status.textContent = '';
     } catch (e) {
       if (seq === lookupSeq) { clearResult(); showError(status, 'lookup', e, doi || ''); }
-    } finally { if (seq === lookupSeq) $('doi-go').disabled = false; }
+    } finally { if (seq === lookupSeq) { $('doi-go').disabled = false; lookupPending = false; } }
   }
   (function () { // the language menu: remembered, and the journal-style renderings redraw on a change
     var sel = $('csl-locale');
@@ -6393,7 +6491,7 @@
     sel.addEventListener('change', function () { store.set('locale', sel.value); if (currentRecord) showCitation(currentRecord, currentChip); if (rebuildBatch) rebuildBatch(); });
   })();
   $('cite-by-hand').addEventListener('click', function () { // a blank record with the form open: nothing is looked up
-    var blank = A.normalize({ type: 'webpage', title: [''] }); blank.editOpen = true; editHook = null;
+    var blank = A.normalize({ type: 'webpage', title: [''] }); blank.editOpen = true; editHook = null; editOrigin = null;
     lookupSeq++; $('doi-go').disabled = false; $('doi-input').value = ''; $('doi-status').textContent = ''; $('doi-status').className = 'status';
     currentSource = 'lookup'; showCitation(blank, el('span', 'chip info', 'By hand')); setUrl('');
   });
@@ -6427,28 +6525,28 @@
       }
       if (!hits.length) { status.textContent = 'No matches at Crossref or OpenAlex. Try fewer words from the title.'; return; }
       if (Math.max.apply(null, hits.map(function (r) { return titleSimilarity(title, r.title); })) < 0.6) status.className = 'status err';
-      status.textContent = hits.length + ' best matches, most likely first' + (viaOA ? ' (Crossref and OpenAlex)' : '') + '.';
+      status.textContent = hits.length + ' best matches, most likely first' + (viaOA ? ' (Crossref and OpenAlex)' : '') + '. Click one to format it.';
       hits.forEach(function (r) { r.conf = titleSimilarity(title, r.title); });
       hits.sort(function (a, b) { return b.conf - a.conf; });
       if (hits[0].conf >= 0.95) adoptRecord(hits[0], 'find', el('span', 'chip good', 'Found by title'));
       hits.forEach(function (r) {
         var conf = r.conf;
-        var h = el('div', 'hit');
+        var h = el('div', 'hit pickable');
         var left = el('div');
-        var tdiv = el('div', 't');
-        var tl = outLink(r, 'title-link', r.title || '(untitled)'); tdiv.appendChild(tl || document.createTextNode(r.title || '(untitled)'));
-        left.appendChild(tdiv);
+        left.appendChild(el('div', 't', r.title || '(untitled)'));
         var m = el('div', 'm');
         m.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + ' · '));
-        m.appendChild(el('code', '', r.doi));
+        var dl = outLink(r, 'doi-link', ''); if (dl) { dl.appendChild(el('code', '', r.doi)); dl.title = 'Open at the publisher'; m.appendChild(dl); } else m.appendChild(el('code', '', r.doi));
         left.appendChild(m);
         h.appendChild(left);
-        var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.flexWrap = 'wrap';
+        var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.flexWrap = 'wrap'; act.style.alignItems = 'center';
         act.appendChild(el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : 'Weak'));
         act.appendChild(paperLinks(r));
         act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
-        act.appendChild(button('Format', 'primary', function () { formatHere(r, 'find'); }));
+        var pickIt = function () { Array.prototype.forEach.call(list.querySelectorAll('.hit.picked'), function (x) { x.classList.remove('picked'); }); h.classList.add('picked'); formatHere(r, 'find'); };
+        var pk = el('button', 'pick', 'Format ›'); pk.type = 'button'; pk.setAttribute('aria-label', 'Format ' + (r.title || 'this record')); pk.addEventListener('click', pickIt); act.appendChild(pk); // the keyboard's way in; the mouse has the whole card
         h.appendChild(act);
+        h.addEventListener('click', function (ev) { if (ev.target.closest('a, button, input')) return; if (window.getSelection && String(window.getSelection()).length) return; pickIt(); });
         list.appendChild(h);
       });
     } catch (e) { showError(status, 'find', e); }
@@ -6461,15 +6559,19 @@
   var UC = 'A-Z\u00C0-\u00D6\u00D8-\u00DE\u0391-\u03A9\u0400-\u042F', WC = 'A-Za-z\u00C0-\u00FF\u0100-\u017F\u0370-\u03FF\u0400-\u04FF\'\u2019\\-';
   var PARTICLES = '(?:(?:van|von|de|der|den|del|della|da|di|du|la|le|dos|das|ter|ten|zu|mac|st\\.?)\\s+|d[\'\u2019]\\s*)+'; // each particle ends in a space: one way to parse, no backtracking blow-up
   // A line starts a new reference when it is numbered/bulleted, begins with a DOI or URL, or opens like an author name
-  var START = new RegExp('^(\\[\\d{1,3}\\]|\\d{1,3}[.)]|[\u2022\\-\u2013\u2014*\u00B7])\\s|^(https?:\\/\\/|doi:|10\\.\\d{4,9}\\/)' +
+  var START = new RegExp('^(\\[\\d{1,4}\\]|(?!(?:1[5-9]|20)\\d\\d[.)])\\d{1,4}[.)]|[\u2022\\-\u2013\u2014*\u00B7])\\s|^(https?:\\/\\/|doi:|10\\.\\d{4,9}\\/)' +
     '|^' + PARTICLES + '[' + UC + '][' + WC + ']*,?\\s' +                                  // van der Maaten, L. / de Carvalho, A.
     '|^[' + UC + '][' + WC + ']+,\\s+[' + UC + ']' +                                      // Smith, J.
     '|^[' + UC + '][' + WC + ']+\\s+[' + UC + ']{1,3}[,.]' +                              // Smith JA,
     '|^[' + UC + '][' + WC + ']+\\s+(and|&)\\s');
   var DOI_ANY = /10\.\d{4,9}\/[^\s"'<>]+/g;
   function splitAtDois(chunk) { // two DOIs in one chunk means two references were glued together
-    var m, cuts = [], re = new RegExp(DOI_ANY.source, 'g');
-    while ((m = re.exec(chunk))) cuts.push(re.lastIndex);
+    var m, cuts = [], re = new RegExp(DOI_ANY.source, 'g'), last = '', lastEnd = 0;
+    while ((m = re.exec(chunk))) { // "doi:10.x/y. Available from: https://…/10.x/y": the same DOI again a few words on is a link to it, not a second reference
+      var d = m[0].toLowerCase().replace(/[.,;:)\]]+$/, ''), gap = chunk.slice(lastEnd, m.index);
+      if (!(d === last && gap.length < 120 && !/\b(?:1[5-9]|20)\d{2}\b/.test(gap))) cuts.push(re.lastIndex);
+      last = d; lastEnd = re.lastIndex;
+    }
     if (cuts.length < 2) return [chunk];
     var parts = [], from = 0;
     cuts.slice(0, -1).forEach(function (c) { var rest = chunk.slice(c).match(/^[.,;)\]]*/)[0]; parts.push(chunk.slice(from, c + rest.length)); from = c + rest.length; });
@@ -6491,27 +6593,31 @@
   var HAS_LOCATOR = /\d+\s*[:,]\s*[A-Z]?\d+|\b[A-Z]?\d+\s*[–−-]\s*[A-Z]?\d+\b|\d+\s*\((?:1[5-9]|20)\d{2}\)\s*[A-Z]?\d+|\bpp?\.?\s*\d|\bvol\.?\s*\d|\bno\.\s*\d|\bV\.\s*\d|\bP\.\s*\d/i; // volume and pages: "15: 87–104", "88, A615–A630", "211 (1995) 52", "V. 194, No. 4828, p. 568"
   var YEAR_POS = /(?<![\d\-–−?\/:])\b(?:1[5-9]|20)\d{2}[a-z]?\b(?![\-–−?\/]\d)/; // a year, not one end of a page range "1549–1579"
   function gluePoint(text) {
-    var re = /(; |\. | )/g, m;
+    // Every test on the right side is anchored at its start and every test on the left looks at its tail, so each candidate cut
+    // works on a window of the text rather than a copy of the whole (a long single-line paste has thousands of candidates)
+    var re = /(; |\. | )/g, m, n = text.length, head = text.slice(0, 120).replace(/^(\[\d{1,4}\]|\d{1,4}[.)])\s*/, ''); // a list number is not a page
     while ((m = re.exec(text))) {
-      var at = m.index, sep = m[1], left = text.slice(0, at + (sep === ' ' ? 0 : 1)).replace(/^(\[\d{1,4}\]|\d{1,4}[.)])\s*/, ''), right = text.slice(at + sep.length); // a list number is not a page
-      var ibid = /^ibid\b/i.test(right);
-      if (left.length < 30 || right.length < (ibid ? 12 : 25)) continue;
+      var at = m.index, sep = m[1], keep = sep === ' ' ? 0 : 1, end = at + keep, rightLen = n - at - sep.length;
+      if (end < 30) continue;
+      var right = text.substr(at + sep.length, 400), ibid = /^ibid\b/i.test(right);
+      if (rightLen < (ibid ? 12 : 25)) continue;
+      if (!(ibid || STRONG_AUTHOR.test(right) || INITIALS_FIRST.test(right))) continue; // "Smith, J. (2020)" / "Kucsko G, Maurer PC" / "S. Askenazy," / "ibid."
+      if (/^(?:In|Dans|En|From|See|Cf|Also|Cited)\b/.test(right)) continue;            // "In K. Jones (Ed.), Book title" is the chapter's book
+      if (!YEAR_POS.test(right)) continue;
+      var left = end <= 600 ? text.slice(0, end).replace(/^(\[\d{1,4}\]|\d{1,4}[.)])\s*/, '') : text.slice(end - 600, end);
       if (!YEAR_IN.test(left)) continue;
       var located = HAS_LOCATOR.test(left.replace(YEAR_IN, ' ')) || DOI_URL_END.test(left);
       if (!located && !/\d\s*;$/.test(left)) continue;                                                                             // "Smith, J. (2019)." alone is a start, not a reference
       if (sep === ' ' && !/[\d)\]]\.?$/.test(left) && !DOI_URL_END.test(left)) continue;                                              // run together: the left ends on a page, a year, a closing note or a link
       if (sep === '. ' && (ABBR_END.test(left.replace(/\s?\.$/, '')) || !/[\d)\]A-Za-z]\s?\.$/.test(left))) continue;                // "Res. " is an abbreviation, not an end
-      if (!(ibid || STRONG_AUTHOR.test(right) || INITIALS_FIRST.test(right))) continue; // "Smith, J. (2020)" / "Kucsko G, Maurer PC" / "S. Askenazy," / "ibid."
-      if (/^(?:In|Dans|En|From|See|Cf|Also|Cited)\b/.test(right)) continue;            // "In K. Jones (Ed.), Book title" is the chapter's book
-      if (!YEAR_POS.test(right)) continue;
-      if (sameWorkTwice(left, right)) continue;                                            // "Иванов И.И. (2013) … Ivanov I.I. (2013) … (in Russian)": one reference, twice
-      return { at: at, len: sep === ' ' ? 1 : sep.length, keep: sep === ' ' ? 0 : 1 };
+      if (sameWorkTwice(head, left, right)) continue;                                      // "Иванов И.И. (2013) … Ivanov I.I. (2013) … (in Russian)": one reference, twice
+      return { at: at, len: sep === ' ' ? 1 : sep.length, keep: keep };
     }
     return null;
   }
   // A reference written in its own alphabet and again transliterated (Russian journals): the same first author and year on both sides
-  function sameWorkTwice(left, right) {
-    var lf = left.match(/^[^\s,.(]+/), rf = right.match(/^[^\s,.(]+/), ly = left.match(YEAR_IN), ry = right.match(YEAR_IN);
+  function sameWorkTwice(head, left, right) { // head: the opening of the left part (its first author); left: its tail (its year)
+    var lf = head.match(/^[^\s,.(]+/), rf = right.match(/^[^\s,.(]+/), ly = left.match(YEAR_IN), ry = right.match(YEAR_IN);
     if (!lf || !rf || !ly || !ry || ly[0] !== ry[0]) return false;
     var a = A.translit(lf[0].toLowerCase()).replace(/[^a-z]/g, ''), b = A.translit(rf[0].toLowerCase()).replace(/[^a-z]/g, '');
     return a.length >= 3 && (a === b || a.slice(0, 5) === b.slice(0, 5));
@@ -6563,7 +6669,7 @@
       parts = [];
       t.split('\n').forEach(function (raw) {
         var l = raw.trim(); if (!l) return;
-        if (parts.length && /^((https?:\/\/)?(dx\.)?doi\.org\/|doi:\s*10\.|10\.\d{4,9}\/|https?:\/\/)\S+\.?$/i.test(l) && !/10\.\d{4,9}\//.test(parts[parts.length - 1])) parts[parts.length - 1] += ' ' + l;
+        if (parts.length && /^((https?:\/\/)?(dx\.)?doi\.org\/|doi:\s*10\.|10\.\d{4,9}\/|https?:\/\/)\S+\.?$/i.test(l) && !/10\.\d{4,9}\//.test(parts[parts.length - 1]) && !ID_LINE.test(parts[parts.length - 1])) parts[parts.length - 1] += ' ' + l;
         else parts.push(l);
       });
     }
@@ -6576,7 +6682,7 @@
     var t = String(text || '').replace(/\r\n?/g, '\n').replace(/[ \t]{2,}/g, ' ').replace(/^[ \t]*\n+/, '').trimEnd();
     var rawLines = t.split('\n');
     var hasBlank = /\n\s*\n/.test(t);
-    var NUM = /^(\[\d{1,3}\]|\d{1,3}[.)])\s/;
+    var NUM = /^(\[\d{1,4}\]|(?!(?:1[5-9]|20)\d\d[.)])\d{1,4}[.)])\s/; // up to 9999, but "2019." opens a year-led line
     var numbered = rawLines.filter(function (l) { return NUM.test(l.trim()); }).length >= 2; // a numbered list: only numbers start items
     var BUL = /^[\u2022\u25CF\u25E6\u2023\u2043\u00B7*\-\u2013\u2014]\s/;
     var bulletLines = rawLines.filter(function (l) { return BUL.test(l.trim()); }).length;
@@ -6586,11 +6692,16 @@
     // Hanging indent: continuation lines are indented, first lines are not
     var nonEmpty = rawLines.filter(function (l) { return l.trim(); });
     var indented = nonEmpty.filter(function (l) { return /^[ \t]+\S/.test(l); }).length;
-    var hanging = !numbered && indented >= 1 && indented < nonEmpty.length && !/^[ \t]/.test(nonEmpty[0]);
-    // If nearly every line opens like a reference, the paste is one reference per line
-    var opens = nonEmpty.filter(function (l) { l = l.trim(); return START.test(l) || AUTHOR_START.test(l) || (ID_LINE.test(l) && !/^\d+\.?$/.test(l)); }).length;
+    // ... so an unindented line never continues an unindented one: where one does (the line above ends mid-sentence), the paste is
+    // wrapped text with a stray leading space somewhere, not a hanging layout
+    var wrappedUnindented = nonEmpty.filter(function (l, i) { var prev = i ? nonEmpty[i - 1].trim() : ''; return i > 0 && !/^[ \t]/.test(l) && !/^[ \t]/.test(nonEmpty[i - 1]) && /[,:\u2013\-&]$|\b[a-z]+$/.test(prev) && !DOI_URL_END.test(prev); }).length; // a note ending in ";" is a whole citation, not a wrap
+    var hanging = !numbered && indented >= 1 && indented < nonEmpty.length && !/^[ \t]/.test(nonEmpty[0]) && !(wrappedUnindented >= 2 || wrappedUnindented >= 0.3 * (nonEmpty.length - indented)); // one prose note ending mid-line is not a wrapped paste
+    // If nearly every line opens like a reference, the paste is one reference per line; a publisher's place ("Cambridge, MA: MIT Press.")
+    // or an editor line ("Jones, K. (Ed.), ...") looks like a name but is the tail of the line above
+    var PLACE_LINE = /^[A-Z][A-Za-z.\s]+, [A-Z]{2}\s*:/, EDS_LINE = /^[^,]+, (?:[A-Z]\.\s*)+\(Eds?\.\)/;
+    var opens = nonEmpty.filter(function (l) { l = l.trim(); return !PLACE_LINE.test(l) && !EDS_LINE.test(l) && (START.test(l) || AUTHOR_START.test(l) || (ID_LINE.test(l) && !/^\d+\.?$/.test(l))); }).length;
     var perLine = !numbered && !bulleted && !hanging && !hasBlank && nonEmpty.length >= 3 && opens >= 0.8 * nonEmpty.length;
-    var numOf = function (l) { var m = l.match(/^\[?(\d{1,3})[\].)]/); return m ? Number(m[1]) : null; };
+    var numOf = function (l) { var m = l.match(/^\[?(\d{1,4})[\].)]/); return m && !(m[1].length === 4 && /^(1[5-9]|20)/.test(m[1]) && l.charAt(0) !== '[') ? Number(m[1]) : null; };
     var expect = null;
     var refs = [], cur = '';
     var flush = function () { if (cur) refs.push(cur); cur = ''; };
@@ -6610,7 +6721,7 @@
         return;
       }
       if (bulleted) { if (BUL.test(l)) { flush(); cur = l; } else cur += ' ' + l; return; }
-      if (perLine && !isDoiLine && !/^\(/.test(l) && !/[,;:\u2013\-&]$/.test(cur)) { flush(); cur = l; return; }
+      if (perLine && !isDoiLine && !/^\(/.test(l) && !PLACE_LINE.test(l) && !EDS_LINE.test(l) && !/[,;:\u2013\-&]$/.test(cur) && !/\b[Ii]n$/.test(cur)) { flush(); cur = l; return; }
       if (hanging) { if (/^[ \t]/.test(raw)) cur += ' ' + l; else { flush(); cur = l; } return; }
       if (ID_LINE.test(cur)) { flush(); cur = l; return; }                  // a list of bare identifiers
       if (isDoiLine && !/10\.\d{4,9}\//.test(cur) && (/^(10\.\d{4,9}\/|https?:|doi:|available|retrieved|url:|\[online)/i.test(l) || !complete(cur))) { cur += ' ' + l; return; } // a wrapped DOI belongs to the reference above
@@ -6626,7 +6737,7 @@
       if (complete(cur) && (START.test(l) || AUTHOR_START.test(l) || !hasBlank)) { flush(); cur = l; return; }
       // the text above is not obviously complete (a book, an online-first article): split only on a clear author opening
       var strongAuthor = new RegExp('^(' + PARTICLES + ')?[' + UC + '][' + WC + ']+(\\s[' + UC + '][' + WC + ']+)?(,\\s+[' + UC + ']\\.|,\\s+[' + UC + '][' + WC + ']+([,.]\\s|\\s+[' + UC + ']\\.)|\\s+[' + UC + ']{1,3},|\\s+([' + UC + ']\\.){1,3}[,\\s])|^([' + UC + ']\\.\\s?){1,3}[' + UC + '][' + WC + ']+,');
-      if (!hasBlank && (strongAuthor.test(l) || /^(\[\d{1,3}\]|\d{1,3}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s/.test(l)) && (!/\(\d{4}[a-z]?\)\.?$/.test(cur) || /\.\s+\S[\s\S]{40,}\(\d{4}[a-z]?\)\.?$/.test(cur)) && cur.length > 20) { flush(); cur = l; return; }
+      if (!hasBlank && (strongAuthor.test(l) || /^(\[\d{1,4}\]|(?!(?:1[5-9]|20)\d\d[.)])\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s/.test(l)) && (!/\(\d{4}[a-z]?\)\.?$/.test(cur) || /\.\s+\S[\s\S]{40,}\(\d{4}[a-z]?\)\.?$/.test(cur)) && cur.length > 20) { flush(); cur = l; return; }
       cur += ' ' + l;
     });
     flush();
@@ -6697,7 +6808,10 @@
   }
   function docxOfList(entriesHtml, opts) { // each entry's HTML (as the Rich copy has it) becomes a paragraph of runs
     opts = opts || {};
-    var xmlEsc = function (t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    var xmlEsc = function (t) { // XML 1.0 forbids C0 controls (bar tab, LF, CR) and lone surrogates; Word refuses a file that holds one
+      return String(t).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g, '').replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '$1')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
     var paras = entriesHtml.map(function (html) {
       var runs = [];
       var walk = function (node, fmt) {
@@ -6735,13 +6849,15 @@
     for (var i = n - 22; i >= Math.max(0, n - 65558); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
     if (eocd < 0) throw new Error('not a zip file');
     var count = dv.getUint16(eocd + 10, true), cd = dv.getUint32(eocd + 16, true), out = {}, td = new TextDecoder();
+    if (cd + 22 > n) throw new Error('damaged or unsupported Word file');
     for (var k = 0, pos = cd; k < count; k++) {
-      if (dv.getUint32(pos, true) !== 0x02014b50) break;
+      if (pos + 46 > n || dv.getUint32(pos, true) !== 0x02014b50) break;
       var method = dv.getUint16(pos + 10, true), csize = dv.getUint32(pos + 20, true), nlen = dv.getUint16(pos + 28, true), xlen = dv.getUint16(pos + 30, true), clen = dv.getUint16(pos + 32, true), off = dv.getUint32(pos + 42, true);
       var name = td.decode(b.subarray(pos + 46, pos + 46 + nlen));
+      if (off + 30 > n) throw new Error('damaged or unsupported Word file');
       var lnlen = dv.getUint16(off + 26, true), lxlen = dv.getUint16(off + 28, true), start = off + 30 + lnlen + lxlen;
       var data = b.subarray(start, start + csize);
-      if (method === 8) data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      if (method === 8) { try { data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); } catch (e) { throw new Error(name + ' is damaged, or this is not a Word document'); } }
       else if (method !== 0) throw new Error('unsupported zip compression ' + method);
       out[name] = data; pos += 46 + nlen + xlen + clen;
     }
@@ -6807,7 +6923,7 @@
     })).then(function (texts) {
       var ta = $('export-input');
       ta.value = (ta.value.trim() ? ta.value.trim() + '\n\n' : '') + texts.join('\n\n');
-      if (notes.length) { $('split-mode').value = 'lines'; store.set('splitmode', 'lines'); docxNote = notes.join('; '); } // one paragraph per reference
+      if (notes.length) { $('split-mode').value = 'lines'; docxNote = notes.join('; '); } // one paragraph per reference, for this run; the remembered layout is not changed
       updateSplitPreview();
       $('form-export').dispatchEvent(new Event('submit', { cancelable: true })); // also works while a batch is running
     }, function (e) { logError('file-read', e); $('export-status').textContent = 'Could not read that file: ' + e.message; });
@@ -7227,11 +7343,12 @@
       var mem = row.raw ? batchMem.row(row.raw) : null;
       var inc = document.createElement('input'); inc.type = 'checkbox'; inc.checked = level === 'good'; inc.id = 'inc-' + mySeq + '-' + row.idx; // amber "check" rows wait for you to tick them
       if (mem && mem.inc !== undefined && mem.record && mem.record.doi === rec.doi) inc.checked = mem.inc; // your tick from last time, for the same record
-      var lab = document.createElement('label'); lab.htmlFor = inc.id; lab.textContent = 'Include'; lab.style.fontSize = '13px';
-      lab.style.display = 'inline-flex'; lab.style.gap = '4px'; lab.style.alignItems = 'center'; lab.insertBefore(inc, lab.firstChild);
-      o.appendChild(lab);
-      inc.addEventListener('change', function () { if (inc.checked && row.keep) row.keep.checked = false; if (row.raw) batchMem.remember(row.raw, { inc: inc.checked }); build(); });
-      row.rec = rec; row.box = inc; row.level = level; row.via = via;
+      inc.className = 'sr-only'; inc.setAttribute('aria-label', 'Include in the export');
+      var pick = el('span', 'pick', ''); pick.setAttribute('aria-hidden', 'true');
+      row.paint = function () { row.node.classList.toggle('included', inc.checked); pick.textContent = inc.checked ? 'In the export' : 'Click to include'; };
+      o.appendChild(inc); o.appendChild(pick); row.node.classList.add('pickable');
+      inc.addEventListener('change', function () { row.paint(); if (inc.checked && row.keep) row.keep.checked = false; if (row.raw) batchMem.remember(row.raw, { inc: inc.checked }); build(); });
+      row.rec = rec; row.box = inc; row.level = level; row.via = via; row.paint();
       if (row.raw && src === undefined) batchMem.remember(row.raw, { record: rec, level: level, via: via, inc: inc.checked }); // not file records: they need no lookup
       if (level === 'good' && !batchAdopted && adoptRecord(rec, 'batch', el('span', 'chip good', 'From your references'))) { batchAdopted = true; editHook = onEdited; }
       if (row.raw && (level === 'good' || level === 'warn')) { adoptDiacritics(rec, row.raw); var inEl = row.node.querySelector('.in'); if (inEl) markDifferences(inEl, row.raw, rec); }
@@ -7246,13 +7363,19 @@
         o.appendChild(pn);
       }
     }
+    function rowClick(row, ev) { // a click on the card's own surface toggles the row's place in the export; controls, links, marks and selected text are left to themselves
+      var b = row.box; if (!b || !b.dispatchEvent || !row.node.classList.contains('pickable')) return;
+      if (ev.target.closest('a, button, input, select, textarea, label, details, summary, mark, .fixrow, .case-changes')) return;
+      if (window.getSelection && String(window.getSelection()).length) return;
+      b.checked = !b.checked; b.dispatchEvent(new Event('change'));
+    }
     function addKeep(row) { // an unmatched reference is never silently dropped: it can go into the list as pasted
       if (row.keep || !row.raw) return;
       var kb = document.createElement('input'); kb.type = 'checkbox'; kb.id = 'keep-' + mySeq + '-' + row.idx; kb.checked = !(row.box && row.box.checked); // nothing drops out of the list by default
       var kmem = batchMem.row(row.raw); if (kmem && kmem.keep !== undefined) kb.checked = kmem.keep;
       var kl = document.createElement('label'); kl.htmlFor = kb.id; kl.textContent = 'Keep as written in the list'; kl.style.fontSize = '13px';
       kl.style.display = 'inline-flex'; kl.style.gap = '4px'; kl.style.alignItems = 'center'; kl.insertBefore(kb, kl.firstChild);
-      kb.addEventListener('change', function () { if (kb.checked && row.box && row.box.checked) { row.box.checked = false; } batchMem.remember(row.raw, { keep: kb.checked, inc: row.box ? row.box.checked : false }); build(); });
+      kb.addEventListener('change', function () { if (kb.checked && row.box && row.box.checked) { row.box.checked = false; if (row.paint) row.paint(); } batchMem.remember(row.raw, { keep: kb.checked, inc: row.box ? row.box.checked : false }); build(); });
       row.keep = kb;
       var holder = el('div', 'fixrow'); holder.appendChild(kl); row.node.appendChild(holder); row.keepRow = holder;
     }
@@ -7301,6 +7424,7 @@
       var o = el('div', 'out'); m.appendChild(o);
       list.appendChild(m);
       var row = { rec: null, box: { checked: false }, node: m, out: o, idx: i, raw: it.kind === 'text' ? it.text : '' };
+      (function (r) { m.addEventListener('click', function (ev) { rowClick(r, ev); }); })(row); // bound per row: `row` is the loop's var
       rows.push(row);
       if (it.kind === 'rec') { // records come straight from the file, no lookup
         if (it.untitled) { setRow(row, it.rec, 'warn', 'untitled', it.src); addFixRow(row); }
@@ -7424,7 +7548,7 @@
   }
   updateBookmarklet();
   var q = params.get('q') || params.get('doi');
-  var refs = params.get('refs');
+  var refs = (location.search.match(/[?&]refs=([^&#]*)/) || [])[1] || ''; // split before decoding: a DOI may itself hold a comma or a percent sign
   if (refs) { // a shared reference list: its DOIs, one per line, matched directly
     var dois = refs.split(',').map(function (x) { try { return A.toDoi(decodeURIComponent(x)); } catch (e) { return ''; } }).filter(Boolean).slice(0, 500);
     var ls = params.get('list');

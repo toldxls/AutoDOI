@@ -84,11 +84,14 @@
     s = trim(s);
     if (!s) return null;
     if (/,\s*$/.test(s)) return { name: trim(s.replace(/,\s*$/, '')) };
-    if (ORG_WORDS.test(s) && (s.indexOf(',') === -1 || ORG_WORDS.test(s.split(',')[0]))) return { name: s }; // "History, C.M. of N." never
     var parts = s.split(',').map(trim);
+    // "Press, William H." and "Service, Robert" are people: one capitalised word, then initials or a given name; "Geological Survey, Ohio" is not
+    var personShaped = parts.length > 1 && /^[A-Z][^\s]*$/.test(parts[0]) && /^(?:[A-Z][a-z]+|[A-Z]\.?)(?:[\s.\-]*[A-Z]\.?)*$/.test(parts[1]);
+    if (ORG_WORDS.test(s) && (parts.length === 1 || (ORG_WORDS.test(parts[0]) && !personShaped))) return { name: s }; // "History, C.M. of N." never
     if (parts.length === 1) {
       var toks = s.split(/\s+/), ini = toks[toks.length - 1], fam = toks.slice(0, -1).join(' ');
-      if (toks.length > 1 && /^[A-Z]{1,3}$/.test(ini) && /[a-z]/.test(fam)) return { family: fam, given: ini.split('').join('. ') + '.' };
+      // "Smith JA", or "SMITH JA" deposited in capitals: a family longer than the initials (normalize title-cases it)
+      if (toks.length > 1 && /^[A-Z]{1,3}$/.test(ini) && (/[a-z]/.test(fam) || (toks.length === 2 && fam.length >= 3 && fam.length > ini.length))) return { family: fam, given: ini.split('').join('. ') + '.' };
       return nameFromNatural(s);
     }
     var p = { family: parts[0], given: parts[1] };

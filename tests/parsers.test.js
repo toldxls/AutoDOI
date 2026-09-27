@@ -232,6 +232,17 @@ eq(P.parseBibName("{\\'E}mile Zola"), { family: 'Zola', given: 'Émile' }, 'bib 
 eq(P.parseBibName('others'), null, 'bib "others" dropped');
 eq(P.parseTaggedName('Smith, John, Jr.'), { family: 'Smith', given: 'John', suffix: 'Jr.' }, 'tagged three-part');
 eq(P.parseTaggedName('WHO,'), { name: 'WHO' }, 'tagged trailing comma');
+eq(P.parseTaggedName('Press, William H.'), { family: 'Press', given: 'William H.' }, 'tagged "Press, William H." is a person, not an organisation');
+eq(P.parseTaggedName('Service, Robert'), { family: 'Service', given: 'Robert' }, 'tagged "Service, Robert" is a person');
+eq(P.parseTaggedName('Board, John'), { family: 'Board', given: 'John' }, 'tagged "Board, John" is a person');
+eq(P.parseTaggedName('Press, W.H.'), { family: 'Press', given: 'W.H.' }, 'tagged organisation word with initials is a person');
+eq(P.parseTaggedName('Geological Survey, Ohio'), { name: 'Geological Survey, Ohio' }, 'tagged two words before the comma stay an organisation');
+eq(P.parseTaggedName('Press, Inc.'), { name: 'Press, Inc.' }, 'tagged organisation when the part after the comma is not a name');
+eq(P.parseTaggedName('U.S. Geological Survey'), { name: 'U.S. Geological Survey' }, 'tagged organisation without a comma');
+eq(P.parseTaggedName('SMITH JA'), { family: 'SMITH', given: 'J. A.' }, 'tagged all-caps family + initials');
+eq(P.parseTaggedName('Smith JA'), { family: 'Smith', given: 'J. A.' }, 'tagged family + initials');
+eq(A.normalize(P.parse('TY  - JOUR\nTI  - T\nAU  - SMITH JA\nER  - ').records[0]).authors[0].family, 'Smith', 'tagged all-caps family is title-cased by normalize');
+eq(P.parseTaggedName('JA SMITH'), { family: 'SMITH', given: 'JA' }, 'tagged initials first are read as given + family');
 
 /* ---------- dates ---------- */
 eq(P.parseDate('2019/03/15/'), { y: 2019, m: 3, d: 15 }, 'date ris full');

@@ -4,7 +4,7 @@
  *   autodoi 10.1038/nature12373                      the reference in APA
  *   autodoi 10.1038/nature12373 --style vancouver    any built-in style: apa, mla, chicago, harvard, vancouver, ieee, carnegie,
  *                                                    or an export: bibtex, ris, endnote; --style all prints every style
- *   autodoi arXiv:1706.03762 PMID:23903748 978-0-19-853453-1   arXiv IDs, PubMed IDs and ISBNs work too
+ *   autodoi arXiv:1706.03762 PMID:23903748 978-0-19-853453-2   arXiv IDs, PubMed IDs and ISBNs work too
  *   autodoi --match < references.txt                 one reference per line: each is matched at Crossref and graded
  *   autodoi --match --style ris < references.txt     the good matches as an RIS file (or bibtex, endnote, any style)
  *   autodoi --match --json < references.txt          the records as JSON, with grade and DOI
@@ -44,9 +44,10 @@ async function pmidToDoi(pm) {
   return hit.doi;
 }
 async function fetchIsbn(isbn, email) {
-  var j = await getJson('https://openlibrary.org/api/books?bibkeys=ISBN:' + isbn + '&format=json&jscmd=data');
-  var doc = j['ISBN:' + isbn]; if (!doc) throw new Error('ISBN not found at Open Library: ' + isbn);
-  return A.normalize(A.fromOpenLibrary(doc, isbn));
+  // the work search, as the page asks it: its fields (author_name, publisher, publish_place, first_publish_year) are what A.fromOpenLibrary reads
+  var j = await getJson('https://openlibrary.org/search.json?isbn=' + isbn + '&fields=key,title,subtitle,author_name,publisher,first_publish_year,publish_year,publish_place,number_of_pages_median,isbn');
+  var doc = j.docs && j.docs[0]; if (!doc) throw new Error('ISBN not found at Open Library: ' + isbn);
+  var r = A.normalize(A.fromOpenLibrary(doc, isbn)); r.url = ''; return r; // as the page: an Open Library link is not part of a book reference
 }
 async function resolveId(text, email) { // a DOI, arXiv ID, PMID, PMC ID or ISBN, or text holding one
   var doi = A.toDoi(text); if (doi) return fetchRecord(doi, email);
@@ -73,30 +74,34 @@ function render(r, style, pages) {
 }
 function parseArgs(argv) {
   var o = { ids: [], style: 'apa', match: false, json: false, email: process.env.AUTODOI_EMAIL || '', pages: '', help: false };
+  var value = function (i) { if (i + 1 >= argv.length) o.error = 'Option ' + argv[i] + ' needs a value'; return argv[i + 1]; };
   for (var i = 0; i < argv.length; i++) {
     var a = argv[i];
-    if (a === '--style' || a === '-s') o.style = argv[++i];
-    else if (a === '--email') o.email = argv[++i];
-    else if (a === '--pages' || a === '-p') o.pages = argv[++i];
+    if (a === '--style' || a === '-s') o.style = value(i++);
+    else if (a === '--email') o.email = value(i++);
+    else if (a === '--pages' || a === '-p') o.pages = value(i++);
     else if (a === '--match' || a === '-m') o.match = true;
     else if (a === '--json') o.json = true;
     else if (a === '--help' || a === '-h') o.help = true;
+    else if (/^-/.test(a)) o.error = o.error || 'Unknown option ' + a; // a misspelt flag must not be looked up as a reference
     else o.ids.push(a);
   }
   return o;
 }
+function stdinIsTty() { return !!process.stdin.isTTY; }
 function readStdin() { return new Promise(function (resolve) { var d = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', function (c) { d += c; }); process.stdin.on('end', function () { resolve(d); }); }); }
 function splitRefs(text) { // blank lines between references, or one per line
   var t = text.replace(/\r\n?/g, '\n').trim(); if (!t) return [];
   return (/\n\s*\n/.test(t) ? t.split(/\n\s*\n+/).map(function (p) { return p.replace(/\s*\n\s*/g, ' '); }) : t.split('\n')).map(function (s) { return s.trim(); }).filter(Boolean);
 }
 async function run(argv, io) {
-  io = io || { out: function (s) { process.stdout.write(s + '\n'); }, err: function (s) { process.stderr.write(s + '\n'); }, stdin: readStdin };
+  io = io || { out: function (s) { process.stdout.write(s + '\n'); }, err: function (s) { process.stderr.write(s + '\n'); }, stdin: readStdin, tty: stdinIsTty };
   var o = parseArgs(argv);
+  if (o.error) { io.err(o.error + '. See autodoi --help.'); return 2; }
   var known = A.STYLES.map(function (s) { return s.id; }).concat(A.EXPORTS.map(function (x) { return x.id; }), ['all']);
   if (o.help || (!o.ids.length && !o.match)) { io.out(require('fs').readFileSync(__filename, 'utf8').split('\n').slice(1, 14).map(function (l) { return l.replace(/^ \* ?/, ''); }).join('\n')); return o.help ? 0 : 2; }
   if (known.indexOf(o.style) === -1) { io.err('Unknown style "' + o.style + '". Styles: ' + known.join(', ')); return 2; }
-  var failed = 0, exportsOnly = A.EXPORTS.some(function (x) { return x.id === o.style; });
+  var failed = 0;
   if (!o.match) {
     var recs = [];
     for (var i = 0; i < o.ids.length; i++) {
@@ -107,6 +112,7 @@ async function run(argv, io) {
     else recs.forEach(function (r) { io.out(render(r, o.style, o.pages)); });
     return failed ? 1 : 0;
   }
+  if (!o.ids.length && io.tty && io.tty()) { io.err('Nothing to match: pipe references on stdin or give them as arguments.'); return 2; } // else it would wait forever
   var refs = splitRefs(o.ids.length ? o.ids.join('\n') : await io.stdin());
   if (!refs.length) { io.err('Nothing to match: give references on stdin, one per line.'); return 2; }
   var results = [];
@@ -115,14 +121,12 @@ async function run(argv, io) {
     catch (e) { failed++; results.push({ text: refs[k], record: null, conf: 0, grade: 'error', error: e.message }); }
   }
   if (o.json) { io.out(JSON.stringify(results, null, 2)); return failed ? 1 : 0; }
-  if (exportsOnly || o.style !== 'apa' || o.ids.length === 0) {
-    // an export or a style: the good matches, in order; the rest reported on stderr so nothing vanishes silently
-    var good = results.filter(function (x) { return x.grade === 'good'; });
-    results.forEach(function (x) { if (x.grade !== 'good') io.err((x.grade === 'none' ? 'no match' : x.grade === 'error' ? 'error: ' + x.error : x.grade + ' (' + (x.record && x.record.doi || 'no DOI') + ')') + '\t' + x.text); if (x.record && warnings(x.record)) io.err(warnings(x.record) + '\t' + x.text); });
-    if (o.style === 'ris' || o.style === 'endnote') io.out(good.map(function (x) { return A.format(x.record, o.style); }).join(o.style === 'ris' ? '' : '\n'));
-    else if (o.style === 'bibtex') io.out(good.map(function (x) { return A.format(x.record, 'bibtex'); }).join('\n\n'));
-    else good.forEach(function (x, i) { io.out(A.format(x.record, o.style, i + 1)); });
-  }
+  // an export or a style: the good matches, in order; the rest reported on stderr so nothing vanishes silently
+  var good = results.filter(function (x) { return x.grade === 'good'; });
+  results.forEach(function (x) { if (x.grade !== 'good') io.err((x.grade === 'none' ? 'no match' : x.grade === 'error' ? 'error: ' + x.error : x.grade + ' (' + (x.record && x.record.doi || 'no DOI') + ')') + '\t' + x.text); if (x.record && warnings(x.record)) io.err(warnings(x.record) + '\t' + x.text); });
+  if (o.style === 'ris' || o.style === 'endnote') io.out(good.map(function (x) { return A.format(x.record, o.style); }).join(o.style === 'ris' ? '' : '\n'));
+  else if (o.style === 'bibtex') io.out(good.map(function (x) { return A.format(x.record, 'bibtex'); }).join('\n\n'));
+  else good.forEach(function (x, i) { io.out(A.format(x.record, o.style, i + 1)); });
   return failed ? 1 : 0;
 }
 module.exports = { run: run, matchReference: matchReference, resolveId: resolveId, splitRefs: splitRefs, parseArgs: parseArgs };

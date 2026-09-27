@@ -44,7 +44,7 @@
     var s = String(text).replace(DOI_TAG_RE, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
     var m = s.match(DOI_RE);
     if (!m) return null;
-    var doi = m[0];
+    var doi = m[0].slice(0, 1000); // the tail loop below rescans the candidate each pass; no DOI is anywhere near this long
     // a DOI inside a link: "?query" and "#fragment" belong to the URL, and reserved characters arrive percent-encoded
     if (/https?:\/\/[^\s"'<>]*$/i.test(s.slice(0, m.index))) {
       doi = doi.replace(/[?#].*$/, '');
@@ -60,6 +60,7 @@
     if (!/^10\.\d{4,9}\/./.test(doi)) return null; // nothing left after the prefix
     // bioRxiv / medRxiv landing pages: 10.1101/2020.03.24.20042937v3.full -> 10.1101/2020.03.24.20042937
     if (/^10\.1101\//.test(doi)) doi = doi.replace(/(?:v\d+)?(?:\.(?:full|abstract|full-text|supplementary-material|article-info|article-metrics)(?:\.pdf(?:\+html)?)?)?$/i, '');
+    if (/^10\.48550\/arxiv\./i.test(doi)) doi = doi.replace(/v\d+$/, ''); // DataCite registers only the unversioned arXiv DOI, as toDoi gives for a link
     return doi;
   }
 
@@ -226,7 +227,7 @@
   var TAG_RE = /<\/?[A-Za-z][\w:.-]*(?:\s[^<>]*)?\/?>|<\x21--[\s\S]*?--\x3e/g;
   // Tags removed, entities decoded, whitespace collapsed; private-use formatting markers removed unless keepMarks
   function cleanText(s, keepMarks) {
-    if (s === undefined || s === null) return '';
+    if (s === undefined || s === null || (typeof s === 'object' && !Array.isArray(s))) return ''; // "[object Object]" is not text
     var t = String(s);
     if (t.indexOf('lt;') !== -1) { t = t.replace(ENCODED_TAG, '<$1>'); ENCODED_TAG.lastIndex = 0; } // "&lt;i&gt;" is markup, not text
     t = decodeEntities(t.replace(TAG_RE, ''))
@@ -1733,6 +1734,7 @@
   }
   var BIB_ESC = { '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}',
     '&': '\\&', '%': '\\%', '$': '\\$', '#': '\\#', '_': '\\_' };
+  function bibUrl(s) { return String(s || '').replace(/[{}]/g, encodeURIComponent); } // a brace in a DOI or URL would unbalance the entry; percent-encoded it still resolves
   function bibEsc(s) { return String(s).replace(/[\\{}~^&%$#_]/g, function (c) { return BIB_ESC[c]; }); }
   // braces keep "World Health Organization" as one name; escaped first so the braces survive
   // BibTeX's three-part form puts the suffix second: "King, Jr., Martin Luther"
@@ -1806,8 +1808,8 @@
     add('address', r.place);
     add('issn', r.issn, true);
     add('isbn', r.isbn, true);
-    add('doi', r.doi, true);
-    add('url', doiLink(r), true);
+    add('doi', bibUrl(r.doi), true);
+    add('url', bibUrl(doiLink(r)), true);
     if (k === 'preprint') add('note', 'Preprint');
     if (k === 'dataset') add('note', 'Dataset');
     if (k === 'software') add('note', 'Software');
@@ -1935,13 +1937,13 @@
   // Every field the formatters read, coerced to the type they expect.  Records from normalize() already have this
   // shape; this guards a caller's hand-built record, so a stray null, number or array cannot throw or leak
   var STR_FIELDS = ['type', 'doi', 'url', 'title', 'subtitle', 'container', 'series', 'number', 'shortContainer', 'institution', 'edition', 'numPages', 'genre',
-    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession', 'originalTitle'];
+    'year', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'abstract', 'language', 'event', 'database', 'accession', 'originalTitle', 'titleMarked'];
   var ANY_PUA = /[\uE000-\uF8FF]/g;
   function str(v) { return v === undefined || v === null || typeof v === 'boolean' || (typeof v === 'number' && !isFinite(v)) ? '' : Array.isArray(v) ? v.map(str).filter(Boolean).join(' ') : typeof v === 'object' ? '' : String(v); }
   function harden(record) {
     var r = {}, k;
     for (k in record) if (Object.prototype.hasOwnProperty.call(record, k)) r[k] = record[k];
-    STR_FIELDS.forEach(function (f) { r[f] = str(r[f]); });
+    STR_FIELDS.forEach(function (f) { r[f] = str(r[f]).replace(/\s+/g, ' ').trim(); }); // a line break inside a field would break RIS and EndNote
     if (!/^\d{4}[a-z]?$/.test(r.year)) r.year = (r.year.match(/\d{4}/) || [''])[0];
     r.month = r.month > 0 && r.month <= 12 ? Math.floor(Number(r.month)) : 0;
     r.day = r.month && r.day > 0 && r.day <= 31 ? Math.floor(Number(r.day)) : 0;
@@ -1958,6 +1960,7 @@
     return r;
   }
   function format(record, styleId, num) {
+    record = record || {};
     var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
     var all = STYLES.concat(EXPORTS);
     for (var i = 0; i < all.length; i++) {
@@ -1973,6 +1976,7 @@
   // behind esc(): a field that somehow carried markup cannot become an element in the page)
   var HTML_ALLOWED = /<(?!\/?(?:i|sub|sup|span)>|span style="font-style:normal">)/g;
   function formatHtml(record, styleId, num) {
+    record = record || {};
     var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
     for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, num).replace(HTML_ALLOWED, '&lt;').replace(ANY_PUA, '');
     throw new Error('Unknown text style: ' + styleId);
@@ -2107,8 +2111,15 @@
     // A reference with no title ("Бабичев А.В. и др. // Письма в ЖТФ. 2020. Т. 46. № 9. С. 35", "Smith J. Nature 500:54 (2013)"):
     // author, year, volume and first page agreeing with the record is a specific enough match; three of the four is one to check
     var STOP_PREFIX = /^(?:with|from|that|this|into|over|under|these|those|there|their|what|when|where|which|while|other|about|after|before|between)$/;
-    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
-      var raw = String(refText).replace(/^\s*(?:\[\d{1,3}\]|\d{1,3}[.)])\s+/, ''), nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); }); // a list number is not a volume
+    // "Part I" and "Part II", "Volume 1" and "Volume 2" share every word but the one that tells them apart, which the tokeniser drops as too
+    // short: a numbered part named on both sides with different numbers is a different paper
+    var PART = /\b(part|pt|vol|volume|chapter|ch|section|sect|paper|no|number|book|step|phase|stage)\.?\s*([ivxl]+|\d+)\b/gi, ROMAN = { i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10, xi: 11, xii: 12 };
+    var LABEL = { pt: 'part', volume: 'vol', ch: 'chapter', sect: 'section', number: 'no' };
+    var partsOf = function (t) { var out = {}, pm; PART.lastIndex = 0; while ((pm = PART.exec(t))) { var lab = pm[1].toLowerCase(), num = pm[2].toLowerCase(); out[LABEL[lab] || lab] = out[LABEL[lab] || lab] || {}; out[LABEL[lab] || lab][ROMAN[num] || Number(num)] = 1; } return out; };
+    var recParts = partsOf(title), refParts = partsOf(String(refText));
+    Object.keys(recParts).forEach(function (lab) { if (refParts[lab] && !Object.keys(recParts[lab]).some(function (n) { return refParts[lab][n]; })) score -= 0.3; });
+    var numbers = function () { // does the reference carry the record's volume and first page?
+      var raw = String(refText).replace(/^\s*(?:\[\d{1,4}\]|\d{1,4}[.)])\s+/, ''); // a list number is not a volume
       var volText = raw.replace(/(\d)\s*\(\d{1,4}\)/g, '$1').replace(/(?:\bno\.?|\u2116|\bissue)\s*\d+/gi, ''); // "5(12)", "no. 12": an issue is not a volume
       var volOk = r.volume && new RegExp('(^|[^\\d])' + r.volume.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\d])').test(volText);
       var firstPage = (r.pages.match(/^[A-Za-z]?\d+/) || [''])[0];
@@ -2116,6 +2127,13 @@
       // "15-25" is one page range, not volume 25 and page 15
       var rangeRe = /(\d+)\s*[-\u2013\u2212]\s*(\d+)/g, rg;
       while (volOk && pageOk && (rg = rangeRe.exec(raw))) { var ends = [rg[1], rg[2]]; if (ends.indexOf(String(r.volume)) !== -1 && ends.indexOf(firstPage.replace(/^0+/, '')) !== -1) { volOk = false; } }
+      return { raw: raw, volOk: !!volOk, pageOk: !!pageOk };
+    };
+    // A one-word title ("Introduction", "Editorial", "Preface") is found in almost any reference on the subject: it is the record only
+    // when the volume and first page agree too; otherwise it is one to check
+    if (tokens(title).length <= 1 && !r.originalTitle && score > 0.6) { var nn = numbers(); if (!(nn.volOk && nn.pageOk)) score = 0.6; }
+    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
+      var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
       var known = {}; // the record's author names and journal words; whatever else the reference says of five letters or more is a title
       r.authors.forEach(function (p) { tokens(p.family).forEach(function (w) { known[foldSpelling(w)] = 1; }); });
       var jwords = tokens(r.container + ' ' + r.shortContainer).filter(function (w) { return w.length >= 4 && !/^\d+$/.test(w); }).map(foldSpelling);
@@ -2170,11 +2188,12 @@
     toScript: function (t, kind) { return unicodeScript(String(t), kind === 'sup' ? SUP_MAP : SUB_MAP); },
     autoFormulas: function (s) { return marksToText(autoFormulas(String(s === undefined || s === null ? '' : s).replace(PUA_RE, ''))); }, // plain text in: no markers
     inText: function (record, styleId, opts) {
+      record = record || {};
       var r = harden(record.authors ? record : normalize(record));
       for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r, opts || {});
       return '';
     },
-    inTextForms: function (record, styleId, opts) { return inTextForms(harden(record.authors ? record : normalize(record)), styleId, opts); },
+    inTextForms: function (record, styleId, opts) { record = record || {}; return inTextForms(harden(record.authors ? record : normalize(record)), styleId, opts); },
     matchConfidence: matchConfidence,
     STYLES: STYLES,
     EXPORTS: EXPORTS
