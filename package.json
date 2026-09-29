@@ -1,6 +1,6 @@
 {
   "name": "autodoi",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "private": true,
   "description": "Turn a DOI into a reference in any style, match messy references to Crossref, and convert reference lists to EndNote, RIS, BibTeX or CSL JSON: a browser page, a Google Sheets script, a Node library and a command line",
   "license": "MIT",

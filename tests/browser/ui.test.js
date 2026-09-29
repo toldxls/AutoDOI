@@ -622,7 +622,17 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('a title with nothing close is red with a title chip and a fix box'), (await page.locator('#export-matches .match.bad .chip:has-text("Weak title match")').count()) === 1 && (await page.locator('#export-matches .match.bad .fixrow input[type=text]').count()) === 1);
   var titleCalls = s.state.requests.slice(beforeTitles).filter(function (u) { return /api\.crossref\.org\/works\?.*Nanometre/.test(u); });
   check(name('an exact title costs one Crossref search'), titleCalls.length === 1, titleCalls.join(', '));
+  check(name('an exact title folds its other matches away'), (await titleRow.locator('.hits details summary:has-text("Other matches (1)")').count()) === 1 && !(await titleRow.locator('.hits details').first().evaluate(function (d) { return d.open; })));
+  var badRow = page.locator('#export-matches .match.bad');
+  check(name('a title with nothing close lists the candidates open, with a chip each'), (await badRow.locator('.hits .hit.pickable').count()) === 2 && (await badRow.locator('.hits .hit .chip:has-text("Weak")').count()) === 2 && (await badRow.locator('.hits details').count()) === 0);
   await axeCheck('References tab with title rows');
+  await badRow.locator('.hits .hit').nth(1).locator('button.pick').click();
+  await page.waitForFunction(function () { return document.querySelectorAll('#export-matches .match.good').length === 2; }, null, { timeout: 5000 });
+  var pickedRow = page.locator('#export-matches .match').nth(1);
+  check(name('a picked candidate makes the row green as Your pick, ticked, with the list folded'), (await pickedRow.locator('.chip:has-text("Your pick")').count()) === 1 && (await pickedRow.locator('input[type=checkbox][id^=inc-]').isChecked()) && /nature12373-twin/.test(await pickedRow.textContent()) && (await pickedRow.locator('.hits details summary').count()) === 1 && (await pickedRow.locator('.fixrow input[type=text]').count()) === 0);
+  await page.goto(base, { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
+  check(name('the title rows come back with their pick and their lists'), /2 good/.test(await textOf('#export-status')) && (await page.locator('#export-matches .match .chip:has-text("Your pick")').count()) === 1 && (await page.locator('#export-matches .match .hits').count()) === 2, await textOf('#export-status'));
   await page.fill('#export-input', ''); await page.selectOption('#split-mode', 'lines');
   await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));

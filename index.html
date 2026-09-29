@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-Sjxh1Dk032+zMuTs3ycL1E48whVK5lurMfqdouLjBEw=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-6ImwIKJnp097AMQWpv7hzkjt8wBmyzQcjH8xDPSibw0=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -204,6 +204,11 @@
   .hit.picked { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
   .hit .pick, .match .pick { font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
   .hit button.pick { appearance: none; border: 0; background: none; padding: 4px 6px; font: inherit; font-size: 12.5px; font-weight: 500; color: var(--accent); cursor: pointer; border-radius: 4px; }
+  .match .hits { margin-top: 8px; }
+  .match .hits .hitlist { display: grid; gap: 6px; margin-top: 6px; }
+  .match .hits .hit { padding: 8px 12px; }
+  .match .hits .hit .t { font-size: 14px; }
+  .match .hits summary { cursor: pointer; font-size: 13px; color: var(--muted); }
 
   .matches { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
   .match { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; border-left: 4px solid var(--line); }
@@ -5099,7 +5104,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.10.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.11.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -6820,11 +6825,9 @@
     if (tq) { // a title alone, perhaps with its journal and year: the Find tab's search, graded by title similarity; via 'title' tells the row so
       var found = (await findByTitle(tq.title, tq.journal, { year: tq.year })).hits;
       if (!found.length) return { record: null, conf: 0 };
-      var top = found[0], tconf = top.conf, tkey = function (r) { return (r.doi || r.title || '').toLowerCase(); };
-      // another version of the same title, one click away: a preprint and its journal version, a chapter, a proceedings paper
-      var other = found.filter(function (r) { return r !== top && tkey(r) !== tkey(top) && r.conf >= 0.6 && tconf - r.conf <= (tconf >= 0.95 ? 0.05 : 0.15); })[0];
+      var top = found[0], tconf = top.conf;
       if (top.source === 'openalex' && top.doi) { try { top = await fetchRecord(top.doi); } catch (e) { /* keep the OpenAlex record */ } }
-      return { record: top, conf: tconf, via: 'title', alt: other ? { record: other, conf: other.conf } : null };
+      return { record: top, conf: tconf, via: 'title', alt: null, hits: found.slice(0, 6) }; // the close titles go under the row, as the Find tab lists them
     }
     var best = null, bestConf = 0, via = 'search', seen = [];
     var pick = function (hits) {
@@ -7187,7 +7190,7 @@
     function chipFor(level, via, src) {
       var label = via === 'doi' ? 'From DOI' : via === 'isbn' ? 'From ISBN' : via === 'file' ? 'From ' + fileLabel(src) + ' file' :
         via === 'year' ? 'Year differs' : via === 'doicheck' ? 'DOI disagrees with text' : via === 'untitled' ? 'No title in file' :
-        via === 'title' ? (level === 'good' ? 'Found by title' : level === 'warn' ? 'Check title match' : 'Weak title match') :
+        via === 'title' ? (level === 'good' ? 'Found by title' : level === 'warn' ? 'Check title match' : 'Weak title match') : via === 'picked' ? 'Your pick' :
         via === 'openalex' ? (level === 'good' ? 'Good match · OpenAlex' : 'Check match · OpenAlex') : via === 'fixed' ? 'Fixed' : via === 'edited' ? 'Edited' :
         level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : via === 'none' ? 'No good match' : 'Weak match';
       var c = el('span', 'chip ' + level, label);
@@ -7289,6 +7292,41 @@
         });
       });
       return n;
+    }
+    // The Find tab's list under a title row: every close title as a card, one click to take it. Open when the row is not an exact
+    // match (the user picks the paper), folded under "Other matches" when it is
+    function offerHits(row, hits, collapsed) {
+      if (row.hitsBox) { row.hitsBox.remove(); row.hitsBox = null; }
+      var key = function (r) { return ((r && r.doi) || (r && r.title) || '').toLowerCase(); };
+      var shown = collapsed ? hits.filter(function (r) { return key(r) !== key(row.rec); }) : hits; // the folded list holds the others; the open one keeps the row's own candidate to confirm
+      if (!shown.length) return;
+      var box = el('div', 'hits'), list = el('div', 'hitlist');
+      shown.forEach(function (r) {
+        var h = el('div', 'hit pickable'), left = el('div');
+        left.appendChild(el('div', 't', r.title || '(untitled)'));
+        var m = el('div', 'm');
+        m.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + (r.doi ? ' · ' : '')));
+        if (r.doi) { var dl = outLink(r, 'doi-link', ''); if (dl) { dl.appendChild(el('code', '', r.doi)); dl.title = 'Open at the publisher'; m.appendChild(dl); } else m.appendChild(el('code', '', r.doi)); }
+        left.appendChild(m); h.appendChild(left);
+        var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.alignItems = 'center';
+        var c = r.conf || 0;
+        act.appendChild(el('span', 'chip ' + (c >= 0.95 ? 'good' : c >= 0.6 ? 'warn' : ''), c >= 0.95 ? 'Title match' : c >= 0.6 ? 'Partial' : 'Weak'));
+        var pickIt = function () {
+          setRow(row, r, 'good', 'picked');
+          if (row.fixRow) { row.fixRow.remove(); row.fixRow = null; }
+          if (row.keep) row.keep.checked = false;
+          offerHits(row, hits, true); build();
+        };
+        var pk = el('button', 'pick', 'Use ›'); pk.type = 'button'; pk.setAttribute('aria-label', 'Use ' + (r.title || 'this record')); pk.addEventListener('click', pickIt); act.appendChild(pk); // the keyboard's way in; the mouse has the whole card
+        h.appendChild(act);
+        h.addEventListener('click', function (ev) { if (ev.target.closest('a, button, input')) return; if (window.getSelection && String(window.getSelection()).length) return; pickIt(); });
+        list.appendChild(h);
+      });
+      if (collapsed) {
+        var d = document.createElement('details'), s = document.createElement('summary'); s.textContent = 'Other matches (' + shown.length + ')';
+        d.appendChild(s); d.appendChild(list); box.appendChild(d);
+      } else { box.appendChild(el('div', 'note', 'Which paper? Click the one you mean.')); box.appendChild(list); }
+      row.out.appendChild(box); row.hitsBox = box;
     }
     // "Not this one?": a runner-up the matcher scored nearly as well, one click away
     function offerAlternative(row, raw, alt, via) {
@@ -7438,7 +7476,7 @@
     }
     function rowClick(row, ev) { // a click on the card's own surface toggles the row's place in the export; controls, links, marks and selected text are left to themselves
       var b = row.box; if (!b || !b.dispatchEvent || !row.node.classList.contains('pickable')) return;
-      if (ev.target.closest('a, button, input, select, textarea, label, details, summary, mark, .fixrow, .case-changes')) return;
+      if (ev.target.closest('a, button, input, select, textarea, label, details, summary, mark, .fixrow, .case-changes, .hits')) return;
       if (window.getSelection && String(window.getSelection()).length) return;
       b.checked = !b.checked; b.dispatchEvent(new Event('change'));
     }
@@ -7472,6 +7510,7 @@
           var tconf = res.via === 'title' ? res.conf * (row.raw && !looksLikeTitle(row.raw) && A.matchConfidence(row.raw, res.record) < 0.5 ? 0.7 : 1) : 0;
           var lvl = direct ? 'good' : clash ? 'bad' : res.via === 'title' ? titleLevel(tconf) : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad';
           setRow(row, res.record, lvl, direct ? res.via : clash ? 'year' : lvl === 'good' ? 'fixed' : res.via);
+          if (res.hits && res.hits.length > 1 && !direct) { offerHits(row, res.hits, lvl === 'good'); if (row.raw) batchMem.remember(row.raw, { hits: res.hits.slice(0, 5) }); }
           if (lvl === 'good') { fr.remove(); row.fixRow = null; if (row.keep) { row.keep.checked = false; } }
           else { b.disabled = false; b.textContent = 'Fix'; row.node.appendChild(fr); }
           build();
@@ -7485,7 +7524,7 @@
     var ahead = $('polite-email').value.trim() ? 4 : 2;
     var recall = function (text) { // a row resolved on an earlier run: its record, grade and runner-up, no lookup
       var mem = batchMem.row(text); if (!mem || !mem.record) return null;
-      return Promise.resolve({ ok: { record: mem.record, conf: mem.level === 'good' ? 1 : mem.level === 'warn' ? 0.6 : 0.4, via: mem.via, alt: mem.alt || null, remembered: { level: mem.level, via: mem.via } } });
+      return Promise.resolve({ ok: { record: mem.record, conf: mem.level === 'good' ? 1 : mem.level === 'warn' ? 0.6 : 0.4, via: mem.via, alt: mem.alt || null, hits: mem.hits || null, remembered: { level: mem.level, via: mem.via } } });
     };
     var startLookup = function (k) { if (k < items.length && items[k].kind === 'text' && !pending[k]) pending[k] = recall(items[k].text) || resolve(items[k].text).then(function (r) { return { ok: r }; }, function (e) { return { err: e }; }); };
     for (var i = 0; i < items.length; i++) {
@@ -7530,6 +7569,7 @@
           if (res.remembered) { level = res.remembered.level; via = res.remembered.via; } // as graded last time, ticks included
           setRow(row, res.record, level, via);
           if (res.alt && !direct) { offerAlternative(row, it.text, res.alt, res.via); batchMem.remember(it.text, { alt: res.alt }); }
+          if (res.hits && res.hits.length > 1 && !direct) { offerHits(row, res.hits, level === 'good'); batchMem.remember(it.text, { hits: res.hits.slice(0, 5) }); } // a title row: the close titles, as the Find tab lists them
           if (looksMerged(it.text)) { // never lose a reference silently
             var mc = el('span', 'chip warn', 'May be two references'); mc.title = 'This line seems to contain two references. Put each on its own line (or separate them with a blank line) and run again.';
             row.out.insertBefore(mc, row.out.children[1] || null);

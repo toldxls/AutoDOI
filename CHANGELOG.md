@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.11.0 - 2026-09-29
+
+### New
+
+- **Pick from the list.** A title row on the References tab lists every close title under it as on Find a DOI, open when the match is not exact so you click the paper you mean, folded under *Other matches* when it is. The chosen paper is green as *Your pick* and the list comes back with the row on your next visit.
+
 ## 1.10.0 - 2026-09-28
 
 ### New
