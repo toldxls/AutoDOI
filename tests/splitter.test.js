@@ -71,6 +71,11 @@ timed('glued particles', () => splitReferences("Smith, J. (2020). Foo.\n" + "del
 timed('50k spaces in a line', () => splitReferences("x\n" + " ".repeat(50000) + "y\na" + " ".repeat(50000) + "b"), 300);
 timed('50k spaces, blank mode', () => splitByMode("a" + " ".repeat(50000) + "\n\nb" + " ".repeat(50000), 'blank'), 300);
 t('particles still recognised', "van der Maaten, L., & Hinton, G. (2008). Visualizing data using t-SNE. Journal of Machine Learning Research, 9, 2579-2605.\nde la Cruz, A. (2010). Title of work here. Geology, 38, 1-10.\nd’Arcy, W. (1999). Another title here. Nature, 400, 1-2.", 3);
+// Lines that are only titles: one reference each, a wrapped title joined on its dangling word or lowercase continuation
+t('a list of bare titles', "Attention is all you need\nDeep learning\nNanometre-scale thermometry in a living cell", 3);
+t('a single title', "Deep learning, Nature 2015", 1);
+t('a wrapped title stays one', "Deep learning methods for\nprotein structure prediction\nMolecular structure of nucleic acids", 2);
+t('a paste with an author line is not a title list: lines still wrap as before', "Deep learning\nKucsko, G., & Maurer, P. C. (2013). Nanometre-scale thermometry.\nNature, 500, 54-58.", 1);
 const eq = (label, got, want) => { if (JSON.stringify(got) === JSON.stringify(want)) pass++; else { fail++; console.log('FAIL', label, JSON.stringify(got), '!=', JSON.stringify(want)); } };
 eq('lines mode keeps the 10. of bare DOIs', splitByMode("10.1038/nature12373\n10.1000/x\n1. Smith J. 2020. Title. J 1:2.", 'lines'), ["10.1038/nature12373", "10.1000/x", "Smith J. 2020. Title. J 1:2."]);
 eq('numbered mode survives a gap', splitByMode("1. Smith, J. (2020). A title here. Journal, 1, 2.\n3. Jones, K. (2019). Second title. Journal, 2, 3.\n4. Brown, L. (2018). Third title. Journal, 3, 4.\n1998. Not an item, a wrapped year", 'numbered').length, 3);

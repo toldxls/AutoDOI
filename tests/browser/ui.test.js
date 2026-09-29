@@ -607,6 +607,24 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('no lookup was made for a reference written by hand'), !s.state.requests.slice(beforeReload).some(function (u) { return /api\.crossref\.org\/works\?|openalex\.org\/works\?/.test(u); }));
   await page.click('#tab-export'); await page.fill('#export-input', ''); // leave nothing behind for the next flow in this context
   await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
+  // 13. A line that is only a title is looked up by title, as on Find a DOI; a list of titles splits one per line
+  await page.selectOption('#split-mode', 'auto');
+  await page.fill('#export-input', 'Nanometre-scale thermometry in a living cell\nMolecular structure of nucleic acids');
+  await page.waitForFunction(function () { return /2 references/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  check(name('two bare titles split one per line in automatic layout'), /^2 references/.test(await textOf('#split-count')), await textOf('#split-count'));
+  var beforeTitles = s.state.requests.length;
+  await page.click('#export-go');
+  await page.waitForFunction(function () { return /good|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  status = await textOf('#export-status');
+  check(name('one title is found and the other is not'), /1 good/.test(status) && /1 not matched/.test(status), status);
+  var titleRow = page.locator('#export-matches .match').first();
+  check(name('an exact title is green, Found by title, and in the export'), (await titleRow.locator('.chip:has-text("Found by title")').count()) === 1 && /\bgood\b/.test(await titleRow.getAttribute('class')) && (await titleRow.locator('input[type=checkbox][id^=inc-]').isChecked()) && /10\.1038\/nature12373/.test(await titleRow.textContent()), await titleRow.innerHTML().then(function (h) { return h.slice(0, 300); }));
+  check(name('a title with nothing close is red with a title chip and a fix box'), (await page.locator('#export-matches .match.bad .chip:has-text("Weak title match")').count()) === 1 && (await page.locator('#export-matches .match.bad .fixrow input[type=text]').count()) === 1);
+  var titleCalls = s.state.requests.slice(beforeTitles).filter(function (u) { return /api\.crossref\.org\/works\?.*Nanometre/.test(u); });
+  check(name('an exact title costs one Crossref search'), titleCalls.length === 1, titleCalls.join(', '));
+  await axeCheck('References tab with title rows');
+  await page.fill('#export-input', ''); await page.selectOption('#split-mode', 'lines');
+  await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));
   await s.ctx.close();
 }

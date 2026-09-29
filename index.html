@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-IH6IICvjpPds15HqDpKrgoSXfKv7J1CWRC2XEqzk1Rs=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-Sjxh1Dk032+zMuTs3ycL1E48whVK5lurMfqdouLjBEw=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -288,9 +288,9 @@
 
   <!-- ===== 1. References -> any style ===== -->
   <section class="panel" id="panel-export" role="tabpanel" aria-labelledby="tab-export">
-    <p class="lead">Paste one reference or a whole list, in any style, and get it back clean in APA, Vancouver, Chicago or any of 10,000 journal styles, or as a <strong>.ris</strong>, <strong>.enw</strong> or BibTeX file. Each reference is matched at Crossref and graded green, amber or red; anything unmatched is kept as you pasted it. You can also drop a .ris, .enw or .bib file and re-export it in any style.</p>
+    <p class="lead">Paste one reference or a whole list, in any style, or just paper titles, and get it back clean in APA, Vancouver, Chicago or any of 10,000 journal styles, or as a <strong>.ris</strong>, <strong>.enw</strong> or BibTeX file. Each reference is matched at Crossref and graded green, amber or red; anything unmatched is kept as you pasted it. You can also drop a .ris, .enw or .bib file and re-export it in any style.</p>
     <form id="form-export">
-      <div class="tabwrap area"><textarea id="export-input" aria-label="References or file contents" aria-description="Empty: press Tab to fill in the example" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Watson JD, Crick FHC. Molecular structure of nucleic acids. Nature. 1953;171:737-8."></textarea><span class="tab-hint" aria-hidden="true">Tab ↹ fills in the example</span></div>
+      <div class="tabwrap area"><textarea id="export-input" aria-label="References or file contents" aria-description="Empty: press Tab to fill in the example" placeholder="Kucsko, G., Maurer, P. C., Yao, N. Y., … (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58.&#10;Watson JD, Crick FHC. Molecular structure of nucleic acids. Nature. 1953;171:737-8.&#10;Deep learning, Nature 2015"></textarea><span class="tab-hint" aria-hidden="true">Tab ↹ fills in the example</span></div>
       <div class="split-bar">
         <span id="split-count" role="status" aria-live="polite"></span>
         <label class="check" for="split-mode">Layout
@@ -5099,7 +5099,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.9.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.10.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -6499,6 +6499,44 @@
   $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.toDoi($('doi-input').value) || A.extractPmid($('doi-input').value)) lookup($('doi-input').value); }, 0); });
 
   /* ---------- 2. Find a DOI ---------- */
+  /* A search by title alone, shared by Find a DOI and a bare-title line on the References tab. Returns { hits, viaOA }: every hit
+   * carries conf (its title similarity), best first. opts.year narrows the most-cited pass and breaks ties between equal titles */
+  async function findByTitle(title, journal, opts) {
+    opts = opts || {};
+    var sim = function (r) { return titleSimilarity(title, r.title); };
+    var best = function () { return hits.length ? Math.max.apply(null, hits.map(sim)) : 0; };
+    var hits = (await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6)).filter(function (r) { return r.title; }), viaOA = false;
+    // Short or common titles ("Deep learning") drown in relevance ranking: ask again, most-cited first, and keep exact titles only
+    if (best() < 0.95) {
+      try {
+        var extra = { 'query.bibliographic': title, sort: 'is-referenced-by-count', order: 'desc' }, filters = [];
+        if (journal) filters.push('container-title:' + journal.replace(/,/g, ' ').replace(/\s+/g, ' ').trim()); // commas separate Crossref filters
+        if (opts.year) filters.push('from-pub-date:' + (Number(opts.year) - 1), 'until-pub-date:' + (Number(opts.year) + 1));
+        if (filters.length) extra.filter = filters.join(',');
+        var cited = (await search(extra, 20)).filter(function (r) { return r.title && sim(r) >= 0.95; });
+        var seenD = {}; hits.forEach(function (r) { seenD[(r.doi || '').toLowerCase()] = 1; });
+        hits = cited.filter(function (r) { return !seenD[(r.doi || '').toLowerCase()]; }).slice(0, 3).concat(hits);
+      } catch (e) { /* keep the first results */ }
+    }
+    // a journal is a must-clause at Crossref: one read off a line wrongly ("Deep Learning, Memory and Cognition") empties the search, so ask once more with the whole line
+    if (journal && best() < 0.8) {
+      try { hits = hits.concat((await search({ 'query.bibliographic': title + ' ' + journal }, 6)).filter(function (r) { return r.title; })); } catch (e) { /* keep what there is */ }
+    }
+    if (best() < 0.8) {
+      try { var oa = (await openAlexSearch(title + (journal ? ' ' + journal : ''), 5)).filter(function (r) { return r.title; }); if (oa.length) { hits = hits.concat(oa); viaOA = true; } } catch (e) { /* Crossref results only */ }
+    }
+    var seenK = {}, key = function (r) { return (r.doi || r.title || '').toLowerCase(); };
+    hits = hits.filter(function (r) { var k = key(r); if (seenK[k]) return false; seenK[k] = 1; return true; });
+    var TYPE_RANK = { 'journal-article': 0, 'proceedings-article': 1, 'book-chapter': 2, book: 2, monograph: 2, 'posted-content': 3 }; // the same title in a journal and as a preprint: the journal first
+    hits.forEach(function (r, i) { r.conf = sim(r); r.rank = i; });
+    hits.sort(function (a, b) {
+      if (Math.abs(a.conf - b.conf) >= 0.01) return b.conf - a.conf;
+      if (opts.year) { var ay = Math.abs(Number(a.year) - Number(opts.year)) <= 1, by = Math.abs(Number(b.year) - Number(opts.year)) <= 1; if (ay !== by) return ay ? -1 : 1; }
+      var ta = TYPE_RANK[a.type] !== undefined ? TYPE_RANK[a.type] : 4, tb = TYPE_RANK[b.type] !== undefined ? TYPE_RANK[b.type] : 4;
+      return ta - tb || a.rank - b.rank;
+    });
+    return { hits: hits, viaOA: viaOA };
+  }
   $('form-find').addEventListener('submit', async function (ev) {
     ev.preventDefault();
     var title = $('find-title').value.trim(), journal = $('find-journal').value.trim();
@@ -6507,27 +6545,10 @@
     if (!title) { status.textContent = 'Enter a title to search for.'; status.className = 'status err'; return; }
     status.textContent = 'Searching Crossref…'; $('find-go').disabled = true;
     try {
-      var hits = await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6);
-      var viaOA = false;
-      hits = hits.filter(function (r) { return r.title; });
-      // Short or common titles ("Deep learning") drown in relevance ranking: ask again, most-cited first, and keep exact titles only
-      if (!hits.some(function (r) { return titleSimilarity(title, r.title) >= 0.95; })) {
-        try {
-          var extra = { 'query.bibliographic': title, sort: 'is-referenced-by-count', order: 'desc' };
-          if (journal) extra.filter = 'container-title:' + journal.replace(/,/g, ' ').replace(/\s+/g, ' ').trim(); // commas separate Crossref filters
-          var cited = (await search(extra, 20)).filter(function (r) { return r.title && titleSimilarity(title, r.title) >= 0.95; });
-          var seenD = {}; hits.forEach(function (r) { seenD[(r.doi || '').toLowerCase()] = 1; });
-          hits = cited.filter(function (r) { return !seenD[(r.doi || '').toLowerCase()]; }).slice(0, 3).concat(hits);
-        } catch (e) { /* keep the first results */ }
-      }
-      if (!hits.length || Math.max.apply(null, hits.map(function (r) { return titleSimilarity(title, r.title); })) < 0.8) {
-        try { var oa = (await openAlexSearch(title + (journal ? ' ' + journal : ''), 5)).filter(function (r) { return r.title; }); if (oa.length) { hits = hits.concat(oa); viaOA = true; } } catch (e) { /* Crossref results only */ }
-      }
+      var found = await findByTitle(title, journal), hits = found.hits, viaOA = found.viaOA;
       if (!hits.length) { status.textContent = 'No matches at Crossref or OpenAlex. Try fewer words from the title.'; return; }
-      if (Math.max.apply(null, hits.map(function (r) { return titleSimilarity(title, r.title); })) < 0.6) status.className = 'status err';
+      if (hits[0].conf < 0.6) status.className = 'status err';
       status.textContent = hits.length + ' best matches, most likely first' + (viaOA ? ' (Crossref and OpenAlex)' : '') + '. Click one to format it.';
-      hits.forEach(function (r) { r.conf = titleSimilarity(title, r.title); });
-      hits.sort(function (a, b) { return b.conf - a.conf; });
       if (hits[0].conf >= 0.95) adoptRecord(hits[0], 'find', el('span', 'chip good', 'Found by title'));
       hits.forEach(function (r) {
         var conf = r.conf;
@@ -6651,6 +6672,37 @@
     if (yearTail.test(chunk) && !/\d/.test(chunk.replace(yearTail, ''))) return /\.\s+\S[\s\S]{30,}[(\s](1[5-9]|20)\d{2}[a-z]?\)?\.$/.test(chunk) && /(https?:\/\/|www\.)/.test(chunk); // "…/tree/main (2022)." (Nature-style ending) is whole
     return hasEndPunct(chunk) && /\d[\])]?\.$|\d\s*\(\d{4}\)\.$/.test(chunk) && chunk.length > 20;
   }
+  // A line that is only a paper's title, perhaps with its journal and year ("Deep learning, Nature 2015"): no author, no identifier,
+  // no volume or pages. Such a line is looked up by title, as on Find a DOI, not graded as a reference with everything missing.
+  // Returns { title, journal, year } (journal and year '' when absent) or null
+  var TITLE_AUTHOR = new RegExp('^(' + PARTICLES + ')?[' + UC + '][' + WC + ']+(,\\s+[' + UC + '][.\\s]|,\\s+[' + UC + '][' + WC + ']+,|\\s+[' + UC + ']{1,3}\\s*[,.(])' + // Smith, J. / Smith, John, / Smith JA, / Barnes SJ (
+    '|^([' + UC + ']\\.\\s?){1,3}[' + UC + '][' + WC + ']+[,\\s]' +                                                                              // J. A. Smith; "Attention and memory" is a title, so no "Word and" branch
+    '|[' + UC + '][' + WC + ']{2,}\\s[' + UC + ']\\.\\s?[' + UC + ']\\.' +                                                                       // "Расков Д. Е.": a surname with two initials anywhere ("The U.S. policy" is lost to it and takes the reference path)
+    '|\\s\\p{L}\\s\\p{L}(?:\\s|$)', 'u');                                                                                                          // "siegel d j brainstorm": two single letters in a row are initials, whatever the case
+  var JOURNAL_WORD = new RegExp('^([' + UC + '][' + WC + '.&:]*|of|and|the|for|in|on|&|de|des|der|und|et|di)$'), JOURNAL_STOP = /^(of|and|the|for|in|on|&|de|des|der|und|et|di)$/;
+  var LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
+  function looksLikeTitle(text) {
+    var t = String(text || '').replace(/\s+/g, ' ').trim().replace(/^[“‘"']|[”’"']$/g, '').replace(/\.$/, '').trim();
+    if (t.length < 10 || t.length > 250) return null;
+    if (ID_LINE.test(t) || /10\.\d{4,9}\/|https?:\/\/|www\.|\bISBN\b|\bPMID\b|\bPMC\d|\barXiv\b|<[a-z]+[^>]*>|\(\s*\)/i.test(t)) return null; // an identifier, HTML, or the "( )" a year was cut from
+    if (/\bet al\b|\(eds?\.?\)|\beds?\.\s|\bIn:\s|^(\[\d{1,4}\]|\d{1,4}[.)]|[•●◦‣⁃·*\-–—])\s/i.test(t)) return null;
+    if (STRONG_AUTHOR.test(t) || INITIALS_FIRST.test(t) || TITLE_AUTHOR.test(t)) return null;
+    if (HAS_LOCATOR.test(t) || /\b\d{1,4}\s*\(\d{1,4}\)/.test(t)) return null; // "Nature 500:54", "12(3)"
+    var ym = t.match(/[\s,(]\(?((?:1[5-9]|20)\d{2})\)?$/), year = ym ? ym[1] : '';
+    var rest = ym ? t.slice(0, ym.index).replace(/[\s,(]+$/, '') : t;
+    if (YEAR_POS.test(rest) || (rest.match(/\b\d{1,5}\b/g) || []).length >= 2) return null; // a year mid-line, or "nature 585 357 362": a reference, not a title
+    var wordsN = (rest.match(/\S+/g) || []).filter(function (w) { return LETTER.test(w); }).length;
+    if (wordsN < 2 || wordsN > 30) return null;
+    // a journal after an explicit separator only ("Deep learning, Nature", "Deep learning - Nature", "Deep learning in Nature"): never split on a space
+    var title = rest, journal = '', seps = [', ', ' - ', ' – ', ' — ', '. ', ' in '];
+    for (var i = 0; i < seps.length && !journal; i++) {
+      var at = rest.lastIndexOf(seps[i]); if (at < 0) continue;
+      var head = rest.slice(0, at).trim(), tail = rest.slice(at + seps[i].length).trim(), tw = tail.split(/\s+/);
+      if (tw.length <= 6 && tail.indexOf(':') < 0 && !JOURNAL_STOP.test(tw[0]) && tw.every(function (w) { return JOURNAL_WORD.test(w); }) &&
+        (head.match(/\S+/g) || []).filter(function (w) { return LETTER.test(w); }).length >= 2) { title = head; journal = tail; }
+    }
+    return { title: title, journal: journal, year: year };
+  }
   // An explicit layout chosen by the user removes all guessing
   function splitByMode(text, mode) {
     var t = String(text || '').replace(/\r\n?/g, '\n').trim();
@@ -6701,6 +6753,9 @@
     var PLACE_LINE = /^[A-Z][A-Za-z.\s]+, [A-Z]{2}\s*:/, EDS_LINE = /^[^,]+, (?:[A-Z]\.\s*)+\(Eds?\.\)/;
     var opens = nonEmpty.filter(function (l) { l = l.trim(); return !PLACE_LINE.test(l) && !EDS_LINE.test(l) && (START.test(l) || AUTHOR_START.test(l) || (ID_LINE.test(l) && !/^\d+\.?$/.test(l))); }).length;
     var perLine = !numbered && !bulleted && !hanging && !hasBlank && nonEmpty.length >= 3 && opens >= 0.8 * nonEmpty.length;
+    // A list of bare titles, one per line: nothing opens like a reference and nearly every line reads as a title
+    var titleLines = nonEmpty.filter(function (l) { return !!looksLikeTitle(l.trim()); }).length;
+    var titleList = !numbered && !bulleted && !hanging && nonEmpty.length >= 2 && opens === 0 && titleLines >= 0.8 * nonEmpty.length;
     var numOf = function (l) { var m = l.match(/^\[?(\d{1,4})[\].)]/); return m && !(m[1].length === 4 && /^(1[5-9]|20)/.test(m[1]) && l.charAt(0) !== '[') ? Number(m[1]) : null; };
     var expect = null;
     var refs = [], cur = '';
@@ -6721,6 +6776,10 @@
         return;
       }
       if (bulleted) { if (BUL.test(l)) { flush(); cur = l; } else cur += ' ' + l; return; }
+      if (titleList) { // a wrapped title continues on a lowercase line or after a dangling word ("Deep learning methods for" / "protein structure prediction")
+        if ((/^[a-z]/.test(l) && !/[.?!]$/.test(cur)) || /[,;:–\-&]$|\b(of|for|and|the|a|an|in|on|to|with|by|from|is|are)$/i.test(cur)) cur += ' ' + l; else { flush(); cur = l; }
+        return;
+      }
       if (perLine && !isDoiLine && !/^\(/.test(l) && !PLACE_LINE.test(l) && !EDS_LINE.test(l) && !/[,;:\u2013\-&]$/.test(cur) && !/\b[Ii]n$/.test(cur)) { flush(); cur = l; return; }
       if (hanging) { if (/^[ \t]/.test(raw)) cur += ' ' + l; else { flush(); cur = l; } return; }
       if (ID_LINE.test(cur)) { flush(); cur = l; return; }                  // a list of bare identifiers
@@ -6757,6 +6816,16 @@
     }
     var isbn = A.extractIsbn(String(refText).replace(/10\.\d{4,9}\/\S+/g, ' ')); // an ISBN inside a chapter DOI (10.1007/978-…) is not the book being cited
     if (isbn) { try { var b = await lookupIsbn(isbn); return { record: b, conf: 1, via: 'isbn' }; } catch (e) { /* search */ } }
+    var tq = looksLikeTitle(refText);
+    if (tq) { // a title alone, perhaps with its journal and year: the Find tab's search, graded by title similarity; via 'title' tells the row so
+      var found = (await findByTitle(tq.title, tq.journal, { year: tq.year })).hits;
+      if (!found.length) return { record: null, conf: 0 };
+      var top = found[0], tconf = top.conf, tkey = function (r) { return (r.doi || r.title || '').toLowerCase(); };
+      // another version of the same title, one click away: a preprint and its journal version, a chapter, a proceedings paper
+      var other = found.filter(function (r) { return r !== top && tkey(r) !== tkey(top) && r.conf >= 0.6 && tconf - r.conf <= (tconf >= 0.95 ? 0.05 : 0.15); })[0];
+      if (top.source === 'openalex' && top.doi) { try { top = await fetchRecord(top.doi); } catch (e) { /* keep the OpenAlex record */ } }
+      return { record: top, conf: tconf, via: 'title', alt: other ? { record: other, conf: other.conf } : null };
+    }
     var best = null, bestConf = 0, via = 'search', seen = [];
     var pick = function (hits) {
       hits.forEach(function (h) { var c = A.matchConfidence(refText, h); seen.push({ h: h, c: c }); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
@@ -7114,13 +7183,16 @@
     var batchAdopted = false; // the first good row of a batch replaces the example on the DOI tab
     var nFile = items.filter(function (x) { return x.kind === 'rec'; }).length, nText = items.length - nFile;
 
+    function titleLevel(c) { return c >= 0.95 ? 'good' : c >= 0.6 ? 'warn' : 'bad'; } // a line that is only a title is graded by title similarity, as the Find tab's chips are
     function chipFor(level, via, src) {
       var label = via === 'doi' ? 'From DOI' : via === 'isbn' ? 'From ISBN' : via === 'file' ? 'From ' + fileLabel(src) + ' file' :
         via === 'year' ? 'Year differs' : via === 'doicheck' ? 'DOI disagrees with text' : via === 'untitled' ? 'No title in file' :
+        via === 'title' ? (level === 'good' ? 'Found by title' : level === 'warn' ? 'Check title match' : 'Weak title match') :
         via === 'openalex' ? (level === 'good' ? 'Good match · OpenAlex' : 'Check match · OpenAlex') : via === 'fixed' ? 'Fixed' : via === 'edited' ? 'Edited' :
         level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : via === 'none' ? 'No good match' : 'Weak match';
       var c = el('span', 'chip ' + level, label);
       if (via === 'year') c.title = 'The reference names a different year from this record; probably the wrong paper. Left out unless you tick it.';
+      if (via === 'title' && level !== 'good') c.title = 'Only a title was given; this is the closest title found. Tick it if it is the paper.';
       if (via === 'doicheck') c.title = 'The DOI in this reference resolves to a record whose title or year does not match the text. Check whether the DOI belongs to the reference above or below, or fix it here.';
       return c;
     }
@@ -7219,12 +7291,13 @@
       return n;
     }
     // "Not this one?": a runner-up the matcher scored nearly as well, one click away
-    function offerAlternative(row, raw, alt) {
+    function offerAlternative(row, raw, alt, via) {
       var r = alt.record, line = el('div', 'note'); line.style.marginTop = '6px';
       line.appendChild(document.createTextNode('Not this one? '));
       var b = button((r.title || '(untitled)').slice(0, 90) + (r.title && r.title.length > 90 ? '…' : '') + (r.year ? ' (' + r.year + ')' : '') + (r.container ? ', ' + r.container : ''), '', function () {
-        var conf = A.matchConfidence(raw, r), clash = yearConflict(raw, r);
-        setRow(row, r, clash ? 'bad' : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad', clash ? 'year' : 'search');
+        var clash = yearConflict(raw, r), tq = via === 'title' && looksLikeTitle(raw); // a title row is graded by title similarity, not as a reference with no author
+        var conf = tq ? titleSimilarity(tq.title, r.title) : A.matchConfidence(raw, r);
+        setRow(row, r, clash ? 'bad' : tq ? titleLevel(conf) : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad', clash ? 'year' : tq ? 'title' : 'search');
         line.remove(); build();
       });
       b.title = 'Use this record instead' + (r.doi ? ': ' + r.doi : '');
@@ -7395,7 +7468,9 @@
           var both = (row.raw || '') + ' ' + v;
           var conf = Math.max(A.matchConfidence(both, res.record), A.matchConfidence(v, res.record, { titleOnly: true }) * (A.matchConfidence(row.raw || v, res.record) >= 0.5 ? 1 : 0.7));
           var clash = row.raw && yearConflict(row.raw, res.record);
-          var lvl = direct ? 'good' : clash ? 'bad' : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad';
+          // a retyped title is graded by title similarity; a full reference in the row that the record does not fit still holds it back
+          var tconf = res.via === 'title' ? res.conf * (row.raw && !looksLikeTitle(row.raw) && A.matchConfidence(row.raw, res.record) < 0.5 ? 0.7 : 1) : 0;
+          var lvl = direct ? 'good' : clash ? 'bad' : res.via === 'title' ? titleLevel(tconf) : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad';
           setRow(row, res.record, lvl, direct ? res.via : clash ? 'year' : lvl === 'good' ? 'fixed' : res.via);
           if (lvl === 'good') { fr.remove(); row.fixRow = null; if (row.keep) { row.keep.checked = false; } }
           else { b.disabled = false; b.textContent = 'Fix'; row.node.appendChild(fr); }
@@ -7442,9 +7517,9 @@
           o.appendChild(el('span', 't', 'Nothing close at Crossref or OpenAlex. Paste a DOI or the bare title below.'));
           addFixRow(row);
         } else {
-          var direct = res.via === 'doi' || res.via === 'isbn';
-          var level = direct ? 'good' : res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
-          var via = !direct && res.conf < 0.3 ? 'none' : res.via;
+          var direct = res.via === 'doi' || res.via === 'isbn', titled = res.via === 'title';
+          var level = direct ? 'good' : titled ? titleLevel(res.conf) : res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
+          var via = titled ? 'title' : !direct && res.conf < 0.3 ? 'none' : res.via;
           if (!direct && yearConflict(it.text, res.record)) { level = 'bad'; via = 'year'; }
           // A DOI inside a full reference is trusted, but not blindly: if the record's year or title contradicts the text, the DOI
           // probably belongs to the neighbouring reference (a DOI line attached to the wrong entry) or has a typo
@@ -7454,7 +7529,7 @@
           }
           if (res.remembered) { level = res.remembered.level; via = res.remembered.via; } // as graded last time, ticks included
           setRow(row, res.record, level, via);
-          if (res.alt && !direct) { offerAlternative(row, it.text, res.alt); batchMem.remember(it.text, { alt: res.alt }); }
+          if (res.alt && !direct) { offerAlternative(row, it.text, res.alt, res.via); batchMem.remember(it.text, { alt: res.alt }); }
           if (looksMerged(it.text)) { // never lose a reference silently
             var mc = el('span', 'chip warn', 'May be two references'); mc.title = 'This line seems to contain two references. Put each on its own line (or separate them with a blank line) and run again.';
             row.out.insertBefore(mc, row.out.children[1] || null);

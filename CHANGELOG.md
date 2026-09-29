@@ -2,7 +2,18 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
-## Unreleased
+## 1.10.0 - 2026-09-28
+
+### New
+
+- **A title is enough.** On the References tab a line that is only a paper's title, with or without its journal and year (*Deep learning, Nature 2015*), is looked up by title as on Find a DOI, and comes back green as *Found by title* when the title matches exactly. Several titles one per line are split one per row.
+
+### Changed
+
+- Find a DOI and the References tab share one title search. Equal titles rank the journal version above a preprint or chapter, and a year on the line breaks ties.
+- The References tab's lead and example mention bare titles.
+
+### Fixed
 
 - The References tab's example list cites Watson and Crick (1953) in place of a NeurIPS paper Crossref does not hold, which came back amber; its lead is shorter.
 - "Keep as written in the list" no longer wraps onto three lines: the fix row's width rule for its text box also caught the checkbox.
