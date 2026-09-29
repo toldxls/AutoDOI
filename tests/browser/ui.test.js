@@ -335,6 +335,7 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForSelector('#find-results .hit', { timeout: 15000 });
   check(name('find shows a hit with a Title match chip'), /Title match/.test(await page.locator('#find-results .hit').first().textContent()));
   check(name('find hit shows the DOI'), /10\.1038\/nature12373/.test(await textOf('#find-results')));
+  check(name('the search words are lit in the hit\'s title and journal'), (await page.locator('#find-results .hit').first().locator('.t mark').count()) === 6 && (await page.locator('#find-results .hit').first().locator('.m mark:has-text("Nature")').count()) === 1, await page.locator('#find-results .hit').first().innerHTML().then(function (h) { return h.slice(0, 400); }));
   check(name('the top hit replaces the example on the DOI tab'), (await page.locator('#doi-result .chip:has-text("Found by title")').count()) === 1 && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && /[?&]q=10\.1038/.test(page.url()), page.url());
   check(name('hits carry no Format button: the card itself is the control'), (await page.locator('#find-results .hit button.btn:has-text("Format")').count()) === 0 && (await page.locator('#find-results .hit.pickable').count()) >= 1);
   await axeCheck('Find tab with results');

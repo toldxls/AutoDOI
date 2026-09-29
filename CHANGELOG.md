@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.12.0 - 2026-09-29
+
+### New
+
+- **Your words, lit.** On Find a DOI and in the list under a title row, each word of the search is highlighted where it appears in a hit's title or journal, and a hit that holds every word of the search is chipped *Has your words* rather than *Weak*; a title row whose best hit does so is amber to check, not red, and a single hit is still a card to confirm.
+
+### Fixed
+
+- A single word ("oldsite") is searched by title on the References tab, as on Find a DOI; a lone line of eight characters or fewer was dropped as debris before it was looked up, and a title had to be two words.
+
 ## 1.11.0 - 2026-09-29
 
 ### New

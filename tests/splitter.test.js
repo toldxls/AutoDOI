@@ -26,6 +26,7 @@ glued.forEach(c => { ['auto', 'lines'].forEach(mode => { const r = splitReferenc
 { const r = splitReferences('H.J. Fischback, Phys. Stat. Sol. 3 (1963) 1082; ibid. 22 (1967) 235.', 'auto');
   if (r[1] === 'H.J. Fischback, Phys. Stat. Sol. 22 (1967) 235.') pass++; else { fail++; console.log('FAIL ibid expands to the journal', JSON.stringify(r)); } }
 
+const eq0 = (label, got, n) => { if (got.length === n) pass++; else { fail++; console.log('FAIL', label, JSON.stringify(got)); } };
 const t = (label, input, n) => { const r = splitReferences(input); if (r.length === n) pass++; else { fail++; console.log('FAIL', label, r.length, '!=', n); r.forEach(x => console.log('   |', x.slice(0, 100))); } };
 t('particle', "Kucsko, G., & Maurer, P. C. (2013). Nanometre-scale thermometry. Nature, 500, 54-58.\nvan der Maaten, L., & Hinton, G. (2008). Visualizing data using t-SNE. JMLR, 9, 2579-2605.", 2);
 t('ids', "PMC4221854\n23903748\narXiv:1706.03762\narXiv:1810.04805", 4);
@@ -74,6 +75,9 @@ t('particles still recognised', "van der Maaten, L., & Hinton, G. (2008). Visual
 // Lines that are only titles: one reference each, a wrapped title joined on its dangling word or lowercase continuation
 t('a list of bare titles', "Attention is all you need\nDeep learning\nNanometre-scale thermometry in a living cell", 3);
 t('a single title', "Deep learning, Nature 2015", 1);
+t('a single word is a search', "oldsite", 1);
+t('a list of one-word titles', "oldsite\nbobdownsite\nkampfite", 3);
+eq0('debris lines are still dropped', splitReferences("Smith, J. (2020). A title here. Journal, 1, 2.\n3.\npp."), 1);
 t('a wrapped title stays one', "Deep learning methods for\nprotein structure prediction\nMolecular structure of nucleic acids", 2);
 t('a paste with an author line is not a title list: lines still wrap as before', "Deep learning\nKucsko, G., & Maurer, P. C. (2013). Nanometre-scale thermometry.\nNature, 500, 54-58.", 1);
 const eq = (label, got, want) => { if (JSON.stringify(got) === JSON.stringify(want)) pass++; else { fail++; console.log('FAIL', label, JSON.stringify(got), '!=', JSON.stringify(want)); } };

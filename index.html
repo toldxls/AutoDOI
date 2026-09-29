@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-6ImwIKJnp097AMQWpv7hzkjt8wBmyzQcjH8xDPSibw0=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-w5OwB3GVIbbhy/mwDecLy+YfgOpormmAffVPSFrjUVU=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -209,6 +209,7 @@
   .match .hits .hit { padding: 8px 12px; }
   .match .hits .hit .t { font-size: 14px; }
   .match .hits summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+  .hit mark { background: var(--accent-soft); color: inherit; border-radius: 2px; padding: 0 1px; box-shadow: 0 0 0 1px var(--accent-soft); } /* a word of the search, found in the title or the journal */
 
   .matches { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
   .match { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; border-left: 4px solid var(--line); }
@@ -5104,7 +5105,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.11.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.12.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -6504,6 +6505,27 @@
   $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.toDoi($('doi-input').value) || A.extractPmid($('doi-input').value)) lookup($('doi-input').value); }, 0); });
 
   /* ---------- 2. Find a DOI ---------- */
+  // The words of a search lit inside a title or journal name, so a long title shows what it shares with the search ("oldsite" in
+  // "Oldsite, K2Fe2+[(UO2)(SO4)2]2(H2O)8, a new uranyl sulfate mineral"). Returns { frag, found, total }: found of total search words
+  var MARK_WORD; try { MARK_WORD = new RegExp('[\\p{L}\\p{N}]+', 'gu'); } catch (e) { MARK_WORD = /[a-z0-9À-ɏͰ-ϿЀ-ӿ぀-ヿ㐀-鿿가-힯]+/gi; }
+  var foldWord = function (w) { w = w.toLowerCase(); return w.normalize ? w.normalize('NFD').replace(/[̀-ͯ]/g, '') : w; };
+  function wordSet(query) { var set = {}, total = 0; (String(query || '').match(MARK_WORD) || []).forEach(function (w) { if (w.length < 2) return; var f = foldWord(w); if (!set[f]) { set[f] = 1; total++; } }); return { set: set, total: total }; }
+  function holdsWords(text, ws) { // how many of the search's words the text holds; all: every one of them
+    var seen = {}, found = 0, m, t = String(text || ''); MARK_WORD.lastIndex = 0;
+    while ((m = MARK_WORD.exec(t))) { var f = foldWord(m[0]); if (ws.set[f] && !seen[f]) { seen[f] = 1; found++; } }
+    return { found: found, total: ws.total, all: ws.total > 0 && found === ws.total };
+  }
+  function markWords(text, ws) { // the text as a fragment with each search word in a <mark>
+    var frag = document.createDocumentFragment(), t = String(text || ''), last = 0, m; MARK_WORD.lastIndex = 0;
+    while ((m = MARK_WORD.exec(t))) {
+      if (!ws.set[foldWord(m[0])]) continue;
+      frag.appendChild(document.createTextNode(t.slice(last, m.index))); frag.appendChild(el('mark', '', m[0])); last = m.index + m[0].length;
+    }
+    frag.appendChild(document.createTextNode(t.slice(last)));
+    return frag;
+  }
+  // the chip on a hit: an exact title, a partial one, one that at least holds every word of the search, or a weak one
+  function hitChip(conf, allFound) { return el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 || allFound ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : allFound ? 'Has your words' : 'Weak'); }
   /* A search by title alone, shared by Find a DOI and a bare-title line on the References tab. Returns { hits, viaOA }: every hit
    * carries conf (its title similarity), best first. opts.year narrows the most-cited pass and breaks ties between equal titles */
   async function findByTitle(title, journal, opts) {
@@ -6533,7 +6555,8 @@
     var seenK = {}, key = function (r) { return (r.doi || r.title || '').toLowerCase(); };
     hits = hits.filter(function (r) { var k = key(r); if (seenK[k]) return false; seenK[k] = 1; return true; });
     var TYPE_RANK = { 'journal-article': 0, 'proceedings-article': 1, 'book-chapter': 2, book: 2, monograph: 2, 'posted-content': 3 }; // the same title in a journal and as a preprint: the journal first
-    hits.forEach(function (r, i) { r.conf = sim(r); r.rank = i; });
+    var ws = wordSet(title + (journal ? ' ' + journal : ''));
+    hits.forEach(function (r, i) { r.conf = sim(r); r.rank = i; r.allWords = holdsWords((r.title || '') + ' ' + (r.container || r.publisher || ''), ws).all; }); // "oldsite" in "Oldsite, K2Fe2+…": a one-word search cannot match a title, but it can be held by one
     hits.sort(function (a, b) {
       if (Math.abs(a.conf - b.conf) >= 0.01) return b.conf - a.conf;
       if (opts.year) { var ay = Math.abs(Number(a.year) - Number(opts.year)) <= 1, by = Math.abs(Number(b.year) - Number(opts.year)) <= 1; if (ay !== by) return ay ? -1 : 1; }
@@ -6558,15 +6581,17 @@
       hits.forEach(function (r) {
         var conf = r.conf;
         var h = el('div', 'hit pickable');
-        var left = el('div');
-        left.appendChild(el('div', 't', r.title || '(untitled)'));
+        var left = el('div'), ws = wordSet(title + ' ' + journal), tEl = el('div', 't'); tEl.appendChild(markWords(r.title || '(untitled)', ws));
+        left.appendChild(tEl);
         var m = el('div', 'm');
-        m.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + ' · '));
+        if (authorsShort(r)) m.appendChild(document.createTextNode(authorsShort(r) + ' · '));
+        if (r.container || r.publisher) { m.appendChild(markWords(r.container || r.publisher, ws)); m.appendChild(document.createTextNode(' · ')); }
+        if (r.year) m.appendChild(document.createTextNode(r.year + ' · '));
         var dl = outLink(r, 'doi-link', ''); if (dl) { dl.appendChild(el('code', '', r.doi)); dl.title = 'Open at the publisher'; m.appendChild(dl); } else m.appendChild(el('code', '', r.doi));
         left.appendChild(m);
         h.appendChild(left);
         var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.flexWrap = 'wrap'; act.style.alignItems = 'center';
-        act.appendChild(el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : 'Weak'));
+        act.appendChild(hitChip(conf, !!r.allWords));
         act.appendChild(paperLinks(r));
         act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
         var pickIt = function () { Array.prototype.forEach.call(list.querySelectorAll('.hit.picked'), function (x) { x.classList.remove('picked'); }); h.classList.add('picked'); formatHere(r, 'find'); };
@@ -6688,7 +6713,7 @@
   var LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
   function looksLikeTitle(text) {
     var t = String(text || '').replace(/\s+/g, ' ').trim().replace(/^[“‘"']|[”’"']$/g, '').replace(/\.$/, '').trim();
-    if (t.length < 10 || t.length > 250) return null;
+    if (t.length < 3 || t.length > 250) return null; // one word is a search too: a mineral name, a species
     if (ID_LINE.test(t) || /10\.\d{4,9}\/|https?:\/\/|www\.|\bISBN\b|\bPMID\b|\bPMC\d|\barXiv\b|<[a-z]+[^>]*>|\(\s*\)/i.test(t)) return null; // an identifier, HTML, or the "( )" a year was cut from
     if (/\bet al\b|\(eds?\.?\)|\beds?\.\s|\bIn:\s|^(\[\d{1,4}\]|\d{1,4}[.)]|[•●◦‣⁃·*\-–—])\s/i.test(t)) return null;
     if (STRONG_AUTHOR.test(t) || INITIALS_FIRST.test(t) || TITLE_AUTHOR.test(t)) return null;
@@ -6697,14 +6722,14 @@
     var rest = ym ? t.slice(0, ym.index).replace(/[\s,(]+$/, '') : t;
     if (YEAR_POS.test(rest) || (rest.match(/\b\d{1,5}\b/g) || []).length >= 2) return null; // a year mid-line, or "nature 585 357 362": a reference, not a title
     var wordsN = (rest.match(/\S+/g) || []).filter(function (w) { return LETTER.test(w); }).length;
-    if (wordsN < 2 || wordsN > 30) return null;
+    if (wordsN < 1 || wordsN > 30) return null;
     // a journal after an explicit separator only ("Deep learning, Nature", "Deep learning - Nature", "Deep learning in Nature"): never split on a space
     var title = rest, journal = '', seps = [', ', ' - ', ' – ', ' — ', '. ', ' in '];
     for (var i = 0; i < seps.length && !journal; i++) {
       var at = rest.lastIndexOf(seps[i]); if (at < 0) continue;
       var head = rest.slice(0, at).trim(), tail = rest.slice(at + seps[i].length).trim(), tw = tail.split(/\s+/);
       if (tw.length <= 6 && tail.indexOf(':') < 0 && !JOURNAL_STOP.test(tw[0]) && tw.every(function (w) { return JOURNAL_WORD.test(w); }) &&
-        (head.match(/\S+/g) || []).filter(function (w) { return LETTER.test(w); }).length >= 2) { title = head; journal = tail; }
+        (head.match(/\S+/g) || []).filter(function (w) { return LETTER.test(w); }).length >= 1) { title = head; journal = tail; } // "Oldsite, Mineralogical Magazine"; a wrong split is retried as a whole line by findByTitle
     }
     return { title: title, journal: journal, year: year };
   }
@@ -6731,7 +6756,7 @@
       });
     }
     return parts.map(function (l) { if (ID_LINE.test(l) || /^(https?:\/\/|doi:|10\.\d{4,9}\/)/i.test(l)) return l.trim(); return l.replace(/^\s*(\[\d{1,4}\]|\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim(); })
-      .filter(function (l) { return l.length > 8 || ID_LINE.test(l); })
+      .filter(function (l) { return l.length > 8 || ID_LINE.test(l) || (looksLikeTitle(l) && (parts.length === 1 || parts.every(function (p) { return looksLikeTitle(p); }))); }) // "oldsite" alone, or a list of mineral names, is a search, not debris
       .reduce(function (acc, l) { return acc.concat(splitAtDois(l).reduce(function (a2, x) { return a2.concat(splitGlued(x)); }, [])); }, []); // a line can still hold two references run together
   }
   function splitReferences(text, mode) {
@@ -6782,7 +6807,7 @@
       }
       if (bulleted) { if (BUL.test(l)) { flush(); cur = l; } else cur += ' ' + l; return; }
       if (titleList) { // a wrapped title continues on a lowercase line or after a dangling word ("Deep learning methods for" / "protein structure prediction")
-        if ((/^[a-z]/.test(l) && !/[.?!]$/.test(cur)) || /[,;:–\-&]$|\b(of|for|and|the|a|an|in|on|to|with|by|from|is|are)$/i.test(cur)) cur += ' ' + l; else { flush(); cur = l; }
+        if ((/^[a-z]/.test(l) && !/[.?!]$/.test(cur) && (cur.match(/\S+/g) || []).length >= 4) || /[,;:–\-&]$|\b(of|for|and|the|a|an|in|on|to|with|by|from|is|are)$/i.test(cur)) cur += ' ' + l; else { flush(); cur = l; } // a lowercase line continues a line long enough to have wrapped; "oldsite" / "bobdownsite" is a list
         return;
       }
       if (perLine && !isDoiLine && !/^\(/.test(l) && !PLACE_LINE.test(l) && !EDS_LINE.test(l) && !/[,;:\u2013\-&]$/.test(cur) && !/\b[Ii]n$/.test(cur)) { flush(); cur = l; return; }
@@ -6811,7 +6836,7 @@
       l = l.trim();
       if (ID_LINE.test(l) || /^(https?:\/\/)?(dx\.)?doi\.org\/|^doi:|^10\.\d{4,9}\//i.test(l)) return l; // a bare identifier is not a numbered item
       return l.replace(/^\s*(\[\d{1,3}\]|\d{1,3}[.)]|[•\-–—*·])\s*/, '').trim();
-    }).filter(function (l) { return l.length > 8 || ID_LINE.test(l); });
+    }).filter(function (l) { return l.length > 8 || ID_LINE.test(l) || (looksLikeTitle(l) && (out.length === 1 || titleList)); }); // "oldsite" alone, or a list of mineral names, is a search, not debris
   }
   async function resolve(refText) {
     var doi = null;
@@ -6827,7 +6852,7 @@
       if (!found.length) return { record: null, conf: 0 };
       var top = found[0], tconf = top.conf;
       if (top.source === 'openalex' && top.doi) { try { top = await fetchRecord(top.doi); } catch (e) { /* keep the OpenAlex record */ } }
-      return { record: top, conf: tconf, via: 'title', alt: null, hits: found.slice(0, 6) }; // the close titles go under the row, as the Find tab lists them
+      return { record: top, conf: tconf, allWords: !!found[0].allWords, via: 'title', alt: null, hits: found.slice(0, 6) }; // the close titles go under the row, as the Find tab lists them
     }
     var best = null, bestConf = 0, via = 'search', seen = [];
     var pick = function (hits) {
@@ -7186,7 +7211,7 @@
     var batchAdopted = false; // the first good row of a batch replaces the example on the DOI tab
     var nFile = items.filter(function (x) { return x.kind === 'rec'; }).length, nText = items.length - nFile;
 
-    function titleLevel(c) { return c >= 0.95 ? 'good' : c >= 0.6 ? 'warn' : 'bad'; } // a line that is only a title is graded by title similarity, as the Find tab's chips are
+    function titleLevel(c, allWords) { return c >= 0.95 ? 'good' : c >= 0.6 || allWords ? 'warn' : 'bad'; } // a line that is only a title is graded by title similarity, as the Find tab's chips are; a hit holding every search word is one to check
     function chipFor(level, via, src) {
       var label = via === 'doi' ? 'From DOI' : via === 'isbn' ? 'From ISBN' : via === 'file' ? 'From ' + fileLabel(src) + ' file' :
         via === 'year' ? 'Year differs' : via === 'doicheck' ? 'DOI disagrees with text' : via === 'untitled' ? 'No title in file' :
@@ -7295,27 +7320,30 @@
     }
     // The Find tab's list under a title row: every close title as a card, one click to take it. Open when the row is not an exact
     // match (the user picks the paper), folded under "Other matches" when it is
-    function offerHits(row, hits, collapsed) {
+    function offerHits(row, hits, collapsed, query) {
       if (row.hitsBox) { row.hitsBox.remove(); row.hitsBox = null; }
+      if (!query) { var rq = looksLikeTitle(row.raw || ''); query = rq ? rq.title + ' ' + rq.journal : ''; }
+      var ws = wordSet(query);
       var key = function (r) { return ((r && r.doi) || (r && r.title) || '').toLowerCase(); };
       var shown = collapsed ? hits.filter(function (r) { return key(r) !== key(row.rec); }) : hits; // the folded list holds the others; the open one keeps the row's own candidate to confirm
       if (!shown.length) return;
       var box = el('div', 'hits'), list = el('div', 'hitlist');
       shown.forEach(function (r) {
-        var h = el('div', 'hit pickable'), left = el('div');
-        left.appendChild(el('div', 't', r.title || '(untitled)'));
+        var h = el('div', 'hit pickable'), left = el('div'), tEl = el('div', 't'); tEl.appendChild(markWords(r.title || '(untitled)', ws));
+        left.appendChild(tEl);
         var m = el('div', 'm');
-        m.appendChild(document.createTextNode([authorsShort(r), r.container || r.publisher, r.year].filter(Boolean).join(' · ') + (r.doi ? ' · ' : '')));
+        if (authorsShort(r)) m.appendChild(document.createTextNode(authorsShort(r) + ' · '));
+        if (r.container || r.publisher) { m.appendChild(markWords(r.container || r.publisher, ws)); m.appendChild(document.createTextNode(' · ')); }
+        if (r.year) m.appendChild(document.createTextNode(r.year + (r.doi ? ' · ' : '')));
         if (r.doi) { var dl = outLink(r, 'doi-link', ''); if (dl) { dl.appendChild(el('code', '', r.doi)); dl.title = 'Open at the publisher'; m.appendChild(dl); } else m.appendChild(el('code', '', r.doi)); }
         left.appendChild(m); h.appendChild(left);
         var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.alignItems = 'center';
-        var c = r.conf || 0;
-        act.appendChild(el('span', 'chip ' + (c >= 0.95 ? 'good' : c >= 0.6 ? 'warn' : ''), c >= 0.95 ? 'Title match' : c >= 0.6 ? 'Partial' : 'Weak'));
+        act.appendChild(hitChip(r.conf || 0, r.allWords !== undefined ? !!r.allWords : holdsWords((r.title || '') + ' ' + (r.container || ''), ws).all));
         var pickIt = function () {
           setRow(row, r, 'good', 'picked');
           if (row.fixRow) { row.fixRow.remove(); row.fixRow = null; }
           if (row.keep) row.keep.checked = false;
-          offerHits(row, hits, true); build();
+          offerHits(row, hits, true, query); build();
         };
         var pk = el('button', 'pick', 'Use ›'); pk.type = 'button'; pk.setAttribute('aria-label', 'Use ' + (r.title || 'this record')); pk.addEventListener('click', pickIt); act.appendChild(pk); // the keyboard's way in; the mouse has the whole card
         h.appendChild(act);
@@ -7335,7 +7363,7 @@
       var b = button((r.title || '(untitled)').slice(0, 90) + (r.title && r.title.length > 90 ? '…' : '') + (r.year ? ' (' + r.year + ')' : '') + (r.container ? ', ' + r.container : ''), '', function () {
         var clash = yearConflict(raw, r), tq = via === 'title' && looksLikeTitle(raw); // a title row is graded by title similarity, not as a reference with no author
         var conf = tq ? titleSimilarity(tq.title, r.title) : A.matchConfidence(raw, r);
-        setRow(row, r, clash ? 'bad' : tq ? titleLevel(conf) : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad', clash ? 'year' : tq ? 'title' : 'search');
+        setRow(row, r, clash ? 'bad' : tq ? titleLevel(conf, r.allWords) : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad', clash ? 'year' : tq ? 'title' : 'search');
         line.remove(); build();
       });
       b.title = 'Use this record instead' + (r.doi ? ': ' + r.doi : '');
@@ -7508,9 +7536,9 @@
           var clash = row.raw && yearConflict(row.raw, res.record);
           // a retyped title is graded by title similarity; a full reference in the row that the record does not fit still holds it back
           var tconf = res.via === 'title' ? res.conf * (row.raw && !looksLikeTitle(row.raw) && A.matchConfidence(row.raw, res.record) < 0.5 ? 0.7 : 1) : 0;
-          var lvl = direct ? 'good' : clash ? 'bad' : res.via === 'title' ? titleLevel(tconf) : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad';
+          var lvl = direct ? 'good' : clash ? 'bad' : res.via === 'title' ? titleLevel(tconf, res.allWords) : conf >= 0.8 ? 'good' : conf >= 0.5 ? 'warn' : 'bad';
           setRow(row, res.record, lvl, direct ? res.via : clash ? 'year' : lvl === 'good' ? 'fixed' : res.via);
-          if (res.hits && res.hits.length > 1 && !direct) { offerHits(row, res.hits, lvl === 'good'); if (row.raw) batchMem.remember(row.raw, { hits: res.hits.slice(0, 5) }); }
+          if (res.hits && res.hits.length && !direct) { offerHits(row, res.hits, lvl === 'good', v); if (row.raw) batchMem.remember(row.raw, { hits: res.hits.slice(0, 5) }); }
           if (lvl === 'good') { fr.remove(); row.fixRow = null; if (row.keep) { row.keep.checked = false; } }
           else { b.disabled = false; b.textContent = 'Fix'; row.node.appendChild(fr); }
           build();
@@ -7557,7 +7585,7 @@
           addFixRow(row);
         } else {
           var direct = res.via === 'doi' || res.via === 'isbn', titled = res.via === 'title';
-          var level = direct ? 'good' : titled ? titleLevel(res.conf) : res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
+          var level = direct ? 'good' : titled ? titleLevel(res.conf, res.allWords) : res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';
           var via = titled ? 'title' : !direct && res.conf < 0.3 ? 'none' : res.via;
           if (!direct && yearConflict(it.text, res.record)) { level = 'bad'; via = 'year'; }
           // A DOI inside a full reference is trusted, but not blindly: if the record's year or title contradicts the text, the DOI
@@ -7569,7 +7597,7 @@
           if (res.remembered) { level = res.remembered.level; via = res.remembered.via; } // as graded last time, ticks included
           setRow(row, res.record, level, via);
           if (res.alt && !direct) { offerAlternative(row, it.text, res.alt, res.via); batchMem.remember(it.text, { alt: res.alt }); }
-          if (res.hits && res.hits.length > 1 && !direct) { offerHits(row, res.hits, level === 'good'); batchMem.remember(it.text, { hits: res.hits.slice(0, 5) }); } // a title row: the close titles, as the Find tab lists them
+          if (res.hits && res.hits.length && !direct) { offerHits(row, res.hits, level === 'good'); batchMem.remember(it.text, { hits: res.hits.slice(0, 5) }); } // a title row: the close titles, as the Find tab lists them; one hit is still a card to confirm
           if (looksMerged(it.text)) { // never lose a reference silently
             var mc = el('span', 'chip warn', 'May be two references'); mc.title = 'This line seems to contain two references. Put each on its own line (or separate them with a blank line) and run again.';
             row.out.insertBefore(mc, row.out.children[1] || null);
