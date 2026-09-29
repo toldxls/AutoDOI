@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-w5OwB3GVIbbhy/mwDecLy+YfgOpormmAffVPSFrjUVU=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-QxA/fUQyPXK8LOpHe+UHpmeJnapXZPK+/9E7+NKXXsU=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -5105,7 +5105,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.12.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.13.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -6261,6 +6261,19 @@
     var showInText = document.createElement('input'); showInText.type = 'checkbox'; showInText.id = 'list-intext'; showInText.checked = store.get('listintext') === '1';
     var showLabel = document.createElement('label'); showLabel.htmlFor = 'list-intext'; showLabel.className = 'check'; showLabel.style.fontSize = '13px'; showLabel.appendChild(showInText); showLabel.appendChild(document.createTextNode(' In-text citations'));
     showInText.addEventListener('change', function () { store.set('listintext', showInText.checked ? '1' : '0'); build(); });
+    // Include DOI: each entry's DOI link after it where the style leaves it out. Off by default for Annals of Carnegie Museum, whose
+    // guide has no DOIs; on for the rest; the choice is remembered per style
+    var doiPref = (function () { try { return JSON.parse(store.get('listdoi') || '{}') || {}; } catch (e) { return {}; } })();
+    var doiOn = function (st) { return doiPref[st] !== undefined ? doiPref[st] === '1' : st !== 'carnegie'; };
+    var showDoi = document.createElement('input'); showDoi.type = 'checkbox'; showDoi.id = 'list-doi'; showDoi.checked = doiOn(sel.value);
+    var doiLabel = document.createElement('label'); doiLabel.htmlFor = 'list-doi'; doiLabel.className = 'check'; doiLabel.style.fontSize = '13px'; doiLabel.appendChild(showDoi); doiLabel.appendChild(document.createTextNode(' Include DOI'));
+    doiLabel.title = 'Add each reference’s DOI link to the list where the style leaves it out. Off for Annals of Carnegie Museum, whose guide has none.';
+    showDoi.addEventListener('change', function () { doiPref[sel.value] = showDoi.checked ? '1' : '0'; store.set('listdoi', JSON.stringify(doiPref)); build(); });
+    var withDoi = function (html, r) { // the DOI link appended when asked and the style did not print it
+      if (!showDoi.checked || !r || !r.doi) return html;
+      if (htmlToText(html).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1) return html;
+      return html + ' https://doi.org/' + escT(r.doi);
+    };
     // references with no record go in as pasted, alphabetised with the rest (or after the numbered entries)
     function finish(entries, numbered) { // entries: [{html, forms}]
       var all = entries.slice();
@@ -6299,20 +6312,22 @@
     }
     function build() {
       store.set('liststyle', sel.value);
+      showDoi.checked = doiOn(sel.value); // as chosen for this style, or its default
       if (sel.value.indexOf('csl:') === 0) {
         list.textContent = 'Rendering…';
         if (!records.length) { finish([], false); return; }
         cslRender(recentByName(sel.value.slice(4)), records, { perItem: showInText.checked }).then(function (res) {
-          finish(res.entries.map(function (h, i) { return { html: h, forms: res.perItem ? res.perItem[res.entryIds[i]] || null : null }; }), /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
+          finish(res.entries.map(function (h, i) { var id = [].concat(res.entryIds[i] || [])[0], r = id ? records[Number(String(id).slice(5)) - 1] : null; return { html: withDoi(h, r), forms: res.perItem ? res.perItem[res.entryIds[i]] || null : null }; }), /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
         }, function (e) { logError('citeproc-list', e, sel.value.slice(4)); list.textContent = e.message; });
         return;
       }
       var numbered = sel.value === 'vancouver' || sel.value === 'ieee';
-      var items = records.map(function (r, i) { return { html: A.formatHtml(r, sel.value, numbered ? i + 1 : undefined), forms: showInText.checked ? A.inTextForms(r, sel.value, { n: i + 1 }) : null }; });
+      var items = records.map(function (r, i) { return { html: withDoi(A.formatHtml(r, sel.value, numbered ? i + 1 : undefined), r), forms: showInText.checked ? A.inTextForms(r, sel.value, { n: i + 1 }) : null }; });
       finish(items, numbered); // alphabetical by first author for author-date styles, in list order for numbered ones
     }
     sel.addEventListener('change', build);
     act.appendChild(showLabel);
+    act.appendChild(doiLabel);
     act.appendChild(sel);
     act.appendChild(button('Copy', '', function (b) { copyPlain(b, current.text); }));
     act.appendChild(button('Rich', '', function (b) { copyRich(b, current.html, current.text); }));
@@ -6502,6 +6517,8 @@
     currentSource = 'lookup'; showCitation(blank, el('span', 'chip info', 'By hand')); setUrl('');
   });
   $('form-cite').addEventListener('submit', function (ev) { ev.preventDefault(); lookup($('doi-input').value); });
+  // A triple click in the References box selects the whole paste: the browser would select one line, and a list is one line per reference
+  $('export-input').addEventListener('click', function (ev) { if (ev.detail === 3) { ev.preventDefault(); this.select(); } });
   $('doi-input').addEventListener('paste', function () { setTimeout(function () { if (A.toDoi($('doi-input').value) || A.extractPmid($('doi-input').value)) lookup($('doi-input').value); }, 0); });
 
   /* ---------- 2. Find a DOI ---------- */

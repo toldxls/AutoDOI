@@ -359,6 +359,8 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('Format on a row opens it on the DOI tab'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && (await page.locator('#doi-result .chip:has-text("From your references")').count()) === 0);
   await page.click('#tab-export');
   check(name('coming back keeps the pasted references'), /Naturee/.test(await page.inputValue('#export-input')));
+  await page.click('#export-input', { clickCount: 3, position: { x: 30, y: 12 } });
+  check(name('a triple click in the References box selects the whole paste, not one line'), await page.evaluate(function () { var t = document.getElementById('export-input'); return t.selectionStart === 0 && t.selectionEnd === t.value.length && t.value.indexOf('\n') !== -1; }));
   var zone = page.locator('#export-output .export-zone');
   var textDois = await page.locator('#export-output .export:has(.section-label:has-text("Your text with DOIs")) pre').textContent();
   check(name('the pasted text comes back with the DOI appended to the matched line only'), textDois === 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Naturee, 500(7460), 54-58. https://doi.org/10.1038/nature12373\nVaswani A, Shazeer N, Parmar N. Attention is all you need. Advances in Neural Information Processing Systems. 2017;30:5998-6008.', JSON.stringify(textDois));
@@ -396,6 +398,25 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('IEEE numbers the in-text form by list position'), (await page.locator('#export-output .reflist .intext .form').allTextContents()).join(' | ') === '[1]');
   await page.selectOption('#list-style', 'apa');
   await page.uncheck('#list-intext');
+  // Include DOI: on by default, but off for Annals, whose guide has no DOI; appended only where the style left it out; remembered per style
+  var listText = function () { return page.locator('#export-output .reflist').textContent(); };
+  check(name('Include DOI is on for APA, which already carries the DOI once'), (await page.isChecked('#list-doi')) && ((await listText()).match(/10\.1038\/nature12373/g) || []).length === 1, await listText());
+  await page.selectOption('#list-style', 'carnegie');
+  await page.waitForFunction(function () { return /Kucsko, G\., P\.C\. Maurer/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  check(name('Annals starts without the DOI'), !(await page.isChecked('#list-doi')) && !/10\.1038/.test(await listText()), await listText());
+  await page.check('#list-doi');
+  await page.waitForFunction(function () { return /https:\/\/doi\.org\/10\.1038\/nature12373/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  check(name('ticking Include DOI appends the DOI link to the Annals entry'), /54-58\. https:\/\/doi\.org\/10\.1038\/nature12373$/.test(await page.locator('#export-output .reflist p:has-text("Kucsko")').textContent()), await listText());
+  await page.selectOption('#list-style', 'apa');
+  await page.waitForFunction(function () { return /Kucsko, G\., Maurer, P\. C\./.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  check(name('the choice is per style: APA is still on and carries the DOI once'), (await page.isChecked('#list-doi')) && ((await listText()).match(/10\.1038\/nature12373/g) || []).length === 1, await listText());
+  await page.selectOption('#list-style', 'carnegie');
+  await page.waitForFunction(function () { return /https:\/\/doi\.org\/10\.1038\/nature12373/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  check(name('Annals remembers that it was switched on'), await page.isChecked('#list-doi'));
+  await page.uncheck('#list-doi');
+  await page.waitForFunction(function () { return !/10\.1038/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  await page.selectOption('#list-style', 'apa');
+  await page.waitForFunction(function () { return /Kucsko, G\., Maurer, P\. C\./.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
   // The Word download: a valid .docx whose one paragraph per entry keeps the italics and carries a hanging indent
   var dlPromise = page.waitForEvent('download', { timeout: 10000 });
   await page.locator('#export-output .export .actions button:has-text("Word")').click();

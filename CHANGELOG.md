@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.13.0 - 2026-09-29
+
+### New
+
+- **Include DOI.** A checkbox on the reference list adds each entry's DOI link where the style leaves it out. It is off by default for Annals of Carnegie Museum, whose guide has none, on for the rest, and remembered per style.
+
+### Fixed
+
+- A triple click in the References box selects the whole paste; the browser selected one line.
+
 ## 1.12.0 - 2026-09-29
 
 ### New
