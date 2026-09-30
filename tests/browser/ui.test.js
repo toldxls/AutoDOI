@@ -87,6 +87,10 @@ async function mockNetwork(page, base, log) {
       return doi.toLowerCase() === work.message.DOI.toLowerCase() ? json(route, work) : json(route, { status: 'error', message: 'Resource not found.' }, 404);
     }
     if (/api\.crossref\.org\/works\?.*Wakefield/i.test(url)) return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [retracted.message], 'total-results': 1 } });
+    if (/api\.crossref\.org\/works\?.*query\.bibliographic=Learning(&|$)/.test(url)) { // a paper titled only "Learning" in Memory and Cognition: the split a one-word head guesses
+      var one = JSON.parse(JSON.stringify(work.message)); one.DOI = '10.3758/learning-one-word'; one.URL = 'https://doi.org/10.3758/learning-one-word'; one.title = ['Learning']; one['container-title'] = ['Memory and Cognition'];
+      return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [one], 'total-results': 1 } });
+    }
     if (/api\.crossref\.org\/works\?/.test(url)) { // a twin with the same title and another DOI: the runner-up the row offers
       var twin = JSON.parse(JSON.stringify(work.message)); twin.DOI = '10.1038/nature12373-twin'; twin.title = [twin.title[0] + ' (II)']; twin.URL = 'https://doi.org/10.1038/nature12373-twin';
       return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message, twin], 'total-results': 2 } });
@@ -101,6 +105,10 @@ async function mockNetwork(page, base, log) {
       if (upDoi === work.message.DOI.toLowerCase() + '-twin') return json(route, { doi: upDoi, is_oa: true, oa_status: 'bronze', best_oa_location: bronze, oa_locations: [bronze] }); // publisher copy only
       return json(route, { HTTP_status_code: 404, error: true }, 404);
     }
+    if (/api\.openalex\.org\/works\?.*search=thermometry(&|$)/.test(url)) return json(route, { results: [{ // the retracted paper as OpenAlex has it: a display name, and no notices
+      id: 'https://openalex.org/W1', doi: 'https://doi.org/' + retracted.message.DOI, title: retracted.message.title[0], display_name: retracted.message.title[0],
+      authorships: [{ author: { display_name: 'Andrew Wakefield' } }], publication_year: 1998, publication_date: '1998-02-28', biblio: { volume: '351', issue: '9103', first_page: '637', last_page: '641' },
+      primary_location: { source: { display_name: 'The Lancet', type: 'journal' } }, type: 'article', is_retracted: false }] });
     // OpenAlex, Europe PMC, NLM Catalog, Open Library, JabRef lists, other CSL styles: nothing to say
     return json(route, {}, 404);
   });
@@ -283,7 +291,7 @@ async function runFlows(browser, base, dark, cslReady) {
     await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && !/Rendering/.test(c.textContent) && /Kucsko/.test(c.textContent); }, null, { timeout: 20000 });
     check(name('?style=csl: deep link renders through citeproc'), /Nature 500, 54/.test(await page.locator('#doi-result .cite').first().textContent()));
     // Deep link into a dependent style on a fresh page (no remembered title): the title comes from the style file
-    await page.evaluate(function () { localStorage.removeItem('autodoi.cslRecent'); localStorage.removeItem('autodoi.style'); });
+    await page.evaluate(function () { localStorage.removeItem('autodoi.cslrecent'); localStorage.removeItem('autodoi.style'); });
     await page.goto(base + '?q=10.1038/nature12373&style=csl:nature-geoscience', { waitUntil: 'load' });
     await page.waitForFunction(function () { var c = document.querySelector('#doi-result .cite .text'); return c && !/Rendering/.test(c.textContent) && /Kucsko/.test(c.textContent); }, null, { timeout: 20000 });
     check(name('?style=csl: deep link to a dependent style renders and names it'), /Nature Geoscience/.test(await page.locator('#doi-result .cite').first().textContent()) && /Nature Geoscience/.test(await page.locator('#style-select option:checked').textContent()), await page.locator('#style-select option:checked').textContent());
@@ -417,6 +425,25 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForFunction(function () { return !/10\.1038/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
   await page.selectOption('#list-style', 'apa');
   await page.waitForFunction(function () { return /Kucsko, G\., Maurer, P\. C\./.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  // A journal style searched for from the list's own menu: it sets the list's style only, and the DOI tab's menu gains it
+  if (cslReady) {
+    var doiStyle = await page.inputValue('#style-select');
+    await page.selectOption('#list-style', 'search');
+    await page.waitForSelector('#export-output .list-find:not([hidden])');
+    check(name('the list menu keeps showing its style while the search is open'), (await page.inputValue('#list-style')) === 'apa', await page.inputValue('#list-style'));
+    await page.fill('#list-style-search', 'nature');
+    var listHit = page.locator('#export-output .list-find .hit.style').filter({ has: page.locator('.m', { hasText: /^nature( ·|$)/ }) }).first();
+    await listHit.waitFor();
+    await listHit.click();
+    await page.waitForFunction(function () { var l = document.querySelector('#export-output .reflist'); return l && !/Rendering/.test(l.textContent) && /Kucsko, G\./.test(l.textContent) && !/Maurer, P\. C\./.test(l.textContent); }, null, { timeout: 20000 });
+    check(name('a journal style picked from the list search renders the list and closes the search'), (await page.inputValue('#list-style')) === 'csl:nature' && (await page.locator('#export-output .list-find').isHidden()) && /Nature 500, 54/.test(await listText()), await listText());
+    check(name('the list search leaves the DOI tab style alone and adds the journal to its menu'), (await page.inputValue('#style-select')) === doiStyle && (await page.locator('#style-select option[value="csl:nature"]').count()) === 1, await page.inputValue('#style-select'));
+    await page.locator('#export-zone .zone-head button:has-text("Copy link")').click();
+    clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
+    check(name('Copy link carries the searched list style'), /&list=csl%3Anature$/.test(clip), clip);
+    await page.selectOption('#list-style', 'apa');
+    await page.waitForFunction(function () { return /Kucsko, G\., Maurer, P\. C\./.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  }
   // The Word download: a valid .docx whose one paragraph per entry keeps the italics and carries a hanging indent
   var dlPromise = page.waitForEvent('download', { timeout: 10000 });
   await page.locator('#export-output .export .actions button:has-text("Word")').click();
@@ -585,6 +612,31 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.goto(clip, { waitUntil: 'load' });
   await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
   check(name('the link opens the References tab with the list rebuilt from its DOIs'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && /1 good/.test(await textOf('#export-status')) && (await page.locator('#export-matches .match .chip:has-text("From DOI")').count()) === 1 && (await page.locator('#export-zone').count()) === 1, await textOf('#export-status'));
+  if (cslReady) { // a link in a journal list style this browser has never used: the style still comes up, named from its file, and is remembered once it renders
+    var recentNames = function () { return page.evaluate(function () { return JSON.parse(localStorage.getItem('autodoi.cslrecent') || '[]').map(function (r) { return r.name + '=' + r.title; }); }); };
+    var listDone = function (re) { return page.waitForFunction(function (src) { var l = document.querySelector('#export-output .reflist'); return l && !/Rendering/.test(l.textContent) && new RegExp(src).test(l.textContent); }, re, { timeout: 20000 }); };
+    await page.evaluate(function () { localStorage.removeItem('autodoi.cslrecent'); localStorage.removeItem('autodoi.liststyle'); });
+    await page.goto(clip + '&list=csl:nature-geoscience', { waitUntil: 'load' });
+    await page.waitForFunction(function () { var o = document.querySelector('#list-style option:checked'); return o && o.textContent === 'Nature Geoscience' && /Wakefield, A\. J\. & Murch, S\. H\./.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 20000 });
+    check(name('a link with an unused journal list style opens the list in it'), (await page.inputValue('#list-style')) === 'csl:nature-geoscience', await page.inputValue('#list-style'));
+    check(name('the style from the link is remembered, by its title, once it has rendered'), (await recentNames()).join() === 'nature-geoscience=Nature Geoscience', (await recentNames()).join());
+    await page.goto(clip + '&list=csl:no-such-style', { waitUntil: 'load' });
+    await listDone('Could not load');
+    check(name('a mistyped style in a link says so and is not remembered'), (await recentNames()).join() === 'nature-geoscience=Nature Geoscience', (await recentNames()).join());
+    // twelve remembered: a thirteenth picked in the list's search drops the oldest, which the list's menu still offers and still renders
+    await page.evaluate(function () { var r = []; for (var k = 0; k < 11; k++) r.push({ name: 'fake-' + k, title: 'Fake ' + k }); r.push({ name: 'nature', title: 'Nature' }); localStorage.setItem('autodoi.cslrecent', JSON.stringify(r)); localStorage.setItem('autodoi.liststyle', 'csl:nature'); });
+    await page.goto(clip, { waitUntil: 'load' });
+    await listDone('Wakefield');
+    await page.selectOption('#list-style', 'search');
+    await page.fill('#list-style-search', 'nature geoscience');
+    var capHit = page.locator('#export-output .list-find .hit.style').filter({ has: page.locator('.m', { hasText: /^nature-geoscience( ·|$)/ }) }).first();
+    await capHit.waitFor(); await capHit.click();
+    await listDone('Nature Geoscience|Wakefield');
+    await page.selectOption('#list-style', 'csl:nature');
+    await listDone('Wakefield');
+    check(name('a style dropped from the twelve still renders from the list menu'), /Nature 351/.test(await page.locator('#export-output .reflist').textContent()), await page.locator('#export-output .reflist').textContent());
+    await page.selectOption('#list-style', 'apa');
+  }
   // 12. Editing a record, and writing one by hand
   await page.click('#tab-cite');
   check(name('the record offers an Edit button'), (await page.locator('#doi-result .record-head button:has-text("Edit")').count()) === 1);
@@ -655,6 +707,30 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.goto(base, { waitUntil: 'load' });
   await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
   check(name('the title rows come back with their pick and their lists'), /2 good/.test(await textOf('#export-status')) && (await page.locator('#export-matches .match .chip:has-text("Your pick")').count()) === 1 && (await page.locator('#export-matches .match .hits').count()) === 2, await textOf('#export-status'));
+  // An OpenAlex hit picked under a title row is kept as Crossref's record for its DOI: the authors as deposited, and its retraction
+  await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
+  var runRefs = async function (text) {
+    await page.fill('#export-input', text); await page.click('#export-go');
+    await page.waitForFunction(function () { return /good|check|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  };
+  await runRefs('thermometry');
+  var oaHit = page.locator('#export-matches .match .hits .hit').filter({ hasText: 'Ileal-lymphoid' });
+  check(name('a one-word title lists the OpenAlex hit among its candidates'), (await oaHit.count()) === 1, await page.locator('#export-matches').textContent());
+  await oaHit.locator('button.pick').click();
+  await page.waitForFunction(function () { return /Your pick/.test(document.querySelector('#export-matches .match').textContent); }, null, { timeout: 10000 });
+  check(name('a picked OpenAlex hit becomes Crossref\'s record, with its retraction and its authors as deposited'), (await page.locator('#export-matches .match .chip.bad:has-text("Retracted")').count()) === 1 && /Wakefield, A\. J\., & Murch, S\. H\./.test(await page.locator('#export-output .reflist').textContent()), await page.locator('#export-output .reflist').textContent());
+  // A one-word title before a journal is a guessed split: the whole line is searched too, and an exact one-word title waits for a pick
+  var beforeGuess = s.state.requests.length;
+  await runRefs('Learning, Memory and Cognition');
+  var guessRow = page.locator('#export-matches .match').first();
+  check(name('an exact match on a guessed one-word title is amber, with its candidates open'), /\bwarn\b/.test(await guessRow.getAttribute('class')) && (await guessRow.locator('.hits .note:has-text("Which paper?")').count()) === 1 && /learning-one-word/.test(await guessRow.textContent()), await guessRow.textContent());
+  check(name('the whole line is searched as well'), s.state.requests.slice(beforeGuess).some(function (u) { return /query\.bibliographic=Learning%20Memory%20and%20Cognition/.test(u); }), s.state.requests.slice(beforeGuess).filter(function (u) { return /crossref/.test(u); }).join(', '));
+  // Storage full: the remembered list gives up its candidate lists and keeps the rest
+  await page.evaluate(function () { var orig = Storage.prototype.setItem; window.__setItem = orig; Storage.prototype.setItem = function (k, v) { if (k === 'autodoi.batch' && /"hits"/.test(v)) throw new DOMException('full', 'QuotaExceededError'); return orig.call(this, k, v); }; });
+  await guessRow.click({ position: { x: 10, y: 6 } }); // a tick: the memory saves a moment later
+  var saved = await page.waitForFunction(function () { var v = localStorage.getItem('autodoi.batch') || ''; return !/"hits"/.test(v) && /learning-one-word/.test(v); }, null, { timeout: 5000 }).then(function () { return true; }, function () { return false; });
+  check(name('with storage full, the list is still remembered without its candidate lists'), saved);
+  await page.evaluate(function () { Storage.prototype.setItem = window.__setItem; });
   await page.fill('#export-input', ''); await page.selectOption('#split-mode', 'lines');
   await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));

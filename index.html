@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-QxA/fUQyPXK8LOpHe+UHpmeJnapXZPK+/9E7+NKXXsU=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-GhTs4CfjehYIcbqkSkjRUIII0TMwsMy62RTB49JNo0A=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -139,8 +139,8 @@
   .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
   .toolbar .field { margin: 0; }
   .check { font-size: 13px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
-  #csl-box { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-  #csl-box[hidden] { display: none; }
+  #csl-box, .list-find { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+  #csl-box[hidden], .list-find[hidden] { display: none; }
   .hit.style { cursor: pointer; padding: 9px 14px; }
   .note { font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .note code { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
@@ -5046,7 +5046,7 @@
   /* ---------- persistence (per-browser conveniences only) ---------- */
   var store = {
     get: function (k) { try { return localStorage.getItem('autodoi.' + k); } catch (e) { return null; } },
-    set: function (k, v) { try { localStorage.setItem('autodoi.' + k, v); } catch (e) {} }
+    set: function (k, v) { try { localStorage.setItem('autodoi.' + k, v); return true; } catch (e) { return false; } } // false: storage full or blocked
   };
 
   /* ---------- the last reference list: the text comes back on the next visit, and every row it resolved is remembered by its
@@ -5067,7 +5067,10 @@
       try {
         var mm = load(), keys = Object.keys(mm.rows);
         if (keys.length > CAP) keys.sort(function (a, b) { return (mm.rows[b].t || 0) - (mm.rows[a].t || 0); }).slice(CAP).forEach(function (k) { delete mm.rows[k]; });
-        store.set('batch', JSON.stringify(mm));
+        if (!store.set('batch', JSON.stringify(mm))) { // full: the close titles under title rows are the part to give up, the list and its matches are kept
+          keys.forEach(function (k) { if (mm.rows[k]) delete mm.rows[k].hits; });
+          if (!store.set('batch', JSON.stringify(mm))) logError('batch-memory', new Error('Browser storage is full'));
+        }
       } catch (e) { logError('batch-memory', e); }
     }
     function save() { clearTimeout(timer); timer = setTimeout(flush, 400); } // a run remembers many rows at once: one write, a moment after the last
@@ -5105,7 +5108,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.13.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.14.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -5535,13 +5538,14 @@
     sel.value = styleState.mode === 'csl' ? 'csl:' + styleState.csl.name : styleState.mode;
     updateReportLinks();
   }
+  function rememberStyle(cslStyle) { // first in both menus' "Journal styles you have used"
+    recents = [cslStyle].concat(recents.filter(function (r) { return r.name !== cslStyle.name; })).slice(0, 12);
+    store.set('cslrecent', JSON.stringify(recents));
+  }
   function setStyle(mode, cslStyle) {
     if (styleState.mode !== mode || (cslStyle && styleState.csl !== cslStyle)) $('style-status').textContent = '';
     styleState.mode = mode; styleState.csl = cslStyle || null;
-    if (mode === 'csl') {
-      recents = [cslStyle].concat(recents.filter(function (r) { return r.name !== cslStyle.name; })).slice(0, 12);
-      store.set('cslrecent', JSON.stringify(recents));
-    }
+    if (mode === 'csl') rememberStyle(cslStyle);
     store.set('style', mode === 'csl' ? 'csl:' + cslStyle.name : mode);
     if (mode === 'csl' && rebuildBatch) rebuildBatch(); // the reference-list menu gains the new journal style
     fillStyleSelect();
@@ -5615,7 +5619,11 @@
     } finally { $('style-status').textContent = ''; }
   }
   function runSearch() {
-    var q = $('csl-search').value.trim().toLowerCase(), mine = $('csl-mine').checked, box = $('csl-results');
+    styleHits($('csl-results'), $('csl-search').value, $('csl-mine').checked, function (st) { setStyle('csl', st); $('csl-box').hidden = true; $('style-select').focus(); });
+  }
+  // The journal styles matching q, drawn into box as picks; the DOI tab's menu and the reference list's menu both search with it
+  function styleHits(box, q, mine, onPick) {
+    q = q.trim().toLowerCase();
     box.innerHTML = '';
     if (!csl.index) return;
     var words = q.split(/\s+/).filter(Boolean), hits = [];
@@ -5638,7 +5646,7 @@
       d.appendChild(el('div', 't', e[1]));
       d.appendChild(el('div', 'm', e[0] + (csl.mine && csl.mine.has(e[0]) ? ' · also ships with EndNote' : ''))); // the EndNote shortlist may still be loading
       d.setAttribute('role', 'button');
-      var pick = function () { setStyle('csl', { name: e[0], title: e[1], dep: e[2] === 1 }); $('csl-box').hidden = true; $('style-select').focus(); };
+      var pick = function () { onPick({ name: e[0], title: e[1], dep: e[2] === 1 }); };
       d.addEventListener('click', pick);
       d.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick(); } });
       box.appendChild(d);
@@ -5723,7 +5731,10 @@
     await Promise.all([ensureCiteproc(), getLocale('en-US'), lang === 'en-US' ? null : getLocale(lang), getStyleXml(style.name, 0, style.dep === undefined ? false : !!style.dep)]);
     if (style.title === style.name) { // came from a ?style= link: pick up the real title and remember it
       var tm = ((csl.own && csl.own[style.name]) || csl.xml[style.name]).match(/<title>([^<]+)<\/title>/);
-      if (tm) { style.title = htmlToText(tm[1]).trim(); if (styleState.csl && styleState.csl.name === style.name) setStyle('csl', style); }
+      if (tm) {
+        style.title = htmlToText(tm[1]).trim();
+        if (styleState.csl && styleState.csl.name === style.name) setStyle('csl', style);
+      }
     }
     var items = {}, ids = [];
     records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1)); items[it.id] = it; ids.push(it.id); });
@@ -6251,7 +6262,9 @@
       recents.forEach(function (rc) { var o = document.createElement('option'); o.value = 'csl:' + rc.name; o.textContent = rc.title; og.appendChild(o); });
       sel.appendChild(og);
     }
+    var so = document.createElement('option'); so.value = 'search'; so.textContent = 'Search 10,000 journal styles…'; sel.appendChild(so);
     var saved = store.get('liststyle') || 'apa';
+    if (/^csl:[a-z0-9\-]+$/i.test(saved) && !recentByName(saved.slice(4))) { var lo = document.createElement('option'); lo.value = saved; lo.textContent = saved.slice(4); sel.insertBefore(lo, so); } // a journal style from a link: named from its file once fetched
     sel.value = saved; if (sel.value !== saved) sel.value = 'apa';
     var list = el('div', 'reflist');
     var current = { html: '', text: '', entries: [], numbered: false };
@@ -6311,12 +6324,15 @@
       container.appendChild(det);
     }
     function build() {
-      store.set('liststyle', sel.value);
+      store.set('liststyle', sel.value); shown = sel.value;
       showDoi.checked = doiOn(sel.value); // as chosen for this style, or its default
       if (sel.value.indexOf('csl:') === 0) {
         list.textContent = 'Rendering…';
         if (!records.length) { finish([], false); return; }
-        cslRender(recentByName(sel.value.slice(4)), records, { perItem: showInText.checked }).then(function (res) {
+        var st = recentByName(sel.value.slice(4)) || { name: sel.value.slice(4), title: sel.value.slice(4) }; // one from a link, or dropped from the twelve remembered while this menu still offers it
+        cslRender(st, records, { perItem: showInText.checked }).then(function (res) {
+          var o = sel.querySelector('option[value="csl:' + CSS.escape(st.name) + '"]'); if (o) o.textContent = st.title; // a style from a link is named from its file once fetched
+          if (!recentByName(st.name)) { rememberStyle(st); fillStyleSelect(); } // remembered only once it has rendered: a mistyped link leaves nothing behind
           finish(res.entries.map(function (h, i) { var id = [].concat(res.entryIds[i] || [])[0], r = id ? records[Number(String(id).slice(5)) - 1] : null; return { html: withDoi(h, r), forms: res.perItem ? res.perItem[res.entryIds[i]] || null : null }; }), /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
         }, function (e) { logError('citeproc-list', e, sel.value.slice(4)); list.textContent = e.message; });
         return;
@@ -6325,7 +6341,37 @@
       var items = records.map(function (r, i) { return { html: withDoi(A.formatHtml(r, sel.value, numbered ? i + 1 : undefined), r), forms: showInText.checked ? A.inTextForms(r, sel.value, { n: i + 1 }) : null }; });
       finish(items, numbered); // alphabetical by first author for author-date styles, in list order for numbered ones
     }
-    sel.addEventListener('change', build);
+    // A journal style searched for here sets the list's style only, as the DOI tab's search sets that tab's
+    var find = el('div', 'list-find'); find.hidden = true;
+    var findIn = document.createElement('input'); findIn.type = 'text'; findIn.id = 'list-style-search'; findIn.autocomplete = 'off';
+    findIn.placeholder = 'Journal or style name, e.g. Nature, American Mineralogist, Geology'; findIn.setAttribute('aria-label', 'Search journal styles for the reference list');
+    var findMine = document.createElement('input'); findMine.type = 'checkbox'; findMine.id = 'list-style-mine';
+    var mineLabel = document.createElement('label'); mineLabel.htmlFor = 'list-style-mine'; mineLabel.className = 'check'; mineLabel.appendChild(findMine); mineLabel.appendChild(document.createTextNode(' Only the styles that also ship with EndNote'));
+    var findHits = el('div', 'results'); findHits.style.marginTop = '0';
+    [findIn, mineLabel, findHits].forEach(function (n) { find.appendChild(n); });
+    var shown = sel.value; // the style the list is in, which the menu goes back to while the search is open
+    var runFind = function () {
+      styleHits(findHits, findIn.value, findMine.checked, function (st) {
+        rememberStyle(st); fillStyleSelect(); // the DOI tab's menu lists it too
+        if (!sel.querySelector('option[value="csl:' + CSS.escape(st.name) + '"]')) {
+          var g = sel.querySelector('optgroup'); if (!g) { g = document.createElement('optgroup'); g.label = 'Journal styles you have used'; sel.insertBefore(g, so); }
+          var o = document.createElement('option'); o.value = 'csl:' + st.name; o.textContent = st.title; g.insertBefore(o, g.firstChild);
+        }
+        sel.value = 'csl:' + st.name; find.hidden = true; build(); sel.focus();
+      });
+    };
+    findIn.addEventListener('input', runFind);
+    findMine.addEventListener('change', runFind);
+    sel.addEventListener('change', function () {
+      if (sel.value !== 'search') { find.hidden = true; build(); return; }
+      sel.value = shown; find.hidden = false; findIn.focus();
+      findHits.innerHTML = ''; findHits.appendChild(el('div', 'status', 'Loading the style list…'));
+      ensureIndex().then(runFind, function (e) {
+        logError('style-index', e);
+        findHits.innerHTML = '';
+        findHits.appendChild(el('div', 'status', location.protocol === 'file:' ? 'Style search needs the hosted page (https://toldxls.github.io/AutoDOI/); the offline copy has the built-in styles only.' : 'Could not load the style list (' + e.message + '). Check your connection and choose the search option again.'));
+      });
+    });
     act.appendChild(showLabel);
     act.appendChild(doiLabel);
     act.appendChild(sel);
@@ -6336,6 +6382,7 @@
     act.appendChild(wb);
     head.appendChild(act);
     wrap.appendChild(head);
+    wrap.appendChild(find);
     wrap.appendChild(list);
     build();
     container.appendChild(wrap);
@@ -6543,6 +6590,9 @@
   }
   // the chip on a hit: an exact title, a partial one, one that at least holds every word of the search, or a weak one
   function hitChip(conf, allFound) { return el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 || allFound ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : allFound ? 'Has your words' : 'Weak'); }
+  // A hit as the record to keep: an OpenAlex hit's authors are split from display names and it carries no Retraction Watch
+  // notices, so Crossref's record for its DOI replaces it when there is one
+  function fullRecord(r) { return r.source === 'openalex' && r.doi ? fetchRecord(r.doi).catch(function () { return r; }) : Promise.resolve(r); }
   /* A search by title alone, shared by Find a DOI and a bare-title line on the References tab. Returns { hits, viaOA }: every hit
    * carries conf (its title similarity), best first. opts.year narrows the most-cited pass and breaks ties between equal titles */
   async function findByTitle(title, journal, opts) {
@@ -6563,7 +6613,7 @@
       } catch (e) { /* keep the first results */ }
     }
     // a journal is a must-clause at Crossref: one read off a line wrongly ("Deep Learning, Memory and Cognition") empties the search, so ask once more with the whole line
-    if (journal && best() < 0.8) {
+    if (journal && (best() < 0.8 || !/\s/.test(title.trim()))) { // a one-word title before the journal is a guessed split: the whole line is searched too
       try { hits = hits.concat((await search({ 'query.bibliographic': title + ' ' + journal }, 6)).filter(function (r) { return r.title; })); } catch (e) { /* keep what there is */ }
     }
     if (best() < 0.8) {
@@ -6611,7 +6661,10 @@
         act.appendChild(hitChip(conf, !!r.allWords));
         act.appendChild(paperLinks(r));
         act.appendChild(button('Copy DOI', '', function (b) { copyPlain(b, r.doi); }));
-        var pickIt = function () { Array.prototype.forEach.call(list.querySelectorAll('.hit.picked'), function (x) { x.classList.remove('picked'); }); h.classList.add('picked'); formatHere(r, 'find'); };
+        var pickIt = function () {
+          Array.prototype.forEach.call(list.querySelectorAll('.hit.picked'), function (x) { x.classList.remove('picked'); }); h.classList.add('picked');
+          fullRecord(r).then(function (rec) { if (h.classList.contains('picked')) formatHere(rec, 'find'); }); // a later click on another hit wins
+        };
         var pk = el('button', 'pick', 'Format ›'); pk.type = 'button'; pk.setAttribute('aria-label', 'Format ' + (r.title || 'this record')); pk.addEventListener('click', pickIt); act.appendChild(pk); // the keyboard's way in; the mouse has the whole card
         h.appendChild(act);
         h.addEventListener('click', function (ev) { if (ev.target.closest('a, button, input')) return; if (window.getSelection && String(window.getSelection()).length) return; pickIt(); });
@@ -6728,6 +6781,7 @@
     '|\\s\\p{L}\\s\\p{L}(?:\\s|$)', 'u');                                                                                                          // "siegel d j brainstorm": two single letters in a row are initials, whatever the case
   var JOURNAL_WORD = new RegExp('^([' + UC + '][' + WC + '.&:]*|of|and|the|for|in|on|&|de|des|der|und|et|di)$'), JOURNAL_STOP = /^(of|and|the|for|in|on|&|de|des|der|und|et|di)$/;
   var LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
+  var TITLE_GLUE = /^(?:of|in|for|with|and|or|the|a|an|on|to|by|from|via|at|as|into|using|under|over|between|through|during|without|within|versus|vs\.?)\s/; // a wrapped title's second line opens this way; a name in a list does not
   function looksLikeTitle(text) {
     var t = String(text || '').replace(/\s+/g, ' ').trim().replace(/^[“‘"']|[”’"']$/g, '').replace(/\.$/, '').trim();
     if (t.length < 3 || t.length > 250) return null; // one word is a search too: a mineral name, a species
@@ -6824,7 +6878,7 @@
       }
       if (bulleted) { if (BUL.test(l)) { flush(); cur = l; } else cur += ' ' + l; return; }
       if (titleList) { // a wrapped title continues on a lowercase line or after a dangling word ("Deep learning methods for" / "protein structure prediction")
-        if ((/^[a-z]/.test(l) && !/[.?!]$/.test(cur) && (cur.match(/\S+/g) || []).length >= 4) || /[,;:–\-&]$|\b(of|for|and|the|a|an|in|on|to|with|by|from|is|are)$/i.test(cur)) cur += ' ' + l; else { flush(); cur = l; } // a lowercase line continues a line long enough to have wrapped; "oldsite" / "bobdownsite" is a list
+        if ((/^[a-z]/.test(l) && !/[.?!]$/.test(cur) && ((cur.match(/\S+/g) || []).length >= 4 || TITLE_GLUE.test(l))) || /[,;:–\-&]$|\b(of|for|and|the|a|an|in|on|to|with|by|from|is|are)$/i.test(cur)) cur += ' ' + l; else { flush(); cur = l; } // a lowercase line continues a line long enough to have wrapped, or one that opens on a joining word ("Molecular structure" / "of nucleic acids"); "oldsite" / "bobdownsite" is a list
         return;
       }
       if (perLine && !isDoiLine && !/^\(/.test(l) && !PLACE_LINE.test(l) && !EDS_LINE.test(l) && !/[,;:\u2013\-&]$/.test(cur) && !/\b[Ii]n$/.test(cur)) { flush(); cur = l; return; }
@@ -6868,7 +6922,8 @@
       var found = (await findByTitle(tq.title, tq.journal, { year: tq.year })).hits;
       if (!found.length) return { record: null, conf: 0 };
       var top = found[0], tconf = top.conf;
-      if (top.source === 'openalex' && top.doi) { try { top = await fetchRecord(top.doi); } catch (e) { /* keep the OpenAlex record */ } }
+      if (tq.journal && !/\s/.test(tq.title.trim())) tconf = Math.min(tconf, 0.94); // "Learning, Memory and Cognition" may be a title, not "Learning" in a journal: an exact one-word title waits for your pick
+      top = await fullRecord(top);
       return { record: top, conf: tconf, allWords: !!found[0].allWords, via: 'title', alt: null, hits: found.slice(0, 6) }; // the close titles go under the row, as the Find tab lists them
     }
     var best = null, bestConf = 0, via = 'search', seen = [];
@@ -7357,10 +7412,14 @@
         var act = el('div', 'actions'); act.style.display = 'flex'; act.style.gap = '6px'; act.style.alignItems = 'center';
         act.appendChild(hitChip(r.conf || 0, r.allWords !== undefined ? !!r.allWords : holdsWords((r.title || '') + ' ' + (r.container || ''), ws).all));
         var pickIt = function () {
-          setRow(row, r, 'good', 'picked');
-          if (row.fixRow) { row.fixRow.remove(); row.fixRow = null; }
-          if (row.keep) row.keep.checked = false;
-          offerHits(row, hits, true, query); build();
+          if (row.picking === r) return; row.picking = r; // a later click on another hit wins
+          fullRecord(r).then(function (rec) {
+            if (row.picking !== r || !current()) return; row.picking = null;
+            setRow(row, rec, 'good', 'picked');
+            if (row.fixRow) { row.fixRow.remove(); row.fixRow = null; }
+            if (row.keep) row.keep.checked = false;
+            offerHits(row, hits, true, query); build();
+          });
         };
         var pk = el('button', 'pick', 'Use ›'); pk.type = 'button'; pk.setAttribute('aria-label', 'Use ' + (r.title || 'this record')); pk.addEventListener('click', pickIt); act.appendChild(pk); // the keyboard's way in; the mouse has the whole card
         h.appendChild(act);
@@ -7712,7 +7771,7 @@
   if (refs) { // a shared reference list: its DOIs, one per line, matched directly
     var dois = refs.split(',').map(function (x) { try { return A.toDoi(decodeURIComponent(x)); } catch (e) { return ''; } }).filter(Boolean).slice(0, 500);
     var ls = params.get('list');
-    if (ls && (A.STYLES.some(function (st) { return st.id === ls; }) || /^csl:[a-z0-9\-]+$/i.test(ls))) store.set('liststyle', ls);
+    if (ls && (A.STYLES.some(function (st) { return st.id === ls; }) || /^csl:[a-z0-9\-]+$/i.test(ls))) store.set('liststyle', ls); // a journal style is remembered once it renders
     if (dois.length) {
       $('export-input').value = dois.join('\n'); $('split-mode').value = 'lines'; updateSplitPreview();
       showTab('export'); $('form-export').requestSubmit();

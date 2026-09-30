@@ -2,6 +2,23 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.14.0 - 2026-09-29
+
+### New
+
+- **Journal styles on the reference list.** The list's style menu can search the 10,000 journal styles, as the DOI tab's can; the pick sets the list's style only.
+
+### Changed
+
+- A one-word title before a journal ("Learning, Memory and Cognition") is searched as the whole line too, and an exact match on the one word stays amber for you to confirm.
+
+### Fixed
+
+- A *Copy link* in a journal style the other browser had never used opened the list in APA; it now opens in that style, which is remembered only once it renders.
+- A bare title wrapped after two or three words ("Molecular structure" / "of nucleic acids") was split into two rows.
+- A hit picked under a title row or on Find a DOI is kept as Crossref's record when it came from OpenAlex, with its authors as deposited and any retraction notice.
+- With browser storage full, the remembered list drops its candidate lists instead of silently failing to save.
+
 ## 1.13.0 - 2026-09-29
 
 ### New

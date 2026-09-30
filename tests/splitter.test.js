@@ -79,6 +79,8 @@ t('a single word is a search', "oldsite", 1);
 t('a list of one-word titles', "oldsite\nbobdownsite\nkampfite", 3);
 eq0('debris lines are still dropped', splitReferences("Smith, J. (2020). A title here. Journal, 1, 2.\n3.\npp."), 1);
 t('a wrapped title stays one', "Deep learning methods for\nprotein structure prediction\nMolecular structure of nucleic acids", 2);
+t('a title wrapped after two words stays one', "Molecular structure\nof nucleic acids\nArray programming\nwith NumPy\nNanometre-scale thermometry\nin a living cell", 3);
+t('lowercase names are still a list', "oldsite\nbobdownsite\nnative copper\nnative gold", 4);
 t('a paste with an author line is not a title list: lines still wrap as before', "Deep learning\nKucsko, G., & Maurer, P. C. (2013). Nanometre-scale thermometry.\nNature, 500, 54-58.", 1);
 const eq = (label, got, want) => { if (JSON.stringify(got) === JSON.stringify(want)) pass++; else { fail++; console.log('FAIL', label, JSON.stringify(got), '!=', JSON.stringify(want)); } };
 eq('lines mode keeps the 10. of bare DOIs', splitByMode("10.1038/nature12373\n10.1000/x\n1. Smith J. 2020. Title. J 1:2.", 'lines'), ["10.1038/nature12373", "10.1000/x", "Smith J. 2020. Title. J 1:2."]);
