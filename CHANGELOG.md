@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.15.0 - 2026-10-02
+
+### New
+
+- **List order.** A menu on the reference list overrides the style's order (alphabetical for Annals and the other author-date styles): *As given*, *Newest first* or *Oldest first*. Numbers and year letters follow the order chosen; it is remembered and travels in *Copy link*.
+
 ## 1.14.0 - 2026-09-29
 
 ### New

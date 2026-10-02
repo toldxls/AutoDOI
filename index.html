@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-GhTs4CfjehYIcbqkSkjRUIII0TMwsMy62RTB49JNo0A=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-7t/jv4mhvLrvLTsX4410fJsrwfdRy5SeQZDUpCF3H+E=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -5108,7 +5108,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.14.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.15.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -5738,7 +5738,10 @@
     }
     var items = {}, ids = [];
     records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1)); items[it.id] = it; ids.push(it.id); });
-    var eng = new window.CSL.Engine({ retrieveLocale: localeFor, retrieveItem: function (id) { return items[id]; } }, csl.xml[style.name], lang, true); // the chosen language overrides the style's default
+    // opts.unsorted: the bibliography's own sort is taken out, so the entries come in the order of the records, and the numbers,
+    // year letters and repeated-author dashes follow that order
+    var styleXml = opts && opts.unsorted ? csl.xml[style.name].replace(/(<bibliography\b[^>]*>)([\s\S]*?)(<\/bibliography>)/, function (m, a, b, c) { return a + b.replace(/<sort>[\s\S]*?<\/sort>/, '') + c; }) : csl.xml[style.name];
+    var eng = new window.CSL.Engine({ retrieveLocale: localeFor, retrieveItem: function (id) { return items[id]; } }, styleXml, lang, true); // the chosen language overrides the style's default
     eng.updateItems(ids);
     var bib = eng.makeBibliography();
     var entries = ((bib && bib[1]) || []).map(cslEntryHtml);
@@ -5749,7 +5752,7 @@
     if (broken.some(Boolean)) {
       var items2 = {};
       records.forEach(function (r, i) { var it = toCsl(r, 'ITEM-' + (i + 1), true); items2[it.id] = it; });
-      var eng2 = new window.CSL.Engine({ retrieveLocale: localeFor, retrieveItem: function (id) { return items2[id]; } }, csl.xml[style.name], lang, true);
+      var eng2 = new window.CSL.Engine({ retrieveLocale: localeFor, retrieveItem: function (id) { return items2[id]; } }, styleXml, lang, true);
       eng2.updateItems(ids);
       var bib2 = eng2.makeBibliography();
       if (bib2 && bib2[1]) entries = entries.map(function (e, i) { return broken[i] && bib2[1][i] ? cslEntryHtml(bib2[1][i]) : e; });
@@ -6249,8 +6252,9 @@
     container.appendChild(renderExport('CSL JSON' + (records.length > 1 ? ' · ' + records.length + ' records' : ''), 'json', cslText, base));
   }
 
-  function renderRefList(container, records, keptRaw) {
+  function renderRefList(container, records, keptRaw, places) { // places: where each record and each kept line stood in the paste
     keptRaw = keptRaw || [];
+    places = places || { records: records.map(function (r, i) { return i; }), kept: keptRaw.map(function (t, i) { return records.length + i; }) };
     var wrap = el('div', 'export');
     var head = el('div', 'head');
     head.appendChild(el('span', 'section-label', 'Reference list')).style.margin = '0';
@@ -6287,11 +6291,33 @@
       if (htmlToText(html).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1) return html;
       return html + ' https://doi.org/' + escT(r.doi);
     };
-    // references with no record go in as pasted, alphabetised with the rest (or after the numbered entries)
-    function finish(entries, numbered) { // entries: [{html, forms}]
+    // Order: the style's own (alphabetical for author-date styles), as given, or by year, for a publication list that leads with
+    // the newest work. Remembered across styles
+    var order = document.createElement('select'); order.id = 'list-order'; order.setAttribute('aria-label', 'Reference list order');
+    [['style', 'Style’s order'], ['given', 'As given'], ['newest', 'Newest first'], ['oldest', 'Oldest first']].forEach(function (x) { var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; order.appendChild(o); });
+    order.title = 'The order of the list: the style’s own (alphabetical for author-date styles), as you gave the references, or by year';
+    order.value = store.get('listorder') || 'style'; if (!order.value) order.value = 'style';
+    order.addEventListener('change', function () { store.set('listorder', order.value); build(); });
+    var byYear = function () { return order.value === 'newest' || order.value === 'oldest'; };
+    var yearCmp = function (a, b) { // an entry with no year goes last either way
+      var ya = Number(a.year) || 0, yb = Number(b.year) || 0;
+      return ya === yb ? 0 : !ya ? 1 : !yb ? -1 : order.value === 'newest' ? yb - ya : ya - yb;
+    };
+    var who = function (r) { return (r.authors || []).map(function (a) { return a.family || a.literal || ''; }).join(' ') + ' ' + (r.title || ''); };
+    // The records in the order chosen, each with its place in the paste. A numbered or journal style numbers and letters them in
+    // this order; within a year they go by author
+    var arranged = function () {
+      var rs = records.map(function (r, i) { return { r: r, place: places.records[i], year: r.year }; });
+      if (byYear()) rs.sort(function (a, b) { return yearCmp(a, b) || who(a.r).localeCompare(who(b.r)) || a.place - b.place; });
+      return rs;
+    };
+    var rawYear = function (t) { var m = String(t).match(/(?:^|[^\d])((?:1[5-9]|20)\d\d)[a-z]?(?!\d)/); return m ? m[1] : ''; }; // a kept line's year: the first one written in it
+    // references with no record go in as pasted, in their place among the rest (or after the numbered entries)
+    function finish(entries, numbered) { // entries: [{html, forms, place, year}]
       var all = entries.slice();
-      if (keptRaw.length) all = all.concat(keptRaw.map(function (t) { return { html: '<span class="as-written" title="Kept as pasted: no record was found">' + escT(t) + '</span>', forms: null }; }));
-      if (!numbered) all.sort(function (a, b) { return htmlToText(a.html).localeCompare(htmlToText(b.html)); });
+      if (keptRaw.length) all = all.concat(keptRaw.map(function (t, i) { return { html: '<span class="as-written" title="Kept as pasted: no record was found">' + escT(t) + '</span>', forms: null, place: places.kept[i], year: rawYear(t) }; }));
+      var abc = function (a, b) { return htmlToText(a.html).localeCompare(htmlToText(b.html)); };
+      if (!numbered) all.sort(order.value === 'given' ? function (a, b) { return a.place - b.place; } : byYear() ? function (a, b) { return yearCmp(a, b) || abc(a, b); } : abc);
       current.html = all.map(function (e) { return '<p>' + e.html + '</p>'; }).join('');
       current.text = all.map(function (e) { return htmlToText(e.html); }).join('\n');
       current.entries = all.map(function (e) { return e.html; }); current.numbered = numbered;
@@ -6330,16 +6356,17 @@
         list.textContent = 'Rendering…';
         if (!records.length) { finish([], false); return; }
         var st = recentByName(sel.value.slice(4)) || { name: sel.value.slice(4), title: sel.value.slice(4) }; // one from a link, or dropped from the twelve remembered while this menu still offers it
-        cslRender(st, records, { perItem: showInText.checked }).then(function (res) {
+        var rs = arranged();
+        cslRender(st, rs.map(function (x) { return x.r; }), { perItem: showInText.checked, unsorted: order.value !== 'style' }).then(function (res) {
           var o = sel.querySelector('option[value="csl:' + CSS.escape(st.name) + '"]'); if (o) o.textContent = st.title; // a style from a link is named from its file once fetched
           if (!recentByName(st.name)) { rememberStyle(st); fillStyleSelect(); } // remembered only once it has rendered: a mistyped link leaves nothing behind
-          finish(res.entries.map(function (h, i) { var id = [].concat(res.entryIds[i] || [])[0], r = id ? records[Number(String(id).slice(5)) - 1] : null; return { html: withDoi(h, r), forms: res.perItem ? res.perItem[res.entryIds[i]] || null : null }; }), /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
+          finish(res.entries.map(function (h, i) { var id = [].concat(res.entryIds[i] || [])[0], x = (id && rs[Number(String(id).slice(5)) - 1]) || {}; return { html: withDoi(h, x.r), forms: res.perItem ? res.perItem[res.entryIds[i]] || null : null, place: x.place, year: x.year }; }), /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
         }, function (e) { logError('citeproc-list', e, sel.value.slice(4)); list.textContent = e.message; });
         return;
       }
       var numbered = sel.value === 'vancouver' || sel.value === 'ieee';
-      var items = records.map(function (r, i) { return { html: withDoi(A.formatHtml(r, sel.value, numbered ? i + 1 : undefined), r), forms: showInText.checked ? A.inTextForms(r, sel.value, { n: i + 1 }) : null }; });
-      finish(items, numbered); // alphabetical by first author for author-date styles, in list order for numbered ones
+      var items = arranged().map(function (x, i) { return { html: withDoi(A.formatHtml(x.r, sel.value, numbered ? i + 1 : undefined), x.r), forms: showInText.checked ? A.inTextForms(x.r, sel.value, { n: i + 1 }) : null, place: x.place, year: x.year }; });
+      finish(items, numbered); // unless another order is chosen: alphabetical by first author for author-date styles, in list order for numbered ones
     }
     // A journal style searched for here sets the list's style only, as the DOI tab's search sets that tab's
     var find = el('div', 'list-find'); find.hidden = true;
@@ -6374,6 +6401,7 @@
     });
     act.appendChild(showLabel);
     act.appendChild(doiLabel);
+    act.appendChild(order);
     act.appendChild(sel);
     act.appendChild(button('Copy', '', function (b) { copyPlain(b, current.text); }));
     act.appendChild(button('Rich', '', function (b) { copyRich(b, current.html, current.text); }));
@@ -7299,16 +7327,17 @@
     function build() {
       if (!current()) return;
       out.innerHTML = '';
-      var seen = {}, recs = [];
+      var seen = {}, recs = [], recPlaces = [];
       rows.forEach(function (row) { // duplicates are recomputed every time: the first ticked copy wins
         if (!row.rec) return;
         var k = recKey(row.rec);
         var dup = row.box.checked && seen[k] !== undefined;
         if (row.dupChip) { row.dupChip.hidden = !dup; if (dup) row.dupChip.textContent = 'Duplicate of #' + (seen[k] + 1) + ' · left out'; }
         if (!row.box.checked || dup) return;
-        seen[k] = row.idx; recs.push(row.rec);
+        seen[k] = row.idx; recs.push(row.rec); recPlaces.push(row.idx);
       });
-      var kept = rows.filter(function (row) { return row.keep && row.keep.checked; }).map(function (row) { return row.raw; });
+      var keptRows = rows.filter(function (row) { return row.keep && row.keep.checked; });
+      var kept = keptRows.map(function (row) { return row.raw; });
       if (!recs.length && !kept.length) return;
       // The export box: its own colour and border, so that once the rows are checked it is plain where to go
       var zone = el('section', 'export-zone'); zone.id = 'export-zone'; zone.tabIndex = -1; zone.setAttribute('aria-labelledby', 'export-zone-title');
@@ -7317,8 +7346,8 @@
       var withDoi = recs.filter(function (r) { return r.doi; });
       if (withDoi.length) { // a link that rebuilds this list from its DOIs, in this list style; pasted text never goes into a link
         var lb = button('Copy link', 'small', function (b) {
-          var base = location.href.split('?')[0].split('#')[0], ls = store.get('liststyle') || 'apa';
-          copyPlain(b, base + '?refs=' + withDoi.map(function (r) { return encodeURIComponent(r.doi); }).join(',') + (ls !== 'apa' ? '&list=' + encodeURIComponent(ls) : ''));
+          var base = location.href.split('?')[0].split('#')[0], ls = store.get('liststyle') || 'apa', lo = store.get('listorder') || 'style';
+          copyPlain(b, base + '?refs=' + withDoi.map(function (r) { return encodeURIComponent(r.doi); }).join(',') + (ls !== 'apa' ? '&list=' + encodeURIComponent(ls) : '') + (lo !== 'style' ? '&order=' + lo : ''));
         });
         lb.title = 'Copy a link that opens this reference list again, from the ' + withDoi.length + ' DOI' + (withDoi.length > 1 ? 's' : '') + ' of the ticked rows' + (withDoi.length < recs.length + kept.length ? '; ' + (recs.length + kept.length - withDoi.length) + ' reference' + (recs.length + kept.length - withDoi.length > 1 ? 's' : '') + ' without a DOI cannot be in it' : '');
         zh.appendChild(lb);
@@ -7328,7 +7357,7 @@
       zone.appendChild(el('p', 'zone-hint', 'Copy the reference list in any style, or download the .enw, .ris or .bib file for EndNote, Zotero or Mendeley. Only the rows ticked above are included.'));
       out.appendChild(zone);
       recs = withCaseAll(recs);
-      renderRefList(zone, recs, kept);
+      renderRefList(zone, recs, kept, { records: recPlaces, kept: keptRows.map(function (row) { return row.idx; }) });
       if (recs.length) renderExports(zone, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
       // Your text as pasted, each matched and ticked line with its DOI link at the end, as Crossref's Simple Text Query returns a list
       var textRows = rows.filter(function (row) { return row.raw; });
@@ -7772,6 +7801,8 @@
     var dois = refs.split(',').map(function (x) { try { return A.toDoi(decodeURIComponent(x)); } catch (e) { return ''; } }).filter(Boolean).slice(0, 500);
     var ls = params.get('list');
     if (ls && (A.STYLES.some(function (st) { return st.id === ls; }) || /^csl:[a-z0-9\-]+$/i.test(ls))) store.set('liststyle', ls); // a journal style is remembered once it renders
+    var lo = params.get('order');
+    if (/^(?:style|given|newest|oldest)$/.test(lo || '')) store.set('listorder', lo);
     if (dois.length) {
       $('export-input').value = dois.join('\n'); $('split-mode').value = 'lines'; updateSplitPreview();
       showTab('export'); $('form-export').requestSubmit();

@@ -124,6 +124,9 @@ async function newPage(browser, base, dark) {
   return { ctx: ctx, page: page, state: state };
 }
 
+// Five records neither alphabetical nor chronological as given, two of them by one author in one year, for the list's order menu
+var ORDER_RIS = [['Mills, C.', 'Mapping the delta', '2001'], ['Zeller, D.', 'Tides of the estuary', '2019'], ['Abbott, A.', 'Dunes in winter', '2010'], ['Brown, B.', 'Zebra finches at dusk', '2019'], ['Brown, B.', 'Apple orchards at dawn', '2019']]
+  .map(function (x, i) { return ['TY  - JOUR', 'AU  - ' + x[0], 'TI  - ' + x[1], 'JO  - Journal of Field Notes', 'PY  - ' + x[2], 'VL  - ' + (i + 1), 'SP  - 1', 'EP  - 9', 'ER  - ', ''].join('\r\n'); }).join('');
 var RIS_FILE = ['TY  - JOUR', 'AU  - Kucsko, G.', 'AU  - Maurer, P. C.', 'AU  - Yao, N. Y.', 'TI  - Nanometre-scale thermometry in a living cell', 'JO  - Nature', 'PY  - 2013', 'VL  - 500', 'IS  - 7460', 'SP  - 54', 'EP  - 58', 'DO  - 10.1038/nature12373', 'DP  - JSTOR', 'AN  - 41403188', 'ER  - ', ''].join('\r\n');
 var BIB_FILE = '@article{vaswani2017attention,\n  author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki},\n  title = {Attention is all you need},\n  journal = {Advances in Neural Information Processing Systems},\n  year = {2017},\n  volume = {30},\n  pages = {5998--6008}\n}\n';
 
@@ -425,6 +428,16 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForFunction(function () { return !/10\.1038/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
   await page.selectOption('#list-style', 'apa');
   await page.waitForFunction(function () { return /Kucsko, G\., Maurer, P\. C\./.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  // The order menu: a kept line goes by the year written in it, and Copy link carries the order
+  var listFirst = function () { return page.locator('#export-output .reflist p').first().textContent(); };
+  check(name('the list starts in the style’s order, alphabetical for APA'), (await page.inputValue('#list-order')) === 'style' && /^Kucsko/.test(await listFirst()), await listFirst());
+  await page.selectOption('#list-order', 'newest');
+  check(name('Newest first puts the kept 2017 line above the 2013 record'), /^Vaswani/.test(await listFirst()) && (await page.locator('#export-output .reflist p').count()) === 2, await listText());
+  await page.locator('#export-zone .zone-head button:has-text("Copy link")').click();
+  clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
+  check(name('Copy link carries the order'), /&order=newest$/.test(clip), clip);
+  await page.selectOption('#list-order', 'style');
+  check(name('back in the style’s order the link names none'), /^Kucsko/.test(await listFirst()) && !/order=/.test(await (async function () { await page.locator('#export-zone .zone-head button:has-text("Copy link")').click(); return page.evaluate(function () { return navigator.clipboard.readText(); }); })()));
   // A journal style searched for from the list's own menu: it sets the list's style only, and the DOI tab's menu gains it
   if (cslReady) {
     var doiStyle = await page.inputValue('#style-select');
@@ -554,6 +567,54 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the file input is cleared for the next pick'), (await page.inputValue('#export-file-input')) === '');
   var exportsText = await page.evaluate(function () { return Array.prototype.map.call(document.querySelectorAll('#export-output textarea, #export-output pre, #export-output code'), function (e) { return e.value || e.textContent; }).join('\n'); });
   check(name('the database name from the RIS file is written back into the RIS export'), /DP {2}- JSTOR/.test(exportsText) && /AN {2}- 41403188/.test(exportsText), exportsText.slice(0, 300));
+  // 9a. The order menu on a list of five: alphabetical unless asked, as given, or by year; numbers and year letters follow the order
+  await page.fill('#export-input', '');
+  await page.setInputFiles('#export-file-input', [{ name: 'order.ris', mimeType: 'application/x-research-info-systems', buffer: Buffer.from(ORDER_RIS) }]);
+  await page.waitForFunction(function () { return /5 records read from the file/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  var KEYS = ['Mapping', 'Tides', 'Dunes', 'Zebra', 'Apple'];
+  var listOrder = async function () { return (await page.locator('#export-output .reflist p').allTextContents()).map(function (t) { return KEYS.filter(function (k) { return t.indexOf(k) !== -1; })[0] || '?'; }).join(' '); };
+  var orderIs = function (want) { return page.waitForFunction(function (a) { var ps = document.querySelectorAll('#export-output .reflist p'); return ps.length === 5 && Array.prototype.map.call(ps, function (p) { return a.keys.filter(function (k) { return p.textContent.indexOf(k) !== -1; })[0] || '?'; }).join(' ') === a.want; }, { keys: KEYS, want: want }, { timeout: 20000 }).then(function () { return true; }, function () { return false; }); };
+  await page.selectOption('#list-style', 'apa');
+  check(name('the style’s order is alphabetical for APA'), await orderIs('Dunes Apple Zebra Mapping Tides'), await listOrder());
+  await page.selectOption('#list-order', 'given');
+  check(name('As given keeps the references in the order of the file'), await orderIs('Mapping Tides Dunes Zebra Apple'), await listOrder());
+  await page.selectOption('#list-order', 'newest');
+  check(name('Newest first sorts by year, by author within a year'), await orderIs('Apple Zebra Tides Dunes Mapping'), await listOrder());
+  check(name('the order is remembered'), (await page.evaluate(function () { return localStorage.getItem('autodoi.listorder'); })) === 'newest');
+  await page.selectOption('#list-order', 'oldest');
+  check(name('Oldest first is the reverse by year'), await orderIs('Mapping Dunes Apple Zebra Tides'), await listOrder());
+  await page.selectOption('#list-style', 'vancouver');
+  check(name('a numbered style keeps the chosen order when the style changes'), (await page.inputValue('#list-order')) === 'oldest' && await orderIs('Mapping Dunes Apple Zebra Tides'), await listOrder());
+  await page.selectOption('#list-order', 'newest');
+  var vanc = await page.locator('#export-output .reflist p').allTextContents();
+  check(name('a numbered style is numbered in the chosen order'), (await orderIs('Apple Zebra Tides Dunes Mapping')) && /^1\. Brown B\. Apple/.test((vanc = await page.locator('#export-output .reflist p').allTextContents())[0]) && /^5\. Mills C\. Mapping/.test(vanc[4]), vanc.join(' | '));
+  await page.selectOption('#list-order', 'style');
+  check(name('a numbered style’s own order is the order given'), await orderIs('Mapping Tides Dunes Zebra Apple'), await listOrder());
+  if (cslReady) { // a journal style: its own sort is set aside, so the year letters follow the order shown
+    await page.selectOption('#list-style', 'search');
+    await page.fill('#list-style-search', 'cite them right');
+    var harvardHit = page.locator('#export-output .list-find .hit.style').filter({ has: page.locator('.m', { hasText: /^harvard-cite-them-right( ·|$)/ }) }).first();
+    await harvardHit.waitFor();
+    await harvardHit.click();
+    check(name('a journal style sorts the list itself, lettering one author’s year by title'), await orderIs('Dunes Apple Zebra Mapping Tides'), await listOrder());
+    var letters = async function () { return (await page.locator('#export-output .reflist p').allTextContents()).filter(function (t) { return /Brown/.test(t); }).map(function (t) { return (t.match(/2019[a-z]/) || ['?'])[0] + ' ' + (t.match(/Apple|Zebra/) || ['?'])[0]; }).join(', '); };
+    check(name('in the style’s order the first by title is 2019a'), (await letters()) === '2019a Apple, 2019b Zebra', await letters());
+    await page.selectOption('#list-order', 'given');
+    check(name('a journal style follows the order given'), await orderIs('Mapping Tides Dunes Zebra Apple'), await listOrder());
+    check(name('and letters the year in that order'), (await letters()) === '2019a Zebra, 2019b Apple', await letters());
+    await page.selectOption('#list-order', 'newest');
+    check(name('a journal style goes newest first'), await orderIs('Apple Zebra Tides Dunes Mapping'), await listOrder());
+    await page.selectOption('#list-style', 'search');
+    await page.fill('#list-style-search', 'nature');
+    var natureHit = page.locator('#export-output .list-find .hit.style').filter({ has: page.locator('.m', { hasText: /^nature( ·|$)/ }) }).first();
+    await natureHit.waitFor();
+    await natureHit.click();
+    var nat = [];
+    check(name('a numbered journal style is numbered newest first'), (await orderIs('Apple Zebra Tides Dunes Mapping')) && /^1\.\s*Brown/.test((nat = await page.locator('#export-output .reflist p').allTextContents())[0]) && /^5\.\s*Mills/.test(nat[4]), nat.join(' | '));
+  }
+  await page.selectOption('#list-order', 'style');
+  await page.selectOption('#list-style', 'apa');
+  await orderIs('Dunes Apple Zebra Mapping Tides');
   await page.locator('#split-details summary').click();
   await axeCheck('Export tab with file records and split list open');
   // 9b. A Word manuscript: the paragraphs after its References heading, and nothing else, land in the box and are matched
