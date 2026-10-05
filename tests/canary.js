@@ -16,10 +16,15 @@ var NATURE = { doi: '10.1038/nature12373', title: 'Nanometre-scale thermometry i
 var passed = 0, failed = 0;
 function ok(name, detail) { passed++; console.log('ok   ' + name + (detail ? '  (' + detail + ')' : '')); }
 function bad(name, detail) { failed++; console.log('FAIL ' + name + '\n     ' + String(detail).replace(/\s+/g, ' ').slice(0, 300)); }
-async function get(url, headers) {
+async function get(url, headers, tries) { // a 429 from Crossref's public pool (shared runner addresses) is waited out, twice: it is the pool, not the API
   var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 25000);
   try {
     var res = await fetch(url, { headers: Object.assign({ 'User-Agent': UA }, headers || {}), signal: ctl.signal, redirect: 'follow' });
+    if (res.status === 429 && /crossref/.test(url) && (tries || 0) < 2) {
+      var wait = Math.min(30, Number(res.headers.get('retry-after')) || 5) * 1000; clearTimeout(t);
+      await new Promise(function (r) { setTimeout(r, wait); });
+      return get(url, headers, (tries || 0) + 1);
+    }
     var buf = Buffer.from(await res.arrayBuffer()), ct = res.headers.get('content-type') || '';
     var body = null; if (/json/.test(ct)) { try { body = JSON.parse(buf.toString('utf8')); } catch (e) { body = null; } }
     return { status: res.status, ct: ct, buf: buf, text: buf.toString('utf8'), json: body };

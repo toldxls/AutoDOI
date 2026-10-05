@@ -14,7 +14,8 @@ function check(name, ok, detail) { if (ok) { passed++; console.log('ok   ' + nam
   try {
     await page.goto(LIVE, { waitUntil: 'load', timeout: 60000 });
     check('page loads', (await page.title()) === 'AutoDOI');
-    // DOI lookup
+    // DOI lookup: the page opens on the References tab
+    await page.click('#tab-cite');
     await page.fill('#doi-input', '10.1038/nature12373'); await page.click('#doi-go');
     await page.waitForFunction(function () { return /Kucsko/.test(document.querySelector('#doi-result').textContent) && /Copy/.test(document.querySelector('#doi-result').textContent) && !/Looking/.test(document.querySelector('#doi-status').textContent); }, null, { timeout: 60000 });
     var text = await page.locator('#doi-result').textContent();
