@@ -114,5 +114,18 @@ ok('decomposed text lends its diacritics', H.adoptDiacritics(nfdRec, 'Bačík, P
 [[garble('Bačík, P. (2026). X.') + '\nŠkoda, R. (2020). Y.', 'Bačík, P. (2026). X.\nŠkoda, R. (2020). Y.'], [garble(garble('Bačík')), 'Bačík'], ['Price â‚¬100', 'Price €100'], ['Fe â†’ Mg', 'Fe → Mg'], ['x â‰¤ 5 â„¢', 'x ≤ 5 ™'],
  [garble('日本語の参考文献'), '日本語の参考文献'], [garble('王明 (2020) 中国'), '王明 (2020) 中国'], [garble('😀 ok'), '😀 ok'], [garble('Contribution à la géologie'), 'Contribution à la géologie'], [garble('α-quartz at 25 °C'), 'α-quartz at 25 °C'], [garble('Пароникян А.В.'), 'Пароникян А.В.']
 ].forEach(function (c) { ok('repaired: ' + c[1], H.repairMojibake(c[0]) === c[1], JSON.stringify(H.repairMojibake(c[0]))); });
+// a given name in Hangul, Arabic, Hebrew or Devanagari is a given name (not a single-field name), kept in every style and export.
+// These scripts have no letter case, so there are no initials: the name is written whole where a Latin name would be abbreviated
+var scripts = [['Hangul', '김', '민수'], ['Arabic', 'الخوارزمي', 'محمد'], ['Hebrew', 'כהן', 'דוד'], ['Devanagari', 'शर्मा', 'राम']];
+scripts.forEach(function (c) {
+  var r = A.normalize({ type: 'journal-article', title: ['T'], author: [{ family: c[1], given: c[2] }], 'container-title': ['J'], volume: '1', issued: { 'date-parts': [[2020]] } });
+  ok(c[0] + ' given name kept, not literal', r.authors[0].given === c[2] && !r.authors[0].literal, JSON.stringify(r.authors[0]));
+  A.STYLES.forEach(function (st) { var out = A.format(r, st.id); ok(c[0] + ' ' + st.id + ' names the author in full', out.indexOf(c[1]) !== -1 && out.indexOf(c[2]) !== -1, out); });
+  A.EXPORTS.forEach(function (ex) { var out = A.format(r, ex.id); ok(c[0] + ' ' + ex.id + ' carries the given name', out.indexOf(c[1] + ', ' + c[2]) !== -1, out); });
+});
+ok('apa writes a caseless given name whole', A.format(A.normalize({ type: 'journal-article', title: ['T'], author: [{ family: '김', given: '민수' }], 'container-title': ['J'], volume: '1', issued: { 'date-parts': [[2020]] } }), 'apa') === '김, 민수. (2020). T. J, 1.', A.format(A.normalize({ type: 'journal-article', title: ['T'], author: [{ family: '김', given: '민수' }], 'container-title': ['J'], volume: '1', issued: { 'date-parts': [[2020]] } }), 'apa'));
+ok('vancouver writes a caseless given name whole', A.format({ type: 'journal-article', title: ['T'], author: [{ family: '山田', given: '太郎' }], 'container-title': ['J'], volume: '1', issued: { 'date-parts': [[2020]] } }, 'vancouver') === '山田 太郎. T. J. 2020;1.');
+ok('a Cyrillic given name still takes initials', A.format({ type: 'journal-article', title: ['T'], author: [{ family: 'Пеков', given: 'Игорь' }], 'container-title': ['J'], volume: '1', issued: { 'date-parts': [[2020]] } }, 'apa') === 'Пеков, И. (2020). T. J, 1.');
+ok('punctuation deposited as a given name is still dropped', A.normalize({ author: [{ family: 'Smith', given: '-' }] }).authors[0].literal === true);
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

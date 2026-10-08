@@ -8,7 +8,7 @@ var passed = 0, failed = 0;
 function check(name, ok, detail) { if (ok) passed++; else { failed++; console.log('FAIL ' + name + (detail ? '\n     ' + String(detail).slice(0, 300) : '')); } }
 
 // --- stubbed Apps Script services, recording what the script does with them ---
-var state = { menuItems: [], alerts: [], files: [], selection: [[]], fetched: [], sleeps: 0 };
+var state = { menuItems: [], alerts: [], files: [], selection: [[]], fetched: [], sleeps: 0, cache: {}, cacheFull: false }; // cacheFull: CacheService refusing a put, as it does over 100 KB
 function response(code, body, type) { return { getResponseCode: function () { return code; }, getContentText: function () { return body; }, getHeaders: function () { return { 'Content-Type': type || 'application/json' }; } }; }
 function fakeFetch(url) {
   state.fetched.push(url);
@@ -20,7 +20,7 @@ function fakeFetch(url) {
 }
 var ctx = {
   console: console, Date: Date, JSON: JSON, Math: Math, String: String, Array: Array, Object: Object, RegExp: RegExp, Error: Error, encodeURIComponent: encodeURIComponent, decodeURIComponent: decodeURIComponent,
-  CacheService: (function () { var m = {}; return { getScriptCache: function () { return { get: function (k) { return m[k] || null; }, put: function (k, v) { m[k] = v; } }; } }; })(), // one cache across calls, as Apps Script's is
+  CacheService: { getScriptCache: function () { return { get: function (k) { return state.cache[k] || null; }, put: function (k, v) { if (state.cacheFull) throw new Error('Argument too large: value'); state.cache[k] = v; } }; } }, // one cache across calls, as Apps Script's is
   Utilities: { sleep: function () { state.sleeps++; }, formatDate: function () { return '2026-09-23 1200'; }, base64Encode: function (s) { return Buffer.from(String(s)).toString('base64'); }, computeDigest: function (a, s) { return s; }, DigestAlgorithm: {}, Charset: {} },
   Session: { getScriptTimeZone: function () { return 'UTC'; } },
   UrlFetchApp: { fetch: fakeFetch, fetchAll: function (reqs) { return reqs.map(function (r) { return fakeFetch(r.url); }); } },
@@ -80,6 +80,32 @@ check('FIND_DOI details row: DOI, title, journal, year, confidence', Array.isArr
 var risCell = ctx.REF_TO_RIS('Kucsko G, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54-58.');
 check('REF_TO_RIS from a pasted reference', /^TY  - JOUR/.test(risCell) && /DO  - 10\.1038\/nature12373/.test(risCell), risCell.slice(0, 200));
 check('REF_TO_DOI from a pasted reference', ctx.REF_TO_DOI('Kucsko G, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54-58.') === '10.1038/nature12373');
+
+// FIND_DOI: Crossref always answers with its nearest record; one that scores below the floor resolve_ uses is not the paper asked for
+var poor = ctx.FIND_DOI('Something else entirely', 'Journal of Nothing');
+check('FIND_DOI below the confidence floor: No match', poor === 'No match', poor);
+var poorDetails = ctx.FIND_DOI('Something else entirely', 'Journal of Nothing', true);
+check('FIND_DOI details below the floor: a padded No match row', JSON.stringify(poorDetails) === JSON.stringify([['No match', '', '', '', '']]), JSON.stringify(poorDetails));
+check('the floor is the one resolve_ uses', ctx.MIN_CONFIDENCE === 0.35 && ctx.REF_TO_DOI('Something else entirely. Journal of Nothing. 1999;1:1-2.') === 'No match');
+var wide = ctx.FIND_DOI([['Nanometre-scale thermometry in a living cell', 'Nanometre-scale thermometry in a living cell']], 'Nature', true);
+check('FIND_DOI details over a multi-column range: one cell saying to give a single column, not misaligned rows', JSON.stringify(wide) === JSON.stringify([['Give a single column of titles for the details form']]), JSON.stringify(wide));
+var wideDois = ctx.FIND_DOI([['Nanometre-scale thermometry in a living cell', 'Nanometre-scale thermometry in a living cell']], 'Nature');
+check('FIND_DOI over a multi-column range without details keeps the shape', Array.isArray(wideDois) && wideDois.length === 1 && wideDois[0].length === 2 && wideDois[0][1] === '10.1038/nature12373', JSON.stringify(wideDois));
+
+// A DOI Crossref does not have (DataCite, mEDRA): the prefetch's 404 is remembered, so the cell's own fetch goes straight to doi.org
+state.fetched = []; ctx.runCache_ = {};
+var dc = ctx.DOI_CITE('10.5555/datacite');
+var crossrefAsks = state.fetched.filter(function (u) { return /api\.crossref\.org\/works\/10\.5555%2Fdatacite/.test(u); }).length;
+check('a non-Crossref DOI is asked of Crossref once, then doi.org', crossrefAsks === 1 && state.fetched.filter(function (u) { return /^https:\/\/doi\.org\/10\.5555\/datacite/.test(u); }).length === 1 && dc === 'DOI not found (404)', crossrefAsks + ' ' + JSON.stringify(state.fetched) + ' ' + dc);
+state.fetched = []; ctx.runCache_ = {};
+ctx.DOI_CITE('10.5555/datacite');
+check('within the miss TTL the next recalculation skips Crossref for it', !state.fetched.some(function (u) { return /api\.crossref\.org\/works\/10\.5555/.test(u); }), JSON.stringify(state.fetched));
+
+// A record too large for CacheService: the invocation's own map keeps it, so the cell's fetch reuses the prefetch
+state.cache = {}; state.cacheFull = true; state.fetched = []; ctx.runCache_ = {};
+var big = ctx.DOI_CITE('10.1038/nature12373', 'apa');
+check('a record CacheService refuses is still fetched once per invocation', /^Kucsko, G\./.test(big) && state.fetched.filter(function (u) { return /works\/10\.1038%2Fnature12373/.test(u); }).length === 1, JSON.stringify(state.fetched));
+state.cacheFull = false;
 
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exitCode = failed ? 1 : 0;

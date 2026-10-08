@@ -157,7 +157,7 @@
   var PREFIX_WORDS = 'late early middle upper lower north south east west northern southern eastern western ' +
     'northeast northwest southeast southwest northeastern northwestern southeastern southwestern central ' +
     'great little greater lesser grand royal national saint mount port fort cape lake isle inner outer united ' +
-    'point far near holy';
+    'point far near holy sir';
   // Words after which a capital "A" is a label ("Vitamin A", "Type A", "Part A").
   var LABEL_NOUNS = 'vitamin type part hepatitis figure fig table appendix group class series section chapter ' +
     'phase plan model category grade zone unit site level layer member protein subtype influenza complex ' +
@@ -352,6 +352,8 @@
   var PREFIX_SET = setOf(PREFIX_WORDS);
   var LABEL_SET = setOf(LABEL_NOUNS);
   var ABBREV_SET = setOf(ABBREVIATIONS);
+  // taxonomic abbreviations written lowercase before their full stop ("sp. nov.", "gen. et sp. nov.", "n. sp.")
+  var TAXON_ABBREV = setOf('sp spp ssp subsp var gen nov n comb cf aff nr fam sensu');
   var ELEMENT_SET = setOf(ELEMENTS, true);
   var AMBIG_EL_SET = setOf(AMBIG_ELEMENTS, true);
   var UNIT_SET = setOf(UNITS);
@@ -433,7 +435,9 @@
   function isDigit(c) { return c >= '0' && c <= '9'; }
   function isLetter(c) {
     if (c.toLowerCase() !== c.toUpperCase()) return true;               // cased letters (Latin, Greek, Cyrillic...)
-    return /[ªºƻǀ-ǃʔ]/.test(c);            // a few caseless letters
+    // caseless letters: a few Latin ones, and kana, Han and hangul, which must be words rather than
+    // punctuation so that the Latin word after "日本" is not taken for a sentence start
+    return /[ªºƻǀ-ǃʔ぀-ヿ㐀-鿿가-힯]/.test(c);
   }
   function isWordChar(c) { return isLetter(c) || isDigit(c); }
   function isUpper(c) { return isLetter(c) && c === c.toUpperCase() && c !== c.toLowerCase(); }
@@ -466,7 +470,10 @@
   // "Darwin's", "U.S", "C/N"); everything else becomes a separate punct token. Raw HTML
   // tags ("<i>", "</sup>") and entities ("&amp;") are punct tokens and are never altered.
   function tokenize(title) {
-    var s = String(title == null ? '' : title), n = s.length, toks = [], i = 0, j, c, L;
+    var s = String(title == null ? '' : title), n, toks = [], i = 0, j, c, L;
+    // NFD input ("Re" + combining acute + "gions") would split at the combining mark, which is not a letter
+    if (typeof s.normalize === 'function') s = s.normalize('NFC');
+    n = s.length;
     while (i < n) {
       c = s.charAt(i);
       if (isSpace(c)) {
@@ -862,6 +869,21 @@
     return a === i + 2 && toks[a].kind === 'word' && /^(\d+[A-Za-z]?|[IVXLC]+|[A-Z])$/.test(toks[a].text);
   }
 
+  // "N. Sp.": a single capital before a stop is the abbreviation "n." only when "sp." / "gen." / ... follows it
+  function taxonAbbrevNext(toks, i) {
+    var a = nextSolid(toks, i), b = a >= 0 ? nextSolid(toks, a) : -1;     // a is the stop
+    return b >= 0 && b === a + 2 && toks[b].kind === 'word' && /^(sp|spp|gen|subsp|ssp|comb)$/i.test(toks[b].text) &&
+      b + 1 < toks.length && toks[b + 1].text.charAt(0) === '.';
+  }
+  // "sp. nov.", "n. sp. nov.": the word before "nov." (across its stop) is a taxonomic abbreviation, so "nov."
+  // is not the month
+  function taxonAbbrevBefore(toks, i) {
+    var a = prevSolid(toks, i);
+    if (a < 0 || toks[a].kind !== 'punct' || toks[a].text.charAt(toks[a].text.length - 1) !== '.') return false;
+    var w = prevSolid(toks, a);
+    return w >= 0 && toks[w].kind === 'word' && /^(sp|spp|gen|subsp|ssp|comb|var|n)$/i.test(toks[w].text);
+  }
+
   function isHeadKey(key) { return inSet(HEAD_SET, key); }
   function isGeoTime(key) { return GEO_TIME_SET.has(key); }
 
@@ -935,6 +957,13 @@
     var instChain = 0;       // "Museum of Comparative Zoology": 1 = institution head seen, 2 = inside its "of" name
 
     function entryKey(e) { var ps = e.info.parts; return lookupKey(ps[ps.length - 1]); }
+    // is the token before the initial at toks[j] another initial ("H. G. Wells") or a name ("John A. Costa")?
+    function initialOrName(j) {
+      var q = prevSolid(toks, j);
+      if (q < 0) return false;
+      if (toks[q].text === '.' && q > 0 && toks[q - 1].kind === 'word' && toks[q - 1].text.length === 1 && isUpper(toks[q - 1].text)) return true;
+      return toks[q].kind === 'word' && !!infos[q] && infos[q].whole === 'anchor';
+    }
 
     // run: consecutive capitalised word tokens (candidates, anchors and the sentence-start
     // word). decide() works out which of them are parts of a name.
@@ -1094,15 +1123,32 @@
       if (nameZone[i] && info.parts.length === 1 && info.cls[0] === 'candidate') { info.cls[0] = 'unknown'; wholeClass(info); }
       var ph = phrase[i];
       // words of an institution's "of" name keep their capitals ("Museum of Comparative Zoology")
-      if (instChain === 2) {
-        if (isUpper(tok.text.charAt(0)) && hasLower(tok.text) && !BREAKER_SET.has(lookupKey(tok.text))) {
-          for (var ic = 0; ic < info.cls.length; ic++) if (info.cls[ic] === 'candidate') info.cls[ic] = 'unknown';
-          wholeClass(info);
+      // (3 = a name word such as "Utah" or "Mexico" has been consumed: the name then ends at the next ordinary
+      // word, "University of Utah students", but runs on through a head or institution word, "University of Utah Press")
+      if (instChain >= 2) {
+        var ik2 = lookupKey(tok.text);
+        if (isUpper(tok.text.charAt(0)) && hasLower(tok.text) && !BREAKER_SET.has(ik2)) {
+          if (instChain === 3 && info.whole !== 'anchor' && !ph && !isHeadKey(ik2) && !INSTITUTION_SET.has(ik2)) instChain = 0;
+          else {
+            if (info.whole === 'anchor' || ph) instChain = 3;
+            for (var ic = 0; ic < info.cls.length; ic++) if (info.cls[ic] === 'candidate') info.cls[ic] = 'unknown';
+            wholeClass(info);
+          }
         } else if (!/^(of|and|the|for|&)$/i.test(tok.text)) instChain = 0;
       }
       if (instChain === 1) instChain = /^of$/i.test(tok.text) ? 2 : 0;
+      // "Aus Sp. Nov." -> "Aus sp. nov.", "Aus N. Sp.", "gen. et sp. nov.": taxonomic abbreviations are written
+      // lowercase; "nov." only after another one, so that the month "Nov." survives. The stop may share its
+      // token with a comma ("sp. nov., from").
+      var dotNext = i + 1 < toks.length && toks[i + 1].kind === 'punct' && toks[i + 1].text.charAt(0) === '.';
+      if (dotNext && !start && info.parts.length === 1 && isUpper(tok.text.charAt(0)) && !hasUpper(tok.text.slice(1)) &&
+          TAXON_ABBREV.has(lookupKey(tok.text)) && (tok.text.length > 1 || taxonAbbrevNext(toks, i)) &&
+          (lookupKey(tok.text) !== 'nov' || taxonAbbrevBefore(toks, i))) {
+        tok.text = safeLower(tok.text); tok.changed = true;
+        info = analyse(tok.text, words, protect); infos[i] = info;
+      }
       // "St. Helens", "Mt. Everest": abbreviated name prefixes stay as they are
-      if (info.parts.length === 1 && info.cls[0] === 'candidate' && i + 1 < toks.length && toks[i + 1].text === '.' &&
+      if (info.parts.length === 1 && info.cls[0] === 'candidate' && dotNext &&
           ABBREV_SET.has(lookupKey(tok.text)) && tok.text.length <= 4) {
         info = { pieces: [tok.text], parts: [tok.text], cls: ['fixed'], whole: 'neutral' };
         infos[i] = info;
@@ -1143,14 +1189,22 @@
         info.cls[0] = 'unknown'; wholeClass(info);
       }
       // a capitalised word right after an initial is a surname: "J. Smith", "H. G. Wells";
-      // after "St." / "Mt." / "Ft." it is a name: "St. Just", "Mt. Shasta"
+      // after "St." / "Mt." / "Ft." or an honorific ("Dr.", "Prof.", "Mrs.") it is a name: "St. Just", "Dr. Smith"
       var pw = prevSolid(toks, i);
       if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].text === '.' &&
-          pw > 0 && toks[pw - 1].kind === 'word' && /^(St|Mt|Ft|Pt|Ste)$/.test(toks[pw - 1].text)) {
+          pw > 0 && toks[pw - 1].kind === 'word' && /^(St|Mt|Ft|Pt|Ste|Dr|Mr|Mrs|Ms|Prof|Sir|Rev|Fr|Hon)$/.test(toks[pw - 1].text)) {
         info.cls[0] = 'unknown'; wholeClass(info);
       }
+      // "Dr Smith", "Mrs Green": the British honorific without its stop
+      if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].kind === 'word' &&
+          /^(Dr|Mr|Mrs|Ms|Sir)$/.test(toks[pw].text)) {
+        info.cls[0] = 'unknown'; wholeClass(info);
+      }
+      // "E. Coli", "S. Aureus": a common word with an epithet ending after a lone initial is an abbreviated
+      // genus, not a surname, unless another initial or a name precedes the initial ("H. G. Wells")
       if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].text === '.' &&
-          pw > 0 && toks[pw - 1].kind === 'word' && toks[pw - 1].text.length === 1 && isUpper(toks[pw - 1].text)) {
+          pw > 0 && toks[pw - 1].kind === 'word' && toks[pw - 1].text.length === 1 && isUpper(toks[pw - 1].text) &&
+          !(EPITHET_END.test(lookupKey(info.parts[0])) && !initialOrName(pw - 1))) {
         info.cls[0] = 'unknown'; wholeClass(info);
       }
       // plural that is also a surname / region: a name only after another name
@@ -1262,8 +1316,6 @@
   // Latin phrases kept lowercase in headline style ("in situ", "in vitro", "et al.")
   var LATIN_PAIRS = { 'in situ': 1, 'in vitro': 1, 'in vivo': 1, 'in silico': 1, 'ex situ': 1, 'ex vivo': 1,
     'de novo': 1, 'a priori': 1, 'a posteriori': 1, 'per se': 1, 'et al': 1, 'in utero': 1, 'in ovo': 1 };
-  // taxonomic abbreviations that stay lowercase before their full stop ("n. sp.", "gen. nov.")
-  var TAXON_ABBREV = setOf('sp spp ssp subsp var gen nov n comb cf aff nr fam sensu');
   function isGreek(c) { return /[Ͱ-Ͽἀ-῿]/.test(c); }
 
   function toTitleCase(title, opts) {
@@ -1284,12 +1336,13 @@
       if (nw >= 0 && LATIN_PAIRS[lk + ' ' + toks[nw].text.toLowerCase()] && !hasUpper(toks[nw].text)) { keepLow[i] = 'first'; keepLow[nw] = true; }
       if (/^[a-z]+-[a-z]+$/.test(t) && LATIN_PAIRS[t.replace('-', ' ')]) keepLow[i] = 'first';
       // species epithet after a genus: "Escherichia coli", "Tyrannosaurus rex", "Homo sapiens"
-      if (pw >= 0 && /^[a-z]{3,}$/.test(t) && !small.has(t) && /^[A-Z][a-z]{2,}$/.test(toks[pw].text)) {
-        var gk = toks[pw].text.toLowerCase();
-        // the genus: a capitalised Latin-looking word that is not a known place / person;
-        // a common word ("Virus", "Data") only counts when capitalised mid-sentence
+      if (pw >= 0 && /^[a-z]{3,}$/.test(t) && !small.has(t) && /^[A-Z][a-z]{2,}$/.test(capitalise(toks[pw].text))) {
+        var gk = toks[pw].text.toLowerCase(), gCap = isUpper(toks[pw].text.charAt(0));
+        // the genus: a Latin-looking word that is not a known place / person, capitalised or still to be
+        // ("tyrannosaurus rex"); a common word ("Virus", "Data") only counts when the input capitalises it
+        // mid-sentence, and without a word list only a capitalised word counts
         var genusLike = !small.has(gk) && !BREAKER_SET.has(gk) && !FUNCTION_SET.has(gk) && (!!GENUS_O[gk] || (GENUS_END.test(gk) && !(words && words.has('^' + gk)) && !isGeoTime(gk) &&
-          !NOT_GENUS_SET.has(gk) && !isHeadKey(gk) && (!words || !isCommon(gk, words) || !isSentenceStart(toks, pw, pw > 0 && prevSolid(toks, pw) >= 0))));
+          !NOT_GENUS_SET.has(gk) && !isHeadKey(gk) && (words ? !isCommon(gk, words) || (gCap && !isSentenceStart(toks, pw, pw > 0 && prevSolid(toks, pw) >= 0)) : gCap)));
         var epithetLike = !isHeadKey(t) && (/(i|ii|ae|ensis|oides|us|um|ex)$/.test(t) || (GENUS_O[gk] && EPITHET_END.test(t + '')) ||
           (GENUS_O[gk] && /(ens|is|a)$/.test(t)) ||
           (/(a|is|ans|ens|er)$/.test(t) && (!words || !isCommon(t, words))));
@@ -1317,20 +1370,25 @@
       if (keepLow[i] === true) continue;
 
       var pieces = tok.text.split(JOINER_SPLIT), out = '', k = 0;
-      var nextTxt = wordAt(nextWordIdx(i));
+      var nextTxt = wordAt(nextWordIdx(i)), prevTxt = wordAt(prevWordIdx(i));
       for (var p = 0; p < pieces.length; p++) {
         if (p % 2 === 1) { out += pieces[p]; continue; }
         var part = pieces[p], firstPart = (k === 0); k++;
         if (!part || (protect && protect.has(part)) || hasDigit(part) || hasUpper(part.slice(1))) { out += part; continue; }
         var key = lookupKey(part);
         var edge = start || i === lastWord;
+        // a small word after "the" / "a" / "an" / "this" is a noun ("the Past", "the Inside Story"; not after
+        // "that", which is usually the conjunction: "evidence that in mice"), and the first element of a
+        // hyphenated compound is always capitalised ("Over-the-Counter", Chicago 8.161)
+        var noun = firstPart && prevTxt !== null && /^(the|a|an|this)$/i.test(prevTxt);
+        var hyphenHead = firstPart && pieces.length > 1 && pieces[1] !== '/';
         if (keepLow[i] === 'first' && !(start && firstPart)) { out += part; continue; }
         if (isGreek(part.charAt(0))) { out += part; continue; }            // "ε-Iron", not "Ε-Iron"
         // an initial before a full stop ("M. A. Geyh") is not the article
         if (part.length === 1 && pieces.length === 1 && i + 1 < toks.length && toks[i + 1].text.charAt(0) === '.') { out += capitalise(part); continue; }
         // "up to" is a compound preposition
         if (key === 'up' && pieces.length === 1 && nextTxt && nextTxt.toLowerCase() === 'to' && !edge) { out += safeLower(part); continue; }
-        if (small.has(key) && !(edge && firstPart)) out += safeLower(part);
+        if (small.has(key) && !(edge && firstPart) && !noun && !hyphenHead) out += safeLower(part);
         else out += capitalise(part);
       }
       if (out !== tok.text) { tok.text = out; tok.changed = true; }
@@ -1365,6 +1423,7 @@
         for (var c = 0; c < p.length; c++) if (isLetter(p.charAt(c))) letters++;
         if (letters < 2) continue;
         var hl = hasLower(p), hu = hasUpper(p);
+        if (!hl && !hu) continue;                           // kana, Han, hangul: no case to count
         if (!hl) { up++; continue; }
         if (hu && p.length <= 4) continue;                  // Pb, IgG, mRNA, Ma
         low++;
@@ -1455,7 +1514,30 @@
     'GPS GIS AMNH CMNH FMNH USNM NHMUK MNHN IODP ODP DSDP LIDAR CRISPR IUCN UNEP ICZN NSF NERC BGS GSC CNRS MOR ' +
     'UCMP YPM NMNH BMNH IVPP ZPAL MCZ UALVP TMP LIP LIPS TTG MASH AFC EMP IDA ISBN ESA JAXA CSIRO NIH BMJ ' +
     'HER2 BRCA TNF HLA IGG IGM IGE ACE AMP ATP ADP GTP NADH NADPH PCR ELISA NASA SEDEX VMS MVT BIF BIFS OH ' +
-    'LA-ICPMS LA-MC-ICP-MS', true);
+    'LA-ICPMS LA-MC-ICP-MS EPA NIST DARPA FEMA OSHA NCAR NCBI EMBL', true);
+  // "US", "EU" and "DOE" are also the word "us", the element Eu and the word "doe": acronyms by company only.
+  // "us" the pronoun ends the title or follows a verb that takes it ("TELL US", "TELL US ABOUT"); the country
+  // precedes another word ("US EPA", "THE US DEPARTMENT", "IN US HOSPITALS").
+  var US_OBJECT_VERBS = setOf('tell tells told telling teach teaches taught teaching show shows showed shown showing give gives gave given ' +
+    'giving let lets letting help helps helped helping make makes made making bring brings brought bringing lead leads led leading take ' +
+    'takes took taken taking leave leaves left leaving allow allows allowed allowing remind reminds reminded reminding keep keeps kept ' +
+    'keeping get gets got getting call calls called calling save saves saved saving join joins joined joining ask asks asked asking ' +
+    'want wants wanted wanting guide guides guided guiding inform informs informed informing enable enables enabled enabling');
+  var EU_CONTEXT = setOf('member members countries country states policy policies regulation regulations directive directives law laws ' +
+    'legislation commission parliament council funding funded project projects programme programmes program programs ets enlargement ' +
+    'accession budget citizens integration market markets referendum membership taxonomy governance institutions level wide emissions ' +
+    'trading agricultural fisheries regions average economy economies');
+  var DOE_CONTEXT = setOf('national laboratory laboratories office report reports program programs programme project projects funded ' +
+    'funding standards guidelines site sites facility facilities complex order data sponsored');
+  function contextAcronym(core, toks, pv, nx) {
+    if (core !== 'US' && core !== 'EU' && core !== 'DOE') return false;
+    var pk = pv >= 0 && toks[pv].kind === 'word' ? toks[pv].text.toLowerCase() : '';
+    var nk = nx >= 0 && toks[nx].kind === 'word' ? toks[nx].text.toLowerCase() : '';
+    if (pk === 'the' || (pv >= 0 && /\($/.test(toks[pv].text) && nx >= 0 && /^\)/.test(toks[nx].text))) return true;   // "THE US", "(US)"
+    if (core === 'US') return !!nk && !US_OBJECT_VERBS.has(pk) && !/^(to|about|that|why|how|what|where|when|whether|if)$/.test(nk);
+    if (core === 'EU') return EU_CONTEXT.has(nk);
+    return pk === 'us' || DOE_CONTEXT.has(nk);
+  }
   // short words that are ordinary words or names, never acronyms
   var SHORT_WORDS = setOf('os rex gen nov sp spp ssp var cf aff et al de du la le von van der den nad pod ole tim');
   // name particles and Latin words written lowercase mid-title ("Domasov nad Bystrici", "os palatinum")
@@ -1532,6 +1614,7 @@
     if (!/[A-Z]/.test(p) || /[a-zß-ÿ]/.test(p)) return { text: p, kind: 'other' };       // Pb, IgG: already cased
     if (ctx.afterNumber && Object.prototype.hasOwnProperty.call(UNIT_CASE, p)) return { text: UNIT_CASE[p], kind: 'unit' };
     if (Object.prototype.hasOwnProperty.call(FIXED_CASE, p)) return { text: FIXED_CASE[p], kind: 'fixed' };
+    if (ctx.acr) return { text: p, kind: 'acronym' };                                              // US, U.S., EU, DOE
     if (ctx.chain) return { text: ctx.chainText, kind: 'formula' };
     if (hasDigit(p)) {
       f = /^[A-Z0-9.]+$/.test(p) && !MED_FORMULA_BLOCK.test(p) && !ACRONYMS.has(p) ? parseFormula(p) : null;
@@ -1603,9 +1686,10 @@
       }
       if (chain && nform < 2) chain = false;
       var dot = i + 1 < toks.length && toks[i + 1].text.charAt(0) === '.';
+      var acr = parts.length === 1 && contextAcronym(parts[0].replace(/['’]S$/, '').replace(/\./g, ''), toks, pv, nextSolid(toks, i));
       var outParts = [];
       for (k = 0; k < parts.length; k++) {
-        var r = capsPart(parts[k], { chain: chain, chainText: chain ? ftext[k] : null, dot: dot && k === parts.length - 1,
+        var r = capsPart(parts[k], { chain: chain, chainText: chain ? ftext[k] : null, dot: dot && k === parts.length - 1, acr: acr,
           start: start && k === 0, prefix: k === 0 && parts.length > 1, quoted: quoted, afterNumber: afterNumber && k === 0 }, words);
         if (r.text.length !== parts[k].length) r = { text: parts[k], kind: 'other' };
         outParts.push(r);

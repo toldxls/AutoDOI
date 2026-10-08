@@ -6,11 +6,13 @@
 set -e
 cd "$(dirname "$0")/.."
 tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
 UA="AutoDOI-tests (https://github.com/toldxls/AutoDOI)"
 for spec in journal-article:100 journal-article:100 book:40 book-chapter:40 proceedings-article:40 posted-content:40 dataset:30 dissertation:30 report:30 \
             monograph:20 edited-book:20 reference-entry:20 standard:20 other:20 peer-review:10 component:10 book-section:10 journal-issue:5 reference-book:10 report-component:5; do
   t=${spec%%:*}; n=${spec##*:}
-  i=$((${i:-0}+1)); curl -sS -A "$UA" -o "$tmp/$i-$t-$n.json" "https://api.crossref.org/works?sample=$n&filter=type:$t"
+  # -f: an error page must fail the run, not be written as a sample; --max-time and --retry: a stalled or 5xx reply is retried, not waited on
+  i=$((${i:-0}+1)); curl -sSf --max-time 60 --retry 3 -A "$UA" -o "$tmp/$i-$t-$n.json" "https://api.crossref.org/works?sample=$n&filter=type:$t"
   sleep 1
 done
 python3 - "$tmp" <<'PY'
@@ -36,5 +38,4 @@ out.sort(key=lambda r: (r.get('type', ''), r['DOI']))
 json.dump(out, open('tests/fixtures/corpus.json', 'w'), ensure_ascii=False, separators=(',', ':'))
 print(len(out), 'records,', os.path.getsize('tests/fixtures/corpus.json'), 'bytes'); print(stats)
 PY
-rm -rf "$tmp"
 echo "Now run: node tests/invariants.test.js && node tests/fuzz.test.js"

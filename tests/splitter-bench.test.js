@@ -59,7 +59,7 @@ var real = [
   ['auto: numbered', function (r) { return r.map(function (x, i) { return wrap((i + 1) + '. ' + x, 80); }).join('\n'); }, 'auto', 0.99],
   ['auto: hanging indent', function (r) { return r.map(function (x) { return wrap(x, 80, '    '); }).join('\n'); }, 'auto', 0.95],
   ['auto: blank lines', function (r) { return r.map(function (x) { return wrap(x, 80); }).join('\n\n'); }, 'auto', 0.93],
-  ['auto: one per line', function (r) { return r.join('\n'); }, 'auto', 0.70],
+  ['auto: one per line', function (r) { return r.join('\n'); }, 'auto', 0.72],
   ['layout blank', function (r) { return r.map(function (x) { return wrap(x, 80); }).join('\n\n'); }, 'blank', 1.0],
   ['layout numbered', function (r) { return r.map(function (x, i) { return wrap((i + 1) + '. ' + x, 80); }).join('\n'); }, 'numbered', 1.0],
   ['layout one per line', function (r) { return r.join('\n'); }, 'lines', 0.97]

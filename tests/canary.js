@@ -10,6 +10,7 @@ var pick = function (re) { var m = html.match(re); if (!m) throw new Error('inde
 var SELECT = pick(/var SELECT = '([^']+)'/), OA_SELECT = pick(/var OA_SELECT = '([^']+)'/), CITEPROC = pick(/var CITEPROC = '([^']+)'/);
 var SRI = pick(new RegExp(CITEPROC.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&') + "': '([^']+)'"));
 var STYLES_SHA = pick(/CSL_STYLES_COMMIT = '([0-9a-f]{40})'/), LOCALES_SHA = pick(/CSL_LOCALES_COMMIT = '([0-9a-f]{40})'/);
+var UNPAYWALL_EMAIL = pick(/var UNPAYWALL_EMAIL = '([^']+)'/);
 var LIVE = process.env.LIVE_URL || 'https://toldxls.github.io/AutoDOI/';
 var UA = 'AutoDOI-canary/' + pkg.version + ' (https://github.com/toldxls/AutoDOI)';
 var NATURE = { doi: '10.1038/nature12373', title: 'Nanometre-scale thermometry in a living cell', year: 2013, authors: 8, journal: 'Nature', issn: '0028-0836', pmid: '23903748' };
@@ -88,6 +89,23 @@ function expect(cond, msg) { if (!cond) throw new Error(msg); }
     if (r.status === 429) return '429: daily credits used up';
     expect(r.status === 200 && r.json && /nature12373/i.test(r.json.doi || ''), 'HTTP ' + r.status + ' ' + r.text.slice(0, 200));
     return 'ok';
+  });
+  // Unpaywall: free copies.  The fields are the ones the page's freeCopies() reads and tests/browser/ui.test.js mocks
+  // (is_oa, oa_locations[] with url, url_for_pdf, url_for_landing_page, version, host_type, license, repository_institution; best_oa_location)
+  await probe('Unpaywall answers for the sample DOI with the fields the page reads', async function () {
+    var r = await get('https://api.unpaywall.org/v2/' + NATURE.doi.split('/').map(encodeURIComponent).join('/') + '?email=' + encodeURIComponent(UNPAYWALL_EMAIL));
+    expect(r.status === 200 && r.json, 'HTTP ' + r.status + ' ' + r.text.slice(0, 200));
+    var u = r.json;
+    expect((u.doi || '').toLowerCase() === NATURE.doi, 'doi: ' + u.doi);
+    expect(typeof u.is_oa === 'boolean', 'is_oa: ' + JSON.stringify(u.is_oa));
+    expect(Array.isArray(u.oa_locations) && u.oa_locations.length > 0, 'oa_locations: ' + JSON.stringify(u.oa_locations).slice(0, 120));
+    var KEYS = ['url', 'url_for_pdf', 'url_for_landing_page', 'version', 'host_type', 'license'];
+    u.oa_locations.forEach(function (loc, i) { KEYS.forEach(function (k) { expect(k in loc, 'oa_locations[' + i + '] lacks ' + k + ': ' + Object.keys(loc).join(',')); }); });
+    expect(u.oa_locations.every(function (loc) { return loc.host_type === 'publisher' || loc.host_type === 'repository'; }), 'host_type values: ' + u.oa_locations.map(function (l) { return l.host_type; }).join(','));
+    var repos = u.oa_locations.filter(function (loc) { return loc.host_type === 'repository'; });
+    expect(repos.length > 0 && repos.every(function (loc) { return 'repository_institution' in loc; }), 'repository copies: ' + JSON.stringify(repos).slice(0, 160));
+    expect(u.best_oa_location && 'host_type' in u.best_oa_location && 'url_for_landing_page' in u.best_oa_location, 'best_oa_location: ' + JSON.stringify(u.best_oa_location).slice(0, 160));
+    return 'is_oa=' + u.is_oa + ', ' + u.oa_locations.length + ' locations, ' + repos.length + ' in repositories (' + repos.map(function (l) { return l.repository_institution; }).join('; ') + ')';
   });
   // Europe PMC: PubMed IDs
   await probe('Europe PMC resolves a PMID to its DOI', async function () {

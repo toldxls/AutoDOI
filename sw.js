@@ -2,7 +2,7 @@
  * The page itself is fetched from the network first so an update arrives as soon as it is deployed; the data files are served
  * from the cache and refreshed behind; the engine, styles and locales are pinned to commits, so once cached they never change.
  * Lookups (Crossref, doi.org, OpenAlex and the rest) always go to the network and are never cached. */
-var VERSION = '1.15.0'; // keep in step with APP_VERSION (tests/syntax.test.js checks)
+var VERSION = '1.16.0'; // keep in step with APP_VERSION (tests/syntax.test.js checks)
 var CACHE = 'autodoi-' + VERSION;
 var PAGE = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 var PINNED = /^https:\/\/(?:cdn\.jsdelivr\.net\/npm\/citeproc@|raw\.githubusercontent\.com\/citation-style-language\/(?:styles|locales)\/[0-9a-f]{40}\/)/;
@@ -16,20 +16,28 @@ self.addEventListener('activate', function (ev) {
 self.addEventListener('fetch', function (ev) {
   var req = ev.request; if (req.method !== 'GET') return;
   var url = new URL(req.url), same = url.origin === self.location.origin;
-  if (req.mode === 'navigate' || (same && /\/(?:index\.html)?$/.test(url.pathname))) { // the page: network first, the cached copy when offline
-    ev.respondWith(fetch(req).then(function (res) { if (res.ok) { var copy = res.clone(); caches.open(CACHE).then(function (c) { return c.put('./index.html', copy); }).catch(function () {}); } return res; }) // a 404 or a 5xx must not become the offline copy
-      .catch(function () { return caches.match('./index.html'); }));
+  var isPage = same && /\/(?:index\.html)?$/.test(url.pathname); // the page itself: only its own path, as an HTML document, may become the offline copy
+  if (req.mode === 'navigate' || isPage) { // the page: network first, the cached copy when offline
+    ev.respondWith(fetch(req).then(function (res) {
+      var type = (res.headers && res.headers.get && res.headers.get('content-type')) || '';
+      if (res.ok && isPage && /^text\/html/i.test(type)) { // a 404 or a 5xx, another document on this origin, or a non-HTML answer must not become the offline copy
+        var copy = res.clone();
+        ev.waitUntil(caches.open(CACHE).then(function (c) { return c.put('./index.html', copy); }).catch(function () {}));
+      }
+      return res;
+    }).catch(function () { return caches.match('./index.html'); }));
     return;
   }
   if (same && /\/data\//.test(url.pathname)) { // style index, EndNote shortlist, word list: cached copy now, fresh copy for next time
     ev.respondWith(caches.open(CACHE).then(function (c) { return c.match(req).then(function (hit) {
-      var refresh = fetch(req).then(function (res) { if (res.ok) c.put(req, res.clone()); return res; }).catch(function () { return hit; });
-      return hit || refresh;
+      var refresh = fetch(req).then(function (res) { if (res.ok) return c.put(req, res.clone()).then(function () { return res; }); return res; });
+      ev.waitUntil(refresh.catch(function () {})); // registered now, while the event is still active: once the cached copy has answered, a late waitUntil would be refused
+      return hit || refresh.catch(function () { return hit; });
     }); }));
     return;
   }
   if (PINNED.test(req.url) || (same && /\.(?:svg|webmanifest)$/.test(url.pathname))) { // pinned by commit or version: cache first
-    ev.respondWith(caches.open(CACHE).then(function (c) { return c.match(req).then(function (hit) { return hit || fetch(req).then(function (res) { if (res.ok) c.put(req, res.clone()); return res; }); }); }));
+    ev.respondWith(caches.open(CACHE).then(function (c) { return c.match(req).then(function (hit) { return hit || fetch(req).then(function (res) { if (res.ok) ev.waitUntil(c.put(req, res.clone()).catch(function () {})); return res; }); }); }));
   }
   // anything else (the lookups) goes straight to the network
 });

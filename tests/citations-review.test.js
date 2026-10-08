@@ -50,9 +50,12 @@ eq('3 arxiv bare trailing period', A.toDoi('2301.00001.'), '10.48550/arXiv.2301.
 function rec(t, fam, type) { return { title: [t], issued: { 'date-parts': [[2010]] }, author: [{ family: fam, given: 'A.' }], type: type || 'journal-article' }; }
 var ref = 'Smith A. 2010. Nanometre-scale thermometry in a living cell. Nature 500:54.';
 eq('4 diacritics folded', A.matchConfidence('García A. 2010. Schrödinger cats and Müller waves. Nature 1:1.', rec('Schrodinger cats and Muller waves', 'Garcia')), 1);
-eq('4 diacritics folded other way', A.matchConfidence('Garcia A. 2010. Schrodinger cats. Nature 1:1.', rec('Schrödinger cats', 'García')), 1);
-eq('4 unicode subscripts vs <sub>', A.matchConfidence('Smith A. 2010. Fe₂O₃ nanoparticles in cells. Nature 500:54.', rec('Fe<sub>2</sub>O<sub>3</sub> nanoparticles in cells', 'Smith')), 1);
-eq('4 superscript ions', A.matchConfidence('Smith A. 2010. Fe³⁺ uptake in cells. Nature 500:54.', rec('Fe<sup>3+</sup> uptake in cells', 'Smith')), 1);
+// a title of three words or fewer is green only with the volume and page (or the DOI) agreeing, so these records carry them
+var numbered = function (r, vol, page) { r.volume = vol; r.page = page; return r; };
+eq('4 diacritics folded other way', A.matchConfidence('Garcia A. 2010. Schrodinger cats. Nature 1:1.', numbered(rec('Schrödinger cats', 'García'), '1', '1-9')), 1);
+eq('4 unicode subscripts vs <sub>', A.matchConfidence('Smith A. 2010. Fe₂O₃ nanoparticles in cells. Nature 500:54.', numbered(rec('Fe<sub>2</sub>O<sub>3</sub> nanoparticles in cells', 'Smith'), '500', '54-58')), 1);
+eq('4 superscript ions', A.matchConfidence('Smith A. 2010. Fe³⁺ uptake in cells. Nature 500:54.', numbered(rec('Fe<sup>3+</sup> uptake in cells', 'Smith'), '500', '54-58')), 1);
+eq('4 a short title with no volume or page to confirm it is one to check', A.matchConfidence('Smith A. 2010. Fe³⁺ uptake in cells. Nature.', rec('Fe<sup>3+</sup> uptake in cells', 'Smith')) < 0.8, true);
 eq('4 original still 1', A.matchConfidence(ref, rec('Nanometre-scale thermometry in a living cell', 'Smith')), 1);
 ['Expression of concern: ', "Authors' reply to ", 'Author’s reply to ', 'Reply to ', 'Response to ', 'Supplementary material to ', 'Supplementary Information for ', 'Supplemental data: ', 'Retraction: ', 'Retracted: ', 'Comment on ', 'Commentary on ', 'Editorial: '].forEach(function (pre) {
   eq('4 notice ' + pre, A.matchConfidence(ref, rec(pre + 'Nanometre-scale thermometry in a living cell', 'Smith')) <= 0.5, true);
@@ -131,7 +134,7 @@ var siciRec = J({ DOI: sici, issued: { 'date-parts': [[2000]] } });
 var siciLink = 'https://doi.org/10.1002/(SICI)1097-0258(19980430)17:8%3C857::AID-SIM777%3E3.0.CO;2-E';
 eq('10 apa link', A.format(siciRec, 'apa'), 'A, B. (2000). T. J. ' + siciLink);
 eq('10 apa html link', A.formatHtml(siciRec, 'apa'), 'A, B. (2000). T. <i>J</i>. ' + siciLink);
-eq('10 harvard link', A.format(siciRec, 'harvard').slice(-siciLink.length - 1), siciLink + '.');
+eq('10 harvard link', A.format(siciRec, 'harvard').slice(-siciLink.length), siciLink); // Cite Them Right: no stop after the link
 eq('10 special chars', A.format({ title: ['T'], type: 'journal-article', DOI: '10.1000/ab c%d#e?f%20x日[y]' }, 'apa'), 'T. (n.d.). https://doi.org/10.1000/ab%20c%25d%23e%3Ff%20x%E6%97%A5%5By%5D');
 eq('10 plain doi untouched', A.format(J({ DOI: '10.1016/S0016-7037(02)01188-X' }), 'apa'), 'A, B. (2020). T. J. https://doi.org/10.1016/S0016-7037(02)01188-X');
 var siciBib = A.format(siciRec, 'bibtex');
@@ -151,4 +154,57 @@ eq('10 ieee bare doi raw', /doi: 10\.1002\/\(SICI\)1097-0258\(19980430\)17:8<857
   page.type = 'webpage';
   eq('5 chicago undated page keeps its access date, no n.d.', A.format(page, 'chicago'), 'Org. “Undated page.” Accessed March 8, 2022. https://x.org/p.');
 })();
+// 11 a book's edition sits after the italic title, in roman (CMOS 14.113; Cite Them Right)
+var politics = { type: 'book', title: ['Politics'], author: [{ family: 'Smith', given: 'John' }], edition: '2', publisher: 'P', 'publisher-location': 'NY', issued: { 'date-parts': [[2020]] } };
+eq('11 chicago edition outside the italics', A.formatHtml(politics, 'chicago'), 'Smith, John. <i>Politics</i>. 2nd ed. NY: P, 2020.');
+eq('11 harvard edition outside the italics', A.formatHtml(politics, 'harvard'), 'Smith, J. (2020) <i>Politics</i>, 2nd edn. NY: P.');
+eq('11 harvard text edition', A.formatHtml(Object.assign({}, politics, { edition: 'Revised edition' }), 'harvard'), 'Smith, J. (2020) <i>Politics</i>, Revised edition. NY: P.');
+// 11b Harvard as Cite Them Right 12th edn prints it (the golden suite holds the guides' own examples; these pin the forms around them)
+var ctr = function (extra) { return A.format(Object.assign({ type: 'journal-article', title: ['T'], author: [{ family: 'Smith', given: 'J.' }], issued: { 'date-parts': [[2020]] }, 'container-title': ['J'], volume: '11' }, extra), 'harvard'); };
+eq('11b harvard article number', ctr({ 'article-number': '1157' }), 'Smith, J. (2020) ‘T’, J, 11, article 1157.');
+eq('11b harvard URL with an accessed date', ctr({ URL: 'https://x.y/p', accessed: { 'date-parts': [[2024, 5, 6]] } }), 'Smith, J. (2020) ‘T’, J, 11. Available at: https://x.y/p (Accessed: 6 May 2024).');
+eq('11b harvard DOI takes no final stop', ctr({ DOI: '10.1000/abc', page: '1-9' }), 'Smith, J. (2020) ‘T’, J, 11, pp. 1–9. Available at: https://doi.org/10.1000/abc');
+eq('11b harvard chapter editors initials first, (eds) without a stop', A.format({ type: 'book-chapter', title: ['C'], author: [{ family: 'Smith', given: 'J.' }], editor: [{ family: 'Pecht', given: 'M.' }, { family: 'Kang', given: 'M. L.' }], 'container-title': ['B'], publisher: 'P', 'publisher-location': 'Hoboken, NJ', page: '559-587', issued: { 'date-parts': [[2018]] } }, 'harvard'), 'Smith, J. (2018) ‘C’, in M. Pecht and M.L. Kang (eds) B. Hoboken, NJ: P, pp. 559–587.');
+eq('11b harvard one editor keeps the stop', A.format({ type: 'book-chapter', title: ['C'], author: [{ family: 'Smith', given: 'J.' }], editor: [{ family: 'Pecht', given: 'M.' }], 'container-title': ['B'], publisher: 'P', issued: { 'date-parts': [[2018]] } }, 'harvard'), 'Smith, J. (2018) ‘C’, in M. Pecht (ed.) B. P.');
+eq('11b harvard edited book', A.format({ type: 'book', title: ['B'], editor: [{ family: 'Pecht', given: 'M.' }, { family: 'Kang', given: 'M.' }], publisher: 'P', issued: { 'date-parts': [[2018]] } }, 'harvard'), 'Pecht, M. and Kang, M. (eds) (2018) B. P.');
+eq('11b harvard report', A.formatHtml({ type: 'report', title: ['Annual Report 2012'], author: [{ name: 'Tesco' }], publisher: 'Tesco PLC', 'publisher-location': 'Cheshunt', issued: { 'date-parts': [[2012]] } }, 'harvard'), 'Tesco (2012) <i>Annual Report 2012</i>. Cheshunt: Tesco PLC.');
+eq('11b harvard thesis online', A.format({ type: 'dissertation', title: ['T'], author: [{ family: 'Daly', given: 'L.' }], institution: [{ name: 'TUS' }], degree: ['PhD thesis'], URL: 'https://r.ie/1', accessed: { 'date-parts': [[2023, 8, 23]] }, issued: { 'date-parts': [[2022]] } }, 'harvard'), 'Daly, L. (2022) T. PhD thesis. TUS. Available at: https://r.ie/1 (Accessed: 23 August 2023).');
+eq('11b harvard thesis degree from the record, no "Unpublished" invented', A.format({ type: 'dissertation', title: ['T'], author: [{ family: 'Daly', given: 'L.' }], institution: [{ name: 'TUS' }], degree: ['MSc'], issued: { 'date-parts': [[2022]] } }, 'harvard'), 'Daly, L. (2022) T. MSc thesis. TUS.');
+eq('11b harvard thesis with no degree is a doctorate', A.format({ type: 'dissertation', title: ['T'], author: [{ family: 'Daly', given: 'L.' }], institution: [{ name: 'TUS' }], issued: { 'date-parts': [[2022]] } }, 'harvard'), 'Daly, L. (2022) T. PhD thesis. TUS.');
+eq('11b harvard web page', A.formatHtml({ type: 'webpage', title: ['Library'], author: [{ name: 'University of Aberdeen' }], URL: 'https://www.abdn.ac.uk/library', accessed: { 'date-parts': [[2023, 6, 22]] }, issued: { 'date-parts': [[2015]] } }, 'harvard'), 'University of Aberdeen (2015) <i>Library</i>. Available at: https://www.abdn.ac.uk/library (Accessed: 22 June 2023).');
+eq('11b harvard web page with no author is cited by its site', A.format({ type: 'webpage', title: ['Library'], 'container-title': ['University of Aberdeen'], URL: 'https://www.abdn.ac.uk/library', issued: { 'date-parts': [[2015]] } }, 'harvard'), 'University of Aberdeen (2015) Library. Available at: https://www.abdn.ac.uk/library');
+eq('11 chicago text edition keeps its stop', A.formatHtml(Object.assign({}, politics, { title: ['Politics?'], edition: 'Revised edition' }), 'chicago'), 'Smith, John. <i>Politics?</i> Revised edition. NY: P, 2020.');
+// 12 a dissertation for a master's degree is @mastersthesis; the same degree test names it in APA and Chicago
+var msc = { type: 'dissertation', title: ['T'], author: [{ family: 'S', given: 'J' }], institution: [{ name: 'U' }], degree: ['MSc'], issued: { 'date-parts': [[2020]] } };
+eq('12 bibtex mastersthesis', A.format(msc, 'bibtex').split('\n')[0], '@mastersthesis{S2020,');
+eq('12 bibtex phdthesis', A.format(Object.assign({}, msc, { degree: ['PhD'] }), 'bibtex').split('\n')[0], '@phdthesis{S2020,');
+eq('12 apa master\'s thesis', A.format(msc, 'apa'), "S, J. (2020). T [Master's thesis, U].");
+eq('12 chicago master\'s thesis', A.format(msc, 'chicago'), "S, J. “T.” Master's thesis, U, 2020.");
+// 13 MLA 9 (5.39, 5.46): an edited book with no author begins with its editor; a book with both names the editor after the title
+eq('13 mla crossref book with editors only', A.format({ type: 'book', title: ['T'], editor: [{ family: 'Ed', given: 'Alan' }], publisher: 'P', issued: { 'date-parts': [[2020]] } }, 'mla'), 'Ed, Alan, editor. T. P, 2020.');
+eq('13 mla two editors', A.format({ type: 'book', title: ['T'], editor: [{ family: 'Ed', given: 'Alan' }, { family: 'Ed', given: 'Beth' }], publisher: 'P', issued: { 'date-parts': [[2020]] } }, 'mla'), 'Ed, Alan, and Beth Ed, editors. T. P, 2020.');
+eq('13 mla author and editor', A.format({ type: 'book', title: ['Emma'], author: [{ family: 'Austen', given: 'Jane' }], editor: [{ family: 'Chapman', given: 'R. W.' }], publisher: 'Oxford UP', issued: { 'date-parts': [[1988]] } }, 'mla'), 'Austen, Jane. Emma. Edited by R. W. Chapman, Oxford UP, 1988.');
+eq('13 mla a report with an editor and no author keeps the title first', A.format({ type: 'report', title: ['T'], editor: [{ family: 'Ed', given: 'Alan' }], publisher: 'P', issued: { 'date-parts': [[2020]] } }, 'mla'), '“T.” P, Edited by Alan Ed, 2020.');
+// 14 no title: no bare full stop in APA, no empty title field in BibTeX
+var untitled = { type: 'book', title: [], author: [{ family: 'S', given: 'J' }], publisher: 'P', issued: { 'date-parts': [[2020]] } };
+eq('14 apa untitled book', A.format(untitled, 'apa'), 'S, J. (2020). P.');
+eq('14 apa untitled book with an edition', A.format(Object.assign({}, untitled, { edition: '2' }), 'apa'), 'S, J. (2020). (2nd ed.). P.');
+eq('14 bibtex untitled', lines(A.format(untitled, 'bibtex'), /title/).length, 0);
+// 15 APA 7 (9.24, 10.16): the site name or publisher is omitted when it is the author
+eq('15 apa site is the author', A.format({ type: 'webpage', title: ['T'], author: [{ name: 'CDC' }], 'container-title': ['CDC'], URL: 'http://x.y', issued: { 'date-parts': [[2020, 5, 4]] } }, 'apa'), 'CDC. (2020, May 4). T. http://x.y');
+eq('15 apa site differs from the author', A.format({ type: 'webpage', title: ['T'], author: [{ name: 'CDC' }], 'container-title': ['Centers for Disease Control'], URL: 'http://x.y', issued: { 'date-parts': [[2020, 5, 4]] } }, 'apa'), 'CDC. (2020, May 4). T. Centers for Disease Control. http://x.y');
+eq('15 apa publisher is the author', A.format({ type: 'report', title: ['T'], author: [{ name: 'WHO' }], publisher: 'WHO', issued: { 'date-parts': [[2020]] } }, 'apa'), 'WHO. (2020). T.');
+eq('15 apa a person named like the publisher is not the publisher', A.format({ type: 'book', title: ['T'], author: [{ family: 'Wiley', given: 'J.' }], publisher: 'Wiley', issued: { 'date-parts': [[2020]] } }, 'apa'), 'Wiley, J. (2020). T. Wiley.');
+// 16 Vancouver with pages but no year and no volume: no leading colon
+eq('16 vancouver pages alone', A.format({ type: 'journal-article', title: ['T'], author: [{ family: 'S', given: 'J' }], 'container-title': ['Nature'], page: '123-129' }, 'vancouver'), 'S J. T. Nature. 123-9.');
+eq('16 vancouver year and pages', A.format({ type: 'journal-article', title: ['T'], author: [{ family: 'S', given: 'J' }], 'container-title': ['Nature'], page: '123-129', issued: { 'date-parts': [[2020]] } }, 'vancouver'), 'S J. T. Nature. 2020:123-9.');
+// 17 a given name in capitals beside a mixed-case family: a word with a vowel is a name, a vowel-less token is initials
+var capsGiven = function (fam, given) { return A.normalize({ author: [{ family: fam, given: given }] }).authors[0].given; };
+eq('17 IAN beside Smith is Ian', capsGiven('Smith', 'IAN'), 'Ian');
+eq('17 JR beside Smith is initials', capsGiven('Smith', 'JR'), 'JR');
+eq('17 DW beside Smith is initials', capsGiven('Smith', 'DW'), 'DW');
+eq('17 AL beside Smith is initials', capsGiven('Smith', 'AL'), 'AL');
+eq('17 AL beside SMITH is Al', capsGiven('SMITH', 'AL'), 'Al');
+eq('17 MARIA JOSE beside Garcia', capsGiven('Garcia', 'MARIA JOSE'), 'Maria Jose');
+eq('17 apa initials from a caps given name', A.format({ type: 'journal-article', title: ['T'], author: [{ family: 'Smith', given: 'IAN' }, { family: 'Jones', given: 'JR' }], 'container-title': ['J'], volume: '1', issued: { 'date-parts': [[2020]] } }, 'apa'), 'Smith, I., & Jones, J. R. (2020). T. J, 1.');
 console.log(pass + ' passed, ' + fail + ' failed');

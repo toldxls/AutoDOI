@@ -27,6 +27,9 @@
 var POLITE_EMAIL = ''; // optional: your email for Crossref's polite pool, e.g. 'you@example.org'
 var TIME_BUDGET_MS = 24000; // stay under the 30 s custom-function limit
 var CACHE_SECONDS = 21600;  // 6 h, the CacheService maximum
+var MISS_SECONDS = 600;     // how long "not at Crossref" is remembered: a DataCite or mEDRA DOI then goes straight to doi.org
+var MIN_CONFIDENCE = 0.35;  // below this a Crossref hit is not the paper asked for: FIND_DOI, REF_TO_* and the export say "No match"
+var runCache_ = {};         // this invocation's records, so a record too large for CacheService is still fetched once per recalculation
 
 var SELECT_ = 'DOI,URL,title,subtitle,original-title,author,editor,container-title,short-container-title,issued,published-print,' +
   'published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event';
@@ -83,9 +86,9 @@ function FIND_DOI(title, journal, details) {
     if (Date.now() > deadline) return 'Retry';
     var j = cellAt_(journal, r, c);
     var hits = search_({ 'query.bibliographic': t, 'query.container-title': j }, 5);
-    if (!hits.length) return 'No match';
-    var best = hits[0], conf = -1;
+    var best = null, conf = -1;
     hits.forEach(function (h) { var s = AutoDOI.matchConfidence(t + ' ' + j, h); if (s > conf) { conf = s; best = h; } });
+    if (!best || conf < MIN_CONFIDENCE) return 'No match'; // Crossref always answers with something; a poor score is a different paper
     return details ? [best.doi, best.title, best.container || best.publisher, best.year, Math.round(conf * 100) / 100] : best.doi;
   }, details ? 5 : 0);
 }
@@ -170,11 +173,14 @@ function cacheKey_(s) {
   return 'ad2:' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, s, Utilities.Charset.UTF_8));
 }
 // Values are wrapped so that a cached null ("no DOI for this PMID") counts as a hit; undefined means not cached.
+// This invocation's own map is read first: it holds what CacheService refused (a value over its 100 KB limit) for the rest of the run.
 function cacheGet_(s) {
+  if (s in runCache_) return runCache_[s];
   try { var hit = CacheService.getScriptCache().get(cacheKey_(s)); if (!hit) return undefined; var w = JSON.parse(hit); return (w && typeof w === 'object' && 'v' in w) ? w.v : undefined; } catch (e) { return undefined; }
 }
-function cachePut_(s, val) {
-  try { CacheService.getScriptCache().put(cacheKey_(s), JSON.stringify({ v: val }), CACHE_SECONDS); } catch (e) { /* too large; fine */ }
+function cachePut_(s, val, seconds) {
+  runCache_[s] = val;
+  try { CacheService.getScriptCache().put(cacheKey_(s), JSON.stringify({ v: val }), seconds || CACHE_SECONDS); } catch (e) { /* too large; the run map still has it */ }
 }
 function cached_(s, producer) {
   var hit = cacheGet_(s);
@@ -211,7 +217,7 @@ function prefetchRecords_(dois, deadline) {
     try { responses = UrlFetchApp.fetchAll(chunk.map(function (d) { return { url: crossrefUrl_(d), muteHttpExceptions: true }; })); }
     catch (e) { continue; } // transient failure of this group: the next group still runs; misses are fetched one by one later
     responses.forEach(function (res, j) {
-      try { var rec = recordFromCrossref_(chunk[j], res); if (rec) cachePut_('doi:' + chunk[j].toLowerCase(), rec); }
+      try { var rec = recordFromCrossref_(chunk[j], res); if (rec) cachePut_('doi:' + chunk[j].toLowerCase(), rec); else cachePut_('cr404:' + chunk[j].toLowerCase(), true, MISS_SECONDS); } // a 404 is remembered too, so fetchRecord_ does not ask Crossref again before doi.org
       catch (e) { /* leave uncached; fetchRecord_ reports it */ }
     });
   }
@@ -219,9 +225,12 @@ function prefetchRecords_(dois, deadline) {
 
 function fetchRecord_(doi) {
   return cached_('doi:' + doi.toLowerCase(), function () {
-    var res = UrlFetchApp.fetch(crossrefUrl_(doi), { muteHttpExceptions: true });
-    var rec = recordFromCrossref_(doi, res);
-    if (rec) return rec;
+    if (!cacheGet_('cr404:' + doi.toLowerCase())) { // skipped when the prefetch (or a recent call) already had Crossref's 404
+      var res = UrlFetchApp.fetch(crossrefUrl_(doi), { muteHttpExceptions: true });
+      var rec = recordFromCrossref_(doi, res);
+      if (rec) return rec;
+      cachePut_('cr404:' + doi.toLowerCase(), true, MISS_SECONDS);
+    }
     // Not a Crossref DOI (DataCite, mEDRA, ...): ask doi.org for CSL JSON
     var alt = UrlFetchApp.fetch(doiOrgUrl_(doi), {
       headers: { Accept: 'application/vnd.citationstyles.csl+json' }, followRedirects: true, muteHttpExceptions: true
@@ -272,7 +281,7 @@ function resolve_(text, isNumber) {
     var c = AutoDOI.matchConfidence(text, hits[i]);
     if (c > bestConf + 0.2) { best = hits[i]; bestConf = c; }
   }
-  return bestConf >= 0.35 ? best : null;
+  return bestConf >= MIN_CONFIDENCE ? best : null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -296,8 +305,10 @@ function flatten_(input) {
 }
 
 // Apply fn(text, row, col, isNumber) to a scalar or a 2-D range; errors become cell text instead of #ERROR!.
-// When `width` > 0 each result is a row of that many columns (padded), so the output is never ragged.
+// When `width` > 0 each result is a row of that many columns (padded), so the output is never ragged; the input must then be a
+// single column, since a row of results per input cell could not keep a multi-column range's shape.
 function map_(input, fn, width) {
+  if (width && Array.isArray(input) && input.some(function (row) { return row.length > 1; })) return [['Give a single column of titles for the details form']];
   var one = function (v, r, c) {
     var res;
     try { res = fn(cellText_(v), r, c, typeof v === 'number'); }

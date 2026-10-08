@@ -33,13 +33,15 @@ eq('mla two', F(two, 'mla', { pages: '55-56' }).paren, '(Kucsko and Maurer 55–
 eq('mla three', F(jr({}), 'mla', { pages: '55' }).paren, '(Kucsko et al. 55)');
 eq('mla no narrative', F(one, 'mla').narrative, undefined);
 // Harvard
-eq('harvard one', F(one, 'harvard').paren, '(Kucsko 2013)');
-eq('harvard two', F(two, 'harvard').paren, '(Kucsko and Maurer 2013)');
-eq('harvard three', F(jr({}), 'harvard').paren, '(Kucsko, Maurer and Yao 2013)');
-eq('harvard four', F(jr({ author: jr({}).author.concat([{ given: 'M.', family: 'Kubo' }]) }), 'harvard').paren, '(Kucsko et al. 2013)');
-eq('harvard page', F(one, 'harvard', { pages: '55' }).paren, '(Kucsko 2013, p. 55)');
+// Harvard (Cite Them Right 12th edn): a comma before the year, "(Author and Author, Year)", "(Author, Author and Author, Year)"
+eq('harvard one', F(one, 'harvard').paren, '(Kucsko, 2013)');
+eq('harvard two', F(two, 'harvard').paren, '(Kucsko and Maurer, 2013)');
+eq('harvard three', F(jr({}), 'harvard').paren, '(Kucsko, Maurer and Yao, 2013)');
+eq('harvard four', F(jr({ author: jr({}).author.concat([{ given: 'M.', family: 'Kubo' }]) }), 'harvard').paren, '(Kucsko et al., 2013)');
+eq('harvard page', F(one, 'harvard', { pages: '55' }).paren, '(Kucsko, 2013, p. 55)');
 eq('harvard narrative', F(one, 'harvard', { pages: '55-6' }).narrative, 'Kucsko (2013, pp. 55–6)');
-eq('harvard no date', F(jr({ author: [{ family: 'Smith' }], issued: {} }), 'harvard').paren, '(Smith no date)');
+eq('harvard no date', F(jr({ author: [{ family: 'Smith' }], issued: {} }), 'harvard').paren, '(Smith, no date)');
+eq('harvard organisation', F(jr({ author: [{ name: 'University of Aberdeen' }], issued: { 'date-parts': [[2015]] } }), 'harvard').paren, '(University of Aberdeen, 2015)');
 // Numbered
 eq('vancouver', F(one, 'vancouver').paren, '(1)');
 eq('vancouver nth', F(one, 'vancouver', { n: 7 }).paren, '(7)');
@@ -65,6 +67,35 @@ eq('chicago title ending in a question mark takes no comma', F(jr({ author: [{ f
 eq('chicago chapter note', F({ type: 'book-chapter', title: ['Walking'], author: [{ given: 'Henry David', family: 'Thoreau' }], editor: [{ given: 'John', family: 'D’Agata' }], 'container-title': ['The Making of the American Essay'], publisher: 'Graywolf Press', 'publisher-location': 'Minneapolis', page: '167-195', issued: { 'date-parts': [[2016]] } }, 'chicago').note, 'Henry David Thoreau, “Walking,” in The Making of the American Essay, ed. John D’Agata (Minneapolis: Graywolf Press, 2016), 167–195.');
 eq('chicago thesis note', F({ type: 'dissertation', title: ['A House Is Not a Home'], author: [{ given: 'Yuna', family: 'Blajer de la Garza' }], institution: [{ name: 'University of Chicago' }], issued: { 'date-parts': [[2019]] } }, 'chicago', { pages: '66-67' }).note, 'Yuna Blajer de la Garza, “A House Is Not a Home” (PhD diss., University of Chicago, 2019), 66–67.');
 eq('chicago inText string is the note', A.inText(one, 'chicago', { pages: '55' }), F(one, 'chicago', { pages: '55' }).note);
+eq('carnegie edited book cites its editors', F({ type: 'book', title: ['T'], editor: [{ family: 'Ed', given: 'Alan' }], publisher: 'P', issued: { 'date-parts': [[2020]] } }, 'carnegie').paren, '(Ed 2020)');
+// Year-letter suffixes (APA 7 8.19 and 9.47, Cite Them Right, the Carnegie guide): two works by the same first author in the same year
+// take "a" and "b" in the order of the reference list, which is alphabetical by title ignoring a leading "A", "An" or "The".
+// yearSuffixes() gives one letter per record, '' when the author and year are unique; the caller passes it as opts.yearSuffix
+const smithZ = { type: 'book', title: ['The zebra book'], author: [{ family: 'Smith', given: 'J.' }], publisher: 'P', issued: { 'date-parts': [[2020]] } };
+const smithA = jr({ title: ['Apples and pears'], author: [{ family: 'Smith', given: 'J.' }], issued: { 'date-parts': [[2020]] }, DOI: undefined });
+const jones = jr({ title: ['Other'], author: [{ family: 'Jones', given: 'K.' }], issued: { 'date-parts': [[2020]] } });
+const smithND = { type: 'book', title: ['Undated'], author: [{ family: 'Smith', given: 'J.' }] };
+eq('yearSuffixes: letters by title, aligned with the input', JSON.stringify(A.yearSuffixes([smithZ, smithA, jones, smithND])), '["b","a","",""]');
+eq('yearSuffixes: a unique key takes no letter', JSON.stringify(A.yearSuffixes([smithA, jones])), '["",""]');
+eq('yearSuffixes: ties keep the input order', JSON.stringify(A.yearSuffixes([smithA, smithA])), '["a","b"]');
+eq('yearSuffixes: an accented family matches its plain form', JSON.stringify(A.yearSuffixes([smithA, jr({ title: ['B'], author: [{ family: 'Smíth', given: 'K.' }], issued: { 'date-parts': [[2020]] } })])), '["a","b"]');
+eq('apa reference 2020a', A.format(smithA, 'apa', { yearSuffix: 'a' }), 'Smith, J. (2020a). Apples and pears. Nature, 500(7460), 54–58.');
+eq('apa reference 2020b', A.format(smithZ, 'apa', { yearSuffix: 'b' }), 'Smith, J. (2020b). The zebra book. P.');
+eq('apa html carries the suffix', A.formatHtml(smithZ, 'apa', { yearSuffix: 'b' }), 'Smith, J. (2020b). <i>The zebra book</i>. P.');
+eq('apa in-text 2020a', F(smithA, 'apa', { yearSuffix: 'a' }).paren, '(Smith, 2020a)');
+eq('apa narrative 2020b with a page', F(smithZ, 'apa', { yearSuffix: 'b', pages: '5' }).narrative, 'Smith (2020b, p. 5)');
+eq('apa inText string', A.inText(smithZ, 'apa', { yearSuffix: 'b' }), '(Smith, 2020b)');
+eq('harvard reference', A.format(smithZ, 'harvard', { yearSuffix: 'b' }), 'Smith, J. (2020b) The zebra book. P.');
+eq('harvard in-text', F(smithZ, 'harvard', { yearSuffix: 'b' }).paren, '(Smith, 2020b)');
+eq('carnegie reference', A.format(smithZ, 'carnegie', { yearSuffix: 'b' }), 'Smith, J. 2020b. The zebra book. P.');
+eq('carnegie in-text', F(smithZ, 'carnegie', { yearSuffix: 'b' }).paren, '(Smith 2020b)');
+eq('a numbered style ignores the suffix and still takes its number', A.format(smithA, 'vancouver', { n: 3, yearSuffix: 'a' }), '3. Smith J. Apples and pears. Nature. 2020;500(7460):54-8.');
+eq('a bare number still works', A.format(smithA, 'ieee', 4).slice(0, 3), '[4]');
+eq('ieee in-text ignores the suffix', F(smithA, 'ieee', { n: 2, yearSuffix: 'a' }).paren, '[2]');
+eq('mla ignores the suffix', A.format(smithZ, 'mla', { yearSuffix: 'b' }), 'Smith, J. The zebra book. P, 2020.');
+eq('chicago notes ignore the suffix', F(smithZ, 'chicago', { yearSuffix: 'b' }).note, 'J. Smith, The zebra book (P, 2020).');
+eq('no year, no suffix', A.format(smithND, 'apa', { yearSuffix: 'a' }), 'Smith, J. (n.d.). Undated.');
+eq('a letter the record already carries is replaced', A.format(Object.assign({}, smithZ, { issued: { 'date-parts': [['2020a']] } }), 'apa', { yearSuffix: 'c' }).slice(0, 18), 'Smith, J. (2020c).');
 eq('unknown style', F(one, 'nope'), null);
 eq('the style table carries the forms', A.STYLES.every(function (s) { return typeof s.inText === 'function'; }), true);
 

@@ -7,9 +7,11 @@ var A = require(path.join(ROOT, 'citations.js'));
 var work = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'w.json'), 'utf8'));
 let pass = 0, fail = 0;
 const eq = (label, got, exp) => { if (got === exp) pass++; else { fail++; console.log('FAIL', label, '\n   got ', JSON.stringify(got), '\n   want', JSON.stringify(exp)); } };
-var calls = [];
+var calls = [], optsSeen = [], failNext = null; // failNext: an error the next fetch throws instead of answering (a timed-out request)
+var sleeps = []; cli.sleep = async function (ms) { sleeps.push(ms); }; // no real waiting: the Crossref throttle and the retry pauses are recorded instead
 global.fetch = async function (url, opts) {
-  calls.push(url);
+  calls.push(url); optsSeen.push(opts);
+  if (failNext) { var e = failNext; failNext = null; throw e; }
   var ok = function (body, type) { return { ok: true, status: 200, headers: { get: function () { return type || 'application/json'; } }, json: async function () { return body; } }; };
   var bad = function (status) { return { ok: false, status: status, headers: { get: function () { return 'text/html'; } }, json: async function () { throw new Error('no'); } }; };
   if (/api\.crossref\.org\/works\/10\.1038%2Fnature12373/.test(url)) return ok(work);
@@ -20,7 +22,8 @@ global.fetch = async function (url, opts) {
   if (/openlibrary\.org/.test(url)) return ok({ docs: [] });
   return bad(404);
 };
-function io(stdin) { var o = { outs: [], errs: [], stdin: async function () { return stdin || ''; } }; o.out = function (s) { o.outs.push(s); }; o.err = function (s) { o.errs.push(s); }; return o; }
+function io(stdin) { var o = { outs: [], errs: [], stdin: async function () { return stdin || ''; } }; o.out = function (s) { o.outs.push(s); }; o.write = function (s) { o.outs.push(s); }; o.err = function (s) { o.errs.push(s); }; return o; }
+var t0 = Date.now();
 (async function () {
   var t = io(); var code = await cli.run(['10.1038/nature12373'], t);
   eq('a DOI formats in APA by default', t.outs[0].indexOf('Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54–58. https://doi.org/10.1038/nature12373'), 0);
@@ -42,12 +45,32 @@ function io(stdin) { var o = { outs: [], errs: [], stdin: async function () { re
   t = io(); code = await cli.run(['10.1038/nature12373', '--style', 'nope'], t);
   eq('an unknown style: exit 2', code === 2 && /Unknown style/.test(t.errs[0]), true);
   t = io(); code = await cli.run([], t);
-  eq('no arguments: usage and exit 2', code === 2 && /autodoi 10\.1038\/nature12373/.test(t.outs[0]), true);
+  eq('no arguments: usage on stderr and exit 2', code === 2 && /autodoi 10\.1038\/nature12373/.test(t.errs[0]) && t.outs.length === 0, true);
+  t = io(); code = await cli.run(['--help'], t);
+  eq('--help: usage on stdout and exit 0', code === 0 && /autodoi 10\.1038\/nature12373/.test(t.outs[0]) && t.errs.length === 0, true);
+  eq('the usage names the exit codes and how --match splits its input', /0 done, 1 a lookup failed, 2 bad usage, 3 --match/.test(t.outs[0]) && /one reference per line, or one per paragraph when blank lines separate them/.test(t.outs[0]), true);
+  eq('the usage ends with the comment block, not the code', /openlibrary\.org\.$/.test(t.outs[0].trim()) && !/require\(/.test(t.outs[0]), true);
+  t = io(); code = await cli.run(['10.1038/nature12373', '--email', 'not-an-address'], t);
+  eq('a malformed --email: exit 2 before any request', code === 2 && /--email .*not-an-address/.test(t.errs[0]), true);
+  eq('every request carries a timeout signal', optsSeen.length > 0 && optsSeen.every(function (o) { return o && o.signal instanceof AbortSignal; }), true);
+  calls = []; sleeps = []; failNext = Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' });
+  t = io(); code = await cli.run(['10.1038/nature12373'], t);
+  eq('a timed-out request is retried after a pause, like a 5xx', code === 0 && calls.length === 2 && sleeps.indexOf(2000) !== -1 && /^Kucsko, G\./.test(t.outs[0]), true);
   // matching
   var refs = 'Kucsko G, Maurer PC, Yao NY, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500(7460):54-58.\nSmith J. Something else entirely. Journal of Nothing. 2001;1:1-2.';
   t = io(refs); code = await cli.run(['--match', '--style', 'ris'], t);
   eq('match: the good row goes into the RIS, the other is reported', /TY  - JOUR/.test(t.outs[0]) && (t.outs[0].match(/ER  -/g) || []).length === 1 && t.errs.some(function (e) { return /^no match\tSmith J\./.test(e); }), true);
-  eq('match exit 0 when lookups worked', code, 0);
+  eq('match exit 3 when a reference stayed unmatched, though every lookup worked', code, 3);
+  t = io(refs); code = await cli.run(['--match', '--json'], t);
+  eq('match --json exit 3 for the same list', code, 3);
+  t = io(); code = await cli.run(['--match', '--style', 'all', 'Nanometre-scale thermometry in a living cell'], t);
+  eq('--match with --style all: exit 2 up front, no lookup', code === 2 && /--style all/.test(t.errs[0]) && !calls.some(function (u) { return /query\.bibliographic=Nanometre/.test(u); }), true);
+  t = io(); code = await cli.run(['--match', '--pages', '55', 'Kucsko G, Maurer PC, Yao NY, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500(7460):54-58.'], t);
+  eq('--pages with --match: a note on stderr, the reference still printed, exit 0', code === 0 && /--pages is ignored with --match/.test(t.errs[0]) && /^Kucsko, G\./.test(t.outs[0]), true);
+  t = io(refs + '\n' + refs.split('\n')[0]); code = await cli.run(['--match', '--style', 'bibtex'], t);
+  eq('match --style bibtex streams the entries, a blank line between them, one line break at the end', t.outs.join('').replace(/\n$/, '').split('\n\n').length === 2 && /\}\n$/.test(t.outs.join('')) && code === 3, true);
+  t = io(refs.split('\n')[0] + '\n' + refs.split('\n')[0]); code = await cli.run(['--match', '--style', 'ieee'], t);
+  eq('numbered style counts the good matches as they stream', t.outs.length === 2 && /^\[1\]/.test(t.outs[0]) && /^\[2\]/.test(t.outs[1]) && code === 0, true);
   t = io(refs); await cli.run(['--match', '--json'], t);
   var j = JSON.parse(t.outs[0]);
   eq('match --json: grades and DOIs', j.length === 2 && j[0].grade === 'good' && j[0].record.doi === '10.1038/nature12373' && j[1].grade === 'none', true);
@@ -73,5 +96,6 @@ function io(stdin) { var o = { outs: [], errs: [], stdin: async function () { re
   eq('parseArgs: -p at the end is an error, not pages "undefined"', cli.parseArgs(['x', '-p']).error, 'Option -p needs a value');
   eq('splitRefs: blank lines join wrapped lines', cli.splitRefs('A b\nc d\n\nE f').length, 2);
   eq('splitRefs: one per line otherwise', cli.splitRefs('A\nB\nC').length, 3);
+  eq('the suite runs without real waiting (the throttle is injected)', Date.now() - t0 < 2000, true);
   console.log(pass + ' passed, ' + fail + ' failed'); process.exitCode = fail ? 1 : 0;
 })();

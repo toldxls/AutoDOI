@@ -2,6 +2,35 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.16.0 - 2026-10-07
+
+Fixes from an adversarial review of the whole codebase.
+
+### New
+
+- **Year letters.** Two works by the same first author and year get 2020a, 2020b in the reference list and its in-text forms (APA, Harvard, Carnegie); the library exports `yearSuffixes`.
+- **More scripts split and cited.** Japanese, Chinese and Korean lists one per line split correctly; given names in Hangul, Arabic, Hebrew, Devanagari, Thai and kana are kept instead of dropped.
+- **Cleaner pastes.** Bibliography headings, "Page N of M" and all-caps running heads are dropped; Chicago "———." entries are searched with the author above.
+
+### Changed
+
+- **Matching.** The best-scoring Crossref hit wins; datasets, grants and preprints no longer beat the article they describe. A record whose title is only two or three words of the reference, or a reply, discussion, closure or letter about the paper, is no longer green. A chapter cited by its pages beats the book it is in. A DOI inside a reference is held to the whole grade (an erratum's DOI shows *Check DOI*). A bare number inside a list is not looked up as a PubMed ID (prefix it "PMID:").
+- **Harvard** follows Cite Them Right 12th edition: a comma before the year in citations, "4th edn.", editors as "M. Pecht and M. Kang (eds)", italic titles for reports, theses and web pages, and "(Accessed: 6 May 2024)" after a link.
+- **Rate limits.** A 429 is retried up to three times honouring Retry-After, with *Retrying…* on the row; an OpenAlex burst limit is a short pause and only a spent daily allowance blocks the day.
+- **Privacy.** The polite-pool email goes only to Crossref and OpenAlex (Unpaywall got it too); bug-report links no longer carry a hand-written title or a dropped file's name; the Content Security Policy names each service the page talks to instead of allowing any https host.
+- **Links.** A shared `?refs=` link keeps the previous list restorable instead of replacing it silently; *Copy link* holds at most 200 DOIs and says so; a journal style in a link is remembered only once it renders.
+- **Command line.** `--match` prints each row as it is matched and exits 3 when a reference stayed unmatched; every request times out after 30 s and is retried; `--email` is checked; usage goes to stderr on an error.
+- **Sheets.** `FIND_DOI` says *No match* below the same confidence floor as `REF_TO_*`; a DOI Crossref does not hold is asked of Crossref once; a record too large for the cache is fetched once per recalculation.
+- **CI** pins actions to commits, tests on Node 18 and 24, caches the browser suite's CSL files, and deploys only the files the page serves.
+
+### Fixed
+
+- Ligatures and fullwidth letters pasted from a PDF (ﬁ, ﬂ) now match the record; a list glued on one line was cut after nine references; a wrapped "Vol." + "2. 2019." became item 2; "John Smith, Title, Journal, 2020" was searched as a title; an OpenAlex DOI merged under another paper could show that paper as green; a resubmit waited behind the previous batch's lookups.
+- Chicago and Harvard put a book's edition after the italic title; Carnegie cites an edited book by its editors; MLA begins an edited book with the editor; APA omits a bare full stop for an untitled book and the site name when it is the author; Vancouver no longer opens a locator with a colon; BibTeX exports a master's thesis as `@mastersthesis`; "Smith, IAN" is a name, not three initials; "2nd", "3rd" and "PhD" after a name are read as suffix and degree.
+- Sentence case: "Gulf of Mexico oil spill…" ends the name after Mexico; "sp. nov." and "E. coli" stay lowercase; "Dr." and "Prof." protect the name after them; "The US Geological Survey" keeps US; decomposed accents convert like composed ones. Title Case: "the Past", "Over-the-Counter", "Tyrannosaurus rex" from lowercase input.
+- Imports: "DA  - 2020 May 15" keeps the month; "AU  - et al." marks a truncated list; organisation authors such as National Institutes of Health are not split into a person; a long ISSN field, thousands of nested `\textsubscript{` or a run of `\(` no longer stalls or crashes the import; a very long DOI field no longer stalls the page.
+- The offline copy of the page is stored only for the page itself, not for any file on the site; a dropped .docx is refused over 50 MB and only its text parts are inflated; a free-copy link must be http(s).
+
 ## 1.15.0 - 2026-10-02
 
 ### New

@@ -29,7 +29,7 @@ glued.forEach(c => { ['auto', 'lines'].forEach(mode => { const r = splitReferenc
 const eq0 = (label, got, n) => { if (got.length === n) pass++; else { fail++; console.log('FAIL', label, JSON.stringify(got)); } };
 const t = (label, input, n) => { const r = splitReferences(input); if (r.length === n) pass++; else { fail++; console.log('FAIL', label, r.length, '!=', n); r.forEach(x => console.log('   |', x.slice(0, 100))); } };
 t('particle', "Kucsko, G., & Maurer, P. C. (2013). Nanometre-scale thermometry. Nature, 500, 54-58.\nvan der Maaten, L., & Hinton, G. (2008). Visualizing data using t-SNE. JMLR, 9, 2579-2605.", 2);
-t('ids', "PMC4221854\n23903748\narXiv:1706.03762\narXiv:1810.04805", 4);
+t('ids', "PMC4221854\nPMID: 23903748\narXiv:1706.03762\narXiv:1810.04805", 4); // a PubMed ID carries its prefix inside a list
 t('ids with blank', "10.1145/3292500.3330701\nISBN 978-0-521-38707-1\n\nsome junk line here", 3);
 t('de Carvalho', "Smith, J. (2020). Title one. J, 1, 1-2.\nde Carvalho, A. (2019). Title two. J, 2, 3-4.\nd'Alembert, J. (1750). Title three. J, 3, 5.", 3);
 t('one per line (a DOI line after a reference belongs to it)', "Watson JD, Crick FHC. Molecular structure. Nature. 1953;171:737-738.\nHarris, C. R. et al. Array programming with NumPy. Nature 585, 357–362 (2020).\n10.1038/nature12373", 2);
@@ -86,4 +86,37 @@ const eq = (label, got, want) => { if (JSON.stringify(got) === JSON.stringify(wa
 eq('lines mode keeps the 10. of bare DOIs', splitByMode("10.1038/nature12373\n10.1000/x\n1. Smith J. 2020. Title. J 1:2.", 'lines'), ["10.1038/nature12373", "10.1000/x", "Smith J. 2020. Title. J 1:2."]);
 eq('numbered mode survives a gap', splitByMode("1. Smith, J. (2020). A title here. Journal, 1, 2.\n3. Jones, K. (2019). Second title. Journal, 2, 3.\n4. Brown, L. (2018). Third title. Journal, 3, 4.\n1998. Not an item, a wrapped year", 'numbered').length, 3);
 eq('blank mode joins wrapped lines', splitByMode("Smith, J. (2020). A title\n  that wraps. Journal, 1, 2.\n\nJones, K. (2019). B. Journal, 2, 3.", 'blank'), ["Smith, J. (2020). A title that wraps. Journal, 1, 2.", "Jones, K. (2019). B. Journal, 2, 3."]);
+// --- 2026-10 page-logic audit: glued lists of any length, CJK name lists, numbered wraps, page furniture, prose authors, Chicago dashes, bare numbers ---
+{ const names = ['Smith', 'Jones', 'Brown', 'Taylor', 'Wilson', 'Davies', 'Evans', 'Thomas', 'Roberts', 'Walker', 'Wright', 'Robinson', 'Thompson', 'White', 'Hughes', 'Edwards', 'Green', 'Hall', 'Wood', 'Harris'];
+  const apa = names.map((n, i) => n + ', A. B., & Coauthor, C. (20' + (10 + i % 10) + '). A title about topic number ' + (i + 1) + ' and its consequences. Journal of Things, ' + (10 + i) + '(2), ' + (100 + i) + '-' + (110 + i) + '.');
+  t('20 APA references glued on one line', apa.join(' '), 20);
+  eq0('20 glued references in lines mode', splitReferences(apa.join(' '), 'lines'), 20); }
+t('Japanese, one per line, no full stops', '山田太郎・鈴木一郎 (2019) 日本列島の地質構造と変動. 地質学雑誌, 125, 1-10\n佐藤花子 (2018) 火山岩の岩石学的研究. 岩石鉱物科学, 47, 55-70\n高橋健 (2020) 地震活動の統計的解析. 地震, 72, 100-115', 3);
+t('Japanese with full-width brackets', '山田太郎（2019）日本列島の地質構造と変動．地質学雑誌，125，1-10\n佐藤花子（2018）火山岩の岩石学的研究．岩石鉱物科学，47，55-70\n高橋健（2020）地震活動の統計的解析．地震，72，100-115', 3);
+t('Chinese, one per line', '张三, 李四. 2019. 青藏高原的地壳结构. 地质学报, 93(3): 45-67\n王五. 2018. 华北克拉通的破坏. 中国科学, 48(2): 100-120\n赵六, 钱七. 2020. 扬子板块的构造演化. 岩石学报, 36(1): 1-20', 3);
+t('Korean, one per line', '김철수 (2019). 한반도의 지질 구조. 지질학회지, 55, 1-10\n이영희 (2018). 백두산 화산 활동 연구. 암석학회지, 27, 45-60\n박민수 (2020). 동해의 해저 지형. 해양학회지, 25, 100-115', 3);
+{ const vol = '1. Smith J. Title one. J Geol. 2018;12:1-5.\n2. Jones K. A book about things. Oxford: OUP; Vol.\n2. 2019. p. 1-20.\n3. Brown T. Title three. Nature. 2020;1:2-3.';
+  t('a wrapped "Vol." + "2. 2019. p. 1-20." is not item 2', vol, 3);
+  eq('numbered mode keeps the wrapped volume with its item', splitByMode(vol, 'numbered')[1], 'Jones K. A book about things. Oxford: OUP; Vol. 2. 2019. p. 1-20.'); }
+t('an author\'s own list opens its items with years', '1. Smith J. Title one. J Geol. 2018;12:1-5.\n2. 1957. Über Tonforschung in Deutschland in den letzten Jahren. Geologie 6: 1-20.\n3. 1963. Die Verwendbarkeit morphologischer Erscheinungen. Geologie 12: 5-30.', 3);
+t('headings, page furniture and a running head are dropped', 'References\nSmith, J. (2020). Deep learning for crystals. Nature, 1, 1-2.\nJones, K. (2019). Mantle flow under Tibet. Geology, 2, 3-4.\nPage 3 of 12\nBrown, T. (2018). Olivine rheology. Science, 3, 5-6.\nJOURNAL OF GEOPHYSICAL RESEARCH SOLID EARTH\nLee, C. (2017). Quartz deformation. Nature, 4, 7-8.\n14\nWORKS CITED:\nKim, H. (2016). Garnet growth. Lithos, 5, 9-10.', 5);
+t('a running head inside a wrapped reference does not break it', 'Smith, J. (2020). Deep learning for crystals and other\nAMERICAN MINERALOGIST VOLUME 104\nmaterials of the deep Earth. Nature, 1, 1-2.\nJones, K. (2019). Mantle flow under Tibet. Geology, 2, 3-4.\nBrown, T. (2018). Olivine rheology. Science, 3, 5-6.', 3);
+t('an all-caps reference with its year and commas survives', 'SMITH, J. (2019). DEEP LEARNING FOR CRYSTALS. NATURE, 1, 1-2.\nJONES, K. (2018). MANTLE FLOW. GEOLOGY, 2, 3-4.\nBROWN, T. (2017). OLIVINE RHEOLOGY. SCIENCE, 3, 5-6.', 3);
+eq0('a heading in blank-line mode is dropped too', splitByMode('Works Cited\n\nSmith, J. (2020). Deep learning for crystals. Nature, 1, 1-2.\n\nJones, K. (2019). Mantle flow under Tibet. Geology, 2, 3-4.', 'blank'), 2);
+t('"Sources" alone is still a search', 'Sources', 1);
+eq('Chicago dashes take the author of the entry above', splitReferences('Smith, John. 2020. “Deep Learning for Crystals.” Nature 1: 1–2.\n———. 2019. “Mantle Flow under Tibet.” Geology 2: 3–4.\n———, and Kate Jones. 2018. “Olivine Rheology.” Science 3: 5–6.\nJones, Kate. 2017. “Quartz.” Nature 4: 7–8.').map(x => x.slice(0, 28)),
+  ['Smith, John. 2020. “Deep Lea', 'Smith, John. 2019. “Mantle F', 'Smith, John, and Kate Jones.', 'Jones, Kate. 2017. “Quartz.”']);
+eq('underscores in lines mode too', splitByMode('Smith, John. 2020. “Deep Learning for Crystals.” Nature 1: 1–2.\n___. 2019. “Mantle Flow under Tibet.” Geology 2: 3–4.', 'lines')[1].slice(0, 18), 'Smith, John. 2019.');
+{ const la = s => looksLikeTitleOf(s);
+  const looksLikeTitleOf = new Function('A', html.slice(a, b) + '; return looksLikeTitle;')(require(require('path').join(ROOT, 'citations.js')));
+  check0('"John Smith, Deep learning for crystals, Nature, 2020" is an author, not a title', la('John Smith, Deep learning for crystals, Nature, 2020') === null);
+  check0('"John Smith and Kate Jones, Mantle flow under Tibet and its causes, 2019" is an author', la('John Smith and Kate Jones, Mantle flow under Tibet and its causes, 2019') === null);
+  check0('"Deep Learning, Nature 2015" is still a title with its journal', la('Deep Learning, Nature 2015') && la('Deep Learning, Nature 2015').journal === 'Nature');
+  check0('"Deep learning, Nature" is still a title', !!la('Deep learning, Nature')); }
+t('a bare number inside a list is debris, not a PubMed ID', 'Smith, J. (2020). Deep learning for crystals. Nature, 1, 1-2.\n23903748\nJones, K. (2019). Mantle flow under Tibet. Geology, 2, 3-4.\n123456789', 2);
+eq('a bare number is not glued to the line above', splitReferences('Smith, J. (2020). Deep learning for crystals. Nature, 1, 1-2.\n23903748\nJones, K. (2019). Mantle flow under Tibet. Geology, 2, 3-4.')[0], 'Smith, J. (2020). Deep learning for crystals. Nature, 1, 1-2.');
+eq0('bare numbers in blank-line mode are dropped', splitByMode('Smith, J. (2020). Deep learning for crystals. Nature, 1, 1-2.\n23903748\n\nJones, K. (2019). Mantle flow under Tibet. Geology, 2, 3-4.\n123456789', 'blank'), 2);
+eq('a PubMed ID alone is looked up', splitReferences('23903748'), ['23903748']);
+eq('a prefixed PubMed ID in a list is kept', splitReferences('PMID: 23903748\nPMC4221854\n10.1038/nature12373'), ['PMID: 23903748', 'PMC4221854', '10.1038/nature12373']);
+function check0(label, ok) { if (ok) pass++; else { fail++; console.log('FAIL', label); } }
 console.log(pass + ' passed, ' + fail + ' failed');

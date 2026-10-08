@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-fN/n3I0qUQihq40RobG5KkTnN550HbI3AetPmAbIvv8=' 'sha256-5CsrAVhmJeQDDC2Aqx49mfxM7rWFL9YKv8TDcphje6U=' 'sha256-uMyWDfXScYgZOGjWGc3rlZddzFhdDEYG8LYW7I0Vd1E=' 'sha256-7t/jv4mhvLrvLTsX4410fJsrwfdRy5SeQZDUpCF3H+E=' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5U2hWyf02EzKYjSabHYEyJezGxFrFAYycg6VZrr3m1Y=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-F6kFnLhpHMJT9Gmuez5nOHhDIL8A27GXZJRsm11NpQY=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -508,11 +508,17 @@
 
   // "Georg Kucsko" / "Peter C. Maurer" / "van der Walt, Stéfan" / "Martin Luther King, Jr." -> {family, given, suffix?}
   var NAME_PARTICLE = /^(?:van|von|de|der|den|del|della|delle|da|di|du|la|le|los|las|dos|das|ter|ten|zu|zur|af|av)$/; // lowercase only
-  var NAME_SUFFIX = /^(?:Jr\.?|Sr\.?|II|III|IV)$/;
+  var SUFFIX_WORDS = 'Jr\\.?|Sr\\.?|II|III|IV|2nd|3rd|4th';                     // generational suffixes, one list for every reader of a name
+  var NAME_SUFFIX = new RegExp('^(?:' + SUFFIX_WORDS + ')$');
+  // academic degrees and titles after a name are not part of it: "John Smith, PhD".  One written in capitals ("MD", "J.D.", "MPH")
+  // may be initials ("Smith, J.D." is J. D.), so it is dropped only after a full name or a given name
+  var NAME_DEGREE = /^(?:Ph\.?\s?D\.?|D\.?Phil\.?|[MBD]\.?Sc\.?|M\.?D\.?|J\.?D\.?|M\.?P\.?H\.?|M\.?B\.?A\.?|D\.?D\.?S\.?|D\.?V\.?M\.?|Esq\.?|FRS|FRCP|FRCS|FACS|RN)$/i;
+  function isDegree(tok, sure) { return NAME_DEGREE.test(tok) && (sure || /[a-z]/.test(tok)); }
   function splitName(full) {
     var n = clean(full);
     if (!n) return null;
     var suffix = '', parts = n.split(/\s*,\s*/), out;
+    while (parts.length > 1 && isDegree(parts[parts.length - 1], parts.length > 2 || /\s/.test(parts[0]))) parts.pop(); // "John Smith, PhD" / "Smith, John, MD" / "Smith, PhD"
     if (parts.length > 1 && NAME_SUFFIX.test(parts[parts.length - 1])) suffix = parts.pop();   // "King, Jr." / "King, Martin Luther, Jr."
     if (parts.length > 1) {
       var given = parts.slice(1).join(', '), gt = given.split(/\s+/);
@@ -520,8 +526,9 @@
       out = { family: parts[0], given: given };
     } else {
       var toks = parts[0].split(/\s+/);
+      while (toks.length > 1 && isDegree(toks[toks.length - 1], false)) toks.pop(); // "John Smith PhD"; "Smith MD" keeps its initials
       if (!suffix && toks.length > 1 && NAME_SUFFIX.test(toks[toks.length - 1])) suffix = toks.pop(); // "John Smith III"
-      if (toks.length === 1) return suffix ? { family: toks[0], given: '', suffix: suffix } : { name: n };
+      if (toks.length === 1) return suffix ? { family: toks[0], given: '', suffix: suffix } : { name: toks[0] };
       var fam = [toks.pop()];
       while (toks.length > 0 && NAME_PARTICLE.test(toks[toks.length - 1])) fam.unshift(toks.pop()); // "de la Cruz": particles and one capitalised word are a family name
       out = { family: fam.join(' '), given: toks.join(' ') };
@@ -1222,14 +1229,16 @@
 
   // DataCite splits "The Turing Way Community" into given "The Turing Way", family "Community"
   var ORG_FAMILY = /^(?:Community|Consortium|Collaboration|Team|Group|Project|Society|Committee|Association|Initiative|Network|Institute|Organi[sz]ation|Council)$/;
-  var SUFFIX_TAIL = /^(.*?\S)[\s,]+(Jr\.?|Sr\.?|II|III|IV|2nd|3rd|4th)$/;
+  var SUFFIX_TAIL = new RegExp('^(.*?\\S)[\\s,]+(' + SUFFIX_WORDS + ')$'), SUFFIX_IN_FAMILY = new RegExp('^(.+?),\\s*(' + SUFFIX_WORDS + ')$', 'i');
   function person(p) {
     var fam = clean(p.family);
     if (fam) {
       var given = clean(p.given), suffix = clean(p.suffix || '');
-      if (!/[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF\u4E00-\u9FFF]/.test(given)) given = ''; // ",", "-", "." deposited as a given name
+      // ",", "-", "." deposited as a given name: a given name holds a letter of some script (Latin, Greek, Cyrillic, Armenian, Hebrew,
+      // Arabic, Devanagari, Thai, Hangul, kana, CJK)
+      if (!/[A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u0370-\u03FF\u0400-\u04FF\u0530-\u058F\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u1100-\u11FF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/.test(given)) given = '';
       // "Dorn, III" / "King, Jr." with the suffix inside the family field
-      var fs = fam.match(/^(.+?),\s*(Jr\.?|Sr\.?|II|III|IV|2nd|3rd|4th)$/i);
+      var fs = fam.match(SUFFIX_IN_FAMILY);
       if (fs && !suffix) { fam = fs[1]; suffix = fs[2]; }
       // "StephanieM." / "GeorgeR." deposited without the space before the middle initial
       given = given.replace(/([a-z\u00DF-\u00F6\u00F8-\u00FF])([A-Z])\.(?=[\s.A-Z]|$)/g, '$1 $2.');
@@ -1239,11 +1248,14 @@
       if (given && (/^The\s/.test(given) || ORG_FAMILY.test(fam))) return { family: given + ' ' + fam, given: '', suffix: '', literal: true };
       // no given name: a single-field name (organisation, mononym, "The pandas development team")
       if (!given && !suffix) return { family: fam.replace(/,,/g, ','), given: '', suffix: '', literal: true };
-      // "SMITH, JOHN" deposited in capitals: title-case the given name too, but leave initials ("J.D.", "PC") alone
-      if (isCaps(fam) && isCaps(given)) {
+      // "SMITH, JOHN" deposited in capitals: title-case the given name too, but leave initials ("J.D.", "PC") alone.  Beside a
+      // mixed-case family ("Smith", "IAN") a word with a vowel is a name, not three initials; a two-letter token ("AL") is initials
+      if (isCaps(given)) {
+        var famCaps = isCaps(fam);
         given = given.split(/\s+/).map(function (tok) {
           if (/\./.test(tok)) return tok;                       // "J.D."
           if (/^[A-Z]{1,3}$/.test(tok) && !/[AEIOUY]/.test(tok)) return tok; // "PC", "JD"
+          if (!famCaps && tok.length < 3) return tok;         // "AL" beside "Smith"
           return uncaps(tok);                                   // "IAN", "JOHN"
         }).join(' ');
       }
@@ -1257,8 +1269,6 @@
     'August', 'September', 'October', 'November', 'December'];
   var MONTHS_ABBR = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.',
     'Sep.', 'Oct.', 'Nov.', 'Dec.'];
-  var MONTHS_IEEE = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.', // IEEE Reference Guide (2025): three letters, May unabbreviated
-    'Sep.', 'Oct.', 'Nov.', 'Dec.'];
   var MONTHS_MLA = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.']; // MLA Handbook: four-letter months spelled out
   var MONTHS_NLM = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];                  // Citing Medicine: three letters, no period
   // A date with a month but no day is an issue date (PMLA, January 2013); one with a day is usually the online
@@ -1266,6 +1276,7 @@
   function issueMonth(r) { return r.month && !r.day ? r.month : 0; }
   function longDate(r) { return r.year ? (r.month ? MONTHS[r.month - 1] + (r.day ? ' ' + r.day : '') + ', ' : '') + r.year : ''; } // "January 9, 2020" / "July 2018" / "2018"
   function accessedDate(r) { var a = r.accessed; return a && a.year ? (a.month ? MONTHS[a.month - 1] + (a.day ? ' ' + a.day : '') + ', ' : '') + a.year : ''; }
+  function accessedDateUK(r) { var a = r.accessed; return a && a.year ? (a.month ? (a.day ? a.day + ' ' : '') + MONTHS[a.month - 1] + ' ' : '') + a.year : ''; } // "22 June 2023" (Cite Them Right)
   var ORDINAL_WORDS = ['', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 
   /* ---------- normalize ---------- */
@@ -1348,7 +1359,8 @@
   ];
   function preprintServerOf(doi) { if (!doi) return ''; for (var i = 0; i < PREPRINT_DOI.length; i++) if (PREPRINT_DOI[i][0].test(doi)) return PREPRINT_DOI[i][1]; return ''; }
 
-  function hasName(p) { return !!(p.family || p.given); }
+  var MASTERS_RE = /m\.?\s?[as]\.?|master/i; // a dissertation's degree or genre naming a master's degree: "MSc", "M.A.", "Master's thesis"
+  function hasName(p) { return !!p.family; } // person() puts a single-field name in family too
   // author / editor as deposited: a list of people; null entries and non-lists ("Smith", {}) are not people
   function people(v) {
     return (Array.isArray(v) ? v : []).filter(function (p) { return p && typeof p === 'object'; }).map(person).filter(hasName);
@@ -1357,7 +1369,8 @@
   function cleanDoi(d) {
     if (Array.isArray(d)) d = d[0];
     if (typeof d !== 'string') return '';
-    return d.replace(TAG_RE, '').replace(/^\s+|\s+$/g, '').replace(/[.,;]+$/, '').replace(/\s+$/, '');
+    d = trimTail(d.replace(TAG_RE, '').replace(/^\s+/, ''), /\s/);
+    return trimTail(trimTail(d, /[.,;]/), /\s/);
   }
   // First value of a tag kept from an imported file, for a record that did not come through the parsers' field mapping
   function rawTagOf(m, src, tags, src2, tags2) {
@@ -1501,10 +1514,12 @@
     if (!given) return '';
     // "J.-P." stays one token; "P.C." becomes two
     var tokens = given.replace(/\.(?![\-\u2010\u2011])/g, '. ').split(/\s+/).filter(Boolean);
-    var out = [];
+    var out = [], whole = [];
     tokens.forEach(function (tok) {
       tok = tok.replace(/\.+$/, '').replace(/^[\-\u2010\u2011]+|[\-\u2010\u2011]+$/g, '');
       if (!tok || /^(?:&|and)$/i.test(tok)) return; // "J & K" -> "J. K.": the conjunction is not an initial
+      // a script without letter case (Hangul, kana, CJK, Arabic, Hebrew, Devanagari, Thai) has no initials: the name is kept whole
+      if (/[^\x00-\x7F]/.test(tok) && tok === tok.toUpperCase() && tok === tok.toLowerCase()) { whole[out.length] = true; out.push(tok); return; }
       // "PC" style compressed initials
       if (/^[A-Z\u00C0-\u00D6\u00D8-\u00DE]{2,3}$/.test(tok)) {
         tok.split('').forEach(function (ch) { out.push(ch); });
@@ -1513,8 +1528,8 @@
       var parts = tok.split(/[\-\u2010\u2011]/).filter(Boolean).map(function (p) { return p.replace(/\./g, '').charAt(0).toUpperCase(); });
       if (parts.length) out.push(parts.join(opts.dots === false ? '-' : '.-'));
     });
-    if (opts.dots === false) return out.join('');
-    return out.map(function (x) { return x + '.'; }).join(opts.space === false ? '' : ' ');
+    if (opts.dots === false) return out.join(whole.length ? ' ' : '');
+    return out.map(function (x, i) { return whole[i] ? x : x + '.'; }).join(opts.space === false && !whole.length ? '' : ' ');
   }
 
   function sfx(p) { return p.suffix ? ', ' + p.suffix : ''; }
@@ -1553,7 +1568,6 @@
   /* ---------- pages ---------- */
 
   function enDash(pages) { return pages.replace(/\s*[-–—]+\s*/g, '–'); }
-  function pageRange(pages) { var p = enDash(pages); return p; }
   function isRange(pages) { return /[-–—]/.test(pages); }
   function nlmPages(pages) { // 123-129 -> 123-9
     var m = pages.match(/^(\d+)\s*[-–—]\s*(\d+)$/);
@@ -1585,15 +1599,15 @@
   function hostOf(r) { return r.container || r.institution || r.publisher; } // preprint server, repository, publisher
   // publisher shown after the host only when it is a distinct entity (a book's publisher), not the repository owner
   function showPublisher(r, k) { return k !== 'journal' && !!r.publisher && !(r.institution && !r.container) && r.publisher !== hostOf(r); }
-  function pp(pages) { return (isRange(pages) ? 'pp. ' : 'p. ') + pageRange(pages); }
+  function pp(pages) { return (isRange(pages) ? 'pp. ' : 'p. ') + enDash(pages); }
 
-  // "3" -> "3rd ed." (APA/IEEE) or "Third Edition" (Carnegie); text editions pass through
+  // "3" -> "3rd ed." (APA/IEEE), "3rd edn." (Harvard, Cite Them Right) or "Third Edition" (Carnegie); text editions pass through
   function editionLabel(ed, style) {
     var n = parseInt(ed, 10);
     if (!isNaN(n) && /^\d+(st|nd|rd|th)?\.?$/i.test(ed.trim())) {
       if (style === 'carnegie') return (ORDINAL_WORDS[n] || n + 'th') + ' Edition';
       var suf = (n % 100 >= 11 && n % 100 <= 13) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th';
-      return n + suf + ' ed.';
+      return n + suf + (style === 'harvard' ? ' edn.' : ' ed.');
     }
     return /edition|ed\./i.test(ed) ? ed : ed + (style === 'carnegie' ? ' Edition' : ' ed.');
   }
@@ -1609,6 +1623,7 @@
   }
   function apa(r) {
     var k = kind(r);
+    var isAuthor = function (name) { return r.authors.some(function (p) { return p.literal && p.family.toLowerCase() === String(name).toLowerCase(); }); };
     var names = r.authorsOthers && r.authors.length ? r.authors.map(function (p) { return nameLastInit(p); }).join(', ') + ', et al.' : apaNames(r.authors);
     if (!names && r.editors.length) names = apaNames(r.editors) + (r.editors.length > 1 ? ' (Eds.)' : ' (Ed.)'); // edited book
     var n = names ? 1 : 0;
@@ -1620,7 +1635,7 @@
     else if (r.issue) vol = '(' + T(r.issue) + ')';
 
     if (k === 'journal') {
-      var src = [I(r.container), vol, r.pages ? (r.isArticleNumber ? 'Article ' : '') + T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
+      var src = [I(r.container), vol, r.pages ? (r.isArticleNumber ? 'Article ' : '') + T(enDash(r.pages)) : ''].filter(Boolean).join(', ');
       if (n) out.push(T(dot(names)), year, T(dot(r.title)));
       else out.push(T(dot(r.title)), year);
       if (src) out.push(src + '.');
@@ -1634,16 +1649,17 @@
       if (r.publisher) out.push(T(dot(r.publisher)));
     } else if (k === 'book') {
       var ed = validEdition(r.edition) ? ' (' + T(editionLabel(r.edition, 'apa')) + ')' : '';
-      if (n) out.push(T(dot(names)), year, I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''));
-      else out.push(I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''), year);
-      if (r.publisher) out.push(T(dot(r.publisher)));
+      var bookTitle = r.title ? I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : '') : ed ? ed.replace(/^ /, '') + '.' : ''; // no title: no bare full stop
+      if (n) out.push(T(dot(names)), year, bookTitle);
+      else out.push(bookTitle, year);
+      if (r.publisher && !isAuthor(r.publisher)) out.push(T(dot(r.publisher)));
     } else {
       // APA 7 examples: a preprint and a report carry no bracketed label; a report number and a dissertation's
       // publication number sit in parentheses after the title; the archive or database follows the bracket
       var label = { dataset: 'Data set', software: 'Computer software' }[k];
       var host = hostOf(r), pre = '', archive = '';
       if (k === 'thesis') {
-        var deg = /m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
+        var deg = MASTERS_RE.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
         var school = r.institution || r.publisher || r.container;
         label = T(deg + (school ? ', ' + school : '')); host = '';
         archive = r.publisher && r.publisher !== school ? r.publisher : r.database; // "ProQuest Dissertations & Theses Global", "UA Campus Repository"
@@ -1653,7 +1669,7 @@
       var titlePart = !r.title && !label && !pre ? '' : I(r.title) + pre + (label ? ' [' + label + ']' : '') + (label || pre || !endsPunct(r.title) ? '.' : '');
       if (n) out.push(T(dot(names)), year, titlePart);
       else out.push(titlePart, year);
-      if (host) out.push(T(dot(host)));
+      if (host && !isAuthor(host)) out.push(T(dot(host))); // APA 7 (9.24, 10.16): the site or publisher is omitted when it is the author
       if (archive) out.push(T(dot(archive)));
       if (k === 'web' && link && accessedDate(r)) { out.push('Retrieved ' + accessedDate(r) + ', from ' + T(link)); link = ''; } // content that changes: the page recorded when it was read
     }
@@ -1669,14 +1685,15 @@
     else if (n === 2) names = nameLastFull(r.authors[0]) + ', and ' + nameFullFirst(r.authors[1]);
     else if (n >= 3) names = nameLastFull(r.authors[0]) + ', et al';
     if (r.authorsOthers && n) names = nameLastFull(r.authors[0]) + ', et al';
-    // MLA 9: a work with an editor but no author begins with its title; the editor follows in the container
-    // ("Beowulf. Edited by Sarah Anderson, Pearson, 2004."), unless it is a book chapter, where "edited by" already follows the book
+    // MLA 9: an edited book with no author begins with its editor ("Sánchez Prado, Ignacio M., editor."); a book with both keeps its
+    // author and names the editor in the container ("Austen, Jane. Emma. Edited by R. W. Chapman, Oxford UP, 1988."); any other
+    // work with an editor but no author begins with its title and the editor follows in the container. A chapter's "edited by" already follows the book
     var editedBy = '';
-    if (!names && r.editors.length) {
+    if (r.editors.length) {
       var ne = r.editors.length, edList = ne > 2 ? nameFullFirst(r.editors[0]) + ' et al.' : joinAnd(r.editors.map(nameFullFirst), 'and', false);
-      if (r.type === 'edited-book' || k === 'chapter' || k === 'proceedings') // an edited collection: "Sánchez Prado, Ignacio M., editor."
+      if (!names && (k === 'book' || k === 'chapter' || k === 'proceedings'))
         names = (ne === 1 ? nameLastFull(r.editors[0]) : ne === 2 ? nameLastFull(r.editors[0]) + ', and ' + nameFullFirst(r.editors[1]) : nameLastFull(r.editors[0]) + ', et al') + (ne > 1 ? ', editors' : ', editor');
-      else editedBy = 'Edited by ' + T(edList);
+      else if (!names || k === 'book') editedBy = 'Edited by ' + T(edList);
     }
     var out = [];
     if (names) out.push(T(dot(names)));
@@ -1739,25 +1756,25 @@
       if (r.volume) s += ' ' + T(r.volume);
       if (r.issue) s += ', no. ' + T(r.issue);
       s += ' (' + (r.year ? (issueMonth(r) ? MONTHS[issueMonth(r) - 1] + ' ' : '') + T(r.year) : 'n.d.') + ')'; // "111, no. 2 (April 2016)"; an undated article "(n.d.)"
-      if (r.pages) s += ': ' + T(pageRange(r.pages));
+      if (r.pages) s += ': ' + T(enDash(r.pages));
       s = s.replace(/^[\s,]+/, '');
       if (s) out.push(htmlDot(s));
     } else if (k === 'book') {
-      out.push(Idot(validEdition(r.edition) ? dot(r.title) + ' ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : r.title)); // no "Politics?. 2nd ed"
+      out.push(Idot(r.title) + (validEdition(r.edition) ? ' ' + T(dot(editionLabel(r.edition, 'apa'))) : '')); // the edition is roman, after the italic title
       var pub = [r.place, r.publisher].filter(Boolean).join(': ');
       out.push(T(dot([pub, r.year || 'n.d.'].filter(Boolean).join(', '))));
     } else if (k === 'chapter' || k === 'proceedings') {
       out.push('“' + T(dot(r.title)) + '”');
       var inp = r.container ? 'In ' + I(r.container) : '';
       if (r.editors.length) inp += (inp ? ', edited by ' : 'Edited by ') + T(joinAnd(r.editors.map(nameFullFirst), 'and', r.editors.length > 2));
-      if (r.pages) inp += (inp ? ', ' : '') + T(pageRange(r.pages));
+      if (r.pages) inp += (inp ? ', ' : '') + T(enDash(r.pages));
       if (inp) out.push(htmlDot(inp));
       var pub2 = [r.place, r.publisher].filter(Boolean).join(': ');
       out.push(T(dot([pub2, r.year || 'n.d.'].filter(Boolean).join(', '))));
     } else {
       out.push('“' + T(dot(r.title)) + '”');
       var host = k === 'thesis'
-        ? [/m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') // "PhD diss., University of Chicago, 2013."
+        ? [MASTERS_RE.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') // "PhD diss., University of Chicago, 2013."
         : [hostOf(r), r.year || (k === 'web' && accessedDate(r) ? '' : 'n.d.')].filter(Boolean).join(', '); // an undated page shows its access date instead
       if (host) out.push(T(dot(host)));
       if (k === 'web' && !r.year && accessedDate(r)) out.push('Accessed ' + accessedDate(r) + '.'); // an undated page is cited by the day it was read
@@ -1769,16 +1786,25 @@
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
+  // Harvard as Cite Them Right (Pears and Shields, 12th edn, 2022) prints it, checked against the university guides that reprint its
+  // examples (tests/golden-styleguides.test.js): "Author, A.B. and Author, C. (Year) ‘Title’, Journal, vol(issue), pp. x–y. Available at:
+  // link (Accessed: day Month year)." A whole work (book, report, thesis, web page) has its title in italics; a book's edition follows
+  // the title after a comma ("4th edn."); a chapter's editors are written initials first with "(ed.)" or "(eds)" (no stop: a contraction);
+  // the link takes no final stop, the accessed date in parentheses does
   function harvard(r) {
     var k = kind(r);
     var n = r.authors.length;
     var hn = function (p) { if (p.literal) return p.family; var ini = initials(p.given, { space: false }); return p.family + (ini ? ', ' + ini : ''); }; // a given name of only nicknames has no initials
-    var hlist = function (people) {
+    var hf = function (p) { if (p.literal) return p.family; var ini = initials(p.given, { space: false }); return (ini ? ini + ' ' : '') + p.family; };    // "M. Pecht", for editors
+    var hlist = function (people, fn) {
+      fn = fn || hn;
       var m = people.length;
-      return m === 1 ? hn(people[0]) : m <= 3 ? joinAnd(people.map(hn), 'and', false) : hn(people[0]) + ' et al.';
+      return m === 1 ? fn(people[0]) : m <= 3 ? joinAnd(people.map(fn), 'and', false) : fn(people[0]) + ' et al.';
     };
+    var edsLabel = function (m) { return m > 1 ? ' (eds)' : ' (ed.)'; };
     var names = n ? (r.authorsOthers ? hn(r.authors[0]) + ' et al.' : hlist(r.authors)) : '';
-    if (!names && r.editors.length) names = hlist(r.editors) + (r.editors.length > 1 ? ' (eds.)' : ' (ed.)');
+    if (!names && r.editors.length) names = hlist(r.editors) + edsLabel(r.editors.length);
+    if (!names && k === 'web' && r.container) names = r.container; // a page with no author is cited by its site
     var out = [];
     var year = '(' + (r.year || 'no date') + ')';
     var link = doiLink(r);
@@ -1786,26 +1812,38 @@
     else out.push(year);
     var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
-      out.push(Idot(validEdition(r.edition) ? dot(r.title) + ' ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : r.title)); // no "Politics?. 2nd ed"
+      out.push(validEdition(r.edition) ? I(r.title) + ', ' + T(dot(editionLabel(r.edition, 'harvard'))) : Idot(r.title)); // "How to research, 4th edn."
       if (placePub) out.push(T(dot(placePub)));
     } else if (k === 'chapter' || k === 'proceedings') {
-      // Cite Them Right: 'Title', in Editor, A. and Editor, B. (eds.) Book. Place: Publisher, pp. x–y.
+      // Cite Them Right: 'Title', in A. Editor and B. Editor (eds) Book. Place: Publisher, pp. x–y.
       if (r.container) {
-        var inb = 'in ' + (r.editors.length ? T(hlist(r.editors)) + (r.editors.length > 1 ? ' (eds.) ' : ' (ed.) ') : '') + Idot(r.container);
+        var inb = 'in ' + (r.editors.length ? T(hlist(r.editors, hf)) + edsLabel(r.editors.length) + ' ' : '') + Idot(r.container);
         out.push('‘' + T(r.title) + '’, ' + inb);
       } else out.push('‘' + T(r.title) + '’.');
       var tail = [placePub, r.pages ? T(pp(r.pages)) : ''].filter(Boolean).join(', ');
       if (tail) out.push(T(dot(tail)));
+    } else if (k === 'thesis') {
+      // "Title. PhD thesis. University." — the degree as the record gives it ("MSc", "Ph.D.", "PhD thesis"), a doctorate when it gives none;
+      // "Unpublished" is not added: the record does not say whether the thesis was published
+      var degree = r.genre.replace(/^ph\.?\s?d\.?$/i, 'PhD');
+      out.push(Idot(r.title), T(dot(/thesis|dissertation/i.test(degree) ? degree : (degree || 'PhD') + ' thesis')));
+      var school = r.institution || r.publisher;
+      if (school) out.push(T(dot(school)));
+    } else if (k === 'report' || k === 'web') {
+      // "Organisation (Year) Title of report. Place: Publisher." / "Author (Year) Title of page. Available at: URL (Accessed: date)."
+      out.push(Idot(r.title));
+      var rp = k === 'report' ? [r.place, r.publisher || r.institution].filter(Boolean).join(': ') : '';
+      if (rp) out.push(T(dot(rp)));
     } else {
       var parts = ['‘' + T(r.title) + '’'];
       if (r.container) parts.push(I(r.container));
       else if (k !== 'journal' && hostOf(r)) parts.push(T(hostOf(r)));
       if (r.volume || r.issue) parts.push(T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : ''));
       if (showPublisher(r, k)) parts.push(T(r.publisher));
-      if (r.pages) parts.push(T(pp(r.pages)));
+      if (r.pages) parts.push(r.isArticleNumber ? 'article ' + T(r.pages) : T(pp(r.pages))); // "11, article 1157"
       out.push(htmlDot(parts.join(', ')));
     }
-    if (link) out.push('Available at: ' + T(link) + '.');
+    if (link) out.push('Available at: ' + T(link) + (accessedDateUK(r) ? ' (Accessed: ' + accessedDateUK(r) + ').' : ''));
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
@@ -1829,7 +1867,7 @@
       var when = r.year ? r.year + (r.month ? ' ' + MONTHS_NLM[r.month - 1] + (r.day ? ' ' + r.day : '') : '') : '';
       var volIss = r.volume ? ';' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '') : (r.issue ? ';' + (/^\d+$/.test(r.issue) ? '(' + T(r.issue) + ')' : T(r.issue)) : '');
       var tail = when + volIss + (r.pages ? ':' + T(nlmPages(r.pages)) : '');
-      if (tail) s += (s ? ' ' : '') + tail.replace(/^;/, '');
+      if (tail) s += (s ? ' ' : '') + tail.replace(/^[;:]/, ''); // no year and no volume: the pages alone, not ":123-9"
       if (s) out.push(s + (endsPunct(s) && !tail ? '' : '.'));   // no journal name, no volume: nothing to add
     } else if (k === 'book') {
       if (validEdition(r.edition)) out.push(T(editionLabel(r.edition, 'apa')));
@@ -1863,7 +1901,7 @@
     var out = [];
     if (num) out.push('[' + num + ']');
     if (names) out.push(T(names) + ',');
-    var mon = monthName(MONTHS_IEEE, r.month); mon = mon ? mon + ' ' : '';
+    var mon = monthName(MONTHS_ABBR, r.month); mon = mon ? mon + ' ' : ''; // IEEE Reference Guide (2025): three letters, May unabbreviated
     var link = doiLink(r);
     var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
@@ -1996,7 +2034,7 @@
    * number in a numbered list (Vancouver, IEEE), 1 when a single reference is shown. */
   var ET_AL_FROM = { apa: 3, mla: 3, harvard: 4, chicago: 4, carnegie: 3 }; // the list length from which only the first name is given
   function citedPeople(r) { return r.authors.length ? r.authors : r.editors; }
-  function famOf(p) { return p.family + (p.literal ? '' : ''); }
+  function famOf(p) { return p.family; }
   // "Smith", "Smith and Jones", "Smith, Jones, and Lee", "Smith et al."
   function whoOf(r, style, and, oxford) {
     var people = citedPeople(r), fam = people.map(famOf), lim = ET_AL_FROM[style] || 3;
@@ -2015,7 +2053,7 @@
   function shortTitleOf(r) { return wholeWork(r) ? shortTitle(r) : '\u201C' + shortTitle(r) + '\u201D'; }
   function locOf(pages, form) { // "p. 45" / "pp. 45–47" / "45–47"
     var p = String(pages || '').trim(); if (!p) return '';
-    return form === 'bare' ? pageRange(p) : pp(p);
+    return form === 'bare' ? enDash(p) : pp(p);
   }
   function apaInText(r, opts) {
     var who = whoOf(r, 'apa', '&') || shortTitleOf(r), whoN = whoOf(r, 'apa', 'and') || shortTitleOf(r);
@@ -2026,10 +2064,10 @@
     var who = whoOf(r, 'mla', 'and') || shortTitleOf(r);
     return { paren: '(' + who + (opts.pages ? ' ' + locOf(opts.pages, 'bare') : '') + ')' };
   }
-  function harvardInText(r, opts) {
+  function harvardInText(r, opts) { // Cite Them Right 12th edn: "(Author and Author, Year, p. 5)"
     var who = whoOf(r, 'harvard', 'and') || shortTitleOf(r);
     var when = (r.year || 'no date') + (opts.pages ? ', ' + locOf(opts.pages) : '');
-    return { paren: '(' + who + ' ' + when + ')', narrative: who + ' (' + when + ')' };
+    return { paren: '(' + who + ', ' + when + ')', narrative: who + ' (' + when + ')' };
   }
   function vancouverInText(r, opts) { return { paren: '(' + (opts.n || 1) + ')' }; }
   function ieeeInText(r, opts) { return { paren: '[' + (opts.n || 1) + (opts.pages ? ', ' + locOf(opts.pages) : '') + ']' }; }
@@ -2046,7 +2084,7 @@
     var out = [], parts;
     if (k === 'journal') {
       var s = (r.container || '') + (r.volume ? ' ' + r.volume : '') + (r.issue ? ', no. ' + r.issue : '') + ' (' + (r.year ? (issueMonth(r) ? MONTHS[issueMonth(r) - 1] + ' ' : '') + r.year : 'n.d.') + ')';
-      var pg = loc ? loc + (r.isArticleNumber && r.pages ? ', ' + r.pages : '') : (r.pages ? pageRange(r.pages) : '');
+      var pg = loc ? loc + (r.isArticleNumber && r.pages ? ', ' + r.pages : '') : (r.pages ? enDash(r.pages) : '');
       if (pg) s += ': ' + pg;
       out = [names, quoted(title, true) + ' ' + s.replace(/^\s+/, '')];
       if (tail) out.push(tail);
@@ -2058,9 +2096,9 @@
       var inp = r.container ? 'in ' + r.container : '';
       if (r.editors.length && !edited) inp += (inp ? ', ed. ' : 'ed. ') + joinAnd(r.editors.map(nameFullFirst), 'and', r.editors.length > 2);
       out = [names, quoted(title, true) + (inp ? ' ' + inp : '') + ' (' + [pub, r.year || 'n.d.'].filter(Boolean).join(', ') + ')'];
-      var cp = loc || (r.pages ? pageRange(r.pages) : ''); if (cp) out.push(cp); if (tail) out.push(tail);
+      var cp = loc || (r.pages ? enDash(r.pages) : ''); if (cp) out.push(cp); if (tail) out.push(tail);
     } else if (k === 'thesis') {
-      out = [names, quoted(title) + ' (' + [/m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') + ')'];
+      out = [names, quoted(title) + ' (' + [MASTERS_RE.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') + ')'];
       if (loc) out.push(loc); if (tail) out.push(tail);
     } else if (k === 'web') {
       var org = citedPeople(r).length && citedPeople(r)[0].literal; // an organisation follows the site name; a person leads
@@ -2081,7 +2119,7 @@
   }
   function carnegieInText(r, opts) {
     opts = opts || {};
-    var fam = r.authors.map(function (p) { return p.family; });
+    var fam = citedPeople(r).map(famOf); // the editors of an edited book stand in for its authors, as in the reference
     var who = fam.length === 0 ? (r.container || 'Anon.') : fam.length === 1 ? fam[0] : fam.length === 2 ? fam[0] + ' and ' + fam[1] : fam[0] + ' et al.';
     return '(' + who + ' ' + (r.year || 'n.d.') + (opts.pages ? ':' + locOf(opts.pages, 'bare') : '') + ')';
   }
@@ -2100,7 +2138,7 @@
     'ð': 'd', 'Ð': 'D', 'þ': 'th', 'Þ': 'Th', 'ı': 'i' };
   function foldAscii(s) { // letters folded, everything else kept: "García" -> "Garcia", "Schrödinger" -> "Schrodinger"
     var t = String(s || '').replace(/[ßæÆœŒøØłŁđĐðÐþÞı]/g, function (c) { return ASCII_LETTERS[c]; });
-    if (t.normalize) t = t.normalize('NFD');
+    if (t.normalize) t = t.normalize('NFKD'); // compatibility forms too: the ligatures a PDF leaves ("\uFB01eld"), fullwidth letters
     return t.replace(/[\u0300-\u036f]/g, '');
   }
   function toAscii(s) { return foldAscii(s).replace(/[^A-Za-z0-9]/g, ''); }
@@ -2167,10 +2205,10 @@
   function bibtex(r) {
     var k = kind(r);
     var type = { journal: 'article', chapter: 'incollection', book: 'book', proceedings: 'inproceedings',
-      thesis: 'phdthesis', report: 'techreport' }[k] || 'misc';
+      thesis: MASTERS_RE.test(r.genre) ? 'mastersthesis' : 'phdthesis', report: 'techreport' }[k] || 'misc';
     var f = [];
     var add = function (key, val, raw) { if (val) f.push('  ' + key + ' = ' + (raw === 'bare' ? val : '{' + (raw ? val : bibEsc(val)) + '}')); };
-    f.push('  title = {' + bibProtect(marksToLatex(bibEsc(r.title))) + '}');
+    if (r.title) f.push('  title = {' + bibProtect(marksToLatex(bibEsc(r.title))) + '}');
     add('author', r.authors.map(bibName).join(' and '), true);
     add('editor', r.editors.map(bibName).join(' and '), true);
     if (k === 'journal') add('journal', r.container);
@@ -2343,13 +2381,44 @@
     r.accessed = r.accessed && typeof r.accessed === 'object' && /^\d{4}$/.test(String(r.accessed.year)) ? { year: Number(r.accessed.year), month: r.accessed.month > 0 && r.accessed.month <= 12 ? Number(r.accessed.month) : 0, day: r.accessed.day > 0 && r.accessed.day <= 31 ? Number(r.accessed.day) : 0 } : null;
     return r;
   }
-  function format(record, styleId, num) {
+  // Author-date styles tell two works by the same first author in the same year apart with a letter on the year: (Smith, 2020a) and
+  // (Smith, 2020b), the letters following the order of the reference list, which is alphabetical by title (APA 7 8.19, 9.47; Cite Them
+  // Right; the Carnegie guide).  One letter per record, aligned with the input: '' when the author and year are unique or the record
+  // has no year, since "n.d." takes no letter here.  A leading "A", "An" or "The" does not count in the ordering
+  function yearSuffixes(records) {
+    var rs = (Array.isArray(records) ? records : []).map(function (m) { m = m || {}; return harden(m.authors ? m : normalize(m)); });
+    var groups = {}, out = [];
+    rs.forEach(function (r, i) {
+      out[i] = '';
+      var who = citedPeople(r), year = (r.year.match(/^\d{4}/) || [''])[0];
+      if (!who.length || !year) return;
+      var key = foldAscii(who[0].family).toLowerCase() + '|' + year;
+      (groups[key] = groups[key] || []).push(i);
+    });
+    var sortKey = function (i) { return marksToText(rs[i].title || '').toLowerCase().replace(/^\s*(?:a|an|the)\s+/, ''); };
+    Object.keys(groups).forEach(function (key) {
+      var idx = groups[key];
+      if (idx.length < 2) return;
+      idx.sort(function (a, b) { var x = sortKey(a), y = sortKey(b); return x < y ? -1 : x > y ? 1 : a - b; }); // ties keep the input order
+      idx.forEach(function (i, n) { var letters = ''; do { letters = String.fromCharCode(97 + n % 26) + letters; n = Math.floor(n / 26) - 1; } while (n >= 0); out[i] = letters; });
+    });
+    return out;
+  }
+  var YEAR_SUFFIX_STYLES = { apa: 1, harvard: 1, carnegie: 1 }; // the author-date styles; MLA cites by title, Chicago here is notes, numeric styles count
+  function withYearSuffix(r, styleId, opts) {
+    var sfx = opts && opts.yearSuffix ? String(opts.yearSuffix).replace(/[^a-z]/gi, '').toLowerCase() : '';
+    if (sfx && YEAR_SUFFIX_STYLES[styleId] && /^\d{4}/.test(r.year)) r.year = r.year.slice(0, 4) + sfx; // a letter the record already carries is replaced
+    return r;
+  }
+  // opts: the entry's number in a numbered list (a bare number, as before) or { n, yearSuffix }
+  function format(record, styleId, opts) {
     record = record || {};
-    var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
+    var o = opts && typeof opts === 'object' ? opts : { n: opts };
+    var r = withYearSuffix(withDisplayTitle(harden(record.authors ? record : normalize(record))), styleId, o);
     var all = STYLES.concat(EXPORTS);
     for (var i = 0; i < all.length; i++) {
       if (all[i].id === styleId) {
-        var out = all[i].fn(r, num);
+        var out = all[i].fn(r, o.n);
         return (all[i].rich ? stripTags(out) : out).replace(ANY_PUA, '');
       }
     }
@@ -2359,10 +2428,11 @@
   // The renderers emit exactly these tags; any other "<" in the output is text and is escaped (a last line of defence
   // behind esc(): a field that somehow carried markup cannot become an element in the page)
   var HTML_ALLOWED = /<(?!\/?(?:i|sub|sup|span)>|span style="font-style:normal">)/g;
-  function formatHtml(record, styleId, num) {
+  function formatHtml(record, styleId, opts) {
     record = record || {};
-    var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
-    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, num).replace(HTML_ALLOWED, '&lt;').replace(ANY_PUA, '');
+    var o = opts && typeof opts === 'object' ? opts : { n: opts };
+    var r = withYearSuffix(withDisplayTitle(harden(record.authors ? record : normalize(record))), styleId, o);
+    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, o.n).replace(HTML_ALLOWED, '&lt;').replace(ANY_PUA, '');
     throw new Error('Unknown text style: ' + styleId);
   }
 
@@ -2450,6 +2520,14 @@
     for (i = 0; i < words.length; i++) if (words[i].some(function (w) { return wordFound(w, i, flat, hay, haySet); })) hit++;
     return hit / words.length;
   }
+  // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
+  var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
+  // A reply, discussion, closure or letter carries the paper's title with a tag at one end: "Title: Reply", "Title\u2014In Reply",
+  // "Title (Discussion)", "Letter: Title", "Discussion of \u201CTitle\u201D", "Closure to \u201CTitle\u201D by \u2026".  The tail form must end the
+  // sentence, so "Energy policy: discussion and analysis" is a title
+  var NOTICE_TAIL = /(?:[\u2014\u2013:(]|\s-)\s*(?:in\s+)?(?:reply|discussion|closure|letter)\b(?:\s+(?:to|by|on)\b[^.;]*)?\)?\s*(?:[.;]\s|[.;]?\s*$)/i;
+  var NOTICE_LEAD = /^\s*(?:letter\s*:|discussion\s+(?:of|on)\b|closure\s+(?:to|of)\b|in\s+reply\b)/i;
+  function isNotice(t) { t = String(t || ''); return NOTICE.test(t) || NOTICE_LEAD.test(t) || NOTICE_TAIL.test(t); }
   // How well does a found record explain the reference text the user pasted? 0..1
   function matchConfidence(refText, record, opts) {
     record = harden(record && record.authors ? record : normalize(record || {}));
@@ -2466,8 +2544,9 @@
     [title, r.originalTitle ? marksToText(r.originalTitle) : ''].forEach(function (t) {
       if (!t) return;
       score = Math.max(score, titleScore(t, hay, haySet));
-      var main = t.split(/:\s+/)[0];
-      if (main !== t && tokens(main).length >= 3) score = Math.max(score, titleScore(main, hay, haySet));
+      var main = t.split(/:\s+/)[0], dropped = t.slice(main.length);
+      // a subtitle may be dropped, but not a notice tag: "Title: Reply" is a reply, not the paper
+      if (main !== t && tokens(main).length >= 3 && !isNotice(dropped) && !isNotice(dropped.replace(/^:\s*/, ''))) score = Math.max(score, titleScore(main, hay, haySet));
     });
     if (opts.titleOnly) return Math.max(0, Math.min(1, score)); // the Find tab has no year or author to check
     // the first person named: an organisation deposited as first author cannot be checked against a name list
@@ -2485,10 +2564,8 @@
       if (!near) score -= 0.35;                                                          // a different year is a different record
       else if (!yearsInRef.some(function (x) { return recYears.indexOf(x) !== -1; })) score -= 0.05; // online vs print year
     } else if (recYears.length) score -= authorOk ? 0.08 : 0.15;                         // no year given: the author carries more weight
-    // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
-    var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
     // A record Crossref says updates another work is a notice whatever its title; a paper whose own title was prefixed "RETRACTED: " is the paper, flagged on the row
-    if ((NOTICE.test(retractedPaper && !r.updateOf ? title : r.title) || r.updateOf || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
+    if ((isNotice(retractedPaper && !r.updateOf ? title : r.title) || r.updateOf || /^(peer-review|component)$/.test(r.type)) && !isNotice(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
     // A container is never what a reference cites: the journal's own record ("Вестник Пермского университета") shares the journal name with every reference to it
     if (/^(?:journal|journal-issue|journal-volume|book-series|book-set|proceedings-series|report-series|book-track)$/.test(r.type)) score -= 0.5;
     if (!authorOk) score -= 0.15;
@@ -2511,15 +2588,14 @@
       // "15-25" is one page range, not volume 25 and page 15
       var rangeRe = /(\d+)\s*[-\u2013\u2212]\s*(\d+)/g, rg;
       while (volOk && pageOk && (rg = rangeRe.exec(raw))) { var ends = [rg[1], rg[2]]; if (ends.indexOf(String(r.volume)) !== -1 && ends.indexOf(firstPage.replace(/^0+/, '')) !== -1) { volOk = false; } }
-      return { raw: raw, volOk: !!volOk, pageOk: !!pageOk };
+      return { raw: raw, volOk: !!volOk, pageOk: !!pageOk, hasVol: !!r.volume, hasPage: !!firstPage };
     };
-    // A one-word title ("Introduction", "Editorial", "Preface") is found in almost any reference on the subject: it is the record only
-    // when the volume and first page agree too; otherwise it is one to check
-    if (tokens(title).length <= 1 && !r.originalTitle && score > 0.6) { var nn = numbers(); if (!(nn.volOk && nn.pageOk)) score = 0.6; }
-    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
-      var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
+    // The words of the reference that neither the record's authors, its journal, nor the given words explain: of five letters or more,
+    // in the reference's own script, outside links and locators.  What is left is a title the record does not have
+    var unexplained = function (raw, extraKnown) {
       var known = {}; // the record's author names and journal words; whatever else the reference says of five letters or more is a title
       r.authors.forEach(function (p) { tokens(p.family).forEach(function (w) { known[foldSpelling(w)] = 1; }); });
+      (extraKnown || []).forEach(function (w) { known[foldSpelling(w)] = 1; });
       var jwords = tokens(r.container + ' ' + r.shortContainer).filter(function (w) { return w.length >= 4 && !/^\d+$/.test(w); }).map(foldSpelling);
       var ofJournal = function (w) { return jwords.some(function (j) { return j === w || (w.length >= 4 && !STOP_PREFIX.test(w) && j.indexOf(w) === 0); }); }; // "Geophys" abbreviates "Geophysical"; "the" does not abbreviate "Thermochimica"
       // a name the reference writes with initials ("Мохсени Т.И.", "J. Smith") is an author, however the record spells it
@@ -2535,13 +2611,34 @@
       var comparable = function (w) { return total > 0 && scriptOf(w) === refScript && cnt[refScript] >= 0.3 * total; };
       // links, DOIs, EDN codes and the words around locators are not title words
       var hayC = tokens(raw.replace(/https?:\/\/\S+|\b(?:doi|dx\.doi)\S*|10\.\d{4,9}\/\S+|\bEDN:?\s*[A-Z]{6}\b/gi, ' ')), NOT_TITLE = /^(?:https?|suppl|supplement|issue|volume|pages|available|accessed|retrieved|online|cited|article|number)$/;
+      // GOST writes the source after "//" ("Title // Journal. 2005. № 2."): those words name the journal, in whatever language the record has it
+      var srcWords = {}; (raw.match(/\/\/[^.]*/g) || []).forEach(function (seg) { tokens(seg).forEach(function (w) { srcWords[w] = 1; }); });
       var journalSaid = false, leftover = 0;
       hayC.forEach(function (w, i) {
         if (i && /[Ѐ-ӿ]/.test(hayC[i - 1]) && w === translit(hayC[i - 1])) return; // the transliteration the tokeniser adds beside a Cyrillic word
         var f = foldSpelling(translit(w));
         if (ofJournal(w) || ofJournal(f)) { journalSaid = true; return; }
+        if (srcWords[w]) return;
         if (w.length >= 5 && !known[w] && !known[f] && !/^\d+$/.test(w) && !NOT_TITLE.test(w) && comparable(w)) leftover++;
       });
+      return { leftover: leftover, journalSaid: journalSaid, jwords: jwords };
+    };
+    // A short title ("Introduction", "Editorial", "Climate change") is found in almost any reference on the subject: it is the record only
+    // when the DOI agrees, or when the locators the record has (volume, first page; many old records carry only one) agree and the reference
+    // says no more of a title than the record has; a book has no locators, so its publisher named in the reference stands in (a subtitle the
+    // publisher did not deposit is common); otherwise it is one to check
+    var titleToks = tokens(title);
+    if (titleToks.length <= 3 && !r.originalTitle && score > 0.6) {
+      var nn = numbers(), doiSaid = !!r.doi && String(refText).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1;
+      var extra = unexplained(nn.raw, titleToks).leftover, hasLoc = nn.hasVol || nn.hasPage;
+      var locOk = hasLoc && (nn.hasPage ? nn.pageOk : nn.volOk); // the first page, when the record has one; a Russian reference gives the issue and pages and no volume
+      var rawWords = tokens(nn.raw), pubOk = tokens(r.publisher).some(function (w) { return w.length >= 4 && rawWords.indexOf(w) !== -1; });
+      var noLocKind = !hasLoc && !/^(?:journal-article|proceedings-article)$/.test(r.type); // a book or report has no volume or page to agree; an article record without either is thin
+      if (!(doiSaid || (locOk && extra <= titleToks.length) || (noLocKind && (pubOk || extra <= titleToks.length)))) score = 0.6;
+    }
+    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
+      var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
+      var un = unexplained(raw), jwords = un.jwords, journalSaid = un.journalSaid, leftover = un.leftover;
       var journalOk = journalSaid || !jwords.length || leftover === 0; // the journal named, or no journal named at all; an unexplained word may be another journal
       // a line with no title of its own: the same author, year, volume and first page is the same article; three of the four is one to check.
       // A full reference whose title disagrees is a different paper whatever the numbers say, unless the journal agrees too: then check it
@@ -2573,11 +2670,12 @@
     autoFormulas: function (s) { return marksToText(autoFormulas(String(s === undefined || s === null ? '' : s).replace(PUA_RE, ''))); }, // plain text in: no markers
     inText: function (record, styleId, opts) {
       record = record || {};
-      var r = harden(record.authors ? record : normalize(record));
+      var r = withYearSuffix(harden(record.authors ? record : normalize(record)), styleId, opts);
       for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r, opts || {});
       return '';
     },
-    inTextForms: function (record, styleId, opts) { record = record || {}; return inTextForms(harden(record.authors ? record : normalize(record)), styleId, opts); },
+    inTextForms: function (record, styleId, opts) { record = record || {}; return inTextForms(withYearSuffix(harden(record.authors ? record : normalize(record)), styleId, opts), styleId, opts); },
+    yearSuffixes: yearSuffixes,
     matchConfidence: matchConfidence,
     STYLES: STYLES,
     EXPORTS: EXPORTS
@@ -2750,7 +2848,7 @@
   var PREFIX_WORDS = 'late early middle upper lower north south east west northern southern eastern western ' +
     'northeast northwest southeast southwest northeastern northwestern southeastern southwestern central ' +
     'great little greater lesser grand royal national saint mount port fort cape lake isle inner outer united ' +
-    'point far near holy';
+    'point far near holy sir';
   // Words after which a capital "A" is a label ("Vitamin A", "Type A", "Part A").
   var LABEL_NOUNS = 'vitamin type part hepatitis figure fig table appendix group class series section chapter ' +
     'phase plan model category grade zone unit site level layer member protein subtype influenza complex ' +
@@ -2945,6 +3043,8 @@
   var PREFIX_SET = setOf(PREFIX_WORDS);
   var LABEL_SET = setOf(LABEL_NOUNS);
   var ABBREV_SET = setOf(ABBREVIATIONS);
+  // taxonomic abbreviations written lowercase before their full stop ("sp. nov.", "gen. et sp. nov.", "n. sp.")
+  var TAXON_ABBREV = setOf('sp spp ssp subsp var gen nov n comb cf aff nr fam sensu');
   var ELEMENT_SET = setOf(ELEMENTS, true);
   var AMBIG_EL_SET = setOf(AMBIG_ELEMENTS, true);
   var UNIT_SET = setOf(UNITS);
@@ -3026,7 +3126,9 @@
   function isDigit(c) { return c >= '0' && c <= '9'; }
   function isLetter(c) {
     if (c.toLowerCase() !== c.toUpperCase()) return true;               // cased letters (Latin, Greek, Cyrillic...)
-    return /[ªºƻǀ-ǃʔ]/.test(c);            // a few caseless letters
+    // caseless letters: a few Latin ones, and kana, Han and hangul, which must be words rather than
+    // punctuation so that the Latin word after "日本" is not taken for a sentence start
+    return /[ªºƻǀ-ǃʔ぀-ヿ㐀-鿿가-힯]/.test(c);
   }
   function isWordChar(c) { return isLetter(c) || isDigit(c); }
   function isUpper(c) { return isLetter(c) && c === c.toUpperCase() && c !== c.toLowerCase(); }
@@ -3059,7 +3161,10 @@
   // "Darwin's", "U.S", "C/N"); everything else becomes a separate punct token. Raw HTML
   // tags ("<i>", "</sup>") and entities ("&amp;") are punct tokens and are never altered.
   function tokenize(title) {
-    var s = String(title == null ? '' : title), n = s.length, toks = [], i = 0, j, c, L;
+    var s = String(title == null ? '' : title), n, toks = [], i = 0, j, c, L;
+    // NFD input ("Re" + combining acute + "gions") would split at the combining mark, which is not a letter
+    if (typeof s.normalize === 'function') s = s.normalize('NFC');
+    n = s.length;
     while (i < n) {
       c = s.charAt(i);
       if (isSpace(c)) {
@@ -3455,6 +3560,21 @@
     return a === i + 2 && toks[a].kind === 'word' && /^(\d+[A-Za-z]?|[IVXLC]+|[A-Z])$/.test(toks[a].text);
   }
 
+  // "N. Sp.": a single capital before a stop is the abbreviation "n." only when "sp." / "gen." / ... follows it
+  function taxonAbbrevNext(toks, i) {
+    var a = nextSolid(toks, i), b = a >= 0 ? nextSolid(toks, a) : -1;     // a is the stop
+    return b >= 0 && b === a + 2 && toks[b].kind === 'word' && /^(sp|spp|gen|subsp|ssp|comb)$/i.test(toks[b].text) &&
+      b + 1 < toks.length && toks[b + 1].text.charAt(0) === '.';
+  }
+  // "sp. nov.", "n. sp. nov.": the word before "nov." (across its stop) is a taxonomic abbreviation, so "nov."
+  // is not the month
+  function taxonAbbrevBefore(toks, i) {
+    var a = prevSolid(toks, i);
+    if (a < 0 || toks[a].kind !== 'punct' || toks[a].text.charAt(toks[a].text.length - 1) !== '.') return false;
+    var w = prevSolid(toks, a);
+    return w >= 0 && toks[w].kind === 'word' && /^(sp|spp|gen|subsp|ssp|comb|var|n)$/i.test(toks[w].text);
+  }
+
   function isHeadKey(key) { return inSet(HEAD_SET, key); }
   function isGeoTime(key) { return GEO_TIME_SET.has(key); }
 
@@ -3528,6 +3648,13 @@
     var instChain = 0;       // "Museum of Comparative Zoology": 1 = institution head seen, 2 = inside its "of" name
 
     function entryKey(e) { var ps = e.info.parts; return lookupKey(ps[ps.length - 1]); }
+    // is the token before the initial at toks[j] another initial ("H. G. Wells") or a name ("John A. Costa")?
+    function initialOrName(j) {
+      var q = prevSolid(toks, j);
+      if (q < 0) return false;
+      if (toks[q].text === '.' && q > 0 && toks[q - 1].kind === 'word' && toks[q - 1].text.length === 1 && isUpper(toks[q - 1].text)) return true;
+      return toks[q].kind === 'word' && !!infos[q] && infos[q].whole === 'anchor';
+    }
 
     // run: consecutive capitalised word tokens (candidates, anchors and the sentence-start
     // word). decide() works out which of them are parts of a name.
@@ -3687,15 +3814,32 @@
       if (nameZone[i] && info.parts.length === 1 && info.cls[0] === 'candidate') { info.cls[0] = 'unknown'; wholeClass(info); }
       var ph = phrase[i];
       // words of an institution's "of" name keep their capitals ("Museum of Comparative Zoology")
-      if (instChain === 2) {
-        if (isUpper(tok.text.charAt(0)) && hasLower(tok.text) && !BREAKER_SET.has(lookupKey(tok.text))) {
-          for (var ic = 0; ic < info.cls.length; ic++) if (info.cls[ic] === 'candidate') info.cls[ic] = 'unknown';
-          wholeClass(info);
+      // (3 = a name word such as "Utah" or "Mexico" has been consumed: the name then ends at the next ordinary
+      // word, "University of Utah students", but runs on through a head or institution word, "University of Utah Press")
+      if (instChain >= 2) {
+        var ik2 = lookupKey(tok.text);
+        if (isUpper(tok.text.charAt(0)) && hasLower(tok.text) && !BREAKER_SET.has(ik2)) {
+          if (instChain === 3 && info.whole !== 'anchor' && !ph && !isHeadKey(ik2) && !INSTITUTION_SET.has(ik2)) instChain = 0;
+          else {
+            if (info.whole === 'anchor' || ph) instChain = 3;
+            for (var ic = 0; ic < info.cls.length; ic++) if (info.cls[ic] === 'candidate') info.cls[ic] = 'unknown';
+            wholeClass(info);
+          }
         } else if (!/^(of|and|the|for|&)$/i.test(tok.text)) instChain = 0;
       }
       if (instChain === 1) instChain = /^of$/i.test(tok.text) ? 2 : 0;
+      // "Aus Sp. Nov." -> "Aus sp. nov.", "Aus N. Sp.", "gen. et sp. nov.": taxonomic abbreviations are written
+      // lowercase; "nov." only after another one, so that the month "Nov." survives. The stop may share its
+      // token with a comma ("sp. nov., from").
+      var dotNext = i + 1 < toks.length && toks[i + 1].kind === 'punct' && toks[i + 1].text.charAt(0) === '.';
+      if (dotNext && !start && info.parts.length === 1 && isUpper(tok.text.charAt(0)) && !hasUpper(tok.text.slice(1)) &&
+          TAXON_ABBREV.has(lookupKey(tok.text)) && (tok.text.length > 1 || taxonAbbrevNext(toks, i)) &&
+          (lookupKey(tok.text) !== 'nov' || taxonAbbrevBefore(toks, i))) {
+        tok.text = safeLower(tok.text); tok.changed = true;
+        info = analyse(tok.text, words, protect); infos[i] = info;
+      }
       // "St. Helens", "Mt. Everest": abbreviated name prefixes stay as they are
-      if (info.parts.length === 1 && info.cls[0] === 'candidate' && i + 1 < toks.length && toks[i + 1].text === '.' &&
+      if (info.parts.length === 1 && info.cls[0] === 'candidate' && dotNext &&
           ABBREV_SET.has(lookupKey(tok.text)) && tok.text.length <= 4) {
         info = { pieces: [tok.text], parts: [tok.text], cls: ['fixed'], whole: 'neutral' };
         infos[i] = info;
@@ -3736,14 +3880,22 @@
         info.cls[0] = 'unknown'; wholeClass(info);
       }
       // a capitalised word right after an initial is a surname: "J. Smith", "H. G. Wells";
-      // after "St." / "Mt." / "Ft." it is a name: "St. Just", "Mt. Shasta"
+      // after "St." / "Mt." / "Ft." or an honorific ("Dr.", "Prof.", "Mrs.") it is a name: "St. Just", "Dr. Smith"
       var pw = prevSolid(toks, i);
       if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].text === '.' &&
-          pw > 0 && toks[pw - 1].kind === 'word' && /^(St|Mt|Ft|Pt|Ste)$/.test(toks[pw - 1].text)) {
+          pw > 0 && toks[pw - 1].kind === 'word' && /^(St|Mt|Ft|Pt|Ste|Dr|Mr|Mrs|Ms|Prof|Sir|Rev|Fr|Hon)$/.test(toks[pw - 1].text)) {
         info.cls[0] = 'unknown'; wholeClass(info);
       }
+      // "Dr Smith", "Mrs Green": the British honorific without its stop
+      if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].kind === 'word' &&
+          /^(Dr|Mr|Mrs|Ms|Sir)$/.test(toks[pw].text)) {
+        info.cls[0] = 'unknown'; wholeClass(info);
+      }
+      // "E. Coli", "S. Aureus": a common word with an epithet ending after a lone initial is an abbreviated
+      // genus, not a surname, unless another initial or a name precedes the initial ("H. G. Wells")
       if (info.parts.length === 1 && info.cls[0] === 'candidate' && pw >= 0 && pw === i - 2 && toks[pw].text === '.' &&
-          pw > 0 && toks[pw - 1].kind === 'word' && toks[pw - 1].text.length === 1 && isUpper(toks[pw - 1].text)) {
+          pw > 0 && toks[pw - 1].kind === 'word' && toks[pw - 1].text.length === 1 && isUpper(toks[pw - 1].text) &&
+          !(EPITHET_END.test(lookupKey(info.parts[0])) && !initialOrName(pw - 1))) {
         info.cls[0] = 'unknown'; wholeClass(info);
       }
       // plural that is also a surname / region: a name only after another name
@@ -3855,8 +4007,6 @@
   // Latin phrases kept lowercase in headline style ("in situ", "in vitro", "et al.")
   var LATIN_PAIRS = { 'in situ': 1, 'in vitro': 1, 'in vivo': 1, 'in silico': 1, 'ex situ': 1, 'ex vivo': 1,
     'de novo': 1, 'a priori': 1, 'a posteriori': 1, 'per se': 1, 'et al': 1, 'in utero': 1, 'in ovo': 1 };
-  // taxonomic abbreviations that stay lowercase before their full stop ("n. sp.", "gen. nov.")
-  var TAXON_ABBREV = setOf('sp spp ssp subsp var gen nov n comb cf aff nr fam sensu');
   function isGreek(c) { return /[Ͱ-Ͽἀ-῿]/.test(c); }
 
   function toTitleCase(title, opts) {
@@ -3877,12 +4027,13 @@
       if (nw >= 0 && LATIN_PAIRS[lk + ' ' + toks[nw].text.toLowerCase()] && !hasUpper(toks[nw].text)) { keepLow[i] = 'first'; keepLow[nw] = true; }
       if (/^[a-z]+-[a-z]+$/.test(t) && LATIN_PAIRS[t.replace('-', ' ')]) keepLow[i] = 'first';
       // species epithet after a genus: "Escherichia coli", "Tyrannosaurus rex", "Homo sapiens"
-      if (pw >= 0 && /^[a-z]{3,}$/.test(t) && !small.has(t) && /^[A-Z][a-z]{2,}$/.test(toks[pw].text)) {
-        var gk = toks[pw].text.toLowerCase();
-        // the genus: a capitalised Latin-looking word that is not a known place / person;
-        // a common word ("Virus", "Data") only counts when capitalised mid-sentence
+      if (pw >= 0 && /^[a-z]{3,}$/.test(t) && !small.has(t) && /^[A-Z][a-z]{2,}$/.test(capitalise(toks[pw].text))) {
+        var gk = toks[pw].text.toLowerCase(), gCap = isUpper(toks[pw].text.charAt(0));
+        // the genus: a Latin-looking word that is not a known place / person, capitalised or still to be
+        // ("tyrannosaurus rex"); a common word ("Virus", "Data") only counts when the input capitalises it
+        // mid-sentence, and without a word list only a capitalised word counts
         var genusLike = !small.has(gk) && !BREAKER_SET.has(gk) && !FUNCTION_SET.has(gk) && (!!GENUS_O[gk] || (GENUS_END.test(gk) && !(words && words.has('^' + gk)) && !isGeoTime(gk) &&
-          !NOT_GENUS_SET.has(gk) && !isHeadKey(gk) && (!words || !isCommon(gk, words) || !isSentenceStart(toks, pw, pw > 0 && prevSolid(toks, pw) >= 0))));
+          !NOT_GENUS_SET.has(gk) && !isHeadKey(gk) && (words ? !isCommon(gk, words) || (gCap && !isSentenceStart(toks, pw, pw > 0 && prevSolid(toks, pw) >= 0)) : gCap)));
         var epithetLike = !isHeadKey(t) && (/(i|ii|ae|ensis|oides|us|um|ex)$/.test(t) || (GENUS_O[gk] && EPITHET_END.test(t + '')) ||
           (GENUS_O[gk] && /(ens|is|a)$/.test(t)) ||
           (/(a|is|ans|ens|er)$/.test(t) && (!words || !isCommon(t, words))));
@@ -3910,20 +4061,25 @@
       if (keepLow[i] === true) continue;
 
       var pieces = tok.text.split(JOINER_SPLIT), out = '', k = 0;
-      var nextTxt = wordAt(nextWordIdx(i));
+      var nextTxt = wordAt(nextWordIdx(i)), prevTxt = wordAt(prevWordIdx(i));
       for (var p = 0; p < pieces.length; p++) {
         if (p % 2 === 1) { out += pieces[p]; continue; }
         var part = pieces[p], firstPart = (k === 0); k++;
         if (!part || (protect && protect.has(part)) || hasDigit(part) || hasUpper(part.slice(1))) { out += part; continue; }
         var key = lookupKey(part);
         var edge = start || i === lastWord;
+        // a small word after "the" / "a" / "an" / "this" is a noun ("the Past", "the Inside Story"; not after
+        // "that", which is usually the conjunction: "evidence that in mice"), and the first element of a
+        // hyphenated compound is always capitalised ("Over-the-Counter", Chicago 8.161)
+        var noun = firstPart && prevTxt !== null && /^(the|a|an|this)$/i.test(prevTxt);
+        var hyphenHead = firstPart && pieces.length > 1 && pieces[1] !== '/';
         if (keepLow[i] === 'first' && !(start && firstPart)) { out += part; continue; }
         if (isGreek(part.charAt(0))) { out += part; continue; }            // "ε-Iron", not "Ε-Iron"
         // an initial before a full stop ("M. A. Geyh") is not the article
         if (part.length === 1 && pieces.length === 1 && i + 1 < toks.length && toks[i + 1].text.charAt(0) === '.') { out += capitalise(part); continue; }
         // "up to" is a compound preposition
         if (key === 'up' && pieces.length === 1 && nextTxt && nextTxt.toLowerCase() === 'to' && !edge) { out += safeLower(part); continue; }
-        if (small.has(key) && !(edge && firstPart)) out += safeLower(part);
+        if (small.has(key) && !(edge && firstPart) && !noun && !hyphenHead) out += safeLower(part);
         else out += capitalise(part);
       }
       if (out !== tok.text) { tok.text = out; tok.changed = true; }
@@ -3958,6 +4114,7 @@
         for (var c = 0; c < p.length; c++) if (isLetter(p.charAt(c))) letters++;
         if (letters < 2) continue;
         var hl = hasLower(p), hu = hasUpper(p);
+        if (!hl && !hu) continue;                           // kana, Han, hangul: no case to count
         if (!hl) { up++; continue; }
         if (hu && p.length <= 4) continue;                  // Pb, IgG, mRNA, Ma
         low++;
@@ -4048,7 +4205,30 @@
     'GPS GIS AMNH CMNH FMNH USNM NHMUK MNHN IODP ODP DSDP LIDAR CRISPR IUCN UNEP ICZN NSF NERC BGS GSC CNRS MOR ' +
     'UCMP YPM NMNH BMNH IVPP ZPAL MCZ UALVP TMP LIP LIPS TTG MASH AFC EMP IDA ISBN ESA JAXA CSIRO NIH BMJ ' +
     'HER2 BRCA TNF HLA IGG IGM IGE ACE AMP ATP ADP GTP NADH NADPH PCR ELISA NASA SEDEX VMS MVT BIF BIFS OH ' +
-    'LA-ICPMS LA-MC-ICP-MS', true);
+    'LA-ICPMS LA-MC-ICP-MS EPA NIST DARPA FEMA OSHA NCAR NCBI EMBL', true);
+  // "US", "EU" and "DOE" are also the word "us", the element Eu and the word "doe": acronyms by company only.
+  // "us" the pronoun ends the title or follows a verb that takes it ("TELL US", "TELL US ABOUT"); the country
+  // precedes another word ("US EPA", "THE US DEPARTMENT", "IN US HOSPITALS").
+  var US_OBJECT_VERBS = setOf('tell tells told telling teach teaches taught teaching show shows showed shown showing give gives gave given ' +
+    'giving let lets letting help helps helped helping make makes made making bring brings brought bringing lead leads led leading take ' +
+    'takes took taken taking leave leaves left leaving allow allows allowed allowing remind reminds reminded reminding keep keeps kept ' +
+    'keeping get gets got getting call calls called calling save saves saved saving join joins joined joining ask asks asked asking ' +
+    'want wants wanted wanting guide guides guided guiding inform informs informed informing enable enables enabled enabling');
+  var EU_CONTEXT = setOf('member members countries country states policy policies regulation regulations directive directives law laws ' +
+    'legislation commission parliament council funding funded project projects programme programmes program programs ets enlargement ' +
+    'accession budget citizens integration market markets referendum membership taxonomy governance institutions level wide emissions ' +
+    'trading agricultural fisheries regions average economy economies');
+  var DOE_CONTEXT = setOf('national laboratory laboratories office report reports program programs programme project projects funded ' +
+    'funding standards guidelines site sites facility facilities complex order data sponsored');
+  function contextAcronym(core, toks, pv, nx) {
+    if (core !== 'US' && core !== 'EU' && core !== 'DOE') return false;
+    var pk = pv >= 0 && toks[pv].kind === 'word' ? toks[pv].text.toLowerCase() : '';
+    var nk = nx >= 0 && toks[nx].kind === 'word' ? toks[nx].text.toLowerCase() : '';
+    if (pk === 'the' || (pv >= 0 && /\($/.test(toks[pv].text) && nx >= 0 && /^\)/.test(toks[nx].text))) return true;   // "THE US", "(US)"
+    if (core === 'US') return !!nk && !US_OBJECT_VERBS.has(pk) && !/^(to|about|that|why|how|what|where|when|whether|if)$/.test(nk);
+    if (core === 'EU') return EU_CONTEXT.has(nk);
+    return pk === 'us' || DOE_CONTEXT.has(nk);
+  }
   // short words that are ordinary words or names, never acronyms
   var SHORT_WORDS = setOf('os rex gen nov sp spp ssp var cf aff et al de du la le von van der den nad pod ole tim');
   // name particles and Latin words written lowercase mid-title ("Domasov nad Bystrici", "os palatinum")
@@ -4125,6 +4305,7 @@
     if (!/[A-Z]/.test(p) || /[a-zß-ÿ]/.test(p)) return { text: p, kind: 'other' };       // Pb, IgG: already cased
     if (ctx.afterNumber && Object.prototype.hasOwnProperty.call(UNIT_CASE, p)) return { text: UNIT_CASE[p], kind: 'unit' };
     if (Object.prototype.hasOwnProperty.call(FIXED_CASE, p)) return { text: FIXED_CASE[p], kind: 'fixed' };
+    if (ctx.acr) return { text: p, kind: 'acronym' };                                              // US, U.S., EU, DOE
     if (ctx.chain) return { text: ctx.chainText, kind: 'formula' };
     if (hasDigit(p)) {
       f = /^[A-Z0-9.]+$/.test(p) && !MED_FORMULA_BLOCK.test(p) && !ACRONYMS.has(p) ? parseFormula(p) : null;
@@ -4196,9 +4377,10 @@
       }
       if (chain && nform < 2) chain = false;
       var dot = i + 1 < toks.length && toks[i + 1].text.charAt(0) === '.';
+      var acr = parts.length === 1 && contextAcronym(parts[0].replace(/['’]S$/, '').replace(/\./g, ''), toks, pv, nextSolid(toks, i));
       var outParts = [];
       for (k = 0; k < parts.length; k++) {
-        var r = capsPart(parts[k], { chain: chain, chainText: chain ? ftext[k] : null, dot: dot && k === parts.length - 1,
+        var r = capsPart(parts[k], { chain: chain, chainText: chain ? ftext[k] : null, dot: dot && k === parts.length - 1, acr: acr,
           start: start && k === 0, prefix: k === 0 && parts.length > 1, quoted: quoted, afterNumber: afterNumber && k === 0 }, words);
         if (r.text.length !== parts[k].length) r = { text: parts[k], kind: 'other' };
         outParts.push(r);
@@ -4322,9 +4504,10 @@
     s = trim(s);
     var out = { y: 0, m: 0, d: 0 };
     if (!s) return out;
-    var m = s.match(/^(\d{4})(?:[\/\-.](\d{1,2})?)?(?:[\/\-.](\d{1,2})?)?/);
-    if (m) { out.y = Number(m[1]); out.m = Number(m[2] || 0); out.d = out.m ? Number(m[3] || 0) : 0; return validDate(out); }
-    var y = s.match(/\b(1[5-9]\d{2}|20\d{2})\b/), rest = y ? s.replace(y[0], ' ') : s;
+    // numeric forms end here; a bare year with more after it ("2020 May 15", "2020, May 1", "2020/Jun/05") goes on to the month words
+    var m = s.match(/^(\d{4})(?:[\/\-.](\d{1,2})?)?(?:[\/\-.](\d{1,2})?)?[\/\-.]*/);
+    if (m && (m[2] || m[0].length === s.length)) { out.y = Number(m[1]); out.m = Number(m[2] || 0); out.d = out.m ? Number(m[3] || 0) : 0; return validDate(out); }
+    var y = s.match(/(?:^|\D)(1[5-9]\d{2}|20\d{2})(?!\d)/), rest = y ? s.replace(y[1], ' ') : s;
     var mw = rest.match(/[A-Za-z]{3,}/), dw = rest.match(/\b(\d{1,2})\b/);
     out.y = y ? Number(y[1]) : 0; out.m = mw ? monthNum(mw[0]) : 0; out.d = out.m && dw ? Number(dw[1]) : 0;
     return validDate(out);
@@ -4348,15 +4531,18 @@
   // RIS / EndNote: "Family, Given, Suffix" | "Family, Given" | "Organisation," (trailing comma = single field)
   // | "Smith JA" (Vancouver: family + initials) | "J.A. Smith"
   // Words that make an author an organisation even without EndNote's trailing comma ("U.S. Geological Survey")
-  var ORG_WORDS = /\b(Survey|Museum|Society|Institute|Institution|University|College|Academy|Association|Organi[sz]ation|Commission|Committee|Council|Agency|Department|Ministry|Office|Bureau|Service|Center|Centre|Laboratory|Foundation|Consortium|Collaboration|Group|Team|Project|Program(me)?|Database|Network|Board|Authority|Corporation|Company|Inc|Ltd|GmbH|Press)\b/;
+  var ORG_WORDS = /\b(Survey|Museum|Society|Institutes?|Institution|University|College|Academy|Association|Organi[sz]ation|Commission|Committee|Council|Agency|Administration|Department|Ministry|Office|Bureau|Panel|Service|Cent(er|re)s?|Laborator(y|ies)|Foundation|Consortium|Collaboration|Group|Team|Project|Program(me)?|Database|Network|Board|Authority|Corporation|Company|Trust|Union|Bank|Nations|Archives?|Gardens?|Canada|Inc|Ltd|GmbH|Press)\b/;
+  // "et al.", "and others", "others": a truncated list, not a person (the record builder sets the "others" flag from it)
+  function isOthers(s) { return /^(?:et\s+al\.?|and\s+others|others)$/i.test(trim(s)); }
   function nameFromTagged(s) {
     s = trim(s);
-    if (!s) return null;
+    if (!s || isOthers(s)) return null;
     if (/,\s*$/.test(s)) return { name: trim(s.replace(/,\s*$/, '')) };
     var parts = s.split(',').map(trim);
     // "Press, William H." and "Service, Robert" are people: one capitalised word, then initials or a given name; "Geological Survey, Ohio" is not
     var personShaped = parts.length > 1 && /^[A-Z][^\s]*$/.test(parts[0]) && /^(?:[A-Z][a-z]+|[A-Z]\.?)(?:[\s.\-]*[A-Z]\.?)*$/.test(parts[1]);
-    if (ORG_WORDS.test(s) && (parts.length === 1 || (ORG_WORDS.test(parts[0]) && !personShaped))) return { name: s }; // "History, C.M. of N." never
+    var vancouver = parts.length === 1 && /^[A-Z][a-z]+(?:\s[A-Z][a-z]+)?\s[A-Z]{1,3}$/.test(s);  // "Bank JA", "Press WH": a family name + initials
+    if (ORG_WORDS.test(s) && !vancouver && (parts.length === 1 || (ORG_WORDS.test(parts[0]) && !personShaped))) return { name: s }; // "History, C.M. of N." never
     if (parts.length === 1) {
       var toks = s.split(/\s+/), ini = toks[toks.length - 1], fam = toks.slice(0, -1).join(' ');
       // "Smith JA", or "SMITH JA" deposited in capitals: a family longer than the initials (normalize title-cases it)
@@ -4374,7 +4560,7 @@
     var addIsbn = function (x) { if (f.isbn.indexOf(x) === -1) f.isbn.push(x); };
     var addIssn = function (x) { x = x.toUpperCase(); if (x.length === 8) x = x.slice(0, 4) + '-' + x.slice(4); if (f.issn.indexOf(x) === -1) f.issn.push(x); };
     vals.forEach(function (v) {
-      v = String(v || '').replace(/\([^)]*\)/g, ' ').replace(/\b(e-?|p-?)?(ISSN|ISBN)(-1[03])?:?/gi, ' ');
+      v = String(v || '').replace(/\([^()]{0,80}\)/g, ' ').replace(/\b(e-?|p-?)?(ISSN|ISBN)(-1[03])?:?/gi, ' '); // "(Print)", "(Electronic)"; bounded, so an unclosed "(" in a long field is not quadratic
       v.split(/[;,]/).forEach(function (part) {
         part = trim(part);
         if (!part) return;
@@ -4489,9 +4675,11 @@
     var f = blank('ris', tags);
     f.type = RIS_TYPES[ty] || 'other';
     var isPart = /^(CHAP|ECHAP|CONF|CPAPER)$/.test(ty);
-    f.authors = all('AU').concat(all('A1')).map(nameFromTagged);
+    var au = all('AU').concat(all('A1'));
+    f.authors = au.map(nameFromTagged); f.authorOthers = au.some(isOthers); // "AU  - et al." is a truncated list, not an author
     var a2 = /^(CHAP|ECHAP|BOOK|EBOOK|EDBOOK|CONF|CPAPER)$/.test(ty) ? all('A2') : []; // secondary authors = editors
-    f.editors = all('ED').concat(a2).map(nameFromTagged);
+    var ed = all('ED').concat(a2);
+    f.editors = ed.map(nameFromTagged); f.editorOthers = ed.some(isOthers);
     f.title = g('TI') || g('T1') || g('CT') || (/^(BOOK|EBOOK|EDBOOK)$/.test(ty) ? g('BT') : '');
     var full = g('T2') || g('JF') || (isPart ? g('BT') : ''), shortc = g('JO') || g('JA');
     f.container = full || shortc;
@@ -4537,7 +4725,8 @@
     var g = function (t) { return tags[t] ? tags[t][0] : ''; }, all = function (t) { return tags[t] || []; };
     var f = blank('enw', tags);
     f.type = ENW_TYPES[g('0').toLowerCase()] || 'other';
-    f.authors = all('A').map(nameFromTagged); f.editors = all('E').map(nameFromTagged);
+    f.authors = all('A').map(nameFromTagged); f.authorOthers = all('A').some(isOthers); // "%A et al."
+    f.editors = all('E').map(nameFromTagged); f.editorOthers = all('E').some(isOthers);
     f.title = g('T'); f.container = g('J') || g('B'); f.series = g('S');
     if (f.type === 'book' && !g('J') && f.container && !f.series) { f.series = f.container; f.container = ''; } // Book: %B is the series
     f.shortTitle = g('!');
@@ -4596,14 +4785,38 @@
       return (op === '_' ? SUBO : SUPO) + (grp !== undefined ? grp : one) + (op === '_' ? SUBC : SUPC);
     });
   }
-  function textSubSup(t) { // \textsubscript{x} / \textsuperscript{x} -> markers
-    var re = /\\text(sub|super)script\s*\{/g, out = '', last = 0, m;
-    while ((m = re.exec(t))) {
-      var open = m.index + m[0].length - 1, end = matchBrace(t, open), sub = m[1] === 'sub';
-      out += t.slice(last, m.index) + (sub ? SUBO : SUPO) + textSubSup(t.slice(open + 1, end)) + (sub ? SUBC : SUPC);
-      last = end + 1; re.lastIndex = end + 1;
+  // \textsubscript{x} / \textsuperscript{x} -> markers, nesting included: one pass with a stack of the open
+  // commands' brace depths (a recursive version overflowed the call stack on thousands of nested commands,
+  // and matchBrace from each of them was quadratic); a command still open at the end is closed there.
+  function textSubSup(t) {
+    if (t.indexOf('script') < 0) return t;
+    var out = '', depth = 0, open = [], n = t.length, i = 0, m;
+    while (i < n) {
+      var c = t.charAt(i);
+      if (c === '\\' && (m = /^\\text(sub|super)script\s*\{/.exec(t.substr(i, 24)))) {
+        depth++; open.push({ depth: depth, sub: m[1] === 'sub' });
+        out += m[1] === 'sub' ? SUBO : SUPO; i += m[0].length; continue;
+      }
+      if (c === '{') depth++;
+      else if (c === '}') {
+        if (open.length && open[open.length - 1].depth === depth) { out += open.pop().sub ? SUBC : SUPC; depth--; i++; continue; }
+        depth--;
+      }
+      out += c; i++;
     }
-    return last ? out + t.slice(last) : t;
+    while (open.length) out += open.pop().sub ? SUBC : SUPC;
+    return out;
+  }
+  // \( ... \) -> marks. By hand rather than a lazy regex, which rescanned to the end from every "\(" without
+  // a partner: once one "\(" has no "\)" after it, none of the later ones has either, so the scan stops.
+  function mathParens(t) {
+    var out = '', pos = 0;
+    for (;;) {
+      var a = t.indexOf('\\(', pos); if (a < 0) break;
+      var b = t.indexOf('\\)', a + 2); if (b < 0) break;
+      out += t.slice(pos, a) + mathToMarks(t.slice(a + 2, b)); pos = b + 2;
+    }
+    return pos ? out + t.slice(pos) : t;
   }
 
   // LaTeX -> plain Unicode text. With html=true, sub/superscripts become <sub>/<sup> (and & < > are
@@ -4616,7 +4829,7 @@
     t = t.replace(/\\url\s*\{([^{}]*)\}/g, function (m, u) { return '{' + u.replace(/~/g, PH.ltilde) + '}'; });
     t = t.replace(/\\href\s*\{[^{}]*\}\s*\{/g, '{');
     t = t.replace(/\\noopsort\s*\{[^{}]*\}/g, '');
-    t = t.replace(/\\\(([\s\S]*?)\\\)/g, function (m, x) { return mathToMarks(x); });
+    t = mathParens(t);
     t = t.replace(/\$([^$]*)\$/g, function (m, x) { return mathToMarks(x); });
     t = textSubSup(t);
     t = t.replace(/\\([`'^"~=.])(?:\{(\\[ij]|[a-zA-Z])\}|(\\[ij]|[a-zA-Z]))/g, acc);       // \'e  \'{e}  {\'e}  \'{\i}
@@ -4690,7 +4903,7 @@
   // "Family, Given" | "Family, Jr., Given" | "Family, Given, Jr." | "Given Family" | "{Organisation}"
   function nameFromBib(s) {
     s = trim(s);
-    if (!s || /^others$/i.test(s)) return null;
+    if (!s || isOthers(s)) return null;
     if (s.charAt(0) === '{' && matchBrace(s, 0) === s.length - 1) return { name: deLatex(s) };
     var parts = splitDepth0(s, ',').map(function (x) { return deLatex(x); });
     if (parts.length === 1) return nameFromNatural(parts[0]);
@@ -4705,7 +4918,7 @@
   }
   function bibNameList(s) { return s ? splitDepth0(String(s), 'and') : []; }
   function bibNames(s) { return bibNameList(s).map(nameFromBib).filter(Boolean); }
-  function bibOthers(s) { var l = bibNameList(s); return l.length > 0 && /^others$/i.test(l[l.length - 1]); }
+  function bibOthers(s) { var l = bibNameList(s); return l.length > 0 && isOthers(l[l.length - 1]); }
   function urlClean(s) { return trim(String(s || '').replace(/\\url\{([^}]*)\}/g, '$1').replace(/\\([%_&#$~^])/g, '$1').replace(/[{}]/g, '')); }
   // DOI field: only \_ \% \& \# \~ \{ \} are unescaped; no dash or tilde conversion
   function idClean(s) {
@@ -5031,14 +5244,15 @@
   var nativeFetch = window.fetch.bind(window);
   function fetch(url, opts) {
     opts = opts || {};
-    if (opts.signal || typeof AbortController === 'undefined') return nativeFetch(url, opts);
-    var ctl = new AbortController();
+    if (typeof AbortController === 'undefined') return nativeFetch(url, opts);
+    var ctl = new AbortController(), outer = opts.signal || null; // a caller's own signal (an abandoned batch) aborts too, and keeps the timeout
+    if (outer) { if (outer.aborted) return Promise.reject(outer.reason || new DOMException('The lookup was abandoned', 'AbortError')); outer.addEventListener('abort', function () { ctl.abort(); }); }
     var timer = setTimeout(function () { ctl.abort(); }, FETCH_TIMEOUT_MS);
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; }); o.signal = ctl.signal;
     // the timer keeps running: a body that stalls after the headers is aborted too (aborting a finished request is harmless)
     return nativeFetch(url, o).then(function (res) { return res; }, function (e) {
       clearTimeout(timer);
-      if (e && e.name === 'AbortError') throw new Error('No response from ' + String(url).split('/')[2] + ' after ' + FETCH_TIMEOUT_MS / 1000 + ' s');
+      if (e && e.name === 'AbortError' && !(outer && outer.aborted)) throw new Error('No response from ' + String(url).split('/')[2] + ' after ' + FETCH_TIMEOUT_MS / 1000 + ' s');
       throw e;
     });
   }
@@ -5059,6 +5273,7 @@
         if (!m || typeof m !== 'object' || Array.isArray(m)) m = {};
         if (!m.rows || typeof m.rows !== 'object' || Array.isArray(m.rows)) m.rows = {};
         if (typeof m.text !== 'string') m.text = '';
+        if (typeof m.previous !== 'string') m.previous = '';
       }
       return m;
     }
@@ -5088,6 +5303,8 @@
     return {
       text: function () { return load().text || ''; },
       setText: function (t) { load().text = String(t || ''); save(); },
+      previous: function () { return load().previous || ''; }, // the list a ?refs= link replaced, until it is restored
+      setPrevious: function (t) { load().previous = String(t || ''); save(); },
       row: function (raw) { var k = key(raw); return k ? load().rows[k] || null : null; },
       remember: function (raw, fields) { var k = key(raw); if (!k) return; var r = load().rows[k] || {}; Object.keys(fields).forEach(function (f) { r[f] = (f === 'record' || f === 'alt') ? plain(fields[f]) : fields[f]; }); r.t = Date.now(); load().rows[k] = r; save(); },
       knowsAll: function (items) { return items.length > 0 && items.every(function (it) { return it.kind !== 'text' || (batchMem.row(it.text) || {}).record; }); }
@@ -5108,7 +5325,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.15.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.16.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -5230,11 +5447,17 @@
   // single-DOI lookups ("single", 5 per second). Each pool gets its own queue; the gap is timed from the previous start.
   var crQueues = {};
   // Start requests no closer than `ms` apart and at most `conc` at a time (Crossref: 1 at a time publicly, 3 with an email)
-  function spaced(fn, ms, pool, conc) {
+  function abortError() { return new DOMException('The lookup was abandoned', 'AbortError'); }
+  function spaced(fn, ms, pool, conc, signal) {
     var q = crQueues[pool || 'array'] || (crQueues[pool || 'array'] = { lastStart: 0, active: 0, waiting: [] });
     conc = conc || 1;
     return new Promise(function (resolve, reject) {
-      q.waiting.push({ fn: fn, resolve: resolve, reject: reject });
+      var job = { fn: fn, resolve: resolve, reject: reject };
+      if (signal) { // a batch replaced by a newer one gives up its queued lookups, so the new batch is not kept waiting behind them
+        if (signal.aborted) return reject(abortError());
+        signal.addEventListener('abort', function () { var i = q.waiting.indexOf(job); if (i !== -1) { q.waiting.splice(i, 1); reject(abortError()); } });
+      }
+      q.waiting.push(job);
       pump();
     });
     function pump() {
@@ -5242,6 +5465,7 @@
       var wait = Math.max(0, q.lastStart + ms - Date.now());
       q.timer = setTimeout(function () {
         q.timer = null;
+        if (q.lastStart + ms > Date.now()) return pump(); // the pool was held (Retry-After) after this timer was set
         if (!q.waiting.length || q.active >= conc) return;
         var job = q.waiting.shift();
         q.active++; q.lastStart = Date.now();
@@ -5250,33 +5474,45 @@
       }, wait);
     }
   }
-  // fetch that retries once on 429 / 5xx or a network-level failure; Crossref calls go through the spaced queue
+  function holdPool(pool, ms) { var q = crQueues[pool]; if (q) q.lastStart = Math.max(q.lastStart, Date.now() + ms); } // Retry-After: nothing more from this pool until then
+  // fetch that retries on 429 / 5xx (up to three times, waiting as long as Retry-After asks, up to 60 s, with the Crossref pool held meanwhile)
+  // or once on a network-level failure; Crossref calls go through the spaced queue.  ctx.signal abandons the call, ctx.onRetry(ms) tells the row
   var crPenalty = 0; // extra spacing after Crossref says "too many requests"; decays as calls succeed
-  async function fetchRetry(url, opts) {
+  async function fetchRetry(url, opts, ctx) {
+    ctx = ctx || {};
+    var signal = ctx.signal || null, sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+    if (signal) opts = Object.assign({}, opts || {}, { signal: signal });
     var isCrossref = /api\.crossref\.org/.test(url);
     var single = /api\.crossref\.org\/works\/10\./.test(url), withEmail = !!$('polite-email').value.trim();
-    var gap = (single ? 210 : (withEmail ? 350 : 1050)) + crPenalty;
+    var gap = (single ? 210 : (withEmail ? 350 : 1050)) + crPenalty, pool = single ? 'single' : 'array';
     var conc = withEmail ? 3 : 1; // Crossref's polite pool (with an email) allows 3 at once; the public pool 1
-    var doFetch = function () { return isCrossref ? spaced(function () { return fetch(url, opts); }, gap, single ? 'single' : 'array', conc) : fetch(url, opts); };
-    var res;
-    try { res = await doFetch(); }
-    catch (e) { await new Promise(function (r) { setTimeout(r, 1500); }); res = await doFetch(); }
-    if (isCrossref) crPenalty = res.status === 429 ? Math.min(8000, crPenalty * 2 + 1000) : Math.max(0, crPenalty - 250);
-    if (res.status === 429 || res.status >= 500) {
-      var wait = Math.min(5000, (Number(res.headers.get('Retry-After')) || 1.5) * 1000);
-      await new Promise(function (r) { setTimeout(r, wait); });
-      res = await doFetch();
+    var doFetch = function () { return isCrossref ? spaced(function () { return fetch(url, opts); }, gap, pool, conc, signal) : fetch(url, opts); };
+    var res, tries = 0;
+    for (;;) {
+      try { res = await doFetch(); }
+      catch (e) {
+        if ((signal && signal.aborted) || e.name === 'AbortError' || tries++ >= 1) throw e;
+        await sleep(1500); continue;
+      }
+      if (isCrossref) crPenalty = res.status === 429 ? Math.min(8000, crPenalty * 2 + 1000) : Math.max(0, crPenalty - 250);
+      if (!(res.status === 429 || res.status >= 500) || tries >= 3) return res;
+      tries++;
+      var after = Number(res.headers.get('Retry-After')), wait = Math.min(60000, (after > 0 ? after : res.status === 429 ? 3 : 1.5) * 1000); // a date in Retry-After is read as the default
+      if (isCrossref) holdPool(pool, wait);
+      if (ctx.onRetry) ctx.onRetry(wait, tries);
+      await sleep(wait);
     }
-    return res;
   }
-  async function fetchRecord(doi) {
-    var res = await fetchRetry(polite('https://api.crossref.org/works/' + encodeURIComponent(doi)));
+  async function fetchRecord(doi, ctx) {
+    var res = await fetchRetry(polite('https://api.crossref.org/works/' + encodeURIComponent(doi)), undefined, ctx);
     if (res.ok) return A.normalize((await res.json()).message);
     if (res.status !== 404) throw new Error('Crossref returned ' + res.status);
-    // Not a Crossref DOI (DataCite, mEDRA, ...): ask doi.org for CSL JSON
-    var alt = await fetch('https://doi.org/' + doi.split('/').map(encodeURIComponent).join('/'), { headers: { Accept: 'application/vnd.citationstyles.csl+json' } });
+    // Not a Crossref DOI (DataCite, mEDRA, ...): ask doi.org for CSL JSON.  doi.org answers with a redirect to the registration agency's
+    // data host, and the Content Security Policy applies to every hop, so connect-src names them (DOI_DATA_HOSTS, checked by tests/syntax.test.js):
+    // DataCite https://data.crosscite.org, mEDRA https://data.medra.org, JaLC https://japanlinkcenter.org, EU Publications https://ra.publications.europa.eu
+    var alt = await fetch('https://doi.org/' + doi.split('/').map(encodeURIComponent).join('/'), { headers: { Accept: 'application/vnd.citationstyles.csl+json' }, signal: ctx && ctx.signal });
     if (alt.ok && /json/.test(alt.headers.get('Content-Type') || '')) return A.normalize(await alt.json());
-    try { return await openAlexByDoi(doi); } // last resort: OpenAlex knows some DOIs the resolvers do not
+    try { return await openAlexByDoi(doi, ctx); } // last resort: OpenAlex knows some DOIs the resolvers do not
     catch (e) { throw new Error('DOI not found at Crossref, doi.org or OpenAlex (' + alt.status + ')'); }
   }
 
@@ -5366,16 +5602,22 @@
 
   /* ---------- OpenAlex: second search backend (theses, EarthArXiv, DataCite, grey literature) ---------- */
   var OA_SELECT = 'id,doi,title,display_name,authorships,publication_year,publication_date,biblio,primary_location,type,ids,is_retracted';
-  var oaBlockedUntil = Number(store.get('oaBlocked')) || 0;
+  var oaBlockedUntil = Number(store.get('oaBlocked')) || 0, oaDaily = oaBlockedUntil > Date.now(); // a remembered block is a spent day
   function oaUrl(url) { var k = ($('openalex-key') && $('openalex-key').value || '').trim(); return polite(url) + (k ? '&api_key=' + encodeURIComponent(k) : ''); }
   function oaAvailable() { return Date.now() > oaBlockedUntil; }
-  async function oaFetch(url) {
-    if (!oaAvailable()) throw new Error('OpenAlex daily allowance used up');
-    var res = await fetch(oaUrl(url));
+  async function oaFetch(url, ctx) {
+    if (!oaAvailable()) throw new Error(oaDaily ? 'OpenAlex daily allowance used up' : 'OpenAlex asked for a pause');
+    var res = await fetch(oaUrl(url), ctx && ctx.signal ? { signal: ctx.signal } : undefined);
     if (res.status === 429) { // OpenAlex charges credits; without a key the free daily allowance is shared by your network
-      var d = new Date(); d.setUTCHours(24, 0, 0, 0); oaBlockedUntil = d.getTime(); store.set('oaBlocked', String(oaBlockedUntil));
-      oaNotice();
-      throw new Error('OpenAlex daily allowance used up');
+      var body = ''; try { body = await res.text(); } catch (e) { /* no body to read */ }
+      if (/daily|per day|quota|allowance|credit/i.test(body) || res.headers.get('X-RateLimit-Remaining-Day') === '0') { // the day's allowance is spent: nothing more until midnight UTC, remembered across visits
+        var d = new Date(); d.setUTCHours(24, 0, 0, 0); oaBlockedUntil = d.getTime(); oaDaily = true; store.set('oaBlocked', String(oaBlockedUntil));
+        oaNotice();
+        throw new Error('OpenAlex daily allowance used up');
+      }
+      var after = Number(res.headers.get('Retry-After')); // a burst limit: wait it out (10 s when unsaid) in memory only; the next visit starts fresh
+      oaBlockedUntil = Date.now() + (after > 0 ? Math.min(after, 60) : 10) * 1000; oaDaily = false;
+      throw new Error('OpenAlex asked for a pause');
     }
     return res;
   }
@@ -5384,13 +5626,13 @@
     logError('openalex', new Error('free daily allowance used up'));
     var n = $('oa-notice'); if (n) n.hidden = false;
   }
-  async function openAlexSearch(text, rows) {
-    var res = await oaFetch('https://api.openalex.org/works?per-page=' + rows + '&select=' + OA_SELECT + '&search=' + encodeURIComponent(String(text).slice(0, 300)));
+  async function openAlexSearch(text, rows, ctx) {
+    var res = await oaFetch('https://api.openalex.org/works?per-page=' + rows + '&select=' + OA_SELECT + '&search=' + encodeURIComponent(String(text).slice(0, 300)), ctx);
     if (!res.ok) throw new Error('OpenAlex returned ' + res.status);
     return ((await res.json()).results || []).map(function (w) { return A.normalize(A.fromOpenAlex(w)); });
   }
-  async function openAlexByDoi(doi) {
-    var res = await oaFetch('https://api.openalex.org/works/' + encodeURIComponent('https://doi.org/' + doi) + '?select=' + OA_SELECT);
+  async function openAlexByDoi(doi, ctx) {
+    var res = await oaFetch('https://api.openalex.org/works/' + encodeURIComponent('https://doi.org/' + doi) + '?select=' + OA_SELECT, ctx);
     if (!res.ok) throw new Error('OpenAlex returned ' + res.status);
     return A.normalize(A.fromOpenAlex(await res.json()));
   }
@@ -5473,10 +5715,10 @@
     return pm ? pmidToDoi(pm) : null;
   }
 
-  async function search(params, rows) {
+  async function search(params, rows, ctx) {
     var url = 'https://api.crossref.org/works?rows=' + rows + '&select=' + SELECT;
     Object.keys(params).forEach(function (k) { if (params[k]) url += '&' + k + '=' + encodeURIComponent(params[k]); });
-    var res = await fetchRetry(polite(url));
+    var res = await fetchRetry(polite(url), undefined, ctx);
     if (!res.ok) throw new Error('Crossref returned ' + res.status);
     return (await res.json()).message.items.map(A.normalize);
   }
@@ -5780,6 +6022,8 @@
   var C = window.AutoDOICase;
   var caseState = { mode: store.get('case') || 'none', words: null, loading: null };
   var rebuildBatch = null; // set by the latest batch so a settings change refreshes its export
+  var restoreOffer = null; // set by a ?refs= link that replaced a remembered list: a function making the Restore button for the run's summary
+  var listPrefs = null; // { style, order } from a ?refs= link: remembered only once the list has rendered in them
   var protectSet = new Set(), lowerSet = new Set();
   try { (JSON.parse(store.get('protect') || '[]')).forEach(function (w) { protectSet.add(w); }); } catch (e) {}
   try { (JSON.parse(store.get('lower') || '[]')).forEach(function (w) { lowerSet.add(w); }); } catch (e) {}
@@ -5901,7 +6145,7 @@
   /* ---------- the paper itself: the user's library proxy, and a free copy from Unpaywall (OpenAlex as a second source) ----------
    * Only copies the publisher or the authors made open are offered: Unpaywall and OpenAlex index publisher OA, repositories
    * and author manuscripts, nothing else.  A library link set under Settings sends a click through the user's own subscription. */
-  var UNPAYWALL_EMAIL = 'unpaywall@autodoi.invalid'; // Unpaywall asks for a contact address on every call; the polite email is used when set
+  var UNPAYWALL_EMAIL = 'unpaywall@autodoi.invalid'; // Unpaywall asks for a contact address on every call; always this one: Settings promises the polite email to Crossref and OpenAlex only
   function libraryHref(r) {
     var t = ($('library-link').value || '').trim(), href = articleHref(r);
     if (!t || !href || !/^https?:\/\//i.test(t)) return '';
@@ -5938,8 +6182,7 @@
     return (freeCopyCache[key] = (async function () {
       var path = doi.split('/').map(encodeURIComponent).join('/'), askOpenAlex = true, locs = [], answered = false; // no answer from either source (offline, a timeout) is not 'no free copy'
       try {
-        var email = ($('polite-email').value || '').trim() || UNPAYWALL_EMAIL;
-        var res = await fetchRetry('https://api.unpaywall.org/v2/' + path + '?email=' + encodeURIComponent(email));
+        var res = await fetchRetry('https://api.unpaywall.org/v2/' + path + '?email=' + encodeURIComponent(UNPAYWALL_EMAIL));
         if (res.ok || res.status === 404 || res.status === 422) answered = true;
         if (res.ok) {
           var u = await res.json();
@@ -6267,7 +6510,7 @@
       sel.appendChild(og);
     }
     var so = document.createElement('option'); so.value = 'search'; so.textContent = 'Search 10,000 journal styles…'; sel.appendChild(so);
-    var saved = store.get('liststyle') || 'apa';
+    var saved = (listPrefs && listPrefs.style) || store.get('liststyle') || 'apa';
     if (/^csl:[a-z0-9\-]+$/i.test(saved) && !recentByName(saved.slice(4))) { var lo = document.createElement('option'); lo.value = saved; lo.textContent = saved.slice(4); sel.insertBefore(lo, so); } // a journal style from a link: named from its file once fetched
     sel.value = saved; if (sel.value !== saved) sel.value = 'apa';
     var list = el('div', 'reflist');
@@ -6296,8 +6539,8 @@
     var order = document.createElement('select'); order.id = 'list-order'; order.setAttribute('aria-label', 'Reference list order');
     [['style', 'Style’s order'], ['given', 'As given'], ['newest', 'Newest first'], ['oldest', 'Oldest first']].forEach(function (x) { var o = document.createElement('option'); o.value = x[0]; o.textContent = x[1]; order.appendChild(o); });
     order.title = 'The order of the list: the style’s own (alphabetical for author-date styles), as you gave the references, or by year';
-    order.value = store.get('listorder') || 'style'; if (!order.value) order.value = 'style';
-    order.addEventListener('change', function () { store.set('listorder', order.value); build(); });
+    order.value = (listPrefs && listPrefs.order) || store.get('listorder') || 'style'; if (!order.value) order.value = 'style';
+    order.addEventListener('change', function () { build(); }); // remembered once the list has rendered in it
     var byYear = function () { return order.value === 'newest' || order.value === 'oldest'; };
     var yearCmp = function (a, b) { // an entry with no year goes last either way
       var ya = Number(a.year) || 0, yb = Number(b.year) || 0;
@@ -6349,8 +6592,11 @@
       });
       container.appendChild(det);
     }
+    var rendered = function () { // the style and order are remembered only once the list has rendered in them: a link's mistyped name is never kept
+      store.set('liststyle', sel.value); store.set('listorder', order.value); listPrefs = null;
+    };
     function build() {
-      store.set('liststyle', sel.value); shown = sel.value;
+      shown = sel.value;
       showDoi.checked = doiOn(sel.value); // as chosen for this style, or its default
       if (sel.value.indexOf('csl:') === 0) {
         list.textContent = 'Rendering…';
@@ -6360,13 +6606,21 @@
         cslRender(st, rs.map(function (x) { return x.r; }), { perItem: showInText.checked, unsorted: order.value !== 'style' }).then(function (res) {
           var o = sel.querySelector('option[value="csl:' + CSS.escape(st.name) + '"]'); if (o) o.textContent = st.title; // a style from a link is named from its file once fetched
           if (!recentByName(st.name)) { rememberStyle(st); fillStyleSelect(); } // remembered only once it has rendered: a mistyped link leaves nothing behind
+          rendered();
           finish(res.entries.map(function (h, i) { var id = [].concat(res.entryIds[i] || [])[0], x = (id && rs[Number(String(id).slice(5)) - 1]) || {}; return { html: withDoi(h, x.r), forms: res.perItem ? res.perItem[res.entryIds[i]] || null : null, place: x.place, year: x.year }; }), /^\s*(\[?\d+[\].]|<sup>)/.test(res.entries[0] || ''));
-        }, function (e) { logError('citeproc-list', e, sel.value.slice(4)); list.textContent = e.message; });
+        }, function (e) {
+          logError('citeproc-list', e, sel.value.slice(4)); list.textContent = e.message;
+          if (store.get('liststyle') === sel.value) store.set('liststyle', 'apa'); listPrefs = null; // a name that does not render is not kept for next time
+        });
         return;
       }
       var numbered = sel.value === 'vancouver' || sel.value === 'ieee';
-      var items = arranged().map(function (x, i) { return { html: withDoi(A.formatHtml(x.r, sel.value, numbered ? i + 1 : undefined), x.r), forms: showInText.checked ? A.inTextForms(x.r, sel.value, { n: i + 1 }) : null, place: x.place, year: x.year }; });
+      // Two works by one first author in one year take a letter on the year, (Smith, 2020a) and (Smith, 2020b), in the list and in the
+      // in-text forms alike: the letters are given once over the whole list, so each entry and its citation agree
+      var rs = arranged(), letters = A.yearSuffixes ? A.yearSuffixes(rs.map(function (x) { return x.r; })) : [];
+      var items = rs.map(function (x, i) { var o = { n: numbered ? i + 1 : undefined, yearSuffix: letters[i] || '' }; return { html: withDoi(A.formatHtml(x.r, sel.value, o), x.r), forms: showInText.checked ? A.inTextForms(x.r, sel.value, { n: i + 1, yearSuffix: letters[i] || '' }) : null, place: x.place, year: x.year }; });
       finish(items, numbered); // unless another order is chosen: alphabetical by first author for author-date styles, in list order for numbered ones
+      rendered();
     }
     // A journal style searched for here sets the list's style only, as the DOI tab's search sets that tab's
     var find = el('div', 'list-find'); find.hidden = true;
@@ -6492,7 +6746,7 @@
     var rl = el('p', 'report-line');
     rl.appendChild(document.createTextNode('Something wrong with this reference? '));
     var rep = el('a', '', 'Report it'); rep.target = '_blank'; rep.rel = 'noopener'; rep.title = 'Opens a prefilled bug report on GitHub';
-    rep.href = issueUrl('bug_report.yml', { doi: r.doi, style: currentStyleLabel(), where: 'Web page', errors: errorReport(), title: '[Bug] ' + (r.doi || r.title) });
+    rep.href = issueUrl('bug_report.yml', { doi: r.doi || '', style: currentStyleLabel(), where: 'Web page', errors: errorReport(), title: '[Bug] ' + (r.doi || currentStyleLabel() || 'reference') }); // never the title: a hand-written or file record's title is the user's own text
     rl.appendChild(rep);
     out.appendChild(rl);
   }
@@ -6620,14 +6874,14 @@
   function hitChip(conf, allFound) { return el('span', 'chip ' + (conf >= 0.95 ? 'good' : conf >= 0.6 || allFound ? 'warn' : ''), conf >= 0.95 ? 'Title match' : conf >= 0.6 ? 'Partial' : allFound ? 'Has your words' : 'Weak'); }
   // A hit as the record to keep: an OpenAlex hit's authors are split from display names and it carries no Retraction Watch
   // notices, so Crossref's record for its DOI replaces it when there is one
-  function fullRecord(r) { return r.source === 'openalex' && r.doi ? fetchRecord(r.doi).catch(function () { return r; }) : Promise.resolve(r); }
+  function fullRecord(r, ctx) { return r.source === 'openalex' && r.doi ? fetchRecord(r.doi, ctx).catch(function () { return r; }) : Promise.resolve(r); }
   /* A search by title alone, shared by Find a DOI and a bare-title line on the References tab. Returns { hits, viaOA }: every hit
    * carries conf (its title similarity), best first. opts.year narrows the most-cited pass and breaks ties between equal titles */
   async function findByTitle(title, journal, opts) {
     opts = opts || {};
     var sim = function (r) { return titleSimilarity(title, r.title); };
     var best = function () { return hits.length ? Math.max.apply(null, hits.map(sim)) : 0; };
-    var hits = (await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6)).filter(function (r) { return r.title; }), viaOA = false;
+    var hits = (await search({ 'query.bibliographic': title, 'query.container-title': journal }, 6, opts.ctx)).filter(function (r) { return r.title; }), viaOA = false;
     // Short or common titles ("Deep learning") drown in relevance ranking: ask again, most-cited first, and keep exact titles only
     if (best() < 0.95) {
       try {
@@ -6635,17 +6889,17 @@
         if (journal) filters.push('container-title:' + journal.replace(/,/g, ' ').replace(/\s+/g, ' ').trim()); // commas separate Crossref filters
         if (opts.year) filters.push('from-pub-date:' + (Number(opts.year) - 1), 'until-pub-date:' + (Number(opts.year) + 1));
         if (filters.length) extra.filter = filters.join(',');
-        var cited = (await search(extra, 20)).filter(function (r) { return r.title && sim(r) >= 0.95; });
+        var cited = (await search(extra, 20, opts.ctx)).filter(function (r) { return r.title && sim(r) >= 0.95; });
         var seenD = {}; hits.forEach(function (r) { seenD[(r.doi || '').toLowerCase()] = 1; });
         hits = cited.filter(function (r) { return !seenD[(r.doi || '').toLowerCase()]; }).slice(0, 3).concat(hits);
       } catch (e) { /* keep the first results */ }
     }
     // a journal is a must-clause at Crossref: one read off a line wrongly ("Deep Learning, Memory and Cognition") empties the search, so ask once more with the whole line
     if (journal && (best() < 0.8 || !/\s/.test(title.trim()))) { // a one-word title before the journal is a guessed split: the whole line is searched too
-      try { hits = hits.concat((await search({ 'query.bibliographic': title + ' ' + journal }, 6)).filter(function (r) { return r.title; })); } catch (e) { /* keep what there is */ }
+      try { hits = hits.concat((await search({ 'query.bibliographic': title + ' ' + journal }, 6, opts.ctx)).filter(function (r) { return r.title; })); } catch (e) { /* keep what there is */ }
     }
     if (best() < 0.8) {
-      try { var oa = (await openAlexSearch(title + (journal ? ' ' + journal : ''), 5)).filter(function (r) { return r.title; }); if (oa.length) { hits = hits.concat(oa); viaOA = true; } } catch (e) { /* Crossref results only */ }
+      try { var oa = (await openAlexSearch(title + (journal ? ' ' + journal : ''), 5, opts.ctx)).filter(function (r) { return r.title; }); if (oa.length) { hits = hits.concat(oa); viaOA = true; } } catch (e) { /* Crossref results only */ }
     }
     var seenK = {}, key = function (r) { return (r.doi || r.title || '').toLowerCase(); };
     hits = hits.filter(function (r) { var k = key(r); if (seenK[k]) return false; seenK[k] = 1; return true; });
@@ -6704,11 +6958,13 @@
 
   /* ---------- 3. References -> any style ---------- */
   // Lines that are nothing but an identifier are always their own reference
-  var ID_LINE = /^((https?:\/\/)?(dx\.)?doi\.org\/\S+|doi:\s*\S+|10\.\d{4,9}\/\S+|PMC\d{4,9}|(PMID:?\s*)?\d{5,9}|arXiv:\s*\S+|\d{4}\.\d{4,5}(v\d+)?|ISBN[\s:\-0-9Xx]+|https?:\/\/\S+)\.?$/i;
+  // A bare number is a PubMed ID only with its prefix: inside a list a line of digits is a page number or a stray footnote, not a lookup
+  var ID_LINE = /^((https?:\/\/)?(dx\.)?doi\.org\/\S+|doi:\s*\S+|10\.\d{4,9}\/\S+|PMC\d{4,9}|(PMID:?\s*|pubmed(\.ncbi\.nlm\.nih\.gov)?\/)\d{4,9}|arXiv:\s*\S+|\d{4}\.\d{4,5}(v\d+)?|ISBN[\s:\-0-9Xx]+|https?:\/\/\S+)\.?$/i;
+  var BARE_NUMBER = /^\d{4,9}\.?$/; // the whole paste: a PubMed ID typed on its own
   var UC = 'A-Z\u00C0-\u00D6\u00D8-\u00DE\u0391-\u03A9\u0400-\u042F', WC = 'A-Za-z\u00C0-\u00FF\u0100-\u017F\u0370-\u03FF\u0400-\u04FF\'\u2019\\-';
   var PARTICLES = '(?:(?:van|von|de|der|den|del|della|da|di|du|la|le|dos|das|ter|ten|zu|mac|st\\.?)\\s+|d[\'\u2019]\\s*)+'; // each particle ends in a space: one way to parse, no backtracking blow-up
   // A line starts a new reference when it is numbered/bulleted, begins with a DOI or URL, or opens like an author name
-  var START = new RegExp('^(\\[\\d{1,4}\\]|(?!(?:1[5-9]|20)\\d\\d[.)])\\d{1,4}[.)]|[\u2022\\-\u2013\u2014*\u00B7])\\s|^(https?:\\/\\/|doi:|10\\.\\d{4,9}\\/)' +
+  var START = new RegExp('^(\\[\\d{1,4}\\]|(?!(?:1[5-9]|20)\\d\\d[.)])\\d{1,4}[.)]|[\u2022\\-\u2013\u2014*\u00B7])\\s|^(https?:\\/\\/|doi:|10\\.\\d{4,9}\\/)|^[\u2014\u2015\u2013_\\-]{2,}[.,]?\\s' + // "———. 2019.": Chicago's "same author again"
     '|^' + PARTICLES + '[' + UC + '][' + WC + ']*,?\\s' +                                  // van der Maaten, L. / de Carvalho, A.
     '|^[' + UC + '][' + WC + ']+,\\s+[' + UC + ']' +                                      // Smith, J.
     '|^[' + UC + '][' + WC + ']+\\s+[' + UC + ']{1,3}[,.]' +                              // Smith JA,
@@ -6777,19 +7033,44 @@
     return m ? m[1] + ' ' + part.replace(/^ibid\.?,?\s*/i, '') : part;
   }
   function splitGlued(chunk) {
-    var out = [], rest = chunk, guard = 0, cut;
-    while (guard++ < 8 && (cut = gluePoint(rest))) { out.push(rest.slice(0, cut.at + cut.keep).trim()); rest = rest.slice(cut.at + cut.len).trim(); }
+    var out = [], rest = chunk, guard = 0, cut, bound = Math.max(8, Math.floor(chunk.length / 20)); // a whole list pasted on one line: every cut, bounded only against a runaway
+    while (guard++ < bound && (cut = gluePoint(rest))) { out.push(rest.slice(0, cut.at + cut.keep).trim()); rest = rest.slice(cut.at + cut.len).trim(); }
     out.push(rest);
     return out.map(function (p, i) { return i && /^ibid\b/i.test(p) ? ibidExpand(out[i - 1], p) : p; }).filter(Boolean);
   }
   // A line that ends mid-reference: trailing comma/colon/dash, or an initial or journal abbreviation ("et al.", "Res.", "U.S.A.")
   var ABBR_END = /(^|[\s(.])([A-Za-z]|al|Jr|Sr|St|Co|Mt|Ft|Dr|cf|vs|sp|Acad|Am|Amer|Ann|Assoc|Biol|Bull|Can|Chem|Col|Comp|Dept|Ecol|Environ|Evol|Fm|Geogr|Geol|Geophys|Hist|Inst|Int|Intl|Lett|Mag|Mem|Mineral|Mus|Nat|Natl|Palaeontol|Paleontol|Petrol|Phys|Proc|Publ|Res|Rev|Sci|Ser|Soc|Spec|Suppl|Surv|Trans|Univ|Vert|Vol|Zool|ed|eds|Eds|vol|no|pp|et al)\.$/;
   var DOI_URL_END = /(https?:\/\/\S+|doi:\s*\S+|10\.\d{4,9}\/\S+)$/i;
+  // "… Vol." + "2. 2019. p. 1-20.": the numbered-looking line is the wrapped tail of the item above, not item 2, when the line above ends on an
+  // abbreviation that wants a number, or the line is nothing but a year and pages after its number
+  var WRAP_ABBR = /\b(?:Vols?|Nos?|pp?|eds?|Eds|Ch|Chap|Chapt|Sect|Figs?|Tab|Pl|Bd|Jg|Nr|Heft|t|\u0442|\u0441|\u2116)\.$/;
+  var NUM_THEN_YEAR = /^\[?\d{1,4}[\].)]\s+\(?(?:1[5-9]|20)\d{2}[a-z]?\)?[.,;:]?(?:\s*(?:pp?|S|\u0441)?\.?\s*[A-Za-z]?\d{1,5}(?:\s*[-\u2013\u2212]\s*[A-Za-z]?\d{1,5})?)?\.?$/; // "2. 2019. p. 1-20.": a year and pages, no title
+  function numberedWrap(prev, line) { return (WRAP_ABBR.test(prev) && !/\d\s*pp?\.$/.test(prev)) || NUM_THEN_YEAR.test(line); } // "369 p." ends a book; "2. 1957. Title of the paper" is an item of an author's own list
   // a year in Arabic or Hebrew text: Western or Arabic-Indic digits, a hijri or solar year with its ه / ش, "(2019)" or "، 2019"
+  var CJK = '\\u3040-\\u30FF\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uAC00-\\uD7AF\\uF900-\\uFAFF'; // kana, CJK ideographs, hangul
   var RTL_YEAR = '(?:(?:1[5-9]|20)\\d{2}|1[34]\\d{2}(?=\\s?[\\u0647\\u0634])|[\\u0660-\\u0669\\u06F0-\\u06F9]{4})(?:\\s?(?:\\u0647\\u0640?|\\u0634|\\u0645|\\u05D4))?';
   var AUTHOR_START = new RegExp('^(' + PARTICLES + ')?[' + UC + '][' + WC + ']+(,\\s+[' + UC + ']|\\s+[' + UC + ']{1,3}[,.\\s]|\\s+(and|&)\\s)' + // Smith, J. / Smith JA, / Smith and
     '|^([' + UC + ']\\.\\s?){1,3}[' + UC + '][' + WC + ']+[,\\s]' +                                                                       // J. A. Smith,
-    '|^[\\u0590-\\u05FF\\u0600-\\u06FF][\\u0590-\\u05FF\\u0600-\\u06FF\\s.,\\u060C\\u061B]{1,60}?(?:[.,\\u060C\\u061B:]\\s?|\\s\\()' + RTL_YEAR + '\\)?[.,\\u060C\\u061B:\\s]'); // Arabic / Hebrew: a name run, a separator, then the year (no capitals to go by); "من 1990" mid-sentence is not one
+    '|^[\\u0590-\\u05FF\\u0600-\\u06FF][\\u0590-\\u05FF\\u0600-\\u06FF\\s.,\\u060C\\u061B]{1,60}?(?:[.,\\u060C\\u061B:]\\s?|\\s\\()' + RTL_YEAR + '\\)?[.,\\u060C\\u061B:\\s]' + // Arabic / Hebrew: a name run, a separator, then the year (no capitals to go by); "من 1990" mid-sentence is not one
+    '|^[' + CJK + '][' + CJK + '\\s,\\u3001\\u30FB\\uFF0C\\u00B7.\\uFF0E;\\uFF1B]{0,40}?(?:[,.:\\u3001\\uFF0C\\uFF0E\\uFF1A;\\uFF1B]\\s?|\\s?[(\\uFF08]\\s?|\\s)(?:1[5-9]|20)\\d{2}[a-z]?\\s?[\\u5E74]?[).,:\\uFF09\\uFF0C\\uFF0E\\uFF1A\\u3001;\\s]'); // Chinese / Japanese / Korean: a name run (no digits), a separator or bracket, the year ("山田太郎 (2019)", "张三, 李四. 2019.", "김철수（2019）")
+  // Bibliography headers and page furniture pasted along with the list: a section heading, "Page 3 of 12", a running head in capitals
+  // (three or more words, no digits, or digits that are not a year beside a comma: an all-caps reference keeps its year and its commas)
+  var HEADING = /^(?:references?|works cited|bibliography|literature cited|reference list|cited literature|references cited|references and notes|notes and references|sources|further reading|literatur|bibliographie|r\u00e9f\u00e9rences|referencias|bibliograf\u00eda)\s*[:.]?$/i;
+  function isFurniture(line) {
+    var l = String(line).trim();
+    if (HEADING.test(l) || /^page\s+\d{1,4}\s+(?:of|\/)\s+\d{1,4}$/i.test(l)) return true; // a bare number is handled where the line above is known: it may be a wrapped article number
+    if (/[a-z\u00DF-\u00FF\u0430-\u045F]/.test(l) || !/[A-Z\u0400-\u042F]/.test(l)) return false; // not all capitals
+    var ws = l.match(/[^\s|\u00B7\u2022]+/g) || [];
+    if (ws.filter(function (w) { return /[A-Z\u0400-\u042F]/.test(w); }).length < 3) return false;
+    if (!/\d/.test(l)) return true;
+    return !(/\b(?:1[5-9]|20)\d{2}\b/.test(l) && l.indexOf(',') !== -1); // "GEOLOGY | VOLUME 47 | 2019" is a head; "SMITH, J. (2019). TITLE. JOURNAL, 1, 2." is a reference
+  }
+  // "———. 2019. …" (Chicago, MLA: the author of the entry above, again): searched with that author's name
+  var DASHES = /^[\u2014\u2015\u2013_\-]{2,}\s*/;
+  function fillDashes(rows) {
+    var author = function (prev) { var m = prev.match(/^([\s\S]{3,200}?)[.,]?\s+\(?(?:1[5-9]|20)\d{2}[a-z]?[).,]/) || prev.match(/^([^.]{3,120}?)\.(?:\s|$)/); return m ? m[1].trim() : ''; };
+    return rows.map(function (r, i) { if (!i || !DASHES.test(r)) return r; var a = author(rows[i - 1]); return a ? rows[i] = r.replace(DASHES, a) : r; });
+  }
   function hasEndPunct(line) { if (/,[\u201D"\u2019']$/.test(line)) return false; return /[.)\]”"?!]$/.test(line) && (!ABBR_END.test(line) || /\d\s*pp?\.$/.test(line)); } // "369 p." ends a book reference
   // Does the text read like a whole reference? It ends with a DOI/URL, or with a page / article number and a full stop.
   function complete(chunk) {
@@ -6816,6 +7097,9 @@
     if (ID_LINE.test(t) || /10\.\d{4,9}\/|https?:\/\/|www\.|\bISBN\b|\bPMID\b|\bPMC\d|\barXiv\b|<[a-z]+[^>]*>|\(\s*\)/i.test(t)) return null; // an identifier, HTML, or the "( )" a year was cut from
     if (/\bet al\b|\(eds?\.?\)|\beds?\.\s|\bIn:\s|^(\[\d{1,4}\]|\d{1,4}[.)]|[•●◦‣⁃·*\-–—])\s/i.test(t)) return null;
     if (STRONG_AUTHOR.test(t) || INITIALS_FIRST.test(t) || TITLE_AUTHOR.test(t)) return null;
+    // "John Smith, Deep learning for crystals, Nature, 2020": a given and family name before a comma, then a title and more parts; "Deep Learning, Nature 2015" has only its journal after the comma
+    var given = t.match(/^[A-Z][a-z]+ (?:[A-Z]\. )?[A-Z][\w'\u2019-]+(?:,? (?:and|&) [A-Z][a-z]+ [A-Z][\w'\u2019-]+)*, (.+)$/);
+    if (given && ((given[1].match(/,/g) || []).length >= 2 || (given[1].split(',')[0].match(/\S+/g) || []).length >= 4)) return null;
     if (HAS_LOCATOR.test(t) || /\b\d{1,4}\s*\(\d{1,4}\)/.test(t)) return null; // "Nature 500:54", "12(3)"
     var ym = t.match(/[\s,(]\(?((?:1[5-9]|20)\d{2})\)?$/), year = ym ? ym[1] : '';
     var rest = ym ? t.slice(0, ym.index).replace(/[\s,(]+$/, '') : t;
@@ -6837,13 +7121,14 @@
     var t = String(text || '').replace(/\r\n?/g, '\n').trim();
     var parts;
     t = t.replace(/[ \t]{2,}/g, ' '); // first, so the patterns below never scan a long run of spaces from every position
-    if (mode === 'blank') parts = t.split(/\n[ \t]?\n+/).map(function (c) { return c.replace(/[ \t]?\n[ \t]?/g, ' '); });
+    if (t.split('\n').filter(function (l) { return l.trim(); }).length > 1) t = t.split('\n').filter(function (l) { return !isFurniture(l); }).join('\n'); // headings and page furniture, as in the automatic layout
+    if (mode === 'blank') parts = t.split(/\n[ \t]?\n+/).map(function (c) { return c.split(/[ \t]?\n[ \t]?/).reduce(function (acc, l) { return BARE_NUMBER.test(l.trim()) && acc && complete(acc) ? acc : (acc ? acc + ' ' : '') + l; }, ''); }); // a page number after a finished reference is dropped; a wrapped article number is kept
     else if (mode === 'numbered') {
       parts = []; var next = null;
       t.split('\n').forEach(function (raw) {
         var l = raw.trim(); if (!l) return;
         var mm = l.match(/^\[?(\d{1,4})[\].)]\s/), num = mm ? Number(mm[1]) : null;
-        if (!parts.length || (num !== null && (next === null || (num >= next && num - next <= 5)))) { parts.push(l); if (num !== null) next = num + 1; } // a gap of a few numbers is a deleted entry; "1998. Title" inside a wrap is not item 1998
+        if (!parts.length || (num !== null && (next === null || (num >= next && num - next <= 5)) && !numberedWrap(parts[parts.length - 1], l))) { parts.push(l); if (num !== null) next = num + 1; } // a gap of a few numbers is a deleted entry; "1998. Title" inside a wrap is not item 1998
         else parts[parts.length - 1] += ' ' + l;
       });
     } else { // one per line; a line that is only a DOI/URL belongs to the reference above
@@ -6854,14 +7139,16 @@
         else parts.push(l);
       });
     }
-    return parts.map(function (l) { if (ID_LINE.test(l) || /^(https?:\/\/|doi:|10\.\d{4,9}\/)/i.test(l)) return l.trim(); return l.replace(/^\s*(\[\d{1,4}\]|\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim(); })
-      .filter(function (l) { return l.length > 8 || ID_LINE.test(l) || (looksLikeTitle(l) && (parts.length === 1 || parts.every(function (p) { return looksLikeTitle(p); }))); }) // "oldsite" alone, or a list of mineral names, is a search, not debris
-      .reduce(function (acc, l) { return acc.concat(splitAtDois(l).reduce(function (a2, x) { return a2.concat(splitGlued(x)); }, [])); }, []); // a line can still hold two references run together
+    var single = parts.length === 1;
+    return fillDashes(parts.map(function (l) { if (ID_LINE.test(l) || /^(https?:\/\/|doi:|10\.\d{4,9}\/)/i.test(l)) return l.trim(); return l.replace(/^\s*(\[\d{1,4}\]|\d{1,4}[.)]|[\u2022\-\u2013\u2014*\u00B7])\s*/, '').trim(); })
+      .filter(function (l) { return single ? (l.length > 8 || ID_LINE.test(l) || BARE_NUMBER.test(l) || looksLikeTitle(l)) : !isFurniture(l) && !BARE_NUMBER.test(l) && (l.length > 8 || ID_LINE.test(l) || (looksLikeTitle(l) && parts.every(function (p) { return looksLikeTitle(p); }))); }) // "oldsite" alone, or a list of mineral names, is a search, not debris; a heading or a page number is
+      .reduce(function (acc, l) { return acc.concat(splitAtDois(l).reduce(function (a2, x) { return a2.concat(splitGlued(x)); }, [])); }, [])); // a line can still hold two references run together
   }
   function splitReferences(text, mode) {
     if (mode && mode !== 'auto') return splitByMode(text, mode);
     var t = String(text || '').replace(/\r\n?/g, '\n').replace(/[ \t]{2,}/g, ' ').replace(/^[ \t]*\n+/, '').trimEnd();
     var rawLines = t.split('\n');
+    if (rawLines.filter(function (l) { return l.trim(); }).length > 1) rawLines = rawLines.filter(function (l) { return !isFurniture(l); }); // a heading or a page break's furniture between two lines of one reference joins them; alone, "Sources" is a search
     var hasBlank = /\n\s*\n/.test(t);
     var NUM = /^(\[\d{1,4}\]|(?!(?:1[5-9]|20)\d\d[.)])\d{1,4}[.)])\s/; // up to 9999, but "2019." opens a year-led line
     var numbered = rawLines.filter(function (l) { return NUM.test(l.trim()); }).length >= 2; // a numbered list: only numbers start items
@@ -6892,6 +7179,7 @@
     rawLines.forEach(function (raw) {
       var l = raw.trim();
       if (!l) { flush(); return; }
+      if (BARE_NUMBER.test(l) && nonEmpty.length > 1 && (!cur || complete(cur) || hasEndPunct(cur))) return; // a page number, a footnote number or a PubMed ID without its prefix between references; "10," + "4567891." is a wrapped article number
       if (!cur) {
         if (numbered && NUM.test(l)) expect = numOf(l) + 1;
         // "…Mol Ecol Notes 2004, 4: 786–788." [blank line] "10.1111/…": the DOI still belongs to the reference above
@@ -6900,7 +7188,7 @@
       }
       var isDoiLine = /^((https?:\/\/)?(dx\.)?doi\.org\/|doi:|10\.\d{4,9}\/|https?:\/\/|(available|retrieved)\s+(at|from|online)\b|url:|\[online\])/i.test(l);
       if (numbered) {
-        if (NUM.test(l) && (expect === null || numOf(l) === expect)) { flush(); cur = l; expect = numOf(l) + 1; } // "191. [in Russian]" inside a wrap is not item 191
+        if (NUM.test(l) && (expect === null || numOf(l) === expect) && !numberedWrap(cur, l)) { flush(); cur = l; expect = numOf(l) + 1; } // "191. [in Russian]" inside a wrap is not item 191
         else cur += (/-$/.test(cur) && isDoiLine ? '' : ' ') + l;
         return;
       }
@@ -6931,32 +7219,48 @@
     flush();
     var out = [];
     refs.forEach(function (r) { splitAtDois(r).forEach(function (x) { splitGlued(x).forEach(function (y) { out.push(y); }); }); });
-    return out.map(function (l) {
+    var single = out.length === 1;
+    return fillDashes(out.map(function (l) {
       l = l.trim();
       if (ID_LINE.test(l) || /^(https?:\/\/)?(dx\.)?doi\.org\/|^doi:|^10\.\d{4,9}\//i.test(l)) return l; // a bare identifier is not a numbered item
       return l.replace(/^\s*(\[\d{1,3}\]|\d{1,3}[.)]|[•\-–—*·])\s*/, '').trim();
-    }).filter(function (l) { return l.length > 8 || ID_LINE.test(l) || (looksLikeTitle(l) && (out.length === 1 || titleList)); }); // "oldsite" alone, or a list of mineral names, is a search, not debris
+    }).filter(function (l) { return single ? (l.length > 8 || ID_LINE.test(l) || BARE_NUMBER.test(l) || looksLikeTitle(l)) : !BARE_NUMBER.test(l) && (l.length > 8 || ID_LINE.test(l) || (looksLikeTitle(l) && titleList)); })); // "oldsite" alone, or a list of mineral names, is a search, not debris; a bare number in a list is a page number
   }
-  async function resolve(refText) {
+  async function resolve(refText) { // the test suites slice the page at this signature, so the second argument stays unnamed
+    var ctx = arguments[1]; // { signal, onRetry } from the batch that asked, so an abandoned batch stops asking and a 429 shows on the row
     var doi = null;
     try { doi = await idToDoi(refText); } catch (e) { /* fall through to search */ }
     if (doi) {
-      try { var r = await fetchRecord(doi); return { record: r, conf: 1, via: 'doi' }; } catch (e) { /* fall through to search */ }
+      try { var r = await fetchRecord(doi, ctx); return { record: r, conf: 1, via: 'doi' }; } catch (e) { /* fall through to search */ }
     }
     var isbn = A.extractIsbn(String(refText).replace(/10\.\d{4,9}\/\S+/g, ' ')); // an ISBN inside a chapter DOI (10.1007/978-…) is not the book being cited
     if (isbn) { try { var b = await lookupIsbn(isbn); return { record: b, conf: 1, via: 'isbn' }; } catch (e) { /* search */ } }
     var tq = looksLikeTitle(refText);
     if (tq) { // a title alone, perhaps with its journal and year: the Find tab's search, graded by title similarity; via 'title' tells the row so
-      var found = (await findByTitle(tq.title, tq.journal, { year: tq.year })).hits;
+      var found = (await findByTitle(tq.title, tq.journal, { year: tq.year, ctx: ctx })).hits;
       if (!found.length) return { record: null, conf: 0 };
       var top = found[0], tconf = top.conf;
       if (tq.journal && !/\s/.test(tq.title.trim())) tconf = Math.min(tconf, 0.94); // "Learning, Memory and Cognition" may be a title, not "Learning" in a journal: an exact one-word title waits for your pick
-      top = await fullRecord(top);
+      top = await fullRecord(top, ctx);
+      if (top !== found[0]) tconf = Math.min(tconf, titleSimilarity(tq.title, top.title)); // Crossref's record for an OpenAlex DOI: a merged or wrong DOI must not show another paper as green
       return { record: top, conf: tconf, allWords: !!found[0].allWords, via: 'title', alt: null, hits: found.slice(0, 6) }; // the close titles go under the row, as the Find tab lists them
     }
-    var best = null, bestConf = 0, via = 'search', seen = [];
+    var best = null, bestConf = 0, bestEff = 0, via = 'search', seen = [];
+    // A dataset ("Data from: <the paper's title>"), a grant, a preprint, a figure or a review of the paper can score like the paper itself:
+    // once a hit of another type scores as a match, such hits stand back by 0.25 (and stay runners-up under "Not this one?")
+    var ASIDE = /^(?:dataset|grant|posted-content|preprint|component|peer-review|journal-issue)$/;
+    var BOOK = /^(?:book|edited-book|monograph|reference-book)$/;
     var pick = function (hits) {
-      hits.forEach(function (h) { var c = A.matchConfidence(refText, h); seen.push({ h: h, c: c }); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
+      var scored = hits.map(function (h) { var c = A.matchConfidence(refText, h); seen.push({ h: h, c: c }); return { h: h, c: c }; });
+      var anchored = scored.some(function (x) { return x.c >= 0.8 && !ASIDE.test(x.h.type); });
+      // the highest score wins; within 0.05 the earlier hit stands, as Crossref's relevance ranking has seen metadata the grade cannot
+      scored.forEach(function (x) { var eff = anchored && ASIDE.test(x.h.type) ? x.c - 0.25 : x.c; if (!best || eff > bestEff + 0.05) { best = x.h; bestConf = x.c; bestEff = eff; } });
+      // a chapter reference names the book, its editor and year too, so the book itself can outscore the chapter: when the reference cites a
+      // page range and a chapter of that very book (its DOI extends the book's) scores well, the chapter is the one cited
+      if (best && BOOK.test(best.type) && best.doi && /\d+\s*[-\u2013]\s*\d+/.test(refText)) {
+        var ch = scored.filter(function (x) { return x.c >= 0.8 && x.h.type === 'book-chapter' && x.h.doi && x.h.doi.toLowerCase().indexOf(best.doi.toLowerCase()) === 0; }).sort(function (a, b) { return b.c - a.c; })[0];
+        if (ch) { best = ch.h; bestConf = ch.c; bestEff = ch.c; }
+      }
     };
     // a runner-up that scores nearly as well as the winner is offered on the row ("Not this one?"): an erratum and its paper,
     // a preprint and its journal version, the same title in a journal and in proceedings
@@ -6966,14 +7270,15 @@
       return alts.length ? { record: alts[0].h, conf: alts[0].c } : null;
     };
     var errors = [];
-    try { pick(await search({ 'query.bibliographic': refText }, 3)); } catch (e) { errors.push('Crossref: ' + e.message); }
+    try { pick(await search({ 'query.bibliographic': refText }, 3, ctx)); } catch (e) { errors.push('Crossref: ' + e.message); }
     if (!best || bestConf < 0.5) { // second opinion from OpenAlex
       try {
-        var oa = await openAlexSearch(refText, 3), before = bestConf;
+        var oa = await openAlexSearch(refText, 3, ctx), before = bestEff;
         pick(oa);
-        if (best && bestConf > before && best.source === 'openalex') {
+        if (best && bestEff > before && best.source === 'openalex') {
           via = 'openalex';
-          if (best.doi) { try { best = await fetchRecord(best.doi); } catch (e) { /* keep the OpenAlex record */ } }
+          // Crossref's record for the DOI, graded afresh: an OpenAlex work merged under another paper's DOI must not show that paper as green
+          if (best.doi) { try { best = await fetchRecord(best.doi, ctx); bestConf = A.matchConfidence(refText, best); } catch (e) { /* keep the OpenAlex record */ } }
         }
       } catch (e) { errors.push('OpenAlex: ' + e.message); }
     }
@@ -7041,16 +7346,22 @@
   /* ---------- a Word manuscript: the paragraphs after its References heading ----------
    * A .docx is a zip of XML parts; the central directory names them and DecompressionStream inflates word/document.xml,
    * so no library is needed.  Runs set superscript or subscript become Unicode, as a paste from Word does. */
-  async function zipEntries(buf) { // {name: Uint8Array} for every stored or deflated entry
+  var DOCX_PARTS = ['word/document.xml', 'word/footnotes.xml', 'word/endnotes.xml']; // the only parts read: nothing else in the zip is inflated
+  var DOCX_MAX_FILE = 50 * 1024 * 1024, DOCX_MAX_ENTRIES = 10000, DOCX_MAX_UNPACKED = 64 * 1024 * 1024; // a manuscript is a few MB; past these it is not one
+  async function zipEntries(buf) { // {name: Uint8Array} for the DOCX_PARTS that are stored or deflated
     var b = new Uint8Array(buf), dv = new DataView(buf), n = b.length, eocd = -1;
     for (var i = n - 22; i >= Math.max(0, n - 65558); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
     if (eocd < 0) throw new Error('not a zip file');
-    var count = dv.getUint16(eocd + 10, true), cd = dv.getUint32(eocd + 16, true), out = {}, td = new TextDecoder();
+    var count = dv.getUint16(eocd + 10, true), cd = dv.getUint32(eocd + 16, true), out = {}, td = new TextDecoder(), unpacked = 0;
+    if (count > DOCX_MAX_ENTRIES) throw new Error('the file holds more than ' + DOCX_MAX_ENTRIES.toLocaleString() + ' parts, which no manuscript does');
     if (cd + 22 > n) throw new Error('damaged or unsupported Word file');
     for (var k = 0, pos = cd; k < count; k++) {
       if (pos + 46 > n || dv.getUint32(pos, true) !== 0x02014b50) break;
       var method = dv.getUint16(pos + 10, true), csize = dv.getUint32(pos + 20, true), nlen = dv.getUint16(pos + 28, true), xlen = dv.getUint16(pos + 30, true), clen = dv.getUint16(pos + 32, true), off = dv.getUint32(pos + 42, true);
       var name = td.decode(b.subarray(pos + 46, pos + 46 + nlen));
+      unpacked += dv.getUint32(pos + 24, true); // the directory's own word for the unpacked size, checked before anything is inflated
+      if (unpacked > DOCX_MAX_UNPACKED) throw new Error('the file would unpack to more than ' + Math.round(DOCX_MAX_UNPACKED / 1048576) + ' MB, which no manuscript does');
+      if (DOCX_PARTS.indexOf(name) === -1) { pos += 46 + nlen + xlen + clen; continue; } // images, fonts, anything else: never read
       if (off + 30 > n) throw new Error('damaged or unsupported Word file');
       var lnlen = dv.getUint16(off + 26, true), lxlen = dv.getUint16(off + 28, true), start = off + 30 + lnlen + lxlen;
       var data = b.subarray(start, start + csize);
@@ -7111,8 +7422,9 @@
     if (!list.length) return;
     var notes = [];
     Promise.all(list.map(function (f) {
+      if (f.size > DOCX_MAX_FILE) return Promise.reject(new Error('the file is over ' + Math.round(DOCX_MAX_FILE / 1048576) + ' MB, which no reference file or manuscript is'));
       if (isDocx(f)) return f.arrayBuffer().then(docxReferences).then(function (sec) {
-        if (!sec.refs.length) throw new Error('No reference list found in ' + f.name + ': no References heading, and no paragraph with a year.');
+        if (!sec.refs.length) throw new Error('no References heading, and no paragraph with a year.');
         notes.push(sec.refs.length + ' paragraphs ' + (sec.heading === 'notes' ? 'from the notes of ' : sec.heading ? 'after "' + sec.heading + '" in ' : 'with a year in ') + f.name);
         return sec.refs.join('\n');
       });
@@ -7123,7 +7435,10 @@
       if (notes.length) { $('split-mode').value = 'lines'; docxNote = notes.join('; '); } // one paragraph per reference, for this run; the remembered layout is not changed
       updateSplitPreview();
       $('form-export').dispatchEvent(new Event('submit', { cancelable: true })); // also works while a batch is running
-    }, function (e) { logError('file-read', e); $('export-status').textContent = 'Could not read that file: ' + e.message; });
+    }, function (e) { // the file's name is shown here only: the error log travels inside bug reports
+      logError('file-read', e);
+      $('export-status').textContent = 'Could not read ' + (list.length === 1 ? list[0].name : 'that file') + ': ' + e.message;
+    });
   }
   $('export-file').addEventListener('click', function () { $('export-file-input').click(); });
   $('export-file-input').addEventListener('change', function () { readFiles(this.files); this.value = ''; });
@@ -7289,18 +7604,22 @@
     return items;
   }
 
-  var batchStopped = false, batchRestoring = false, docxNote = '';
+  var batchStopped = false, batchRestoring = false, docxNote = '', batchCtl = null;
   $('export-stop').addEventListener('click', function () { batchStopped = true; $('export-stop').hidden = true; $('export-status').textContent = 'Stopping…'; });
   $('form-export').addEventListener('submit', async function (ev) {
     ev.preventDefault();
     var mySeq = ++batchSeq; batchStopped = false;
+    if (batchCtl) batchCtl.abort(); batchCtl = new AbortController(); var batchSignal = batchCtl.signal; // the previous batch's look-ahead lookups leave the Crossref queue to this one
     var current = function () { return mySeq === batchSeq; };
     var items = batchItems($('export-input').value);
+    var layout = store.get('splitmode'); if (!/^(auto|lines|blank|numbered)$/.test(layout || '')) layout = 'auto';
+    if ($('split-mode').value !== layout) { $('split-mode').value = layout; updateSplitPreview(); } // a layout set for one run only (a shared link's DOIs, a Word file) does not outlive it
     var status = $('export-status'), list = $('export-matches'), out = $('export-output');
     status.className = 'status'; list.innerHTML = ''; out.innerHTML = '';
     if (!items.length) { status.textContent = 'Paste at least one reference, or open a .ris / .enw / .bib file.'; status.className = 'status err'; return; }
     batchMem.setText($('export-input').value);
     var fromMemory = batchRestoring; batchRestoring = false; // a list brought back from the last visit: said so in the summary
+    var offer = restoreOffer; restoreOffer = null; // a ?refs= link that replaced a remembered list: the way back rides on this run's summary
     var nLookups = items.filter(function (x) { return x.kind === 'text'; }).length;
     if (nLookups > 300) {
       var mins = Math.round(nLookups * ($('polite-email').value.trim() ? 1.2 : 2.5) / 60);
@@ -7314,14 +7633,14 @@
     function titleLevel(c, allWords) { return c >= 0.95 ? 'good' : c >= 0.6 || allWords ? 'warn' : 'bad'; } // a line that is only a title is graded by title similarity, as the Find tab's chips are; a hit holding every search word is one to check
     function chipFor(level, via, src) {
       var label = via === 'doi' ? 'From DOI' : via === 'isbn' ? 'From ISBN' : via === 'file' ? 'From ' + fileLabel(src) + ' file' :
-        via === 'year' ? 'Year differs' : via === 'doicheck' ? 'DOI disagrees with text' : via === 'untitled' ? 'No title in file' :
+        via === 'year' ? 'Year differs' : via === 'doicheck' ? 'Check DOI' : via === 'untitled' ? 'No title in file' :
         via === 'title' ? (level === 'good' ? 'Found by title' : level === 'warn' ? 'Check title match' : 'Weak title match') : via === 'picked' ? 'Your pick' :
         via === 'openalex' ? (level === 'good' ? 'Good match · OpenAlex' : 'Check match · OpenAlex') : via === 'fixed' ? 'Fixed' : via === 'edited' ? 'Edited' :
         level === 'good' ? 'Good match' : level === 'warn' ? 'Check match' : via === 'none' ? 'No good match' : 'Weak match';
       var c = el('span', 'chip ' + level, label);
       if (via === 'year') c.title = 'The reference names a different year from this record; probably the wrong paper. Left out unless you tick it.';
       if (via === 'title' && level !== 'good') c.title = 'Only a title was given; this is the closest title found. Tick it if it is the paper.';
-      if (via === 'doicheck') c.title = 'The DOI in this reference resolves to a record whose title or year does not match the text. Check whether the DOI belongs to the reference above or below, or fix it here.';
+      if (via === 'doicheck') c.title = 'The DOI in this reference resolves to a record that does not fit the text: an erratum, a neighbouring paper, a DOI line attached to the wrong entry, or a typo. Check it, or paste the right DOI below.';
       return c;
     }
     function build() {
@@ -7345,12 +7664,17 @@
       var zt = el('span', 'zone-title', 'Your export'); zt.id = 'export-zone-title'; zh.appendChild(zt);
       var withDoi = recs.filter(function (r) { return r.doi; });
       if (withDoi.length) { // a link that rebuilds this list from its DOIs, in this list style; pasted text never goes into a link
+        // a URL longer than about 8 kB is cut by browsers and chat apps, so the link carries at most 200 DOIs or 7,500 characters (the loader reads up to 500)
+        var linkBase = location.href.split('?')[0].split('#')[0], linkDois = [], linkLen = linkBase.length + 6;
+        withDoi.some(function (r) { var piece = encodeURIComponent(r.doi); if (linkDois.length >= 200 || linkLen + piece.length + 1 > 7500) return true; linkDois.push(piece); linkLen += piece.length + 1; return false; });
         var lb = button('Copy link', 'small', function (b) {
-          var base = location.href.split('?')[0].split('#')[0], ls = store.get('liststyle') || 'apa', lo = store.get('listorder') || 'style';
-          copyPlain(b, base + '?refs=' + withDoi.map(function (r) { return encodeURIComponent(r.doi); }).join(',') + (ls !== 'apa' ? '&list=' + encodeURIComponent(ls) : '') + (lo !== 'style' ? '&order=' + lo : ''));
+          var ls = store.get('liststyle') || 'apa', lo = store.get('listorder') || 'style';
+          copyPlain(b, linkBase + '?refs=' + linkDois.join(',') + (ls !== 'apa' ? '&list=' + encodeURIComponent(ls) : '') + (lo !== 'style' ? '&order=' + lo : ''));
         });
-        lb.title = 'Copy a link that opens this reference list again, from the ' + withDoi.length + ' DOI' + (withDoi.length > 1 ? 's' : '') + ' of the ticked rows' + (withDoi.length < recs.length + kept.length ? '; ' + (recs.length + kept.length - withDoi.length) + ' reference' + (recs.length + kept.length - withDoi.length > 1 ? 's' : '') + ' without a DOI cannot be in it' : '');
+        var cut = linkDois.length < withDoi.length;
+        lb.title = 'Copy a link that opens this reference list again, from the ' + (cut ? 'first ' + linkDois.length + ' of ' + withDoi.length + ' DOIs' : withDoi.length + ' DOI' + (withDoi.length > 1 ? 's' : '')) + ' of the ticked rows' + (cut ? ' (a link holds at most 200 DOIs or 7,500 characters)' : '') + (withDoi.length < recs.length + kept.length ? '; ' + (recs.length + kept.length - withDoi.length) + ' reference' + (recs.length + kept.length - withDoi.length > 1 ? 's' : '') + ' without a DOI cannot be in it' : '');
         zh.appendChild(lb);
+        if (cut) zh.appendChild(el('span', 'zone-sub', 'Link: first ' + linkDois.length + ' of ' + withDoi.length + ' DOIs'));
       }
       zh.appendChild(el('span', 'zone-sub', recs.length + ' record' + (recs.length !== 1 ? 's' : '') + (kept.length ? ' + ' + kept.length + ' kept as written' : '') + (caseState.mode !== 'none' && caseState.words ? ' · titles in ' + (caseState.mode === 'sentence' ? 'sentence case' : 'Title Case') : '')));
       zone.appendChild(zh);
@@ -7659,7 +7983,14 @@
       var mem = batchMem.row(text); if (!mem || !mem.record) return null;
       return Promise.resolve({ ok: { record: mem.record, conf: mem.level === 'good' ? 1 : mem.level === 'warn' ? 0.6 : 0.4, via: mem.via, alt: mem.alt || null, hits: mem.hits || null, remembered: { level: mem.level, via: mem.via } } });
     };
-    var startLookup = function (k) { if (k < items.length && items[k].kind === 'text' && !pending[k]) pending[k] = recall(items[k].text) || resolve(items[k].text).then(function (r) { return { ok: r }; }, function (e) { return { err: e }; }); };
+    var retrying = {}; // index -> ms: a lookup waiting out a "too many requests" says so on its row, which may not be built yet
+    var showRetry = function (k) {
+      var r = rows[k]; if (!r || r.rec || !retrying[k] || !current()) return;
+      r.out.innerHTML = ''; r.out.appendChild(el('span', 'chip', 'Retrying\u2026')); r.out.appendChild(el('span', 't', 'The service asked for a pause of ' + Math.ceil(retrying[k] / 1000) + ' s.'));
+    };
+    var startLookup = function (k) {
+      if (k < items.length && items[k].kind === 'text' && !pending[k]) pending[k] = recall(items[k].text) || resolve(items[k].text, { signal: batchSignal, onRetry: function (ms) { retrying[k] = ms; showRetry(k); } }).then(function (r) { return { ok: r }; }, function (e) { return { err: e }; });
+    };
     for (var i = 0; i < items.length; i++) {
       if (!current()) return; // a newer batch has replaced this one
       if (batchStopped) { items = items.slice(0, i); break; } // Stop: keep what is done and fall through to the summary and export
@@ -7672,7 +8003,7 @@
       list.appendChild(m);
       var row = { rec: null, box: { checked: false }, node: m, out: o, idx: i, raw: it.kind === 'text' ? it.text : '' };
       (function (r) { m.addEventListener('click', function (ev) { rowClick(r, ev); }); })(row); // bound per row: `row` is the loop's var
-      rows.push(row);
+      rows.push(row); showRetry(i);
       if (it.kind === 'rec') { // records come straight from the file, no lookup
         if (it.untitled) { setRow(row, it.rec, 'warn', 'untitled', it.src); addFixRow(row); }
         else setRow(row, it.rec, 'good', 'file', it.src);
@@ -7684,7 +8015,7 @@
         var res = got.ok;
         if (!current()) return;
         if (!res.record) {
-          m.classList.add('bad');
+          m.classList.add('bad'); o.innerHTML = '';
           o.appendChild(el('span', 'chip bad', 'No match'));
           o.appendChild(el('span', 't', 'Nothing close at Crossref or OpenAlex. Paste a DOI or the bare title below.'));
           addFixRow(row);
@@ -7697,7 +8028,7 @@
           // probably belongs to the neighbouring reference (a DOI line attached to the wrong entry) or has a typo
           if (res.via === 'doi' && !ID_LINE.test(it.text.trim())) {
             var rest = it.text.replace(/(https?:\/\/)?\S*10\.\d{4,9}\/\S+/g, ' ').replace(/\s+/g, ' ').trim();
-            if (rest.length >= 40 && (yearConflict(rest, res.record) || A.matchConfidence(rest, res.record, { titleOnly: true }) < 0.4)) { level = 'warn'; via = 'doicheck'; }
+            if (rest.length >= 40 && (yearConflict(rest, res.record) || A.matchConfidence(rest, res.record) < 0.5)) { level = 'warn'; via = 'doicheck'; } // the whole grade: an erratum's DOI, or a sibling paper's, shares the title
           }
           if (res.remembered) { level = res.remembered.level; via = res.remembered.via; } // as graded last time, ticks included
           setRow(row, res.record, level, via);
@@ -7713,7 +8044,7 @@
       } catch (e) {
         if (!current()) return;
         logError('batch', e);
-        m.classList.add('bad');
+        m.classList.add('bad'); o.innerHTML = '';
         o.appendChild(el('span', 'chip bad', 'Error')); o.appendChild(el('span', 't', e.message));
         addFixRow(row);
       }
@@ -7734,6 +8065,7 @@
     $('export-go').disabled = false; $('export-stop').hidden = true;
     function showSummary(extra) { // the summary, with a button down to the export box when there is one
       status.textContent = summary + (extra || '');
+      if (offer) { status.appendChild(document.createTextNode(' This link replaced the list you had. ')); status.appendChild(offer()); }
       if (!matched.length) return;
       status.appendChild(document.createTextNode(' '));
       status.appendChild(button('Go to export \u2193', 'jump', function () { var z = $('export-zone'); if (z) { z.scrollIntoView({ behavior: 'smooth', block: 'start' }); z.focus({ preventScroll: true }); } }));
@@ -7799,12 +8131,25 @@
   var refs = (location.search.match(/[?&]refs=([^&#]*)/) || [])[1] || ''; // split before decoding: a DOI may itself hold a comma or a percent sign
   if (refs) { // a shared reference list: its DOIs, one per line, matched directly
     var dois = refs.split(',').map(function (x) { try { return A.toDoi(decodeURIComponent(x)); } catch (e) { return ''; } }).filter(Boolean).slice(0, 500);
-    var ls = params.get('list');
-    if (ls && (A.STYLES.some(function (st) { return st.id === ls; }) || /^csl:[a-z0-9\-]+$/i.test(ls))) store.set('liststyle', ls); // a journal style is remembered once it renders
-    var lo = params.get('order');
-    if (/^(?:style|given|newest|oldest)$/.test(lo || '')) store.set('listorder', lo);
+    var ls = params.get('list'), lo = params.get('order');
+    listPrefs = { // held, not stored: remembered by the list once it has rendered in them, so a mistyped style name is not kept
+      style: ls && (A.STYLES.some(function (st) { return st.id === ls; }) || /^csl:[a-z0-9\-]+$/i.test(ls)) ? ls : '',
+      order: /^(?:style|given|newest|oldest)$/.test(lo || '') ? lo : ''
+    };
     if (dois.length) {
-      $('export-input').value = dois.join('\n'); $('split-mode').value = 'lines'; updateSplitPreview();
+      var text = dois.join('\n'), had = batchMem.text().trim();
+      if (had && had !== text) { // the list from last time is set aside, not lost: the summary offers it back
+        batchMem.setPrevious(batchMem.text());
+        restoreOffer = function () {
+          var b = button('Restore previous list', 'jump', function () {
+            var prev = batchMem.previous(); if (!prev) return;
+            batchMem.setPrevious(''); $('export-input').value = prev; updateSplitPreview(); $('form-export').requestSubmit();
+          });
+          b.title = 'Put back the list that was in the box before this link opened';
+          return b;
+        };
+      }
+      $('export-input').value = text; $('split-mode').value = 'lines'; updateSplitPreview();
       showTab('export'); $('form-export').requestSubmit();
     }
   } else if (!$('export-input').value.trim() && batchMem.text().trim()) { // the last visit's list comes back; when every line is remembered it is rebuilt at once, with no lookup

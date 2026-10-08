@@ -1,5 +1,6 @@
 // Oracle: reference examples published by the style authorities themselves (APA, MLA, Chicago, NLM's Citing
-// Medicine for Vancouver, the IEEE Reference Guide), collected verbatim with their source URLs into
+// Medicine for Vancouver, the IEEE Reference Guide; for Harvard, Cite Them Right 12th edn as quoted by the
+// university guides that follow it), collected verbatim with their source URLs into
 // tests/fixtures/golden-examples.json, rebuilt from their metadata and compared exactly.
 // Usage: node tests/golden-styleguides.test.js [--all]   (--all prints every mismatch, not the first 12)
 var fs = require('fs'), path = require('path');
@@ -9,7 +10,7 @@ var FILE = path.join(__dirname, 'fixtures', 'golden-examples.json');
 if (!fs.existsSync(FILE)) { console.log('no fixture at ' + FILE + '\n0 passed, 0 failed'); process.exit(0); }
 var examples = JSON.parse(fs.readFileSync(FILE, 'utf8'));
 var showAll = process.argv.indexOf('--all') !== -1;
-var STYLE = { apa: 'apa', mla: 'mla', 'chicago-nb': 'chicago', vancouver: 'vancouver', ieee: 'ieee', harvard: 'harvard' }; // chicago-ad: not implemented
+var STYLE = { apa: 'apa', mla: 'mla', 'chicago-nb': 'chicago', vancouver: 'vancouver', ieee: 'ieee', harvard: 'harvard' }; // every style in the fixture must map: an unmapped one fails below, it is not skipped
 var TYPE = { 'journal-article': 'journal-article', book: 'book', 'edited-book': 'edited-book', 'book-chapter': 'book-chapter', webpage: 'webpage', preprint: 'posted-content',
   dissertation: 'dissertation', 'conference-paper': 'proceedings-article', dataset: 'dataset', report: 'report', other: 'other' };
 var MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
@@ -64,13 +65,21 @@ var NOT_APPLICABLE = [
   [/ICPSR \d+; Version/, 'a dataset accession number and version'],
   [/\(Applied Mathematics Series 55\)/, 'a series in an edited-book entry with pages'],
   [/[A-Z][a-z]{2,8}\.? \d{1,2}[\u2013-]\d{1,2}, \d{4}/, 'a day range'],
+  [/\d{1,2}[\u2013-]\d{1,2} [A-Z][a-z]{2,8}\./, 'a day range (the conference dates and venue, in the UK order)'],
   [/PubMed PMID/, 'PubMed identifiers'],
   [/edited by [^,]+ et al\., Oxford UP, Nov\. 2015/, 'three editors the source lists as one plus et al.'],
   [/Eds\. Human Biology of Pastoral Populations/, 'the IEEE guide prints edited books both as "Eds., Title" and "Eds. Title"; AutoDOI uses the first']
 ];
-function tidy(s, st) { var t = String(s).replace(/\*/g, '').replace(/\s+/g, ' ').normalize('NFC').trim(); return st === 'mla' ? t.replace(/(\d)[\u2013-](\d)/g, '$1-$2') : t; } // MLA's own examples mix hyphens and en dashes in page ranges
+// MLA's own examples mix hyphens and en dashes in page ranges; the university guides that reprint Cite Them Right's Harvard
+// examples type its curly quotes and en dashes as straight quotes and hyphens, so for Harvard both are read as the book prints them
+function tidy(s, st) {
+  var t = String(s).replace(/\*/g, '').replace(/\s+/g, ' ').normalize('NFC').trim();
+  if (st === 'mla') return t.replace(/(\d)[\u2013-](\d)/g, '$1-$2');
+  if (st === 'harvard') return t.replace(/(\d)-(\d)/g, '$1\u2013$2').replace(/(^|[\s(])'/g, '$1\u2018').replace(/'/g, '\u2019');
+  return t;
+}
 function loose(s) { return tidy(s).replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[‐-―]/g, '-').replace(/\.$/, '').toLowerCase(); }
-var pass = 0, fail = 0, nearly = 0, skipped = 0, shown = 0, perStyle = {}, na = [];
+var pass = 0, fail = 0, nearly = 0, shown = 0, perStyle = {}, na = [];
 // The in-text forms the same pages print: APA's parenthetical and narrative citations are printed jointly for a group of
 // examples ("(Grady et al., 2019; Pope & Wall, 2025)"), so each example's own form must be one of the segments; Chicago's
 // notes carry a page locator, read back out of the printed note so the same note can be rebuilt with it
@@ -83,6 +92,9 @@ function checkInText(ex, i, st, r) {
     var segs = tidy(ex.inText).replace(/^\(|\)$/g, '').split(/;\s*/);
     if (segs.indexOf(tidy(forms.paren).replace(/^\(|\)$/g, '')) !== -1) pass++; else { fail++; console.log('FAIL ' + label + '\n   got  ' + forms.paren + '\n   want one of ' + ex.inText); }
     if (ex.inTextNarrative) { if (tidy(ex.inTextNarrative).indexOf(tidy(forms.narrative)) !== -1) pass++; else { fail++; console.log('FAIL ' + label + ' narrative\n   got  ' + forms.narrative + '\n   want in ' + ex.inTextNarrative); } }
+  } else if (st === 'harvard') { // Cite Them Right: "(Author and Author, Year)", "(Author, Author and Author, Year)", "(Author et al., Year)"
+    var hw = tidy(ex.inText), hg = tidy(A.inTextForms(r, 'harvard', {}).paren);
+    if (hg === hw) pass++; else { fail++; if (showAll || shown++ < 12) console.log('FAIL ' + label + '\n   got  ' + hg + '\n   want ' + hw); }
   } else if (st === 'chicago') {
     var want = tidy(ex.inText).replace(/^\d+\.\s+/, '');
     if (/Rachel A\. Bay/.test(want)) { na.push(st + ' #' + i + ' note: the guide\'s note misspells the author its bibliography entry prints as Rachael'); return; }
@@ -92,7 +104,7 @@ function checkInText(ex, i, st, r) {
 }
 examples.forEach(function (ex, i) {
   var st = STYLE[ex.style];
-  if (!st) { skipped++; return; }
+  if (!st) { fail++; console.log('FAIL #' + i + ': fixture style "' + ex.style + '" is not one the library implements (add it to STYLE or drop the row)'); return; }
   perStyle[st] = perStyle[st] || { pass: 0, fail: 0 };
   for (var q = 0; q < NOT_APPLICABLE.length; q++) if (NOT_APPLICABLE[q][0].test(tidy(ex.expected))) { na.push(st + ' #' + i + ': ' + NOT_APPLICABLE[q][1]); return; }
   // Citing Medicine lists every author by default and gives "six, then et al." as the option AutoDOI follows (ICMJE, PubMed)
@@ -107,7 +119,6 @@ examples.forEach(function (ex, i) {
   if (showAll || shown++ < 12) console.log('FAIL #' + i + ' ' + st + ' ' + ex.kind + (loose(got) === loose(want) ? ' (punctuation/quotes only)' : '') + '\n   got  ' + tidy(got, st) + '\n   want ' + want + '\n   src  ' + ex.source);
 });
 Object.keys(perStyle).forEach(function (st) { console.log(st + ': ' + perStyle[st].pass + ' exact, ' + perStyle[st].fail + ' off'); });
-if (skipped) console.log(skipped + ' examples in styles this library does not implement (chicago-ad) were skipped');
 if (na.length) console.log(na.length + ' examples need data no source supplies and are not counted: ' + na.join('; '));
 if (nearly) console.log(nearly + ' of the mismatches differ only in quotes, dashes or a final period');
 console.log(pass + ' passed, ' + fail + ' failed');

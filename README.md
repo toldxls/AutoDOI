@@ -12,7 +12,7 @@ Everything runs in your browser. Nothing is stored on a server, there is no trac
 
 **Find a DOI.** Title plus optional journal; the best matches come back with a match chip and your search words lit where they appear in each title and journal.
 
-**DOI → reference.** Paste a DOI, doi.org link, arXiv ID, PubMed or PMC ID, ISBN, or any text containing one. You get APA 7, MLA 9, Chicago 17, Harvard, Vancouver, IEEE and Annals of Carnegie Museum, plus BibTeX, RIS and EndNote tagged, or search the [Citation Style Language](https://citationstyles.org/) repository for a journal style, rendered by citeproc-js in any of 52 languages (Settings). Under each reference is its in-text citation with its own *Copy*: parenthetical and narrative forms, Chicago's footnote, or the number for Vancouver and IEEE. Type the pages you are citing in *Cite pages* and every form takes them. *Copy* gives plain text, *Rich* keeps italics for Word and Google Docs, *Copy link* gives a URL that reopens the same reference in the same style (`?q=10.1038/nature12373&style=csl:geology`). A retracted paper carries a red **Retracted** chip and a line naming each notice, from Crossref's record with the Retraction Watch database; corrections and expressions of concern are flagged in amber. Click the title or byline of a record to edit any field, with the reference following as you type, and *Write a reference by hand* at the foot of the tab starts one from scratch for a web page or report with no DOI. *Free PDF* opens a legal open-access copy when Unpaywall or OpenAlex knows one; *Via library* appears once you set your library proxy under Settings.
+**DOI → reference.** Paste a DOI, doi.org link, arXiv ID, PubMed or PMC ID, ISBN, or any text containing one. You get APA 7, MLA 9, Chicago 17, Harvard (Cite Them Right), Vancouver, IEEE and Annals of Carnegie Museum, plus BibTeX, RIS and EndNote tagged, or search the [Citation Style Language](https://citationstyles.org/) repository for a journal style, rendered by citeproc-js in any of 52 languages (Settings). Under each reference is its in-text citation with its own *Copy*: parenthetical and narrative forms, Chicago's footnote, or the number for Vancouver and IEEE. Type the pages you are citing in *Cite pages* and every form takes them. *Copy* gives plain text, *Rich* keeps italics for Word and Google Docs, *Copy link* gives a URL that reopens the same reference in the same style (`?q=10.1038/nature12373&style=csl:geology`). A retracted paper carries a red **Retracted** chip and a line naming each notice, from Crossref's record with the Retraction Watch database; corrections and expressions of concern are flagged in amber. Click the title or byline of a record to edit any field, with the reference following as you type, and *Write a reference by hand* at the foot of the tab starts one from scratch for a web page or report with no DOI. *Free PDF* opens a legal open-access copy when Unpaywall or OpenAlex knows one; *Via library* appears once you set your library proxy under Settings.
 
 The record you are working with follows you across the tabs.
 
@@ -27,7 +27,7 @@ The record you are working with follows you across the tabs.
 
 ## Google Sheets
 
-`apps-script/Code.gs` and `apps-script/Citations.gs` give the same logic as custom functions: `=DOI_CITE(A2, "apa")`, `=FIND_DOI(B2, C2)`, `=REF_TO_DOI(D2)`, `=REF_TO_RIS(D2)`, plus an export menu. Paste them into *Extensions → Apps Script*, replace the manifest with `apps-script/appsscript.json`, and set `POLITE_EMAIL` at the top of `Code.gs`. Results are cached for six hours; cells that hit the 30-second limit read `Retry` and fill on recalculation.
+`apps-script/Code.gs` and `apps-script/Citations.gs` give the same logic as custom functions: `=DOI_CITE(A2, "apa")`, `=FIND_DOI(B2, C2)`, `=REF_TO_DOI(D2)`, `=REF_TO_ENW(D2)`, `=REF_TO_RIS(D2)`, plus an export menu. Paste them into *Extensions → Apps Script*, replace the manifest with `apps-script/appsscript.json`, and set `POLITE_EMAIL` at the top of `Code.gs`. Results are cached for six hours; cells that hit the 30-second limit read `Retry` and fill on recalculation.
 
 ## Command line
 
@@ -40,7 +40,7 @@ node bin/autodoi.js --match --style ris < references.txt       # match a pasted 
 node bin/autodoi.js --match --json < references.txt            # the records with their grades
 ```
 
-`--email you@example.org` (or `AUTODOI_EMAIL`) uses Crossref's polite pool. `require('./citations.js')` gives the library itself: `normalize`, `format`, `formatHtml`, `inTextForms`, `matchConfidence`.
+`--email you@example.org` (or `AUTODOI_EMAIL`) uses Crossref's polite pool. `--match` reads one reference per line, or one per paragraph when blank lines separate them, prints each match as it arrives, and exits 0 when every reference matched, 1 when a lookup failed, 2 on bad usage and 3 when some stayed unmatched (their text is on stderr). `require('./citations.js')` gives the library itself: `normalize`, `format`, `formatHtml`, `inTextForms`, `matchConfidence`.
 
 ## Bugs and missing styles
 

@@ -20,6 +20,12 @@ function check(name, ok, detail) { if (ok) { passed++; console.log('ok   ' + nam
     await page.waitForFunction(function () { return /Kucsko/.test(document.querySelector('#doi-result').textContent) && /Copy/.test(document.querySelector('#doi-result').textContent) && !/Looking/.test(document.querySelector('#doi-status').textContent); }, null, { timeout: 60000 });
     var text = await page.locator('#doi-result').textContent();
     check('Crossref lookup renders the record', /Kucsko, G\./.test(text) && /2013/.test(text) && /Nature/.test(text), text.slice(0, 200));
+    // A DataCite DOI goes through doi.org's redirect to data.crosscite.org, a hop the Content Security Policy must allow (the offline suite mocks it away)
+    await page.fill('#doi-input', '10.5281/zenodo.3509134'); await page.click('#doi-go');
+    await page.waitForFunction(function () { var t = document.querySelector('#doi-result').textContent; return /Zenodo|zenodo/i.test(t) && !/Looking/.test(document.querySelector('#doi-status').textContent); }, null, { timeout: 60000 });
+    check('a DataCite DOI resolves through doi.org under the Content Security Policy', /2019|2020|2021|2022|2023|2024|2025|2026/.test(await page.locator('#doi-result').textContent()) && !/err/.test(await page.getAttribute('#doi-status', 'class')), await page.locator('#doi-status').textContent());
+    await page.fill('#doi-input', '10.1038/nature12373'); await page.click('#doi-go');
+    await page.waitForFunction(function () { return /Kucsko/.test(document.querySelector('#doi-result').textContent) && !/Looking/.test(document.querySelector('#doi-status').textContent); }, null, { timeout: 60000 });
     check('no error status after the lookup', !/err/.test(await page.getAttribute('#doi-status', 'class')), await page.locator('#doi-status').textContent());
     // Vancouver needs the NLM abbreviation; wait a moment for it
     await page.selectOption('#style-select', 'vancouver');

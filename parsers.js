@@ -53,9 +53,10 @@
     s = trim(s);
     var out = { y: 0, m: 0, d: 0 };
     if (!s) return out;
-    var m = s.match(/^(\d{4})(?:[\/\-.](\d{1,2})?)?(?:[\/\-.](\d{1,2})?)?/);
-    if (m) { out.y = Number(m[1]); out.m = Number(m[2] || 0); out.d = out.m ? Number(m[3] || 0) : 0; return validDate(out); }
-    var y = s.match(/\b(1[5-9]\d{2}|20\d{2})\b/), rest = y ? s.replace(y[0], ' ') : s;
+    // numeric forms end here; a bare year with more after it ("2020 May 15", "2020, May 1", "2020/Jun/05") goes on to the month words
+    var m = s.match(/^(\d{4})(?:[\/\-.](\d{1,2})?)?(?:[\/\-.](\d{1,2})?)?[\/\-.]*/);
+    if (m && (m[2] || m[0].length === s.length)) { out.y = Number(m[1]); out.m = Number(m[2] || 0); out.d = out.m ? Number(m[3] || 0) : 0; return validDate(out); }
+    var y = s.match(/(?:^|\D)(1[5-9]\d{2}|20\d{2})(?!\d)/), rest = y ? s.replace(y[1], ' ') : s;
     var mw = rest.match(/[A-Za-z]{3,}/), dw = rest.match(/\b(\d{1,2})\b/);
     out.y = y ? Number(y[1]) : 0; out.m = mw ? monthNum(mw[0]) : 0; out.d = out.m && dw ? Number(dw[1]) : 0;
     return validDate(out);
@@ -79,15 +80,18 @@
   // RIS / EndNote: "Family, Given, Suffix" | "Family, Given" | "Organisation," (trailing comma = single field)
   // | "Smith JA" (Vancouver: family + initials) | "J.A. Smith"
   // Words that make an author an organisation even without EndNote's trailing comma ("U.S. Geological Survey")
-  var ORG_WORDS = /\b(Survey|Museum|Society|Institute|Institution|University|College|Academy|Association|Organi[sz]ation|Commission|Committee|Council|Agency|Department|Ministry|Office|Bureau|Service|Center|Centre|Laboratory|Foundation|Consortium|Collaboration|Group|Team|Project|Program(me)?|Database|Network|Board|Authority|Corporation|Company|Inc|Ltd|GmbH|Press)\b/;
+  var ORG_WORDS = /\b(Survey|Museum|Society|Institutes?|Institution|University|College|Academy|Association|Organi[sz]ation|Commission|Committee|Council|Agency|Administration|Department|Ministry|Office|Bureau|Panel|Service|Cent(er|re)s?|Laborator(y|ies)|Foundation|Consortium|Collaboration|Group|Team|Project|Program(me)?|Database|Network|Board|Authority|Corporation|Company|Trust|Union|Bank|Nations|Archives?|Gardens?|Canada|Inc|Ltd|GmbH|Press)\b/;
+  // "et al.", "and others", "others": a truncated list, not a person (the record builder sets the "others" flag from it)
+  function isOthers(s) { return /^(?:et\s+al\.?|and\s+others|others)$/i.test(trim(s)); }
   function nameFromTagged(s) {
     s = trim(s);
-    if (!s) return null;
+    if (!s || isOthers(s)) return null;
     if (/,\s*$/.test(s)) return { name: trim(s.replace(/,\s*$/, '')) };
     var parts = s.split(',').map(trim);
     // "Press, William H." and "Service, Robert" are people: one capitalised word, then initials or a given name; "Geological Survey, Ohio" is not
     var personShaped = parts.length > 1 && /^[A-Z][^\s]*$/.test(parts[0]) && /^(?:[A-Z][a-z]+|[A-Z]\.?)(?:[\s.\-]*[A-Z]\.?)*$/.test(parts[1]);
-    if (ORG_WORDS.test(s) && (parts.length === 1 || (ORG_WORDS.test(parts[0]) && !personShaped))) return { name: s }; // "History, C.M. of N." never
+    var vancouver = parts.length === 1 && /^[A-Z][a-z]+(?:\s[A-Z][a-z]+)?\s[A-Z]{1,3}$/.test(s);  // "Bank JA", "Press WH": a family name + initials
+    if (ORG_WORDS.test(s) && !vancouver && (parts.length === 1 || (ORG_WORDS.test(parts[0]) && !personShaped))) return { name: s }; // "History, C.M. of N." never
     if (parts.length === 1) {
       var toks = s.split(/\s+/), ini = toks[toks.length - 1], fam = toks.slice(0, -1).join(' ');
       // "Smith JA", or "SMITH JA" deposited in capitals: a family longer than the initials (normalize title-cases it)
@@ -105,7 +109,7 @@
     var addIsbn = function (x) { if (f.isbn.indexOf(x) === -1) f.isbn.push(x); };
     var addIssn = function (x) { x = x.toUpperCase(); if (x.length === 8) x = x.slice(0, 4) + '-' + x.slice(4); if (f.issn.indexOf(x) === -1) f.issn.push(x); };
     vals.forEach(function (v) {
-      v = String(v || '').replace(/\([^)]*\)/g, ' ').replace(/\b(e-?|p-?)?(ISSN|ISBN)(-1[03])?:?/gi, ' ');
+      v = String(v || '').replace(/\([^()]{0,80}\)/g, ' ').replace(/\b(e-?|p-?)?(ISSN|ISBN)(-1[03])?:?/gi, ' '); // "(Print)", "(Electronic)"; bounded, so an unclosed "(" in a long field is not quadratic
       v.split(/[;,]/).forEach(function (part) {
         part = trim(part);
         if (!part) return;
@@ -220,9 +224,11 @@
     var f = blank('ris', tags);
     f.type = RIS_TYPES[ty] || 'other';
     var isPart = /^(CHAP|ECHAP|CONF|CPAPER)$/.test(ty);
-    f.authors = all('AU').concat(all('A1')).map(nameFromTagged);
+    var au = all('AU').concat(all('A1'));
+    f.authors = au.map(nameFromTagged); f.authorOthers = au.some(isOthers); // "AU  - et al." is a truncated list, not an author
     var a2 = /^(CHAP|ECHAP|BOOK|EBOOK|EDBOOK|CONF|CPAPER)$/.test(ty) ? all('A2') : []; // secondary authors = editors
-    f.editors = all('ED').concat(a2).map(nameFromTagged);
+    var ed = all('ED').concat(a2);
+    f.editors = ed.map(nameFromTagged); f.editorOthers = ed.some(isOthers);
     f.title = g('TI') || g('T1') || g('CT') || (/^(BOOK|EBOOK|EDBOOK)$/.test(ty) ? g('BT') : '');
     var full = g('T2') || g('JF') || (isPart ? g('BT') : ''), shortc = g('JO') || g('JA');
     f.container = full || shortc;
@@ -268,7 +274,8 @@
     var g = function (t) { return tags[t] ? tags[t][0] : ''; }, all = function (t) { return tags[t] || []; };
     var f = blank('enw', tags);
     f.type = ENW_TYPES[g('0').toLowerCase()] || 'other';
-    f.authors = all('A').map(nameFromTagged); f.editors = all('E').map(nameFromTagged);
+    f.authors = all('A').map(nameFromTagged); f.authorOthers = all('A').some(isOthers); // "%A et al."
+    f.editors = all('E').map(nameFromTagged); f.editorOthers = all('E').some(isOthers);
     f.title = g('T'); f.container = g('J') || g('B'); f.series = g('S');
     if (f.type === 'book' && !g('J') && f.container && !f.series) { f.series = f.container; f.container = ''; } // Book: %B is the series
     f.shortTitle = g('!');
@@ -327,14 +334,38 @@
       return (op === '_' ? SUBO : SUPO) + (grp !== undefined ? grp : one) + (op === '_' ? SUBC : SUPC);
     });
   }
-  function textSubSup(t) { // \textsubscript{x} / \textsuperscript{x} -> markers
-    var re = /\\text(sub|super)script\s*\{/g, out = '', last = 0, m;
-    while ((m = re.exec(t))) {
-      var open = m.index + m[0].length - 1, end = matchBrace(t, open), sub = m[1] === 'sub';
-      out += t.slice(last, m.index) + (sub ? SUBO : SUPO) + textSubSup(t.slice(open + 1, end)) + (sub ? SUBC : SUPC);
-      last = end + 1; re.lastIndex = end + 1;
+  // \textsubscript{x} / \textsuperscript{x} -> markers, nesting included: one pass with a stack of the open
+  // commands' brace depths (a recursive version overflowed the call stack on thousands of nested commands,
+  // and matchBrace from each of them was quadratic); a command still open at the end is closed there.
+  function textSubSup(t) {
+    if (t.indexOf('script') < 0) return t;
+    var out = '', depth = 0, open = [], n = t.length, i = 0, m;
+    while (i < n) {
+      var c = t.charAt(i);
+      if (c === '\\' && (m = /^\\text(sub|super)script\s*\{/.exec(t.substr(i, 24)))) {
+        depth++; open.push({ depth: depth, sub: m[1] === 'sub' });
+        out += m[1] === 'sub' ? SUBO : SUPO; i += m[0].length; continue;
+      }
+      if (c === '{') depth++;
+      else if (c === '}') {
+        if (open.length && open[open.length - 1].depth === depth) { out += open.pop().sub ? SUBC : SUPC; depth--; i++; continue; }
+        depth--;
+      }
+      out += c; i++;
     }
-    return last ? out + t.slice(last) : t;
+    while (open.length) out += open.pop().sub ? SUBC : SUPC;
+    return out;
+  }
+  // \( ... \) -> marks. By hand rather than a lazy regex, which rescanned to the end from every "\(" without
+  // a partner: once one "\(" has no "\)" after it, none of the later ones has either, so the scan stops.
+  function mathParens(t) {
+    var out = '', pos = 0;
+    for (;;) {
+      var a = t.indexOf('\\(', pos); if (a < 0) break;
+      var b = t.indexOf('\\)', a + 2); if (b < 0) break;
+      out += t.slice(pos, a) + mathToMarks(t.slice(a + 2, b)); pos = b + 2;
+    }
+    return pos ? out + t.slice(pos) : t;
   }
 
   // LaTeX -> plain Unicode text. With html=true, sub/superscripts become <sub>/<sup> (and & < > are
@@ -347,7 +378,7 @@
     t = t.replace(/\\url\s*\{([^{}]*)\}/g, function (m, u) { return '{' + u.replace(/~/g, PH.ltilde) + '}'; });
     t = t.replace(/\\href\s*\{[^{}]*\}\s*\{/g, '{');
     t = t.replace(/\\noopsort\s*\{[^{}]*\}/g, '');
-    t = t.replace(/\\\(([\s\S]*?)\\\)/g, function (m, x) { return mathToMarks(x); });
+    t = mathParens(t);
     t = t.replace(/\$([^$]*)\$/g, function (m, x) { return mathToMarks(x); });
     t = textSubSup(t);
     t = t.replace(/\\([`'^"~=.])(?:\{(\\[ij]|[a-zA-Z])\}|(\\[ij]|[a-zA-Z]))/g, acc);       // \'e  \'{e}  {\'e}  \'{\i}
@@ -421,7 +452,7 @@
   // "Family, Given" | "Family, Jr., Given" | "Family, Given, Jr." | "Given Family" | "{Organisation}"
   function nameFromBib(s) {
     s = trim(s);
-    if (!s || /^others$/i.test(s)) return null;
+    if (!s || isOthers(s)) return null;
     if (s.charAt(0) === '{' && matchBrace(s, 0) === s.length - 1) return { name: deLatex(s) };
     var parts = splitDepth0(s, ',').map(function (x) { return deLatex(x); });
     if (parts.length === 1) return nameFromNatural(parts[0]);
@@ -436,7 +467,7 @@
   }
   function bibNameList(s) { return s ? splitDepth0(String(s), 'and') : []; }
   function bibNames(s) { return bibNameList(s).map(nameFromBib).filter(Boolean); }
-  function bibOthers(s) { var l = bibNameList(s); return l.length > 0 && /^others$/i.test(l[l.length - 1]); }
+  function bibOthers(s) { var l = bibNameList(s); return l.length > 0 && isOthers(l[l.length - 1]); }
   function urlClean(s) { return trim(String(s || '').replace(/\\url\{([^}]*)\}/g, '$1').replace(/\\([%_&#$~^])/g, '$1').replace(/[{}]/g, '')); }
   // DOI field: only \_ \% \& \# \~ \{ \} are unescaped; no dash or tilde conversion
   function idClean(s) {

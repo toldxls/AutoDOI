@@ -15,6 +15,33 @@ function flag(rule, doi, sample) {
 function ok(rule) { pass++; }
 function check(rule, cond, doi, sample) { if (cond) ok(rule); else flag(rule, doi, sample); }
 
+// The authors each style is guaranteed to name, read off the formatters in citations.js (the lowest safe count):
+//   apa       all of up to 20; 21+ prints the first 19, an ellipsis and the last (APA 7 §9.8)
+//   mla       1 or 2 in full; 3+ prints the first then "et al." (MLA 9 §5.6)
+//   chicago   all of up to 10; 11+ prints the first 7 then "et al." (CMOS 17 §14.76)
+//   harvard   all of up to 3; 4+ prints the first then "et al." (Cite Them Right)
+//   vancouver the first 6 persons then "et al." (ICMJE); organisation authors follow after a semicolon and are always printed
+//   ieee      all of up to 6; 7+ prints the first then "et al." (IEEE Reference Guide)
+//   carnegie  every author, always (Annals of Carnegie Museum names all authors)
+function mustName(st, r) {
+  var a = r.authors, n = a.length;
+  if (!n) return [];
+  if (r.authorsOthers) return [a[0]]; // a truncated source list: only the first name is certain
+  switch (st) {
+    case 'apa': return n <= 20 ? a : a.slice(0, 19).concat([a[n - 1]]);
+    case 'mla': return n <= 2 ? a : [a[0]];
+    case 'chicago': return n <= 10 ? a : a.slice(0, 7);
+    case 'harvard': return n <= 3 ? a : [a[0]];
+    case 'vancouver': return a.filter(function (p) { return !p.literal; }).slice(0, 6).concat(a.filter(function (p) { return p.literal; }));
+    case 'ieee': return n <= 6 ? a : [a[0]];
+    case 'carnegie': return a;
+    default: return [a[0]];
+  }
+}
+// Styles that print the DOI (as a doi.org link or "doi: ..."): every built-in style except Annals of Carnegie Museum,
+// whose reference list carries no DOIs (the page's Include DOI box is off for it)
+var PRINTS_DOI = { apa: true, mla: true, chicago: true, harvard: true, vancouver: true, ieee: true, carnegie: false };
+function unescapeUrl(s) { return String(s).replace(/%[0-9A-Fa-f]{2}/g, function (c) { try { return decodeURIComponent(c); } catch (e) { return c; } }); } // a doi.org link percent-encodes "<", ">" and spaces in the DOI
 var STYLES = A.STYLES.map(function (s) { return s.id; }), IN_TEXT = A.STYLES.filter(function (s) { return s.inText; }).map(function (s) { return s.id; }); // only styles that define an in-text form
 var TAG = /<\/?[a-z][a-z0-9:-]*(\s[^<>]*)?>/i, ENTITY = /&(amp|lt|gt|quot|apos|nbsp|#\d+|#x[0-9a-f]+|[a-z]{2,8});/i, PUA = /[-]/;
 function plainInvariants(rule, s, doi) {
@@ -84,6 +111,7 @@ function roundTrip(fmt, parse, r, doi) {
   if (r.year) check('roundtrip ' + fmt + ': year survives', String(b.year) === String(r.year), doi, b.year + ' | ' + r.year);
   if (r.doi) check('roundtrip ' + fmt + ': DOI survives', (b.doi || '').toLowerCase() === r.doi.toLowerCase(), doi, b.doi);
   if (r.authors.length && !r.authors[0].literal) check('roundtrip ' + fmt + ': first author family survives', norm(b.authors && b.authors[0] && b.authors[0].family) === norm(r.authors[0].family), doi, JSON.stringify(b.authors && b.authors[0]) + ' | ' + r.authors[0].family);
+  if (r.authors.length) check('roundtrip ' + fmt + ': author count survives', (b.authors || []).length === r.authors.length, doi, (b.authors || []).length + ' | ' + r.authors.length + ' ' + JSON.stringify(r.authors.map(function (p) { return p.family; })));
   if (A.kind(r) === 'journal' && r.container) check('roundtrip ' + fmt + ': journal survives', norm(b.container) === norm(r.container), doi, b.container + ' | ' + r.container);
   if (r.volume && A.kind(r) === 'journal') check('roundtrip ' + fmt + ': volume survives', String(b.volume) === String(r.volume), doi, b.volume + ' | ' + r.volume);
   if (r.pages && A.kind(r) === 'journal') check('roundtrip ' + fmt + ': pages survive', norm(b.pages) === norm(r.pages), doi, b.pages + ' | ' + r.pages);
@@ -102,7 +130,10 @@ corpus.forEach(function (m) {
     var out; try { out = A.format(r, st); } catch (e) { flag(st + ': format throws', doi, e.stack.split('\n').slice(0, 2).join(' ')); return; }
     plainInvariants(st, out, doi);
     if (r.title) check(st + ': title text present', norm(out).indexOf(norm(r.title).split(' ').slice(0, 4).join(' ')) !== -1, doi, out);
-    if (r.year && st !== 'ieee') check(st + ': year present', out.indexOf(r.year.replace(/[a-z]$/, '')) !== -1, doi, out);
+    if (r.year) check(st + ': year present', out.indexOf(r.year.replace(/[a-z]$/, '')) !== -1, doi, out);
+    mustName(st, r).forEach(function (p) { check(st + ': author family named up to the et-al cutoff', norm(out).indexOf(norm(p.family)) !== -1, doi, p.family + ' | ' + out); });
+    if (r.doi && PRINTS_DOI[st]) check(st + ': DOI present', unescapeUrl(out).toLowerCase().indexOf(r.doi.toLowerCase()) !== -1, doi, out);
+    check(st + ': ends with a full stop, a closing bracket or a link', /[.)]$|https?:\/\/\S+$/.test(out), doi, out.slice(-80));
     var h; try { h = A.formatHtml(r, st); } catch (e) { flag(st + ': formatHtml throws', doi, e.message); return; }
     htmlInvariants(st + ' html', h, doi);
     check(st + ' html: same words as the plain form', norm(h) === norm(out), doi, norm(h).slice(0, 120) + ' | ' + norm(out).slice(0, 120));

@@ -32,7 +32,10 @@ blocks = re.findall(r'<script>(.*?)</script>', html, re.S)
 hashes = ["'sha256-%s'" % base64.b64encode(hashlib.sha256(b.encode('utf-8')).digest()).decode() for b in blocks]
 csp_re = re.compile(r"(<meta http-equiv=\"Content-Security-Policy\" content=\"[^\"]*?script-src )[^;]*(;)")
 if not csp_re.search(html): sys.exit('index.html has no script-src directive in its Content-Security-Policy')
-html = csp_re.sub(lambda m: m.group(1) + "'self' " + ' '.join(hashes) + ' https://cdn.jsdelivr.net' + m.group(2), html, count=1)
+# the one external script is allowed by its exact pinned URL, read from the page's CITEPROC constant, not by its whole CDN
+citeproc = re.search(r"var CITEPROC = '(https://cdn\.jsdelivr\.net/npm/citeproc@[^']+)'", html)
+if not citeproc: sys.exit('index.html has no CITEPROC constant to allow in the Content-Security-Policy')
+html = csp_re.sub(lambda m: m.group(1) + "'self' " + ' '.join(hashes) + ' ' + citeproc.group(1) + m.group(2), html, count=1)
 open('index.html', 'w', encoding='utf-8').write(html)
 print('CSP: %d inline script hashes' % len(hashes))
 PY

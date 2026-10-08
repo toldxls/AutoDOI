@@ -12,6 +12,11 @@ function flag(rule, s) { fail++; (problems[rule] = problems[rule] || []).push(s)
 function check(rule, ok, s) { if (ok) pass++; else flag(rule, s); }
 var SUBSUP = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9', '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9' };
 function norm(s) { return A.stripTags(String(s || '')).normalize('NFC').replace(/[₀-₉⁰¹²³⁴-⁹]/g, function (c) { return SUBSUP[c]; }).toLowerCase().replace(/[‐-―]/g, '-').replace(/[^a-z0-9À-ɏͰ-ϿЀ-ӿ一-鿿]+/g, ' ').trim(); }
+// Records whose OpenAlex copy legitimately differs from Crossref's, found by running the comparison exactly (6 of 147):
+// OpenAlex dates these five Elsevier articles by their online-first year, one before the issue year Crossref deposited
+var YEAR_OFF_BY_ONE = { '10.1016/j.ejrad.2021.110103': -1, '10.1016/j.flowmeasinst.2023.102515': -1, '10.1016/j.ic.2014.10.009': -1, '10.1016/j.ijleo.2015.11.163': -1, '10.1016/j.msard.2011.07.001': -1 };
+// OpenAlex lists 3 authors where Crossref has 2 persons and 2 organisations: one organisation author is dropped
+var AUTHOR_COUNT = { '10.2172/1440911': 3 };
 works.forEach(function (x) {
   var want = A.normalize(corpus[x.doi.toLowerCase()]), got;
   try { got = A.normalize(A.fromOpenAlex(x.work)); } catch (e) { flag('fromOpenAlex throws', x.doi + ' ' + e.message); return; }
@@ -21,10 +26,10 @@ works.forEach(function (x) {
   var gt = norm(got.title), wt = norm(want.title);
   var gtc = gt.replace(/ /g, ''), wtc = wt.replace(/ /g, ''); // OpenAlex keeps a stray space around markup ("125 I")
   if (want.title) check('title', gtc === wtc || (gtc && wtc && (gtc.indexOf(wtc) === 0 || wtc.indexOf(gtc) === 0)), id + ' got "' + got.title + '" want "' + want.title + '"');
-  // OpenAlex's publication year is often the online-first year Crossref did not deposit: one year either way is a source difference
-  if (want.year) check('year', got.year === want.year || (want.years || []).indexOf(got.year) !== -1 || Math.abs(Number(got.year) - Number(want.year)) <= 1, id + ' got ' + got.year + ' want ' + want.year + ' (' + (want.years || []).join('/') + ')');
+  // The year and the author count are compared exactly, except for the records below, each with its reason
+  if (want.year) check('year', got.year === want.year || (want.years || []).indexOf(got.year) !== -1 || YEAR_OFF_BY_ONE[id] === Number(got.year) - Number(want.year), id + ' got ' + got.year + ' want ' + want.year + ' (' + (want.years || []).join('/') + ')');
   var wantPersons = want.authors.filter(function (a) { return !a.literal; });
-  check('author count', Math.abs(got.authors.length - want.authors.length) <= 1 || got.authors.length === wantPersons.length || (want.authors.length > 100 && got.authors.length >= 100), id + ' got ' + got.authors.length + ' want ' + want.authors.length); // OpenAlex may drop an organisation author
+  check('author count', got.authors.length === want.authors.length || (want.authors.length > 100 && got.authors.length >= 100) || AUTHOR_COUNT[id] === got.authors.length, id + ' got ' + got.authors.length + ' want ' + want.authors.length);
   var w0 = wantPersons[0] || want.authors[0], g0 = got.authors[0];
   if (w0 && g0) {
     // OpenAlex gives one display name; a compound or single-field Crossref family name may contain what we split off

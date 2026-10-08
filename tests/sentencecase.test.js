@@ -84,6 +84,16 @@ eq('all caps kept; species epithet lowercase', tc('DNA repair in Escherichia col
 eq('protect untouched', tc('DNA repair in Escherichia coli', { protect: new Set(['coli']) }), 'DNA Repair in Escherichia Coli'.replace('Coli', 'coli'));
 eq('capitalised small word lowered', tc('Deep Learning For Image Recognition'), 'Deep Learning for Image Recognition');
 eq('verbs and pronouns capitalised (headline style)', tc('why is this new'), 'Why Is This New');
+eq('small word as a noun after an article', tc('the past and the future'), 'The Past and the Future');
+eq('inside / outside as nouns', tc('the inside story of the outside world'), 'The Inside Story of the Outside World');
+eq('"that" stays a conjunction', tc('evidence that in mice over time'), 'Evidence That in Mice over Time');
+eq('first element of a hyphenated compound (Chicago 8.161)', tc('the over-the-counter market'), 'The Over-the-Counter Market');
+eq('in-depth', tc('an in-depth study'), 'An In-Depth Study');
+eq('and/or untouched', tc('fat and/or sugar'), 'Fat and/or Sugar');
+eq('lowercase genus and epithet', tc('tyrannosaurus rex and homo sapiens'), 'Tyrannosaurus rex and Homo sapiens');
+eq('lowercase genus mid-title', tc('the escherichia coli genome'), 'The Escherichia coli Genome');
+eq('a common -a word is not a lowercase genus', tc('the area index of soils'), 'The Area Index of Soils');
+eq('title case idempotent on the new forms', tc(tc('tyrannosaurus rex and the past')), tc('tyrannosaurus rex and the past'));
 
 console.log('detectCase');
 eq('title', C.detectCase('Deep Residual Learning for Image Recognition'), 'title');

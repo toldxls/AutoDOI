@@ -48,6 +48,13 @@ S('Wind Extremes In The North Sea Basin', 'Wind extremes in the North Sea Basin'
 S('Rodents From The Great Divide Basin', 'Rodents from the Great Divide Basin');
 S('Visitors To The Natural History Museum', 'Visitors to the Natural History Museum');
 S('Bulletin Of Carnegie Museum Of Natural History', 'Bulletin of Carnegie Museum of Natural History');
+// an "of" name ends after its name word ("Utah", "Mexico"), unless a head or institution word carries it on
+S('Gulf Of Mexico Oil Spill Effects On Fish Populations', 'Gulf of Mexico oil spill effects on fish populations');
+S('University Of Utah Students Protest Climate Policy', 'University of Utah students protest climate policy');
+S('Sea Of Japan Deep Water Formation Rates', 'Sea of Japan deep water formation rates');
+S('University Of Utah Press Releases', 'University of Utah Press releases');
+S('Museum Of Natural History Specimens', 'Museum of Natural History specimens');
+S('Visitors To The Museum Of Comparative Anatomy', 'Visitors to the Museum of Comparative Anatomy');   // no name word: the name runs on
 S('Minutes Of The Paleontological Society Council', 'Minutes of the Paleontological Society council');
 S('Sharks Of The Western Interior Seaway', 'Sharks of the Western Interior Seaway');
 S('Fossils Of The Burgess Shale', 'Fossils of the Burgess Shale');
@@ -99,8 +106,20 @@ S('Notes On Genera. New Species', 'Notes on genera. New species');
 S('Rocks, e.g. Granite And Basalt', 'Rocks, e.g. granite and basalt');
 S('Smith et al. Revisited', 'Smith et al. revisited');
 S('Mount St. Helens Eruption', 'Mount St. Helens eruption');
+S('Dr. Smith And Prof. Brown On Mrs. Green', 'Dr. Smith and Prof. Brown on Mrs. Green');   // honorifics protect the name after them
+S('Dr Smith And Mrs Green On Rocks', 'Dr Smith and Mrs Green on rocks');
+S('Sir Isaac Newton And The Apple', 'Sir Isaac Newton and the apple');
 S('The Work Of J. Smith', 'The work of J. Smith');
+S('Effects Of E. Coli And S. Aureus On Growth', 'Effects of E. coli and S. aureus on growth');   // an abbreviated genus is not an initial
+S('The Work Of H. G. Wells', 'The work of H. G. Wells');                                         // after a second initial it is a surname
+S('Studies By J. Costa And M. Rossi', 'Studies by J. Costa and M. Rossi');
 S('Description Of A New Genus, n. gen. Of Crabs', 'Description of a new genus, n. gen. of crabs');
+S('Aus Sp. Nov. From Montana', 'Aus sp. nov. from Montana');                    // taxonomic abbreviations are written lowercase
+S('Aus Gen. Et Sp. Nov.', 'Aus gen. et sp. nov.');
+S('Aus N. Sp. From Texas', 'Aus n. sp. from Texas');
+S('Aus Sp. Nov., From Montana', 'Aus sp. nov., from Montana');                  // the stop shares its token with a comma
+S('Description Of Aus Comb. Nov. From Spain', 'Description of Aus comb. nov. from Spain');
+S('Storms In Nov. And Dec.', 'Storms in Nov. and Dec.');                        // the month keeps its capital
 S('Late Triassic Bivalvia (chiefly Halobiidae)', 'Late Triassic Bivalvia (chiefly Halobiidae)');
 S('Faults (northeastern Tibetan Plateau) Revisited', 'Faults (northeastern Tibetan Plateau) revisited');
 S('Fossil Insects (A Review) Of Amber', 'Fossil insects (a review) of amber');
@@ -123,6 +142,13 @@ eq('ligature not capitalised', sc('ﬁsh Fossils'), 'ﬁsh fossils');
 eq('title case ligature/ß/tags', tc('ﬁsh straße <i>and</i> &amp; sea'), 'ﬁsh Straße <i>and</i> &amp; Sea');
 eq('title case keeps tag names', tc('<sup>18</sup>o record <scp>in</scp> the sea'), '<sup>18</sup>O Record <scp>in</scp> the Sea');
 eq('İ not lowercased to two chars', sc('Studies Of İzmir').length, 'Studies Of İzmir'.length);
+var NFC = 'Étude Des Régions Côtières Et Des Forêts';
+eq('NFD input converts like NFC', sc(NFC.normalize('NFD')), sc(NFC));                       // combining marks would split the word
+eq('NFD input: régions lowercased', sc(NFC.normalize('NFD')).indexOf('des régions') > 0, true);
+eq('CJK word before a Latin word is not a sentence end', sc('日本 And The Geology'), '日本 and the geology');
+eq('CJK word is a word token', C.tokenize('日本の地質学 and').map(function (t) { return t.kind; }).join(','), 'word,space,word');
+eq('title case after a CJK word', tc('日本の地質学 and the geology'), '日本の地質学 and the Geology');
+eq('CJK words do not read as upper case', det('日本 地質 学会 研究 報告 a'), 'sentence');
 eq('sentence case keeps tags', sc('A <i>Homo Erectus</i> Skull'), 'A <i>Homo erectus</i> skull');
 eq('tokens: tag is punct', C.tokenize('a<i>b</i>').map(function (t) { return t.kind; }).join(','), 'word,punct,word,punct');
 eq('tokens: entity is punct', C.tokenize('A &amp; B').map(function (t) { return t.kind; }).join(','), 'word,space,punct,space,word');
@@ -161,6 +187,24 @@ eq('keeps Integrated...Network (real title)', safe(T42), T42);
 eq('converts title case', safe('Deep Residual Learning for Image Recognition'), 'Deep residual learning for image recognition');
 eq('skipped flag', C.toSentenceCaseSafe('Deep residual learning', { words: WORDS }).skipped, true);
 
+console.log('11. fromAllCaps: US, EU, DOE and agency acronyms');
+function fa(t) { return C.fromAllCaps(t, WORDS); }
+eq('THE US DEPARTMENT', fa('THE US DEPARTMENT OF ENERGY'), 'The US Department Of Energy');
+eq('US EPA', fa('US EPA GUIDELINES'), 'US EPA Guidelines');
+eq('THE US GEOLOGICAL SURVEY', fa('THE US GEOLOGICAL SURVEY'), 'The US Geological Survey');
+eq('U.S.', fa('THE U.S. GEOLOGICAL SURVEY'), 'The U.S. Geological Survey');
+eq('TELL US at the end', fa('WHAT THE ROCKS TELL US'), 'What The Rocks Tell Us');
+eq('TELL US ABOUT', fa('WHAT FOSSILS TELL US ABOUT CLIMATE'), 'What Fossils Tell Us About Climate');
+eq('OF US HOSPITALS', fa('A STUDY OF US HOSPITALS'), 'A Study Of US Hospitals');
+eq('agencies', fa('USGS NASA NOAA NIH CDC FDA UN UK EPA REPORT'), 'USGS NASA NOAA NIH CDC FDA UN UK EPA Report');
+eq('THE DOE', fa('THE DOE OFFICE OF SCIENCE'), 'The DOE Office Of Science');
+eq('JOHN DOE', fa('JOHN DOE AND THE FAWN'), 'John Doe And The Fawn');
+eq('EU MEMBER STATES', fa('EU MEMBER STATES'), 'EU Member States');
+eq('THE EU AND THE US', fa('THE EU AND THE US'), 'The EU And The US');
+eq('Eu the element', fa('FE AND EU IN GARNET'), 'Fe And Eu In Garnet');
+eq('EU-DOPED', fa('EU-DOPED PHOSPHORS'), 'Eu-Doped Phosphors');
+eq('sentence case after fromAllCaps', sc(fa('THE US GEOLOGICAL SURVEY AND THE EPA')), 'The US Geological Survey and the EPA');
+
 console.log('deterministic fuzz (idempotence, length, markup)');
 var pieces = ['The','the','A','a','Of','New','York','Darwin\'s','Rock','rock','-','–','—',':','?','!','(',')','\'','"','.',' ','Fe3+','CO2','DNA','pH','Early-Middle','non-Avian','i','<i>','</i>','St.','U.S.','Ice','Age','Sea','Dead','Red','Formation','Hell','Creek','Basin','North','Gulf','of','Mexico','As','In','Pb',',','and','Part','2.','Vitamin','Late','Cretaceous','Dinosaur','Tyrannosaurus','Rex','Homo','Erectus','Andes','Wales','Fields','Banks','Joseph','e-Learning','Fish-Like','ﬁ','ß','İ','ǅ','&amp;','Cope,','1864','Island','Mud','Hill','Star','United','States','Ma','K-Pg','Using','Situ'];
 var seed = 12345; function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
@@ -185,6 +229,12 @@ all.forEach(function (r) { var a = sc(r.t); if (sc(a) !== a) idem++; });
 G.SENT.forEach(function (k) { if (safe(all[k].t) !== all[k].t) damaged++; });
 eq('258 real titles idempotent', idem, 0);
 eq('already-sentence titles damaged by toSentenceCaseSafe', damaged, 0);
+// "X of Y Z W" names, both directions
+G.OF_NAMES.forEach(function (p) {
+  eq('of-name to sentence case: ' + p[0], sc(p[0]), p[1]);
+  eq('of-name to title case: ' + p[1], tc(p[1]), p[0]);
+  eq('of-name sentence case idempotent: ' + p[1], sc(p[1]), p[1]);
+});
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

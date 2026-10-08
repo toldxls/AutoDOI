@@ -57,6 +57,10 @@ eq(P.deLatex('$\\Sigma^0$'), 'Σ0', '3 Sigma^0');
 eq(P.deLatex('\\(\\beta_{12}\\) and 5\\% \\$10'), 'β12 and 5% $10', '3 \\( \\) and escaped $');
 eq(P.deLatex('CO$_2$ \\& A<B', true), 'CO<sub>2</sub> &amp; A&lt;B', '3 html mode');
 eq(P.deLatex('H\\textsubscript{2}O x\\textsuperscript{+}', true), 'H<sub>2</sub>O x<sup>+</sup>', '3 textsubscript html');
+eq(P.deLatex('a\\textsubscript{b\\textsuperscript{c}d}e', true), 'a<sub>b<sup>c</sup>d</sub>e', '3 nested textsubscript');
+var deep = ''; for (var di = 0; di < 8000; di++) deep += '\\textsubscript{';
+eq(typeof P.deLatex(deep + 'x'), 'string', '3 8000 nested textsubscript does not overflow the stack');
+eq(P.deLatex('\\(\\alpha\\) and \\(b'), 'α and (b', '3 unmatched \\( is text');
 eq(P.deLatex('\\alpha \\beta \\gamma \\delta \\Delta \\epsilon \\varepsilon \\mu \\nu \\sigma \\Sigma \\lambda \\pi \\omega \\Omega \\theta \\phi \\chi \\rho \\tau \\eta \\kappa \\xi \\zeta \\psi'),
   'α β γ δ Δ ϵ ε μ ν σ Σ λ π ω Ω θ ϕ χ ρ τ η κ ξ ζ ψ', '3 Greek');
 var tr = one('@article{k, title={CO$_2$ uptake of $^{13}$C \\& H\\textsubscript{2}O}, journal={J}, year=2020}');
@@ -74,6 +78,11 @@ eq(one('@article{k, title={Plain \\& simple}, year=2017}').title, ['Plain & simp
 var ao = one('@article{k, title={T}, author={Smith, J. and others}, editor={Doe, A. and others}, year=2020}');
 eq([ao.author, ao['author-others'], ao['editor-others']], [[{ family: 'Smith', given: 'J.' }], true, true], '4 author-others flag');
 eq(one('@article{k, title={T}, author={Smith, J.}, year=2020}')['author-others'], undefined, '4 no flag without others');
+var ea = one('TY  - JOUR\nTI  - T\nAU  - Smith, J.\nAU  - et al.\nED  - Doe, A.\nED  - and others\nER  - ');
+eq([ea.author, ea['author-others'], ea.editor, ea['editor-others']], [[{ family: 'Smith', given: 'J.' }], true, [{ family: 'Doe', given: 'A.' }], true], '4 RIS "AU  - et al." sets the others flag, not an author "al., E."');
+var ea2 = one('%0 Journal Article\n%T T\n%A Smith, J.\n%A et al\n');
+eq([ea2.author, ea2['author-others']], [[{ family: 'Smith', given: 'J.' }], true], '4 ENW "%A et al" sets the others flag');
+eq(one('@article{k, title={T}, author={Smith, J. and et al.}, year=2020}')['author-others'], true, '4 BibTeX "and et al." flagged');
 
 /* 5. SICI DOIs */
 var sici = '10.1175/1520-0477(1996)077<0437:TNYRP>2.0.CO;2';
@@ -91,6 +100,8 @@ eq([sn.ISBN, sn.ISSN], [['1-4020-6754-X', '0-8218-1234-5'], undefined], '6 ISBN-
 var ss = one('TY  - JOUR\nTI  - T\nSN  - 0028-0836 (Print) 1476-4687 (Electronic)\nER  - ');
 eq([ss.ISSN, ss.ISBN], [['0028-0836', '1476-4687'], undefined], '6 ISSNs with qualifiers, whitespace split');
 eq(one('%0 Book\n%T T\n%@ 9781402067549, 1234-567X\n').ISBN.concat(one('%0 Book\n%T T\n%@ 9781402067549, 1234-567X\n').ISSN), ['9781402067549', '1234-567X'], '6 mixed list');
+var pms = timed(function () { one('TY  - JOUR\nTI  - T\nSN  - 0028-0836 (Print' + ' x'.repeat(100000) + '\nER  - '); });
+eq(pms < 200, true, '6 unclosed parenthesis in a 200 KB SN parses < 0.2s (' + pms + 'ms)');
 
 /* 7. dates */
 eq(P.parseDate('2019-13-45'), { y: 2019, m: 0, d: 0 }, '7 invalid month');
@@ -99,6 +110,16 @@ eq(P.parseDate('2019-21'), { y: 2019, m: 0, d: 0 }, '7 season 21');
 eq(P.parseDate('2019-24'), { y: 2019, m: 0, d: 0 }, '7 season 24');
 eq(one('@article{k, title={T}, date={2020-22}}').issued, { 'date-parts': [[2020]] }, '7 bib season dropped');
 eq(one('@article{k, title={T}, year=2020, month=13, day=40}').issued, { 'date-parts': [[2020]] }, '7 bib month 13 dropped');
+eq(P.parseDate('2020 May 15'), { y: 2020, m: 5, d: 15 }, '7 year month day');
+eq(P.parseDate('2020 Jun'), { y: 2020, m: 6, d: 0 }, '7 year month');
+eq(P.parseDate('2020, May 1'), { y: 2020, m: 5, d: 1 }, '7 year, month day');
+eq(P.parseDate('2020/Jun/05'), { y: 2020, m: 6, d: 5 }, '7 year/Mon/day');
+eq(P.parseDate('2019/01/01/Spring'), { y: 2019, m: 1, d: 1 }, '7 RIS fourth slot after a numeric month');
+eq(P.parseDate('2019-03-15T10:00:00Z'), { y: 2019, m: 3, d: 15 }, '7 ISO datetime');
+eq(P.parseDate('2020a'), { y: 2020, m: 0, d: 0 }, '7 year with a letter');
+eq(one('TY  - JOUR\nTI  - T\nPY  - 2020\nDA  - 2020 May 15\nER  - ').issued, { 'date-parts': [[2020, 5, 15]] }, '7 RIS DA "2020 May 15"');
+eq(one('%0 Journal Article\n%T T\n%D 2020 Jun\n').issued, { 'date-parts': [[2020, 6]] }, '7 ENW %D "2020 Jun"');
+eq(one('@article{k, title={T}, date={2020, May 1}}').issued, { 'date-parts': [[2020, 5, 1]] }, '7 BibTeX date "2020, May 1"');
 
 /* 8. performance */
 var big = 'TY  - JOUR\nTI  - x\n' + 'Smith J. 2020. Some reference title here.\n'.repeat(40000);
@@ -108,6 +129,8 @@ ms = timed(function () { P.parse('%0 Journal Article\n%T x\n' + 'continuation li
 eq(ms < 1000, true, '8 ENW continuation < 1s (' + ms + 'ms)');
 ms = timed(function () { P.parse('@article{a, author={x' + ' '.repeat(200000) + 'y}, title={T}}'); });
 eq(ms < 500, true, '8 author with 200k spaces < 0.5s (' + ms + 'ms)');
+ms = timed(function () { P.deLatex('\\('.repeat(50000)); });
+eq(ms < 200, true, '8 100 KB of unmatched "\\(" through deLatex < 0.2s (' + ms + 'ms)');
 eq(one('TY  - JOUR\nTI  - Nanometre-scale\n   thermometry\nER  - ').title, ['Nanometre-scale thermometry'], '8 continuation joined');
 
 /* 9. crossref / xdata / set */
@@ -137,6 +160,10 @@ eq([titles(en.records), en.plain], [['B'], []], '11 empty %0 record ignored');
 /* 12. RIS details */
 var rn = one('TY  - JOUR\nTI  - T\nAU  - Smith JA\nAU  - J.A. Smith\nAU  - van der Berg K\nER  - ').author;
 eq(rn, [{ family: 'Smith', given: 'J. A.' }, { family: 'Smith', given: 'J.A.' }, { family: 'van der Berg', given: 'K.' }], '12 Vancouver names');
+var orgs = one('TY  - RPRT\nTI  - T\nAU  - National Institutes of Health\nAU  - Bell Laboratories\nAU  - Centers for Disease Control and Prevention\nAU  - National Archives\nAU  - United Nations\nAU  - World Bank\nAU  - Statistics Canada\nAU  - Smith, J.\nAU  - Van der Berg, A.\nAU  - Bank JA\nAU  - Press, William H.\nER  - ').author;
+eq(orgs, [{ name: 'National Institutes of Health' }, { name: 'Bell Laboratories' }, { name: 'Centers for Disease Control and Prevention' }, { name: 'National Archives' },
+  { name: 'United Nations' }, { name: 'World Bank' }, { name: 'Statistics Canada' }, { family: 'Smith', given: 'J.' }, { family: 'Van der Berg', given: 'A.' },
+  { family: 'Bank', given: 'J. A.' }, { family: 'Press', given: 'William H.' }], '12 organisations stay whole; people with an organisation word stay people');
 eq(one('TY  - EJOUR\nTI  - T\nPY  - 2015\nDA  - 2020/03/05\nER  - ').issued, { 'date-parts': [[2015]] }, '12 DA other year ignored');
 eq(one('TY  - JOUR\nTI  - T\nPY  - 2015\nDA  - 2015/03/05\nER  - ').issued, { 'date-parts': [[2015, 3, 5]] }, '12 DA same year adds month/day');
 eq(one('TY  - CHAP\nTI  - Chapter\nBT  - The Book\nER  - ')['container-title'], ['The Book'], '12 BT for CHAP');

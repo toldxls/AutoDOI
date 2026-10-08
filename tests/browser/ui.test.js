@@ -25,6 +25,11 @@ retracted.message.issued = { 'date-parts': [[1998, 2]] }; retracted.message['pub
 retracted.message['updated-by'] = [
   { DOI: '10.1016/s0140-6736(04)15715-2', type: 'correction', label: 'Correction', source: 'retraction-watch', updated: { 'date-parts': [[2004, 3, 6]] } },
   { DOI: '10.1016/s0140-6736(10)60175-4', type: 'retraction', label: 'Retraction', source: 'retraction-watch', updated: { 'date-parts': [[2010, 2, 6]] } }];
+delete retracted.message.ISSN; delete retracted.message['short-container-title']; // so its journal abbreviation is looked up by title, the path the NLM mock below answers
+// The arXiv preprint of a paper, as Crossref deposits posted content: its relation names the published version
+var preprint = { status: 'ok', 'message-type': 'work', message: { DOI: '10.48550/arXiv.1706.03762', URL: 'https://doi.org/10.48550/arXiv.1706.03762', type: 'posted-content', subtype: 'preprint', title: ['Attention is all you need'],
+  author: [{ given: 'Ashish', family: 'Vaswani' }, { given: 'Noam', family: 'Shazeer' }], issued: { 'date-parts': [[2017, 6, 12]] }, 'group-title': 'Computer Science', institution: [{ name: 'arXiv' }], publisher: 'arXiv',
+  relation: { 'is-preprint-of': [{ 'id-type': 'doi', id: '10.1038/nature12373', 'asserted-by': 'subject' }] } } };
 var pkgVersion = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 var versionInUrl = new RegExp('AutoDOI%20' + pkgVersion.replace(/\./g, '\\.'));
 var passed = 0, failed = 0, skipped = [];
@@ -74,16 +79,45 @@ function serve() {
 // --- network mocks: only the local server is real ---
 function json(route, body, status) { return route.fulfill({ status: status || 200, contentType: 'application/json', body: JSON.stringify(body) }); }
 async function mockNetwork(page, base, log) {
+  var tooMany = 0; // Crossref's 429s for the retry probe, counted per page
   await page.route('**/*', function (route) {
     var url = route.request().url();
     log.push(url);
     if (url.indexOf(base) === 0) return route.continue();
+    if (/api\.crossref\.org\/works\/10\.5555%2Flong-/.test(url)) { // a long DOI of its own: the Copy-link cap
+      var longDoi = decodeURIComponent(url.match(/works\/(.+?)(\?|$)/)[1]), lw = JSON.parse(JSON.stringify(work.message)); lw.DOI = longDoi; lw.URL = 'https://doi.org/' + longDoi; lw.title = ['Paper ' + longDoi.slice(-2)];
+      return json(route, { status: 'ok', 'message-type': 'work', message: lw });
+    }
+    if (/api\.crossref\.org\/works\/10\.1016%2Ferratum-x/.test(url)) { // an erratum's DOI pasted after the paper it corrects
+      var er = JSON.parse(JSON.stringify(work.message)); er.DOI = '10.1016/erratum-x'; er.URL = 'https://doi.org/10.1016/erratum-x'; er.title = ['Erratum: Nanometre-scale thermometry in a living cell']; er.volume = '507'; er.issue = '7491'; er.page = '258'; er.issued = { 'date-parts': [[2014, 3]] }; er['published-print'] = { 'date-parts': [[2014, 3]] }; delete er['published-online'];
+      return json(route, { status: 'ok', 'message-type': 'work', message: er });
+    }
+    if (/api\.crossref\.org\/works\?.*query\.bibliographic=Retry%20probe/.test(url) && tooMany++ < 2) return route.fulfill({ status: 429, headers: { 'Retry-After': '1', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Retry-After' }, contentType: 'text/plain', body: 'Too Many Requests' });
+    if (/api\.crossref\.org\/works\?.*query\.bibliographic=Slow%20probe/.test(url)) { setTimeout(function () { json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [work.message], 'total-results': 1 } }).catch(function () {}); }, 4000); return; } // 4 s each: a batch to abandon
+    if (/api\.crossref\.org\/works\?.*query\.bibliographic=Dataset%20first/.test(url)) { // Dryad's "Data from:" record listed before the paper
+      var ds = JSON.parse(JSON.stringify(work.message)); ds.DOI = '10.5061/dryad.x1'; ds.URL = 'https://doi.org/10.5061/dryad.x1'; ds.type = 'dataset'; ds.title = ['Data from: Nanometre-scale thermometry in a living cell']; ds.publisher = 'Dryad'; delete ds['container-title'];
+      return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [ds, work.message], 'total-results': 2 } });
+    }
+    if (/api\.crossref\.org\/works\?.*query\.bibliographic=Chapter%20probe/.test(url)) { // an edited book listed before the chapter in it that the reference cites by its pages
+      var bk = JSON.parse(JSON.stringify(work.message)); bk.DOI = '10.1515/9781501508998'; bk.URL = 'https://doi.org/10.1515/9781501508998'; bk.type = 'edited-book'; bk.title = ['Hydrous Phyllosilicates']; bk.subtitle = ['(Exclusive of Micas)']; bk.publisher = 'De Gruyter';
+      bk.editor = [{ family: 'Bailey', given: 'S. W.' }]; delete bk.author; delete bk['container-title']; delete bk.volume; delete bk.issue; delete bk.page; bk.issued = { 'date-parts': [[1988]] }; bk['published-print'] = { 'date-parts': [[1988]] }; delete bk['published-online'];
+      var chp = JSON.parse(JSON.stringify(bk)); chp.DOI = '10.1515/9781501508998-015'; chp.URL = 'https://doi.org/10.1515/9781501508998-015'; chp.type = 'book-chapter'; chp.title = ['Chapter 10. CHLORITES: STRUCTURES AND CRYSTAL CHEMISTRY']; delete chp.subtitle;
+      chp.author = [{ family: 'Bailey', given: 'S. W.' }]; delete chp.editor; chp['container-title'] = ['Hydrous Phyllosilicates']; chp.page = '347-403';
+      return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [bk, chp], 'total-results': 2 } });
+    }
+    if (/api\.crossref\.org\/works\?.*query\.bibliographic=(Merged|Pause|Quota)%20probe/.test(url)) return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [], 'total-results': 0 } });
+    if (/api\.openalex\.org\/works\?.*search=Merged%20probe/.test(url)) return json(route, { results: [{ // an OpenAlex work merged under the sample paper's DOI: Crossref's record for it is another paper
+      id: 'https://openalex.org/W2', doi: 'https://doi.org/' + work.message.DOI, title: 'Olivine rheology under lower mantle conditions', display_name: 'Olivine rheology under lower mantle conditions',
+      authorships: [{ author: { display_name: 'Tom Brown' } }], publication_year: 2018, publication_date: '2018-01-01', biblio: { volume: '3', first_page: '5', last_page: '6' }, primary_location: { source: { display_name: 'Science', type: 'journal' } }, type: 'article', is_retracted: false }] });
+    if (/api\.openalex\.org\/works\?.*search=Pause%20probe/.test(url)) return route.fulfill({ status: 429, headers: { 'Retry-After': '1', 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'Retry-After' }, contentType: 'application/json', body: '{"error":"Too Many Requests"}' });
+    if (/api\.openalex\.org\/works\?.*search=Quota%20probe/.test(url)) return route.fulfill({ status: 429, headers: { 'Access-Control-Allow-Origin': '*' }, contentType: 'application/json', body: '{"error":"Daily limit exceeded: your network has used its free daily allowance"}' });
     if (/fonts\.googleapis\.com/.test(url)) return route.fulfill({ status: 200, contentType: 'text/css', body: '' });
     if (upstream[url]) return route.fulfill({ status: 200, contentType: /\.js$/.test(url) ? 'application/javascript' : 'text/plain; charset=utf-8', headers: { 'Access-Control-Allow-Origin': '*' }, body: upstream[url] });
     var m = url.match(/api\.crossref\.org\/works\/(.+?)(\?|$)/);
     if (m) {
       var doi = decodeURIComponent(m[1]);
       if (doi.toLowerCase() === retracted.message.DOI) return json(route, retracted);
+      if (doi.toLowerCase() === preprint.message.DOI.toLowerCase()) return json(route, preprint);
       return doi.toLowerCase() === work.message.DOI.toLowerCase() ? json(route, work) : json(route, { status: 'error', message: 'Resource not found.' }, 404);
     }
     if (/api\.crossref\.org\/works\?.*Wakefield/i.test(url)) return json(route, { status: 'ok', 'message-type': 'work-list', message: { items: [retracted.message], 'total-results': 1 } });
@@ -100,8 +134,9 @@ async function mockNetwork(page, base, log) {
     if (up) {
       var bronze = { url: 'https://www.nature.com/articles/nature12373.pdf', url_for_pdf: 'https://www.nature.com/articles/nature12373.pdf', url_for_landing_page: 'https://doi.org/10.1038/nature12373', version: 'publishedVersion', host_type: 'publisher', license: null };
       var pmc = { url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/4221854', url_for_pdf: null, url_for_landing_page: 'https://www.ncbi.nlm.nih.gov/pmc/articles/4221854', version: 'submittedVersion', host_type: 'repository', repository_institution: 'PubMed Central', license: null };
+      var poisoned = { url: 'javascript:alert(1)', url_for_pdf: null, url_for_landing_page: 'javascript:alert(1)', version: 'publishedVersion', host_type: 'repository', repository_institution: 'A poisoned record', license: 'cc-by' }; // would rank first; must be dropped for not being http(s)
       var upDoi = decodeURIComponent(up[1]).toLowerCase();
-      if (upDoi === work.message.DOI.toLowerCase()) return json(route, { doi: work.message.DOI, is_oa: true, oa_status: 'bronze', best_oa_location: bronze, oa_locations: [bronze, pmc] });
+      if (upDoi === work.message.DOI.toLowerCase()) return json(route, { doi: work.message.DOI, is_oa: true, oa_status: 'bronze', best_oa_location: bronze, oa_locations: [poisoned, bronze, pmc] });
       if (upDoi === work.message.DOI.toLowerCase() + '-twin') return json(route, { doi: upDoi, is_oa: true, oa_status: 'bronze', best_oa_location: bronze, oa_locations: [bronze] }); // publisher copy only
       return json(route, { HTTP_status_code: 404, error: true }, 404);
     }
@@ -109,7 +144,11 @@ async function mockNetwork(page, base, log) {
       id: 'https://openalex.org/W1', doi: 'https://doi.org/' + retracted.message.DOI, title: retracted.message.title[0], display_name: retracted.message.title[0],
       authorships: [{ author: { display_name: 'Andrew Wakefield' } }], publication_year: 1998, publication_date: '1998-02-28', biblio: { volume: '351', issue: '9103', first_page: '637', last_page: '641' },
       primary_location: { source: { display_name: 'The Lancet', type: 'journal' } }, type: 'article', is_retracted: false }] });
-    // OpenAlex, Europe PMC, NLM Catalog, Open Library, JabRef lists, other CSL styles: nothing to say
+    // The NLM Catalog: Nature by its ISSN, The Lancet by its title, nothing for the rest
+    var es = url.match(/eutils\.ncbi\.nlm\.nih\.gov\/entrez\/eutils\/esearch\.fcgi\?.*term=([^&]*)/);
+    if (es) { var term = decodeURIComponent(es[1]); return json(route, { esearchresult: { idlist: /0028-0836\[issn\]/.test(term) ? ['0410462'] : /Lancet/.test(term) ? ['2985213R'] : [] } }); }
+    if (/eutils\.ncbi\.nlm\.nih\.gov\/entrez\/eutils\/esummary\.fcgi/.test(url)) return json(route, { result: { '0410462': { medlineta: 'Nature', titlemainlist: [{ title: 'Nature.' }] }, '2985213R': { medlineta: 'Lancet', titlemainlist: [{ title: 'Lancet.' }] } } });
+    // OpenAlex, Europe PMC, Open Library, JabRef lists, other CSL styles: nothing to say
     return json(route, {}, 404);
   });
 }
@@ -119,7 +158,8 @@ async function newPage(browser, base, dark) {
   var page = await ctx.newPage();
   var state = { errors: [], requests: [] };
   page.on('pageerror', function (e) { state.errors.push('pageerror: ' + e.message + ' @ ' + String(e.stack || '').split('\n').slice(1, 4).join(' <- ').replace(/\s+/g, ' ')); });
-  page.on('console', function (msg) { if (msg.type() === 'error' && !/Failed to load resource/.test(msg.text())) state.errors.push('console: ' + msg.text()); });
+  // axe-core reads cross-origin stylesheets by fetching them, which the page's connect-src rightly refuses for the font stylesheet: that one report is the tool's, not the page's
+  page.on('console', function (msg) { if (msg.type() === 'error' && !/Failed to load resource/.test(msg.text()) && !/^Connecting to 'https:\/\/fonts\.googleapis\.com\/[^']*' violates .*connect-src/.test(msg.text())) state.errors.push('console: ' + msg.text()); });
   await mockNetwork(page, base, state.requests);
   return { ctx: ctx, page: page, state: state };
 }
@@ -130,6 +170,21 @@ var ORDER_RIS = [['Mills, C.', 'Mapping the delta', '2001'], ['Zeller, D.', 'Tid
 var RIS_FILE = ['TY  - JOUR', 'AU  - Kucsko, G.', 'AU  - Maurer, P. C.', 'AU  - Yao, N. Y.', 'TI  - Nanometre-scale thermometry in a living cell', 'JO  - Nature', 'PY  - 2013', 'VL  - 500', 'IS  - 7460', 'SP  - 54', 'EP  - 58', 'DO  - 10.1038/nature12373', 'DP  - JSTOR', 'AN  - 41403188', 'ER  - ', ''].join('\r\n');
 var BIB_FILE = '@article{vaswani2017attention,\n  author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki},\n  title = {Attention is all you need},\n  journal = {Advances in Neural Information Processing Systems},\n  year = {2017},\n  volume = {30},\n  pages = {5998--6008}\n}\n';
 
+// A zip (the .docx container) built by hand: stored entries unless an entry says method 8, and a central directory that may lie
+// about an entry's unpacked size or the number of entries, which is what the reader checks before inflating anything
+function zipOf(entries, opts) {
+  opts = opts || {};
+  var locals = [], dirs = [], offset = 0;
+  entries.forEach(function (e) {
+    var name = Buffer.from(e.name), data = e.data, method = e.method || 0, usize = e.usize !== undefined ? e.usize : data.length;
+    var lh = Buffer.alloc(30); lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(method, 8); lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(usize, 22); lh.writeUInt16LE(name.length, 26);
+    var cd = Buffer.alloc(46); cd.writeUInt32LE(0x02014b50, 0); cd.writeUInt16LE(20, 4); cd.writeUInt16LE(20, 6); cd.writeUInt16LE(method, 10); cd.writeUInt32LE(data.length, 20); cd.writeUInt32LE(usize, 24); cd.writeUInt16LE(name.length, 28); cd.writeUInt32LE(offset, 42);
+    locals.push(lh, name, data); dirs.push(cd, name); offset += 30 + name.length + data.length;
+  });
+  var dir = Buffer.concat(dirs), eocd = Buffer.alloc(22); eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(opts.count !== undefined ? opts.count : entries.length, 8); eocd.writeUInt16LE(opts.count !== undefined ? opts.count : entries.length, 10); eocd.writeUInt32LE(dir.length, 12); eocd.writeUInt32LE(offset, 16);
+  return Buffer.concat(locals.concat([dir, eocd]));
+}
+
 // Everything the page does, once per colour scheme; axe runs on each tab once it has content
 async function runFlows(browser, base, dark, cslReady) {
   var scheme = dark ? 'dark' : 'light';
@@ -137,7 +192,7 @@ async function runFlows(browser, base, dark, cslReady) {
   var name = function (n) { return n + ' [' + scheme + ']'; };
   async function axeCheck(label) {
     var results = await new AxeBuilder({ page: page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze();
-    var v = results.violations.filter(function (x) { return x.impact === 'critical' || x.impact === 'serious' || x.impact === 'moderate'; });
+    var v = results.violations.filter(function (x) { return x.impact === 'critical' || x.impact === 'serious' || x.impact === 'moderate' || x.impact === 'minor'; });
     check(name('axe: no violations on ' + label), v.length === 0, v.map(function (x) { return x.id + ' (' + x.impact + ', ' + x.nodes.length + ' nodes): ' + x.help + ' e.g. ' + x.nodes[0].target.join(' '); }).join(' | '));
   }
   var textOf = async function (sel) { return page.locator(sel).textContent(); };
@@ -180,6 +235,7 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.click('#settings-toggle');
   await page.click('#settings-panel #polite-email');
   check(name('a click inside Settings leaves it open'), await page.isVisible('#settings-panel'));
+  await page.fill('#settings-panel #polite-email', 'probe@example.org'); // Settings promises it to Crossref and OpenAlex only: checked after the free-copy lookup below
   await page.locator('main p.lead:visible').first().click();
   check(name('a click outside Settings closes it'), await page.isHidden('#settings-panel') && (await page.getAttribute('#settings-toggle', 'aria-expanded')) === 'false');
 
@@ -198,6 +254,8 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the repository copy is offered over the stale publisher one, as an accepted manuscript'), (await freeLink.count()) === 1 && (await freeLink.getAttribute('href')) === 'https://www.ncbi.nlm.nih.gov/pmc/articles/4221854' && /Free copy \(accepted manuscript\)/.test(await freeLink.textContent()) && /PubMed Central/.test(await freeLink.getAttribute('title')), await page.locator('#doi-result .record-head').innerHTML());
   check(name('no Free PDF button points at the unlicensed publisher copy'), (await page.locator('#doi-result a[href="https://www.nature.com/articles/nature12373.pdf"]').count()) === 0);
   check(name('the free copy was asked of Unpaywall with a contact address'), s.state.requests.some(function (u) { return /api\.unpaywall\.org\/v2\/10\.1038\/nature12373\?email=/.test(u); }), s.state.requests.filter(function (u) { return /unpaywall/.test(u); }).join(', '));
+  check(name('the polite email from Settings went to Crossref but never to Unpaywall'), s.state.requests.some(function (u) { return /api\.crossref\.org.*mailto=probe%40example\.org/.test(u); }) && !s.state.requests.some(function (u) { return /unpaywall/.test(u) && /probe/.test(u); }), s.state.requests.filter(function (u) { return /unpaywall|mailto/.test(u); }).join(', '));
+  await page.click('#settings-toggle'); await page.fill('#settings-panel #polite-email', ''); await page.click('#settings-toggle');
   check(name('no Via library button until a library link is set'), (await page.locator('#doi-result a:has-text("Via library")').count()) === 0);
   await page.click('#settings-toggle'); // the field sits in the closed Settings panel
   await page.fill('#library-link', 'https://ezproxy.example.edu/login?url='); await page.dispatchEvent('#library-link', 'change');
@@ -237,6 +295,14 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.locator('#doi-result .cite .actions button:has-text("Copy")').first().click();
   var clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
   check(name('Copy puts the APA reference on the clipboard'), /Kucsko, G\./.test(clip) && /\(2013\)/.test(clip), clip.slice(0, 120));
+  // Rich: what Word and Google Docs take, HTML with the italics, beside the plain text; the clipboard write is caught in the page
+  var richOf = async function (sel) {
+    await page.evaluate(function () { window.__rich = null; navigator.clipboard.write = function (items) { window.__rich = items; return Promise.resolve(); }; });
+    await page.locator(sel).first().click();
+    return page.evaluate(function () { var it = window.__rich && window.__rich[0]; if (!it) return null; return Promise.all([it.getType('text/html').then(function (b) { return b.text(); }), it.getType('text/plain').then(function (b) { return b.text(); })]); });
+  };
+  var rich = await richOf('#doi-result .cite .actions button:has-text("Rich")');
+  check(name('Rich puts the reference on the clipboard as HTML with the journal in italics, and as plain text'), !!rich && /<i>Nature<\/i>/.test(rich[0]) && /Kucsko, G\./.test(rich[0]) && /Nature, 500/.test(rich[1]) && !/<i>/.test(rich[1]), JSON.stringify(rich).slice(0, 300));
   // In-text citations: the parenthetical and narrative forms under the reference, with the pages typed in the toolbar
   var forms = async function () { return page.locator('#doi-result .cite .intext .form').allTextContents(); };
   check(name('APA shows its in-text and narrative forms'), (await forms()).join(' | ') === '(Kucsko et al., 2013) | Kucsko et al. (2013)', (await forms()).join(' | '));
@@ -576,6 +642,17 @@ async function runFlows(browser, base, dark, cslReady) {
   var orderIs = function (want) { return page.waitForFunction(function (a) { var ps = document.querySelectorAll('#export-output .reflist p'); return ps.length === 5 && Array.prototype.map.call(ps, function (p) { return a.keys.filter(function (k) { return p.textContent.indexOf(k) !== -1; })[0] || '?'; }).join(' ') === a.want; }, { keys: KEYS, want: want }, { timeout: 20000 }).then(function () { return true; }, function () { return false; }); };
   await page.selectOption('#list-style', 'apa');
   check(name('the style’s order is alphabetical for APA'), await orderIs('Dunes Apple Zebra Mapping Tides'), await listOrder());
+  // Two Brown 2019 papers: a letter on the year, by title, in the list and in the in-text forms alike
+  var brownLetters = async function () { return (await page.locator('#export-output .reflist p').allTextContents()).filter(function (t) { return /Brown/.test(t); }).map(function (t) { return (t.match(/\(2019[a-z]?\)/) || ['?'])[0] + ' ' + (t.match(/Apple|Zebra/) || ['?'])[0]; }).join(', '); };
+  check(name('APA letters one author’s two papers in a year, by title'), (await brownLetters()) === '(2019a) Apple, (2019b) Zebra', await brownLetters());
+  await page.check('#list-intext');
+  await page.waitForSelector('#export-output .reflist .intext', { timeout: 5000 });
+  var brownForms = (await page.locator('#export-output .reflist .intext .form').allTextContents()).filter(function (t) { return /Brown/.test(t); });
+  check(name('the in-text forms carry the same letters'), brownForms.join(' | ') === '(Brown, 2019a) | Brown (2019a) | (Brown, 2019b) | Brown (2019b)', brownForms.join(' | '));
+  var listRich = await richOf('#export-output .export .actions button:has-text("Rich")');
+  check(name('the list’s Rich copies HTML with italics and the letters, without the in-text forms'), !!listRich && /<i>Journal of Field Notes<\/i>/.test(listRich[0]) && /\(2019a\)/.test(listRich[0]) && !/\(Brown, 2019a\)/.test(listRich[0]) && (listRich[0].match(/<p>/g) || []).length === 5, JSON.stringify(listRich).slice(0, 300));
+  await page.uncheck('#list-intext');
+  await page.waitForFunction(function () { return !document.querySelector('#export-output .reflist .intext'); }, null, { timeout: 5000 });
   await page.selectOption('#list-order', 'given');
   check(name('As given keeps the references in the order of the file'), await orderIs('Mapping Tides Dunes Zebra Apple'), await listOrder());
   await page.selectOption('#list-order', 'newest');
@@ -628,6 +705,29 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the status says where the references came from and matches them'), /Read 2 paragraphs after "References" in manuscript\.docx\. 1 good, 1 not matched/.test(status) && (await page.inputValue('#split-mode')) === 'lines', status);
   check(name('the document itself never left the browser'), !s.state.requests.slice(beforeDocx).some(function (u) { return /kernite|thermometry%20of/i.test(u); }));
   await page.fill('#export-input', '');
+  // The Word reader inflates only the parts it reads, and refuses a file that says it is huge, before touching it; a dropped file's name
+  // is shown on the page and never put in a bug report
+  var issueHrefs = function () { return page.evaluate(function () { return Array.prototype.map.call(document.querySelectorAll('a[href*="issues/new"]'), function (a) { return a.href; }); }); };
+  var dropStatus = async function (fname, buf) {
+    await page.evaluate(function () { document.getElementById('export-status').textContent = ''; }); // the last run's summary must not pass for this file's
+    await page.setInputFiles('#export-file-input', [{ name: fname, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: buf }]);
+    await page.waitForFunction(function (f) { return new RegExp(f.replace(/\./g, '\\.')).test(document.querySelector('#export-status').textContent) || /Read \d+ paragraphs/.test(document.querySelector('#export-status').textContent); }, fname, { timeout: 10000 });
+    return textOf('#export-status');
+  };
+  var DOC_XML = '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>References</w:t></w:r></w:p><w:p><w:r><w:t>Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., &amp; Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54-58.</w:t></w:r></w:p></w:body></w:document>';
+  status = await dropStatus('refused-huge.docx', zipOf([{ name: 'word/document.xml', data: Buffer.from(DOC_XML) }, { name: 'word/media/image1.png', data: Buffer.from('tiny'), usize: 100 * 1024 * 1024 }]));
+  check(name('a Word file whose directory says it unpacks past 64 MB is refused, with its name on the page'), /^Could not read refused-huge\.docx: the file would unpack to more than 64 MB/.test(status) && (await page.inputValue('#export-input')) === '', status);
+  status = await dropStatus('refused-many.docx', zipOf([{ name: 'word/document.xml', data: Buffer.from(DOC_XML) }], { count: 20000 }));
+  check(name('a Word file claiming 20,000 parts is refused'), /^Could not read refused-many\.docx: the file holds more than 10,000 parts/.test(status), status);
+  status = await dropStatus('not-a-zip.docx', Buffer.from('this is not a zip file at all'));
+  check(name('a file that is not a zip is refused in words'), /^Could not read not-a-zip\.docx: not a zip file/.test(status), status);
+  var hrefs = await issueHrefs();
+  check(name('no dropped file name reaches a bug report link'), hrefs.length >= 1 && !hrefs.some(function (u) { return /refused-huge|refused-many|not-a-zip/.test(decodeURIComponent(u)); }), hrefs.map(decodeURIComponent).join(' | ').slice(0, 400));
+  check(name('the error log still carries the read failure, without the name'), /file-read/.test(decodeURIComponent(await page.locator('#link-bug').getAttribute('href'))));
+  status = await dropStatus('crafted.docx', zipOf([{ name: 'word/document.xml', data: Buffer.from(DOC_XML) }, { name: 'word/media/image1.png', data: Buffer.from('not really deflated'), method: 8 }]));
+  await page.waitForFunction(function () { return /good|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  check(name('a part the reader does not need is never inflated: a garbage image beside a good document.xml does no harm'), /Read 1 paragraphs? after "References" in crafted\.docx/.test(await textOf('#export-status')) && /Nanometre-scale thermometry/.test(await page.inputValue('#export-input')), await textOf('#export-status'));
+  await page.fill('#export-input', '');
   // 10. A retracted paper is flagged on the DOI tab and on a matcher row, with the notices, and the reference itself is left alone
   await page.click('#tab-cite');
   await page.fill('#doi-input', '10.1016/s0140-6736(97)11096-0');
@@ -651,6 +751,13 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the status line counts the retracted row'), /1 retracted/.test(status), status);
   check(name('the matcher row carries the Retracted chip and the note'), (await page.locator('#export-matches .match .chip.bad:has-text("Retracted")').count()) === 1 && /Retracted on 6 February 2010/.test(await page.locator('#export-matches .match .update-note').textContent()), await page.locator('#export-matches').innerHTML());
   check(name('the retracted row is still ticked: citing it is the writer\'s call'), await page.locator('#export-matches .match input[type=checkbox][id^=inc-]').isChecked());
+  await page.waitForFunction(function () { return !/Adding journal abbreviations/.test(document.querySelector('#export-status').textContent); }, null, { timeout: 15000 });
+  await page.selectOption('#list-style', 'vancouver');
+  await page.waitForFunction(function () { return /Wakefield AJ/.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 5000 });
+  var vancText = await page.locator('#export-output .reflist').textContent();
+  check(name('Vancouver abbreviates the journal from the NLM Catalog, found by title'), /children\. Lancet\. 1998 Feb;351\(9103\):637-41\./.test(vancText) && !/The Lancet/.test(vancText), vancText);
+  check(name('the catalogue was asked by title, then for the summary'), s.state.requests.some(function (u) { return /esearch\.fcgi\?.*Lancet/.test(u); }) && s.state.requests.some(function (u) { return /esummary\.fcgi\?.*id=2985213R/.test(u); }), s.state.requests.filter(function (u) { return /eutils/.test(u); }).join(', '));
+  await page.selectOption('#list-style', 'apa');
   await axeCheck('Export tab with a retracted row');
   // 11. The list comes back on the next visit, rebuilt from memory with no lookup; ticks are remembered; a link rebuilds it from its DOIs
   var beforeReload = s.state.requests.length;
@@ -673,6 +780,14 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.goto(clip, { waitUntil: 'load' });
   await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
   check(name('the link opens the References tab with the list rebuilt from its DOIs'), (await page.getAttribute('#tab-export', 'aria-selected')) === 'true' && /1 good/.test(await textOf('#export-status')) && (await page.locator('#export-matches .match .chip:has-text("From DOI")').count()) === 1 && (await page.locator('#export-zone').count()) === 1, await textOf('#export-status'));
+  // the list that was in the box before the link opened is not lost: the summary offers it back
+  var restore = page.locator('#export-status button:has-text("Restore previous list")');
+  check(name('a link over a remembered list says so and offers the old list back'), (await restore.count()) === 1 && /This link replaced the list you had/.test(await textOf('#export-status')), await textOf('#export-status'));
+  await restore.click();
+  await page.waitForFunction(function () { return /Wakefield AJ/.test(document.getElementById('export-input').value) && /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
+  check(name('Restore puts the pasted list back and runs it again'), /^Wakefield AJ, Murch SH\./.test(await page.inputValue('#export-input')) && (await page.locator('#export-status button:has-text("Restore previous list")').count()) === 0 && (await page.locator('#export-matches .match.good').count()) === 1, await textOf('#export-status'));
+  await page.goto(clip, { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
   if (cslReady) { // a link in a journal list style this browser has never used: the style still comes up, named from its file, and is remembered once it renders
     var recentNames = function () { return page.evaluate(function () { return JSON.parse(localStorage.getItem('autodoi.cslrecent') || '[]').map(function (r) { return r.name + '=' + r.title; }); }); };
     var listDone = function (re) { return page.waitForFunction(function (src) { var l = document.querySelector('#export-output .reflist'); return l && !/Rendering/.test(l.textContent) && new RegExp(src).test(l.textContent); }, re, { timeout: 20000 }); };
@@ -681,9 +796,12 @@ async function runFlows(browser, base, dark, cslReady) {
     await page.waitForFunction(function () { var o = document.querySelector('#list-style option:checked'); return o && o.textContent === 'Nature Geoscience' && /Wakefield, A\. J\. & Murch, S\. H\./.test(document.querySelector('#export-output .reflist').textContent); }, null, { timeout: 20000 });
     check(name('a link with an unused journal list style opens the list in it'), (await page.inputValue('#list-style')) === 'csl:nature-geoscience', await page.inputValue('#list-style'));
     check(name('the style from the link is remembered, by its title, once it has rendered'), (await recentNames()).join() === 'nature-geoscience=Nature Geoscience', (await recentNames()).join());
-    await page.goto(clip + '&list=csl:no-such-style', { waitUntil: 'load' });
+    check(name('the list style from the link is kept for next time once it has rendered'), (await page.evaluate(function () { return localStorage.getItem('autodoi.liststyle'); })) === 'csl:nature-geoscience');
+    await page.goto(clip + '&list=csl:no-such-style&order=oldest', { waitUntil: 'load' });
     await listDone('Could not load');
     check(name('a mistyped style in a link says so and is not remembered'), (await recentNames()).join() === 'nature-geoscience=Nature Geoscience', (await recentNames()).join());
+    var kept = await page.evaluate(function () { return [localStorage.getItem('autodoi.liststyle'), localStorage.getItem('autodoi.listorder')].join(' '); });
+    check(name('a style that does not render, and the order beside it, are not kept for next time'), !/no-such-style/.test(kept) && !/oldest/.test(kept), kept);
     // twelve remembered: a thirteenth picked in the list's search drops the oldest, which the list's menu still offers and still renders
     await page.evaluate(function () { var r = []; for (var k = 0; k < 11; k++) r.push({ name: 'fake-' + k, title: 'Fake ' + k }); r.push({ name: 'nature', title: 'Nature' }); localStorage.setItem('autodoi.cslrecent', JSON.stringify(r)); localStorage.setItem('autodoi.liststyle', 'csl:nature'); });
     await page.goto(clip, { waitUntil: 'load' });
@@ -695,7 +813,7 @@ async function runFlows(browser, base, dark, cslReady) {
     await listDone('Nature Geoscience|Wakefield');
     await page.selectOption('#list-style', 'csl:nature');
     await listDone('Wakefield');
-    check(name('a style dropped from the twelve still renders from the list menu'), /Nature 351/.test(await page.locator('#export-output .reflist').textContent()), await page.locator('#export-output .reflist').textContent());
+    check(name('a style dropped from the twelve still renders from the list menu'), /Lancet 351/.test(await page.locator('#export-output .reflist').textContent()), await page.locator('#export-output .reflist').textContent()); // the Nature style prints the abbreviated journal, from the mocked NLM Catalog
     await page.selectOption('#list-style', 'apa');
   }
   // 12. Editing a record, and writing one by hand
@@ -740,6 +858,8 @@ async function runFlows(browser, base, dark, cslReady) {
   var apaHand = await page.locator('#doi-result .cite .text').first().textContent();
   check(name('a web page written by hand formats in APA with its full date and URL'), /^Google\. \(2023, November 15\)\. Privacy policy\. Privacy & Terms\. https:\/\/policies\.google\.com\/privacy/.test(apaHand), apaHand);
   check(name('no lookup was made for a reference written by hand'), !s.state.requests.slice(beforeReload).some(function (u) { return /api\.crossref\.org\/works\?|openalex\.org\/works\?/.test(u); }));
+  var handReport = await page.locator('#doi-result a:has-text("Report it")').getAttribute('href');
+  check(name('the Report it link under a hand-written record carries no title of yours'), /issues\/new\?template=bug_report\.yml/.test(handReport) && !/Privacy/.test(decodeURIComponent(handReport)) && !(await issueHrefs()).some(function (u) { return /Privacy|Google/.test(decodeURIComponent(u)); }), decodeURIComponent(handReport).slice(0, 300));
   await page.click('#tab-export'); await page.fill('#export-input', ''); // leave nothing behind for the next flow in this context
   await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   // 13. A line that is only a title is looked up by title, as on Find a DOI; a list of titles splits one per line
@@ -792,6 +912,94 @@ async function runFlows(browser, base, dark, cslReady) {
   var saved = await page.waitForFunction(function () { var v = localStorage.getItem('autodoi.batch') || ''; return !/"hits"/.test(v) && /learning-one-word/.test(v); }, null, { timeout: 5000 }).then(function () { return true; }, function () { return false; });
   check(name('with storage full, the list is still remembered without its candidate lists'), saved);
   await page.evaluate(function () { Storage.prototype.setItem = window.__setItem; });
+  // --- the 2026-10 page-logic audit: grading, the network and the list ---
+  var KUCSKO = 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., & Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54-58.';
+  var crRequests = function (from, re) { return s.state.requests.slice(from).filter(function (u) { return /api\.crossref\.org/.test(u) && re.test(u); }).length; };
+  // 1. Crossref lists a Dryad dataset before the paper: the paper wins
+  await runRefs('Dataset first. ' + KUCSKO);
+  check(name('a dataset listed first does not beat the paper'), (await page.locator('#export-matches .match.good').count()) === 1 && /10\.1038\/nature12373/.test(await page.locator('#export-matches .match .out code').first().textContent()) && !/dryad/.test(await page.locator('#export-matches .match .out code').first().textContent()), await page.locator('#export-matches .match').first().textContent());
+  // 1b. the edited book outscores the chapter the reference cites by its pages: the chapter of that book is the one cited
+  await runRefs('Chapter probe. Bailey S.W. (1988) Chlorites: structures and crystal chemistry. Hydrous Phyllosilicates (Exclusive of Micas). Reviews in Mineralogy, 19. Washington, D.C., Mineralogical Society of America, 347\u2013403.');
+  check(name('a chapter cited by its pages beats the book it is in'), (await page.locator('#export-matches .match.good').count()) === 1 && /9781501508998-015/.test(await page.locator('#export-matches .match .out code').first().textContent()), await page.locator('#export-matches .match .out code').first().textContent());
+  // 2. an OpenAlex work merged under another paper's DOI: Crossref's record is graded afresh, so the other paper is not green
+  await runRefs('Merged probe. Brown, T. (2018). Olivine rheology under lower mantle conditions. Science, 3, 5-6.');
+  check(name('an OpenAlex DOI that resolves to another paper is not green'), (await page.locator('#export-matches .match.good').count()) === 0 && (await page.locator('#export-matches .match.bad, #export-matches .match.warn').count()) === 1, await page.locator('#export-matches .match').first().innerHTML().then(function (h) { return h.slice(0, 400); }));
+  // 3. an erratum's DOI after the paper's own reference: amber, Check DOI, the record and the fix box kept
+  await runRefs(KUCSKO + ' https://doi.org/10.1016/erratum-x');
+  var errRow = page.locator('#export-matches .match').first();
+  check(name('an erratum DOI inside a reference drops to amber with a Check DOI chip'), /\bwarn\b/.test(await errRow.getAttribute('class')) && (await errRow.locator('.chip:has-text("Check DOI")').count()) === 1 && /erratum-x/.test(await errRow.locator('.out code').textContent()) && (await errRow.locator('.fixrow input[type=text]').count()) === 1 && !(await errRow.locator('input[type=checkbox][id^=inc-]').isChecked()), await errRow.innerHTML().then(function (h) { return h.slice(0, 400); }));
+  await runRefs(KUCSKO + ' https://doi.org/10.1038/nature12373');
+  check(name('the paper\'s own DOI inside its reference is still green'), (await page.locator('#export-matches .match.good .chip:has-text("From DOI")').count()) === 1);
+  // 3b. the same reference twice: the second copy is flagged and left out of the list
+  await runRefs(KUCSKO + '\n' + KUCSKO);
+  var dupChip = page.locator('#export-matches .match .chip.warn:has-text("Duplicate of #1")');
+  check(name('a reference pasted twice gets a Duplicate chip on the second row and one entry in the list'), (await page.locator('#export-matches .match.good').count()) === 2 && (await dupChip.count()) === 1 && (await dupChip.isVisible()) && (await page.locator('#export-matches .match').nth(1).locator('.chip:has-text("Duplicate")').count()) === 1 && (await page.locator('#export-output .reflist p').count()) === 1, await page.locator('#export-matches').textContent());
+  // 3c. an arXiv ID resolves to its preprint record, which names the published version; Swap takes it
+  await runRefs('arXiv:1706.03762');
+  var preRow = page.locator('#export-matches .match').first();
+  check(name('an arXiv ID is a From DOI row flagged as a preprint with its published version'), (await preRow.locator('.chip:has-text("From DOI")').count()) === 1 && /Preprint; published version: 10\.1038\/nature12373/.test(await preRow.textContent()) && (await preRow.locator('button:has-text("Swap")').count()) === 1 && /\[Preprint\]|arXiv/.test(await page.locator('#export-output .reflist').textContent()), await preRow.textContent());
+  await preRow.locator('button:has-text("Swap")').click();
+  await page.waitForFunction(function () { return /Nanometre-scale thermometry/.test(document.querySelector('#export-matches .match').textContent); }, null, { timeout: 10000 });
+  check(name('Swap replaces the preprint with the published record'), /10\.1038\/nature12373/.test(await preRow.locator('.out code').first().textContent()) && !/Preprint;/.test(await preRow.textContent()) && /Kucsko, G\./.test(await page.locator('#export-output .reflist').textContent()), await preRow.textContent());
+  // 4. a bare number in a list is debris, not a PubMed ID; alone it is one
+  var pmBefore = s.state.requests.length;
+  await page.fill('#export-input', KUCSKO + '\n23903748\nVaswani A, Shazeer N, Parmar N. Attention is all you need. Advances in Neural Information Processing Systems. 2017;30:5998-6008.');
+  await page.waitForFunction(function () { return /references found/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  check(name('a bare number between two references is not a reference'), /^2 references/.test(await textOf('#split-count')), await textOf('#split-count'));
+  await page.fill('#export-input', 'PMID: 23903748\n' + KUCSKO);
+  await page.waitForFunction(function () { return /^2 references/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  check(name('a prefixed PubMed ID in a list is a reference'), /^2 references/.test(await textOf('#split-count')), await textOf('#split-count'));
+  await page.fill('#export-input', '23903748');
+  await page.waitForFunction(function () { return /^1 reference/.test(document.querySelector('#split-count').textContent); }, null, { timeout: 5000 }).catch(function () {});
+  check(name('a bare PubMed ID alone is still a lookup'), /^1 reference/.test(await textOf('#split-count')), await textOf('#split-count'));
+  check(name('the preview looked nothing up'), !s.state.requests.slice(pmBefore).some(function (u) { return /europepmc/.test(u); }));
+  // 11. Crossref answers 429 twice, Retry-After 1 s: the row says Retrying… and comes good on the third try
+  var retryFrom = s.state.requests.length;
+  await page.fill('#export-input', 'Retry probe. ' + KUCSKO); await page.click('#export-go');
+  var sawRetry = await page.waitForFunction(function () { return /Retrying/.test(document.querySelector('#export-matches').textContent); }, null, { timeout: 5000 }).then(function () { return true; }, function () { return false; });
+  await page.waitForFunction(function () { return /good|check|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  check(name('a 429 is retried after Retry-After, with Retrying… on the row meanwhile'), sawRetry && (await page.locator('#export-matches .match.good').count()) === 1 && crRequests(retryFrom, /Retry%20probe/) === 3, 'saw ' + sawRetry + ', ' + crRequests(retryFrom, /Retry%20probe/) + ' calls, ' + await textOf('#export-status'));
+  // 12. OpenAlex 429: a burst limit is a pause in memory; a spent daily allowance blocks the day and is remembered
+  await page.evaluate(function () { try { localStorage.removeItem('autodoi.oaBlocked'); } catch (e) {} });
+  await runRefs('Pause probe. Brown, T. (2018). Olivine rheology under lower mantle conditions. Science, 3, 5-6.');
+  var oaBlocked = await page.evaluate(function () { return localStorage.getItem('autodoi.oaBlocked'); });
+  check(name('an OpenAlex burst 429 is not remembered as the day\'s allowance'), !oaBlocked && (await page.locator('#oa-notice').isHidden()), 'oaBlocked=' + oaBlocked);
+  await page.waitForTimeout(1300); // the pause asked for
+  await runRefs('Quota probe. Brown, T. (2018). Olivine rheology under lower mantle conditions. Science, 3, 5-6.');
+  oaBlocked = Number(await page.evaluate(function () { return localStorage.getItem('autodoi.oaBlocked'); }));
+  check(name('a spent OpenAlex daily allowance blocks until midnight UTC, with the notice'), oaBlocked > Date.now() + 1000 && oaBlocked <= Date.now() + 86400000 && (await page.locator('#oa-notice').isVisible()), 'oaBlocked=' + oaBlocked);
+  await page.evaluate(function () { try { localStorage.removeItem('autodoi.oaBlocked'); } catch (e) {} });
+  // 14. a resubmit while a batch runs (a dropped file, a shared link) abandons that batch's look-ahead lookups, so the new batch is not queued behind them
+  await page.fill('#export-input', 'Slow probe 1. ' + KUCSKO + '\nSlow probe 2. ' + KUCSKO + '\nSlow probe 3. ' + KUCSKO); await page.click('#export-go');
+  await page.waitForFunction(function () { return document.querySelectorAll('#export-matches .match').length >= 1; }, null, { timeout: 5000 });
+  var t0 = Date.now();
+  await page.fill('#export-input', KUCSKO);
+  await page.evaluate(function () { document.getElementById('form-export').requestSubmit(); }); // the Match button is disabled while a batch runs; a file drop submits this way
+  await page.waitForFunction(function () { return /good|check|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  var took = Date.now() - t0;
+  check(name('a resubmit is not kept waiting behind the abandoned batch'), took < 7000 && (await page.locator('#export-matches .match').count()) === 1 && (await page.locator('#export-matches .match.good').count()) === 1, took + ' ms, ' + await textOf('#export-status'));
+  // 13. Copy link holds at most 7,500 characters of DOIs and says so; 15. a layout set by the link does not outlive the run
+  await page.selectOption('#split-mode', 'auto');
+  var longDois = []; for (var li = 0; li < 20; li++) longDois.push('10.5555/long-' + '\u00e9'.repeat(60) + (li < 10 ? '0' : '') + li);
+  await page.goto(base + '?refs=' + longDois.map(encodeURIComponent).join(','), { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /20 good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  await page.waitForSelector('#export-zone', { timeout: 5000 });
+  await page.locator('#export-zone button:has-text("Copy link")').click();
+  var longLink = await page.evaluate(function () { return navigator.clipboard.readText(); });
+  var linkCount = (longLink.split('?refs=')[1] || '').split('&')[0].split(',').length;
+  check(name('Copy link is capped at 7,500 characters and says first N of M'), longLink.length <= 7500 && linkCount === 19 && (await page.locator('#export-zone .zone-sub:has-text("Link: first 19 of 20 DOIs")').count()) === 1 && /first 19 of 20 DOIs/.test(await page.locator('#export-zone button:has-text("Copy link")').getAttribute('title')), longLink.length + ' chars, ' + linkCount + ' DOIs');
+  check(name('the layout the link set for its run does not stay'), (await page.inputValue('#split-mode')) === 'auto', await page.inputValue('#split-mode'));
+  // 16. a ?q= deep link with an arXiv ID: the preprint on the DOI tab, with the way to its published version
+  await page.goto(base + '?q=arXiv:1706.03762', { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /Vaswani/.test(document.querySelector('#doi-result').textContent) && /Copy/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 15000 });
+  var preText = await page.locator('#doi-result .cite .text').first().textContent();
+  check(name('?q=arXiv: resolves the ID to its DOI and renders the preprint'), (await page.inputValue('#doi-input')) === '10.48550/arXiv.1706.03762' && /^Vaswani, A\., & Shazeer, N\. \(2017\)\. Attention is all you need\. arXiv\. https:\/\/doi\.org\/10\.48550\/arXiv\.1706\.03762/.test(preText), preText);
+  check(name('the DOI tab names the published version with a button to use it'), /This is a preprint\. Published version: 10\.1038\/nature12373/.test(await textOf('#doi-result')) && (await page.locator('#doi-result button:has-text("Use published version")').count()) === 1, await textOf('#doi-result'));
+  await page.locator('#doi-result button:has-text("Use published version")').click();
+  await page.waitForFunction(function () { return /Kucsko/.test(document.querySelector('#doi-result').textContent); }, null, { timeout: 15000 });
+  check(name('Use published version swaps the record on the DOI tab'), (await page.inputValue('#doi-input')) === '10.1038/nature12373' && !/This is a preprint/.test(await textOf('#doi-result')));
+  await page.click('#tab-export');
+  await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   await page.fill('#export-input', ''); await page.selectOption('#split-mode', 'lines');
   await page.evaluate(function () { try { localStorage.removeItem('autodoi.batch'); } catch (e) {} });
   check(name('no page errors at the end'), s.state.errors.length === 0, s.state.errors.join(' | '));
@@ -823,7 +1031,7 @@ async function mobileFlows(browser, base) {
   }
   async function axeCheck(label) {
     var results = await new AxeBuilder({ page: page }).withTags(['wcag2a', 'wcag2aa', 'best-practice']).analyze();
-    var v = results.violations.filter(function (x) { return x.impact === 'critical' || x.impact === 'serious' || x.impact === 'moderate'; });
+    var v = results.violations.filter(function (x) { return x.impact === 'critical' || x.impact === 'serious' || x.impact === 'moderate' || x.impact === 'minor'; });
     check(name('axe: no violations on ' + label), v.length === 0, v.map(function (x) { return x.id + ' (' + x.impact + '): ' + x.help + ' e.g. ' + x.nodes[0].target.join(' '); }).join(' | '));
   }
   await page.goto(base, { waitUntil: 'load' });

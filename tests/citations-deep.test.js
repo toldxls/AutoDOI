@@ -75,9 +75,9 @@ const ch8 = { type: 'book-chapter', title: ['Chapter'], author: [{ given: 'A', f
 eq('8 harvard chapter', F(ch8, 'harvard'), 'B, A. (2001) ‘Chapter’, in What Is Politics? Dordrecht: Springer.');
 eq('8 ieee chapter', F(ch8, 'ieee'), 'A. B, “Chapter,” in What Is Politics? Dordrecht: Springer, 2001.');
 const ds8 = { type: 'dataset', title: ['Data'], author: [{ given: 'A', family: 'B' }], publisher: 'Wiley, Inc.', DOI: '10.5061/x', issued: { 'date-parts': [[2001]] } };
-eq('8 harvard dataset', F(ds8, 'harvard'), 'B, A. (2001) ‘Data’, Wiley, Inc. Available at: https://doi.org/10.5061/x.');
+eq('8 harvard dataset', F(ds8, 'harvard'), 'B, A. (2001) ‘Data’, Wiley, Inc. Available at: https://doi.org/10.5061/x');
 eq('8 chicago book ?', F(Object.assign({}, b6, { 'edition-number': '3', title: ['Intentions?'] }), 'chicago'), 'B, A. Intentions? 3rd ed. Dordrecht: Springer, 2001.');
-eq('8 harvard book ?', F(Object.assign({}, b6, { 'edition-number': '3', title: ['Intentions?'] }), 'harvard'), 'B, A. (2001) Intentions? 3rd ed. Dordrecht: Springer.');
+eq('8 harvard book ?', F(Object.assign({}, b6, { 'edition-number': '3', title: ['Intentions?'] }), 'harvard'), 'B, A. (2001) Intentions?, 3rd edn. Dordrecht: Springer.');
 eq('8 harvard journal pub dot', F(jr({ title: ['T'], 'container-title': ['Colleges.'], volume: '', page: '' }), 'harvard'), '(2020) ‘T’, Colleges.');
 
 /* 9. organisation names with commas (EndNote convention: trailing comma, internal commas doubled) */
@@ -268,6 +268,10 @@ timed('32 inline-formula', () => N({ title: [rep('<inline-formula>') + '</inline
 timed('32 tex-math', () => N({ title: [rep('<tex-math>$\\alpha^{') + '</tex-math>'] }));
 timed('33 braces', () => f(rep('{')));
 timed('33 parens', () => f(rep('(')));
+// a DOI field of 50 KB of trailing stops before a letter: the tail is trimmed by a backwards scan, not /[.,;]+$/ (1.5 s before)
+{ const t = Date.now(), d = N({ DOI: '.'.repeat(50000) + 'a' }).doi, ms = Date.now() - t; eq('34 cleanDoi 50 KB of dots < 100 ms (' + ms + ' ms)', ms < 100 && d.length === 50001, true); }
+{ const t = Date.now(), d = N({ DOI: ' '.repeat(50000) + 'a' + ' '.repeat(50000) }).doi, ms = Date.now() - t; eq('34 cleanDoi 100 KB of spaces < 100 ms (' + ms + ' ms)', ms < 100 && d === 'a', true); }
+eq('34 cleanDoi still trims', N({ DOI: ' <i>10.1000/abc.;</i>\u00A0' }).doi, '10.1000/abc');
 timed('33 brackets word', () => f(rep('[Fe2O3')));
 timed('33 comma runs (trimPunct)', () => N(jr({ title: [rep(', ') + 'x.'], 'container-title': [rep(', ') + 'x.'], 'publisher-location': rep('/ ') + '!' })));
 timed('33 unclosed subs (balanceMarks)', () => N({ title: [rep('<sub>') + '!'] }));

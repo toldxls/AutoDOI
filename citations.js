@@ -124,11 +124,17 @@
 
   // "Georg Kucsko" / "Peter C. Maurer" / "van der Walt, Stéfan" / "Martin Luther King, Jr." -> {family, given, suffix?}
   var NAME_PARTICLE = /^(?:van|von|de|der|den|del|della|delle|da|di|du|la|le|los|las|dos|das|ter|ten|zu|zur|af|av)$/; // lowercase only
-  var NAME_SUFFIX = /^(?:Jr\.?|Sr\.?|II|III|IV)$/;
+  var SUFFIX_WORDS = 'Jr\\.?|Sr\\.?|II|III|IV|2nd|3rd|4th';                     // generational suffixes, one list for every reader of a name
+  var NAME_SUFFIX = new RegExp('^(?:' + SUFFIX_WORDS + ')$');
+  // academic degrees and titles after a name are not part of it: "John Smith, PhD".  One written in capitals ("MD", "J.D.", "MPH")
+  // may be initials ("Smith, J.D." is J. D.), so it is dropped only after a full name or a given name
+  var NAME_DEGREE = /^(?:Ph\.?\s?D\.?|D\.?Phil\.?|[MBD]\.?Sc\.?|M\.?D\.?|J\.?D\.?|M\.?P\.?H\.?|M\.?B\.?A\.?|D\.?D\.?S\.?|D\.?V\.?M\.?|Esq\.?|FRS|FRCP|FRCS|FACS|RN)$/i;
+  function isDegree(tok, sure) { return NAME_DEGREE.test(tok) && (sure || /[a-z]/.test(tok)); }
   function splitName(full) {
     var n = clean(full);
     if (!n) return null;
     var suffix = '', parts = n.split(/\s*,\s*/), out;
+    while (parts.length > 1 && isDegree(parts[parts.length - 1], parts.length > 2 || /\s/.test(parts[0]))) parts.pop(); // "John Smith, PhD" / "Smith, John, MD" / "Smith, PhD"
     if (parts.length > 1 && NAME_SUFFIX.test(parts[parts.length - 1])) suffix = parts.pop();   // "King, Jr." / "King, Martin Luther, Jr."
     if (parts.length > 1) {
       var given = parts.slice(1).join(', '), gt = given.split(/\s+/);
@@ -136,8 +142,9 @@
       out = { family: parts[0], given: given };
     } else {
       var toks = parts[0].split(/\s+/);
+      while (toks.length > 1 && isDegree(toks[toks.length - 1], false)) toks.pop(); // "John Smith PhD"; "Smith MD" keeps its initials
       if (!suffix && toks.length > 1 && NAME_SUFFIX.test(toks[toks.length - 1])) suffix = toks.pop(); // "John Smith III"
-      if (toks.length === 1) return suffix ? { family: toks[0], given: '', suffix: suffix } : { name: n };
+      if (toks.length === 1) return suffix ? { family: toks[0], given: '', suffix: suffix } : { name: toks[0] };
       var fam = [toks.pop()];
       while (toks.length > 0 && NAME_PARTICLE.test(toks[toks.length - 1])) fam.unshift(toks.pop()); // "de la Cruz": particles and one capitalised word are a family name
       out = { family: fam.join(' '), given: toks.join(' ') };
@@ -838,14 +845,16 @@
 
   // DataCite splits "The Turing Way Community" into given "The Turing Way", family "Community"
   var ORG_FAMILY = /^(?:Community|Consortium|Collaboration|Team|Group|Project|Society|Committee|Association|Initiative|Network|Institute|Organi[sz]ation|Council)$/;
-  var SUFFIX_TAIL = /^(.*?\S)[\s,]+(Jr\.?|Sr\.?|II|III|IV|2nd|3rd|4th)$/;
+  var SUFFIX_TAIL = new RegExp('^(.*?\\S)[\\s,]+(' + SUFFIX_WORDS + ')$'), SUFFIX_IN_FAMILY = new RegExp('^(.+?),\\s*(' + SUFFIX_WORDS + ')$', 'i');
   function person(p) {
     var fam = clean(p.family);
     if (fam) {
       var given = clean(p.given), suffix = clean(p.suffix || '');
-      if (!/[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0400-\u04FF\u4E00-\u9FFF]/.test(given)) given = ''; // ",", "-", "." deposited as a given name
+      // ",", "-", "." deposited as a given name: a given name holds a letter of some script (Latin, Greek, Cyrillic, Armenian, Hebrew,
+      // Arabic, Devanagari, Thai, Hangul, kana, CJK)
+      if (!/[A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u0370-\u03FF\u0400-\u04FF\u0530-\u058F\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u1100-\u11FF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/.test(given)) given = '';
       // "Dorn, III" / "King, Jr." with the suffix inside the family field
-      var fs = fam.match(/^(.+?),\s*(Jr\.?|Sr\.?|II|III|IV|2nd|3rd|4th)$/i);
+      var fs = fam.match(SUFFIX_IN_FAMILY);
       if (fs && !suffix) { fam = fs[1]; suffix = fs[2]; }
       // "StephanieM." / "GeorgeR." deposited without the space before the middle initial
       given = given.replace(/([a-z\u00DF-\u00F6\u00F8-\u00FF])([A-Z])\.(?=[\s.A-Z]|$)/g, '$1 $2.');
@@ -855,11 +864,14 @@
       if (given && (/^The\s/.test(given) || ORG_FAMILY.test(fam))) return { family: given + ' ' + fam, given: '', suffix: '', literal: true };
       // no given name: a single-field name (organisation, mononym, "The pandas development team")
       if (!given && !suffix) return { family: fam.replace(/,,/g, ','), given: '', suffix: '', literal: true };
-      // "SMITH, JOHN" deposited in capitals: title-case the given name too, but leave initials ("J.D.", "PC") alone
-      if (isCaps(fam) && isCaps(given)) {
+      // "SMITH, JOHN" deposited in capitals: title-case the given name too, but leave initials ("J.D.", "PC") alone.  Beside a
+      // mixed-case family ("Smith", "IAN") a word with a vowel is a name, not three initials; a two-letter token ("AL") is initials
+      if (isCaps(given)) {
+        var famCaps = isCaps(fam);
         given = given.split(/\s+/).map(function (tok) {
           if (/\./.test(tok)) return tok;                       // "J.D."
           if (/^[A-Z]{1,3}$/.test(tok) && !/[AEIOUY]/.test(tok)) return tok; // "PC", "JD"
+          if (!famCaps && tok.length < 3) return tok;         // "AL" beside "Smith"
           return uncaps(tok);                                   // "IAN", "JOHN"
         }).join(' ');
       }
@@ -873,8 +885,6 @@
     'August', 'September', 'October', 'November', 'December'];
   var MONTHS_ABBR = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.',
     'Sep.', 'Oct.', 'Nov.', 'Dec.'];
-  var MONTHS_IEEE = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'Jun.', 'Jul.', 'Aug.', // IEEE Reference Guide (2025): three letters, May unabbreviated
-    'Sep.', 'Oct.', 'Nov.', 'Dec.'];
   var MONTHS_MLA = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.']; // MLA Handbook: four-letter months spelled out
   var MONTHS_NLM = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];                  // Citing Medicine: three letters, no period
   // A date with a month but no day is an issue date (PMLA, January 2013); one with a day is usually the online
@@ -882,6 +892,7 @@
   function issueMonth(r) { return r.month && !r.day ? r.month : 0; }
   function longDate(r) { return r.year ? (r.month ? MONTHS[r.month - 1] + (r.day ? ' ' + r.day : '') + ', ' : '') + r.year : ''; } // "January 9, 2020" / "July 2018" / "2018"
   function accessedDate(r) { var a = r.accessed; return a && a.year ? (a.month ? MONTHS[a.month - 1] + (a.day ? ' ' + a.day : '') + ', ' : '') + a.year : ''; }
+  function accessedDateUK(r) { var a = r.accessed; return a && a.year ? (a.month ? (a.day ? a.day + ' ' : '') + MONTHS[a.month - 1] + ' ' : '') + a.year : ''; } // "22 June 2023" (Cite Them Right)
   var ORDINAL_WORDS = ['', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 
   /* ---------- normalize ---------- */
@@ -964,7 +975,8 @@
   ];
   function preprintServerOf(doi) { if (!doi) return ''; for (var i = 0; i < PREPRINT_DOI.length; i++) if (PREPRINT_DOI[i][0].test(doi)) return PREPRINT_DOI[i][1]; return ''; }
 
-  function hasName(p) { return !!(p.family || p.given); }
+  var MASTERS_RE = /m\.?\s?[as]\.?|master/i; // a dissertation's degree or genre naming a master's degree: "MSc", "M.A.", "Master's thesis"
+  function hasName(p) { return !!p.family; } // person() puts a single-field name in family too
   // author / editor as deposited: a list of people; null entries and non-lists ("Smith", {}) are not people
   function people(v) {
     return (Array.isArray(v) ? v : []).filter(function (p) { return p && typeof p === 'object'; }).map(person).filter(hasName);
@@ -973,7 +985,8 @@
   function cleanDoi(d) {
     if (Array.isArray(d)) d = d[0];
     if (typeof d !== 'string') return '';
-    return d.replace(TAG_RE, '').replace(/^\s+|\s+$/g, '').replace(/[.,;]+$/, '').replace(/\s+$/, '');
+    d = trimTail(d.replace(TAG_RE, '').replace(/^\s+/, ''), /\s/);
+    return trimTail(trimTail(d, /[.,;]/), /\s/);
   }
   // First value of a tag kept from an imported file, for a record that did not come through the parsers' field mapping
   function rawTagOf(m, src, tags, src2, tags2) {
@@ -1117,10 +1130,12 @@
     if (!given) return '';
     // "J.-P." stays one token; "P.C." becomes two
     var tokens = given.replace(/\.(?![\-\u2010\u2011])/g, '. ').split(/\s+/).filter(Boolean);
-    var out = [];
+    var out = [], whole = [];
     tokens.forEach(function (tok) {
       tok = tok.replace(/\.+$/, '').replace(/^[\-\u2010\u2011]+|[\-\u2010\u2011]+$/g, '');
       if (!tok || /^(?:&|and)$/i.test(tok)) return; // "J & K" -> "J. K.": the conjunction is not an initial
+      // a script without letter case (Hangul, kana, CJK, Arabic, Hebrew, Devanagari, Thai) has no initials: the name is kept whole
+      if (/[^\x00-\x7F]/.test(tok) && tok === tok.toUpperCase() && tok === tok.toLowerCase()) { whole[out.length] = true; out.push(tok); return; }
       // "PC" style compressed initials
       if (/^[A-Z\u00C0-\u00D6\u00D8-\u00DE]{2,3}$/.test(tok)) {
         tok.split('').forEach(function (ch) { out.push(ch); });
@@ -1129,8 +1144,8 @@
       var parts = tok.split(/[\-\u2010\u2011]/).filter(Boolean).map(function (p) { return p.replace(/\./g, '').charAt(0).toUpperCase(); });
       if (parts.length) out.push(parts.join(opts.dots === false ? '-' : '.-'));
     });
-    if (opts.dots === false) return out.join('');
-    return out.map(function (x) { return x + '.'; }).join(opts.space === false ? '' : ' ');
+    if (opts.dots === false) return out.join(whole.length ? ' ' : '');
+    return out.map(function (x, i) { return whole[i] ? x : x + '.'; }).join(opts.space === false && !whole.length ? '' : ' ');
   }
 
   function sfx(p) { return p.suffix ? ', ' + p.suffix : ''; }
@@ -1169,7 +1184,6 @@
   /* ---------- pages ---------- */
 
   function enDash(pages) { return pages.replace(/\s*[-–—]+\s*/g, '–'); }
-  function pageRange(pages) { var p = enDash(pages); return p; }
   function isRange(pages) { return /[-–—]/.test(pages); }
   function nlmPages(pages) { // 123-129 -> 123-9
     var m = pages.match(/^(\d+)\s*[-–—]\s*(\d+)$/);
@@ -1201,15 +1215,15 @@
   function hostOf(r) { return r.container || r.institution || r.publisher; } // preprint server, repository, publisher
   // publisher shown after the host only when it is a distinct entity (a book's publisher), not the repository owner
   function showPublisher(r, k) { return k !== 'journal' && !!r.publisher && !(r.institution && !r.container) && r.publisher !== hostOf(r); }
-  function pp(pages) { return (isRange(pages) ? 'pp. ' : 'p. ') + pageRange(pages); }
+  function pp(pages) { return (isRange(pages) ? 'pp. ' : 'p. ') + enDash(pages); }
 
-  // "3" -> "3rd ed." (APA/IEEE) or "Third Edition" (Carnegie); text editions pass through
+  // "3" -> "3rd ed." (APA/IEEE), "3rd edn." (Harvard, Cite Them Right) or "Third Edition" (Carnegie); text editions pass through
   function editionLabel(ed, style) {
     var n = parseInt(ed, 10);
     if (!isNaN(n) && /^\d+(st|nd|rd|th)?\.?$/i.test(ed.trim())) {
       if (style === 'carnegie') return (ORDINAL_WORDS[n] || n + 'th') + ' Edition';
       var suf = (n % 100 >= 11 && n % 100 <= 13) ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th';
-      return n + suf + ' ed.';
+      return n + suf + (style === 'harvard' ? ' edn.' : ' ed.');
     }
     return /edition|ed\./i.test(ed) ? ed : ed + (style === 'carnegie' ? ' Edition' : ' ed.');
   }
@@ -1225,6 +1239,7 @@
   }
   function apa(r) {
     var k = kind(r);
+    var isAuthor = function (name) { return r.authors.some(function (p) { return p.literal && p.family.toLowerCase() === String(name).toLowerCase(); }); };
     var names = r.authorsOthers && r.authors.length ? r.authors.map(function (p) { return nameLastInit(p); }).join(', ') + ', et al.' : apaNames(r.authors);
     if (!names && r.editors.length) names = apaNames(r.editors) + (r.editors.length > 1 ? ' (Eds.)' : ' (Ed.)'); // edited book
     var n = names ? 1 : 0;
@@ -1236,7 +1251,7 @@
     else if (r.issue) vol = '(' + T(r.issue) + ')';
 
     if (k === 'journal') {
-      var src = [I(r.container), vol, r.pages ? (r.isArticleNumber ? 'Article ' : '') + T(pageRange(r.pages)) : ''].filter(Boolean).join(', ');
+      var src = [I(r.container), vol, r.pages ? (r.isArticleNumber ? 'Article ' : '') + T(enDash(r.pages)) : ''].filter(Boolean).join(', ');
       if (n) out.push(T(dot(names)), year, T(dot(r.title)));
       else out.push(T(dot(r.title)), year);
       if (src) out.push(src + '.');
@@ -1250,16 +1265,17 @@
       if (r.publisher) out.push(T(dot(r.publisher)));
     } else if (k === 'book') {
       var ed = validEdition(r.edition) ? ' (' + T(editionLabel(r.edition, 'apa')) + ')' : '';
-      if (n) out.push(T(dot(names)), year, I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''));
-      else out.push(I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : ''), year);
-      if (r.publisher) out.push(T(dot(r.publisher)));
+      var bookTitle = r.title ? I(r.title) + ed + (ed || !endsPunct(r.title) ? '.' : '') : ed ? ed.replace(/^ /, '') + '.' : ''; // no title: no bare full stop
+      if (n) out.push(T(dot(names)), year, bookTitle);
+      else out.push(bookTitle, year);
+      if (r.publisher && !isAuthor(r.publisher)) out.push(T(dot(r.publisher)));
     } else {
       // APA 7 examples: a preprint and a report carry no bracketed label; a report number and a dissertation's
       // publication number sit in parentheses after the title; the archive or database follows the bracket
       var label = { dataset: 'Data set', software: 'Computer software' }[k];
       var host = hostOf(r), pre = '', archive = '';
       if (k === 'thesis') {
-        var deg = /m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
+        var deg = MASTERS_RE.test(r.genre) ? "Master's thesis" : 'Doctoral dissertation';
         var school = r.institution || r.publisher || r.container;
         label = T(deg + (school ? ', ' + school : '')); host = '';
         archive = r.publisher && r.publisher !== school ? r.publisher : r.database; // "ProQuest Dissertations & Theses Global", "UA Campus Repository"
@@ -1269,7 +1285,7 @@
       var titlePart = !r.title && !label && !pre ? '' : I(r.title) + pre + (label ? ' [' + label + ']' : '') + (label || pre || !endsPunct(r.title) ? '.' : '');
       if (n) out.push(T(dot(names)), year, titlePart);
       else out.push(titlePart, year);
-      if (host) out.push(T(dot(host)));
+      if (host && !isAuthor(host)) out.push(T(dot(host))); // APA 7 (9.24, 10.16): the site or publisher is omitted when it is the author
       if (archive) out.push(T(dot(archive)));
       if (k === 'web' && link && accessedDate(r)) { out.push('Retrieved ' + accessedDate(r) + ', from ' + T(link)); link = ''; } // content that changes: the page recorded when it was read
     }
@@ -1285,14 +1301,15 @@
     else if (n === 2) names = nameLastFull(r.authors[0]) + ', and ' + nameFullFirst(r.authors[1]);
     else if (n >= 3) names = nameLastFull(r.authors[0]) + ', et al';
     if (r.authorsOthers && n) names = nameLastFull(r.authors[0]) + ', et al';
-    // MLA 9: a work with an editor but no author begins with its title; the editor follows in the container
-    // ("Beowulf. Edited by Sarah Anderson, Pearson, 2004."), unless it is a book chapter, where "edited by" already follows the book
+    // MLA 9: an edited book with no author begins with its editor ("Sánchez Prado, Ignacio M., editor."); a book with both keeps its
+    // author and names the editor in the container ("Austen, Jane. Emma. Edited by R. W. Chapman, Oxford UP, 1988."); any other
+    // work with an editor but no author begins with its title and the editor follows in the container. A chapter's "edited by" already follows the book
     var editedBy = '';
-    if (!names && r.editors.length) {
+    if (r.editors.length) {
       var ne = r.editors.length, edList = ne > 2 ? nameFullFirst(r.editors[0]) + ' et al.' : joinAnd(r.editors.map(nameFullFirst), 'and', false);
-      if (r.type === 'edited-book' || k === 'chapter' || k === 'proceedings') // an edited collection: "Sánchez Prado, Ignacio M., editor."
+      if (!names && (k === 'book' || k === 'chapter' || k === 'proceedings'))
         names = (ne === 1 ? nameLastFull(r.editors[0]) : ne === 2 ? nameLastFull(r.editors[0]) + ', and ' + nameFullFirst(r.editors[1]) : nameLastFull(r.editors[0]) + ', et al') + (ne > 1 ? ', editors' : ', editor');
-      else editedBy = 'Edited by ' + T(edList);
+      else if (!names || k === 'book') editedBy = 'Edited by ' + T(edList);
     }
     var out = [];
     if (names) out.push(T(dot(names)));
@@ -1355,25 +1372,25 @@
       if (r.volume) s += ' ' + T(r.volume);
       if (r.issue) s += ', no. ' + T(r.issue);
       s += ' (' + (r.year ? (issueMonth(r) ? MONTHS[issueMonth(r) - 1] + ' ' : '') + T(r.year) : 'n.d.') + ')'; // "111, no. 2 (April 2016)"; an undated article "(n.d.)"
-      if (r.pages) s += ': ' + T(pageRange(r.pages));
+      if (r.pages) s += ': ' + T(enDash(r.pages));
       s = s.replace(/^[\s,]+/, '');
       if (s) out.push(htmlDot(s));
     } else if (k === 'book') {
-      out.push(Idot(validEdition(r.edition) ? dot(r.title) + ' ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : r.title)); // no "Politics?. 2nd ed"
+      out.push(Idot(r.title) + (validEdition(r.edition) ? ' ' + T(dot(editionLabel(r.edition, 'apa'))) : '')); // the edition is roman, after the italic title
       var pub = [r.place, r.publisher].filter(Boolean).join(': ');
       out.push(T(dot([pub, r.year || 'n.d.'].filter(Boolean).join(', '))));
     } else if (k === 'chapter' || k === 'proceedings') {
       out.push('“' + T(dot(r.title)) + '”');
       var inp = r.container ? 'In ' + I(r.container) : '';
       if (r.editors.length) inp += (inp ? ', edited by ' : 'Edited by ') + T(joinAnd(r.editors.map(nameFullFirst), 'and', r.editors.length > 2));
-      if (r.pages) inp += (inp ? ', ' : '') + T(pageRange(r.pages));
+      if (r.pages) inp += (inp ? ', ' : '') + T(enDash(r.pages));
       if (inp) out.push(htmlDot(inp));
       var pub2 = [r.place, r.publisher].filter(Boolean).join(': ');
       out.push(T(dot([pub2, r.year || 'n.d.'].filter(Boolean).join(', '))));
     } else {
       out.push('“' + T(dot(r.title)) + '”');
       var host = k === 'thesis'
-        ? [/m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') // "PhD diss., University of Chicago, 2013."
+        ? [MASTERS_RE.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') // "PhD diss., University of Chicago, 2013."
         : [hostOf(r), r.year || (k === 'web' && accessedDate(r) ? '' : 'n.d.')].filter(Boolean).join(', '); // an undated page shows its access date instead
       if (host) out.push(T(dot(host)));
       if (k === 'web' && !r.year && accessedDate(r)) out.push('Accessed ' + accessedDate(r) + '.'); // an undated page is cited by the day it was read
@@ -1385,16 +1402,25 @@
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
+  // Harvard as Cite Them Right (Pears and Shields, 12th edn, 2022) prints it, checked against the university guides that reprint its
+  // examples (tests/golden-styleguides.test.js): "Author, A.B. and Author, C. (Year) ‘Title’, Journal, vol(issue), pp. x–y. Available at:
+  // link (Accessed: day Month year)." A whole work (book, report, thesis, web page) has its title in italics; a book's edition follows
+  // the title after a comma ("4th edn."); a chapter's editors are written initials first with "(ed.)" or "(eds)" (no stop: a contraction);
+  // the link takes no final stop, the accessed date in parentheses does
   function harvard(r) {
     var k = kind(r);
     var n = r.authors.length;
     var hn = function (p) { if (p.literal) return p.family; var ini = initials(p.given, { space: false }); return p.family + (ini ? ', ' + ini : ''); }; // a given name of only nicknames has no initials
-    var hlist = function (people) {
+    var hf = function (p) { if (p.literal) return p.family; var ini = initials(p.given, { space: false }); return (ini ? ini + ' ' : '') + p.family; };    // "M. Pecht", for editors
+    var hlist = function (people, fn) {
+      fn = fn || hn;
       var m = people.length;
-      return m === 1 ? hn(people[0]) : m <= 3 ? joinAnd(people.map(hn), 'and', false) : hn(people[0]) + ' et al.';
+      return m === 1 ? fn(people[0]) : m <= 3 ? joinAnd(people.map(fn), 'and', false) : fn(people[0]) + ' et al.';
     };
+    var edsLabel = function (m) { return m > 1 ? ' (eds)' : ' (ed.)'; };
     var names = n ? (r.authorsOthers ? hn(r.authors[0]) + ' et al.' : hlist(r.authors)) : '';
-    if (!names && r.editors.length) names = hlist(r.editors) + (r.editors.length > 1 ? ' (eds.)' : ' (ed.)');
+    if (!names && r.editors.length) names = hlist(r.editors) + edsLabel(r.editors.length);
+    if (!names && k === 'web' && r.container) names = r.container; // a page with no author is cited by its site
     var out = [];
     var year = '(' + (r.year || 'no date') + ')';
     var link = doiLink(r);
@@ -1402,26 +1428,38 @@
     else out.push(year);
     var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
-      out.push(Idot(validEdition(r.edition) ? dot(r.title) + ' ' + editionLabel(r.edition, 'apa').replace(/\.$/, '') : r.title)); // no "Politics?. 2nd ed"
+      out.push(validEdition(r.edition) ? I(r.title) + ', ' + T(dot(editionLabel(r.edition, 'harvard'))) : Idot(r.title)); // "How to research, 4th edn."
       if (placePub) out.push(T(dot(placePub)));
     } else if (k === 'chapter' || k === 'proceedings') {
-      // Cite Them Right: 'Title', in Editor, A. and Editor, B. (eds.) Book. Place: Publisher, pp. x–y.
+      // Cite Them Right: 'Title', in A. Editor and B. Editor (eds) Book. Place: Publisher, pp. x–y.
       if (r.container) {
-        var inb = 'in ' + (r.editors.length ? T(hlist(r.editors)) + (r.editors.length > 1 ? ' (eds.) ' : ' (ed.) ') : '') + Idot(r.container);
+        var inb = 'in ' + (r.editors.length ? T(hlist(r.editors, hf)) + edsLabel(r.editors.length) + ' ' : '') + Idot(r.container);
         out.push('‘' + T(r.title) + '’, ' + inb);
       } else out.push('‘' + T(r.title) + '’.');
       var tail = [placePub, r.pages ? T(pp(r.pages)) : ''].filter(Boolean).join(', ');
       if (tail) out.push(T(dot(tail)));
+    } else if (k === 'thesis') {
+      // "Title. PhD thesis. University." — the degree as the record gives it ("MSc", "Ph.D.", "PhD thesis"), a doctorate when it gives none;
+      // "Unpublished" is not added: the record does not say whether the thesis was published
+      var degree = r.genre.replace(/^ph\.?\s?d\.?$/i, 'PhD');
+      out.push(Idot(r.title), T(dot(/thesis|dissertation/i.test(degree) ? degree : (degree || 'PhD') + ' thesis')));
+      var school = r.institution || r.publisher;
+      if (school) out.push(T(dot(school)));
+    } else if (k === 'report' || k === 'web') {
+      // "Organisation (Year) Title of report. Place: Publisher." / "Author (Year) Title of page. Available at: URL (Accessed: date)."
+      out.push(Idot(r.title));
+      var rp = k === 'report' ? [r.place, r.publisher || r.institution].filter(Boolean).join(': ') : '';
+      if (rp) out.push(T(dot(rp)));
     } else {
       var parts = ['‘' + T(r.title) + '’'];
       if (r.container) parts.push(I(r.container));
       else if (k !== 'journal' && hostOf(r)) parts.push(T(hostOf(r)));
       if (r.volume || r.issue) parts.push(T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : ''));
       if (showPublisher(r, k)) parts.push(T(r.publisher));
-      if (r.pages) parts.push(T(pp(r.pages)));
+      if (r.pages) parts.push(r.isArticleNumber ? 'article ' + T(r.pages) : T(pp(r.pages))); // "11, article 1157"
       out.push(htmlDot(parts.join(', ')));
     }
-    if (link) out.push('Available at: ' + T(link) + '.');
+    if (link) out.push('Available at: ' + T(link) + (accessedDateUK(r) ? ' (Accessed: ' + accessedDateUK(r) + ').' : ''));
     return out.filter(Boolean).join(' '); // an empty part must not leave a double space
   }
 
@@ -1445,7 +1483,7 @@
       var when = r.year ? r.year + (r.month ? ' ' + MONTHS_NLM[r.month - 1] + (r.day ? ' ' + r.day : '') : '') : '';
       var volIss = r.volume ? ';' + T(r.volume) + (r.issue ? '(' + T(r.issue) + ')' : '') : (r.issue ? ';' + (/^\d+$/.test(r.issue) ? '(' + T(r.issue) + ')' : T(r.issue)) : '');
       var tail = when + volIss + (r.pages ? ':' + T(nlmPages(r.pages)) : '');
-      if (tail) s += (s ? ' ' : '') + tail.replace(/^;/, '');
+      if (tail) s += (s ? ' ' : '') + tail.replace(/^[;:]/, ''); // no year and no volume: the pages alone, not ":123-9"
       if (s) out.push(s + (endsPunct(s) && !tail ? '' : '.'));   // no journal name, no volume: nothing to add
     } else if (k === 'book') {
       if (validEdition(r.edition)) out.push(T(editionLabel(r.edition, 'apa')));
@@ -1479,7 +1517,7 @@
     var out = [];
     if (num) out.push('[' + num + ']');
     if (names) out.push(T(names) + ',');
-    var mon = monthName(MONTHS_IEEE, r.month); mon = mon ? mon + ' ' : '';
+    var mon = monthName(MONTHS_ABBR, r.month); mon = mon ? mon + ' ' : ''; // IEEE Reference Guide (2025): three letters, May unabbreviated
     var link = doiLink(r);
     var placePub = [r.place, r.publisher].filter(Boolean).join(': ');
     if (k === 'book') {
@@ -1612,7 +1650,7 @@
    * number in a numbered list (Vancouver, IEEE), 1 when a single reference is shown. */
   var ET_AL_FROM = { apa: 3, mla: 3, harvard: 4, chicago: 4, carnegie: 3 }; // the list length from which only the first name is given
   function citedPeople(r) { return r.authors.length ? r.authors : r.editors; }
-  function famOf(p) { return p.family + (p.literal ? '' : ''); }
+  function famOf(p) { return p.family; }
   // "Smith", "Smith and Jones", "Smith, Jones, and Lee", "Smith et al."
   function whoOf(r, style, and, oxford) {
     var people = citedPeople(r), fam = people.map(famOf), lim = ET_AL_FROM[style] || 3;
@@ -1631,7 +1669,7 @@
   function shortTitleOf(r) { return wholeWork(r) ? shortTitle(r) : '\u201C' + shortTitle(r) + '\u201D'; }
   function locOf(pages, form) { // "p. 45" / "pp. 45–47" / "45–47"
     var p = String(pages || '').trim(); if (!p) return '';
-    return form === 'bare' ? pageRange(p) : pp(p);
+    return form === 'bare' ? enDash(p) : pp(p);
   }
   function apaInText(r, opts) {
     var who = whoOf(r, 'apa', '&') || shortTitleOf(r), whoN = whoOf(r, 'apa', 'and') || shortTitleOf(r);
@@ -1642,10 +1680,10 @@
     var who = whoOf(r, 'mla', 'and') || shortTitleOf(r);
     return { paren: '(' + who + (opts.pages ? ' ' + locOf(opts.pages, 'bare') : '') + ')' };
   }
-  function harvardInText(r, opts) {
+  function harvardInText(r, opts) { // Cite Them Right 12th edn: "(Author and Author, Year, p. 5)"
     var who = whoOf(r, 'harvard', 'and') || shortTitleOf(r);
     var when = (r.year || 'no date') + (opts.pages ? ', ' + locOf(opts.pages) : '');
-    return { paren: '(' + who + ' ' + when + ')', narrative: who + ' (' + when + ')' };
+    return { paren: '(' + who + ', ' + when + ')', narrative: who + ' (' + when + ')' };
   }
   function vancouverInText(r, opts) { return { paren: '(' + (opts.n || 1) + ')' }; }
   function ieeeInText(r, opts) { return { paren: '[' + (opts.n || 1) + (opts.pages ? ', ' + locOf(opts.pages) : '') + ']' }; }
@@ -1662,7 +1700,7 @@
     var out = [], parts;
     if (k === 'journal') {
       var s = (r.container || '') + (r.volume ? ' ' + r.volume : '') + (r.issue ? ', no. ' + r.issue : '') + ' (' + (r.year ? (issueMonth(r) ? MONTHS[issueMonth(r) - 1] + ' ' : '') + r.year : 'n.d.') + ')';
-      var pg = loc ? loc + (r.isArticleNumber && r.pages ? ', ' + r.pages : '') : (r.pages ? pageRange(r.pages) : '');
+      var pg = loc ? loc + (r.isArticleNumber && r.pages ? ', ' + r.pages : '') : (r.pages ? enDash(r.pages) : '');
       if (pg) s += ': ' + pg;
       out = [names, quoted(title, true) + ' ' + s.replace(/^\s+/, '')];
       if (tail) out.push(tail);
@@ -1674,9 +1712,9 @@
       var inp = r.container ? 'in ' + r.container : '';
       if (r.editors.length && !edited) inp += (inp ? ', ed. ' : 'ed. ') + joinAnd(r.editors.map(nameFullFirst), 'and', r.editors.length > 2);
       out = [names, quoted(title, true) + (inp ? ' ' + inp : '') + ' (' + [pub, r.year || 'n.d.'].filter(Boolean).join(', ') + ')'];
-      var cp = loc || (r.pages ? pageRange(r.pages) : ''); if (cp) out.push(cp); if (tail) out.push(tail);
+      var cp = loc || (r.pages ? enDash(r.pages) : ''); if (cp) out.push(cp); if (tail) out.push(tail);
     } else if (k === 'thesis') {
-      out = [names, quoted(title) + ' (' + [/m\.?\s?[as]\.?|master/i.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') + ')'];
+      out = [names, quoted(title) + ' (' + [MASTERS_RE.test(r.genre) ? "Master's thesis" : 'PhD diss.', r.institution || r.publisher, r.year].filter(Boolean).join(', ') + ')'];
       if (loc) out.push(loc); if (tail) out.push(tail);
     } else if (k === 'web') {
       var org = citedPeople(r).length && citedPeople(r)[0].literal; // an organisation follows the site name; a person leads
@@ -1697,7 +1735,7 @@
   }
   function carnegieInText(r, opts) {
     opts = opts || {};
-    var fam = r.authors.map(function (p) { return p.family; });
+    var fam = citedPeople(r).map(famOf); // the editors of an edited book stand in for its authors, as in the reference
     var who = fam.length === 0 ? (r.container || 'Anon.') : fam.length === 1 ? fam[0] : fam.length === 2 ? fam[0] + ' and ' + fam[1] : fam[0] + ' et al.';
     return '(' + who + ' ' + (r.year || 'n.d.') + (opts.pages ? ':' + locOf(opts.pages, 'bare') : '') + ')';
   }
@@ -1716,7 +1754,7 @@
     'ð': 'd', 'Ð': 'D', 'þ': 'th', 'Þ': 'Th', 'ı': 'i' };
   function foldAscii(s) { // letters folded, everything else kept: "García" -> "Garcia", "Schrödinger" -> "Schrodinger"
     var t = String(s || '').replace(/[ßæÆœŒøØłŁđĐðÐþÞı]/g, function (c) { return ASCII_LETTERS[c]; });
-    if (t.normalize) t = t.normalize('NFD');
+    if (t.normalize) t = t.normalize('NFKD'); // compatibility forms too: the ligatures a PDF leaves ("\uFB01eld"), fullwidth letters
     return t.replace(/[\u0300-\u036f]/g, '');
   }
   function toAscii(s) { return foldAscii(s).replace(/[^A-Za-z0-9]/g, ''); }
@@ -1783,10 +1821,10 @@
   function bibtex(r) {
     var k = kind(r);
     var type = { journal: 'article', chapter: 'incollection', book: 'book', proceedings: 'inproceedings',
-      thesis: 'phdthesis', report: 'techreport' }[k] || 'misc';
+      thesis: MASTERS_RE.test(r.genre) ? 'mastersthesis' : 'phdthesis', report: 'techreport' }[k] || 'misc';
     var f = [];
     var add = function (key, val, raw) { if (val) f.push('  ' + key + ' = ' + (raw === 'bare' ? val : '{' + (raw ? val : bibEsc(val)) + '}')); };
-    f.push('  title = {' + bibProtect(marksToLatex(bibEsc(r.title))) + '}');
+    if (r.title) f.push('  title = {' + bibProtect(marksToLatex(bibEsc(r.title))) + '}');
     add('author', r.authors.map(bibName).join(' and '), true);
     add('editor', r.editors.map(bibName).join(' and '), true);
     if (k === 'journal') add('journal', r.container);
@@ -1959,13 +1997,44 @@
     r.accessed = r.accessed && typeof r.accessed === 'object' && /^\d{4}$/.test(String(r.accessed.year)) ? { year: Number(r.accessed.year), month: r.accessed.month > 0 && r.accessed.month <= 12 ? Number(r.accessed.month) : 0, day: r.accessed.day > 0 && r.accessed.day <= 31 ? Number(r.accessed.day) : 0 } : null;
     return r;
   }
-  function format(record, styleId, num) {
+  // Author-date styles tell two works by the same first author in the same year apart with a letter on the year: (Smith, 2020a) and
+  // (Smith, 2020b), the letters following the order of the reference list, which is alphabetical by title (APA 7 8.19, 9.47; Cite Them
+  // Right; the Carnegie guide).  One letter per record, aligned with the input: '' when the author and year are unique or the record
+  // has no year, since "n.d." takes no letter here.  A leading "A", "An" or "The" does not count in the ordering
+  function yearSuffixes(records) {
+    var rs = (Array.isArray(records) ? records : []).map(function (m) { m = m || {}; return harden(m.authors ? m : normalize(m)); });
+    var groups = {}, out = [];
+    rs.forEach(function (r, i) {
+      out[i] = '';
+      var who = citedPeople(r), year = (r.year.match(/^\d{4}/) || [''])[0];
+      if (!who.length || !year) return;
+      var key = foldAscii(who[0].family).toLowerCase() + '|' + year;
+      (groups[key] = groups[key] || []).push(i);
+    });
+    var sortKey = function (i) { return marksToText(rs[i].title || '').toLowerCase().replace(/^\s*(?:a|an|the)\s+/, ''); };
+    Object.keys(groups).forEach(function (key) {
+      var idx = groups[key];
+      if (idx.length < 2) return;
+      idx.sort(function (a, b) { var x = sortKey(a), y = sortKey(b); return x < y ? -1 : x > y ? 1 : a - b; }); // ties keep the input order
+      idx.forEach(function (i, n) { var letters = ''; do { letters = String.fromCharCode(97 + n % 26) + letters; n = Math.floor(n / 26) - 1; } while (n >= 0); out[i] = letters; });
+    });
+    return out;
+  }
+  var YEAR_SUFFIX_STYLES = { apa: 1, harvard: 1, carnegie: 1 }; // the author-date styles; MLA cites by title, Chicago here is notes, numeric styles count
+  function withYearSuffix(r, styleId, opts) {
+    var sfx = opts && opts.yearSuffix ? String(opts.yearSuffix).replace(/[^a-z]/gi, '').toLowerCase() : '';
+    if (sfx && YEAR_SUFFIX_STYLES[styleId] && /^\d{4}/.test(r.year)) r.year = r.year.slice(0, 4) + sfx; // a letter the record already carries is replaced
+    return r;
+  }
+  // opts: the entry's number in a numbered list (a bare number, as before) or { n, yearSuffix }
+  function format(record, styleId, opts) {
     record = record || {};
-    var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
+    var o = opts && typeof opts === 'object' ? opts : { n: opts };
+    var r = withYearSuffix(withDisplayTitle(harden(record.authors ? record : normalize(record))), styleId, o);
     var all = STYLES.concat(EXPORTS);
     for (var i = 0; i < all.length; i++) {
       if (all[i].id === styleId) {
-        var out = all[i].fn(r, num);
+        var out = all[i].fn(r, o.n);
         return (all[i].rich ? stripTags(out) : out).replace(ANY_PUA, '');
       }
     }
@@ -1975,10 +2044,11 @@
   // The renderers emit exactly these tags; any other "<" in the output is text and is escaped (a last line of defence
   // behind esc(): a field that somehow carried markup cannot become an element in the page)
   var HTML_ALLOWED = /<(?!\/?(?:i|sub|sup|span)>|span style="font-style:normal">)/g;
-  function formatHtml(record, styleId, num) {
+  function formatHtml(record, styleId, opts) {
     record = record || {};
-    var r = withDisplayTitle(harden(record.authors ? record : normalize(record)));
-    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, num).replace(HTML_ALLOWED, '&lt;').replace(ANY_PUA, '');
+    var o = opts && typeof opts === 'object' ? opts : { n: opts };
+    var r = withYearSuffix(withDisplayTitle(harden(record.authors ? record : normalize(record))), styleId, o);
+    for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId) return STYLES[i].fn(r, o.n).replace(HTML_ALLOWED, '&lt;').replace(ANY_PUA, '');
     throw new Error('Unknown text style: ' + styleId);
   }
 
@@ -2066,6 +2136,14 @@
     for (i = 0; i < words.length; i++) if (words[i].some(function (w) { return wordFound(w, i, flat, hay, haySet); })) hit++;
     return hit / words.length;
   }
+  // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
+  var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
+  // A reply, discussion, closure or letter carries the paper's title with a tag at one end: "Title: Reply", "Title\u2014In Reply",
+  // "Title (Discussion)", "Letter: Title", "Discussion of \u201CTitle\u201D", "Closure to \u201CTitle\u201D by \u2026".  The tail form must end the
+  // sentence, so "Energy policy: discussion and analysis" is a title
+  var NOTICE_TAIL = /(?:[\u2014\u2013:(]|\s-)\s*(?:in\s+)?(?:reply|discussion|closure|letter)\b(?:\s+(?:to|by|on)\b[^.;]*)?\)?\s*(?:[.;]\s|[.;]?\s*$)/i;
+  var NOTICE_LEAD = /^\s*(?:letter\s*:|discussion\s+(?:of|on)\b|closure\s+(?:to|of)\b|in\s+reply\b)/i;
+  function isNotice(t) { t = String(t || ''); return NOTICE.test(t) || NOTICE_LEAD.test(t) || NOTICE_TAIL.test(t); }
   // How well does a found record explain the reference text the user pasted? 0..1
   function matchConfidence(refText, record, opts) {
     record = harden(record && record.authors ? record : normalize(record || {}));
@@ -2082,8 +2160,9 @@
     [title, r.originalTitle ? marksToText(r.originalTitle) : ''].forEach(function (t) {
       if (!t) return;
       score = Math.max(score, titleScore(t, hay, haySet));
-      var main = t.split(/:\s+/)[0];
-      if (main !== t && tokens(main).length >= 3) score = Math.max(score, titleScore(main, hay, haySet));
+      var main = t.split(/:\s+/)[0], dropped = t.slice(main.length);
+      // a subtitle may be dropped, but not a notice tag: "Title: Reply" is a reply, not the paper
+      if (main !== t && tokens(main).length >= 3 && !isNotice(dropped) && !isNotice(dropped.replace(/^:\s*/, ''))) score = Math.max(score, titleScore(main, hay, haySet));
     });
     if (opts.titleOnly) return Math.max(0, Math.min(1, score)); // the Find tab has no year or author to check
     // the first person named: an organisation deposited as first author cannot be checked against a name list
@@ -2101,10 +2180,8 @@
       if (!near) score -= 0.35;                                                          // a different year is a different record
       else if (!yearsInRef.some(function (x) { return recYears.indexOf(x) !== -1; })) score -= 0.05; // online vs print year
     } else if (recYears.length) score -= authorOk ? 0.08 : 0.15;                         // no year given: the author carries more weight
-    // Notices about a paper share its title: corrigenda, errata, replies, reviews, recommendations
-    var NOTICE = /^(corrigendum|erratum|errata|correction|retraction|retracted|expression of concern|editorial|reply|authors?['\u2019]?s?\s+reply|response|comment|commentary on|faculty opinions|review of|book review|withdrawn|addendum|author correction|publisher correction|supplementary (?:material|information|data)|supplemental)\b/i;
     // A record Crossref says updates another work is a notice whatever its title; a paper whose own title was prefixed "RETRACTED: " is the paper, flagged on the row
-    if ((NOTICE.test(retractedPaper && !r.updateOf ? title : r.title) || r.updateOf || /^(peer-review|component)$/.test(r.type)) && !NOTICE.test(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
+    if ((isNotice(retractedPaper && !r.updateOf ? title : r.title) || r.updateOf || /^(peer-review|component)$/.test(r.type)) && !isNotice(String(refText).replace(/^[^.]*\.\s*/, ''))) score -= 0.5;
     // A container is never what a reference cites: the journal's own record ("Вестник Пермского университета") shares the journal name with every reference to it
     if (/^(?:journal|journal-issue|journal-volume|book-series|book-set|proceedings-series|report-series|book-track)$/.test(r.type)) score -= 0.5;
     if (!authorOk) score -= 0.15;
@@ -2127,15 +2204,14 @@
       // "15-25" is one page range, not volume 25 and page 15
       var rangeRe = /(\d+)\s*[-\u2013\u2212]\s*(\d+)/g, rg;
       while (volOk && pageOk && (rg = rangeRe.exec(raw))) { var ends = [rg[1], rg[2]]; if (ends.indexOf(String(r.volume)) !== -1 && ends.indexOf(firstPage.replace(/^0+/, '')) !== -1) { volOk = false; } }
-      return { raw: raw, volOk: !!volOk, pageOk: !!pageOk };
+      return { raw: raw, volOk: !!volOk, pageOk: !!pageOk, hasVol: !!r.volume, hasPage: !!firstPage };
     };
-    // A one-word title ("Introduction", "Editorial", "Preface") is found in almost any reference on the subject: it is the record only
-    // when the volume and first page agree too; otherwise it is one to check
-    if (tokens(title).length <= 1 && !r.originalTitle && score > 0.6) { var nn = numbers(); if (!(nn.volOk && nn.pageOk)) score = 0.6; }
-    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
-      var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
+    // The words of the reference that neither the record's authors, its journal, nor the given words explain: of five letters or more,
+    // in the reference's own script, outside links and locators.  What is left is a title the record does not have
+    var unexplained = function (raw, extraKnown) {
       var known = {}; // the record's author names and journal words; whatever else the reference says of five letters or more is a title
       r.authors.forEach(function (p) { tokens(p.family).forEach(function (w) { known[foldSpelling(w)] = 1; }); });
+      (extraKnown || []).forEach(function (w) { known[foldSpelling(w)] = 1; });
       var jwords = tokens(r.container + ' ' + r.shortContainer).filter(function (w) { return w.length >= 4 && !/^\d+$/.test(w); }).map(foldSpelling);
       var ofJournal = function (w) { return jwords.some(function (j) { return j === w || (w.length >= 4 && !STOP_PREFIX.test(w) && j.indexOf(w) === 0); }); }; // "Geophys" abbreviates "Geophysical"; "the" does not abbreviate "Thermochimica"
       // a name the reference writes with initials ("Мохсени Т.И.", "J. Smith") is an author, however the record spells it
@@ -2151,13 +2227,34 @@
       var comparable = function (w) { return total > 0 && scriptOf(w) === refScript && cnt[refScript] >= 0.3 * total; };
       // links, DOIs, EDN codes and the words around locators are not title words
       var hayC = tokens(raw.replace(/https?:\/\/\S+|\b(?:doi|dx\.doi)\S*|10\.\d{4,9}\/\S+|\bEDN:?\s*[A-Z]{6}\b/gi, ' ')), NOT_TITLE = /^(?:https?|suppl|supplement|issue|volume|pages|available|accessed|retrieved|online|cited|article|number)$/;
+      // GOST writes the source after "//" ("Title // Journal. 2005. № 2."): those words name the journal, in whatever language the record has it
+      var srcWords = {}; (raw.match(/\/\/[^.]*/g) || []).forEach(function (seg) { tokens(seg).forEach(function (w) { srcWords[w] = 1; }); });
       var journalSaid = false, leftover = 0;
       hayC.forEach(function (w, i) {
         if (i && /[Ѐ-ӿ]/.test(hayC[i - 1]) && w === translit(hayC[i - 1])) return; // the transliteration the tokeniser adds beside a Cyrillic word
         var f = foldSpelling(translit(w));
         if (ofJournal(w) || ofJournal(f)) { journalSaid = true; return; }
+        if (srcWords[w]) return;
         if (w.length >= 5 && !known[w] && !known[f] && !/^\d+$/.test(w) && !NOT_TITLE.test(w) && comparable(w)) leftover++;
       });
+      return { leftover: leftover, journalSaid: journalSaid, jwords: jwords };
+    };
+    // A short title ("Introduction", "Editorial", "Climate change") is found in almost any reference on the subject: it is the record only
+    // when the DOI agrees, or when the locators the record has (volume, first page; many old records carry only one) agree and the reference
+    // says no more of a title than the record has; a book has no locators, so its publisher named in the reference stands in (a subtitle the
+    // publisher did not deposit is common); otherwise it is one to check
+    var titleToks = tokens(title);
+    if (titleToks.length <= 3 && !r.originalTitle && score > 0.6) {
+      var nn = numbers(), doiSaid = !!r.doi && String(refText).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1;
+      var extra = unexplained(nn.raw, titleToks).leftover, hasLoc = nn.hasVol || nn.hasPage;
+      var locOk = hasLoc && (nn.hasPage ? nn.pageOk : nn.volOk); // the first page, when the record has one; a Russian reference gives the issue and pages and no volume
+      var rawWords = tokens(nn.raw), pubOk = tokens(r.publisher).some(function (w) { return w.length >= 4 && rawWords.indexOf(w) !== -1; });
+      var noLocKind = !hasLoc && !/^(?:journal-article|proceedings-article)$/.test(r.type); // a book or report has no volume or page to agree; an article record without either is thin
+      if (!(doiSaid || (locOk && extra <= titleToks.length) || (noLocKind && (pubOk || extra <= titleToks.length)))) score = 0.6;
+    }
+    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
+      var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
+      var un = unexplained(raw), jwords = un.jwords, journalSaid = un.journalSaid, leftover = un.leftover;
       var journalOk = journalSaid || !jwords.length || leftover === 0; // the journal named, or no journal named at all; an unexplained word may be another journal
       // a line with no title of its own: the same author, year, volume and first page is the same article; three of the four is one to check.
       // A full reference whose title disagrees is a different paper whatever the numbers say, unless the journal agrees too: then check it
@@ -2189,11 +2286,12 @@
     autoFormulas: function (s) { return marksToText(autoFormulas(String(s === undefined || s === null ? '' : s).replace(PUA_RE, ''))); }, // plain text in: no markers
     inText: function (record, styleId, opts) {
       record = record || {};
-      var r = harden(record.authors ? record : normalize(record));
+      var r = withYearSuffix(harden(record.authors ? record : normalize(record)), styleId, opts);
       for (var i = 0; i < STYLES.length; i++) if (STYLES[i].id === styleId && STYLES[i].inText) return STYLES[i].inText(r, opts || {});
       return '';
     },
-    inTextForms: function (record, styleId, opts) { record = record || {}; return inTextForms(harden(record.authors ? record : normalize(record)), styleId, opts); },
+    inTextForms: function (record, styleId, opts) { record = record || {}; return inTextForms(withYearSuffix(harden(record.authors ? record : normalize(record)), styleId, opts), styleId, opts); },
+    yearSuffixes: yearSuffixes,
     matchConfidence: matchConfidence,
     STYLES: STYLES,
     EXPORTS: EXPORTS

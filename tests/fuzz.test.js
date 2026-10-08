@@ -109,6 +109,23 @@ for (var r2 = 0; r2 < 4; r2++) {
   timed('formulas ' + c[0], function () { return A.autoFormulas(c[1]); }, 1500);
 });
 
+// 2c. Every entry point on 100 KB of one repeated character, in under 200 ms each: an unclosed "(" in an ISSN field,
+// a run of nested \textsubscript{ and a run of unmatched \( were quadratic or overflowed the stack
+var WORDS = require(path.join(ROOT, 'data', 'common-words.js'));
+['(', '{', '\\(', '\\textsubscript{', '.', ' ', 'a'].forEach(function (ch) {
+  var big = ''; while (big.length < 100 * 1024) big += ch; big = big.slice(0, 100 * 1024);
+  var lab = ' on 100 KB of ' + JSON.stringify(ch);
+  timed('parseRIS (SN, DA, AU)' + lab, function () { return P.parseRIS('TY  - JOUR\nTI  - T\nSN  - ' + big + '\nDA  - ' + big + '\nAU  - ' + big + '\nER  - '); }, 200);
+  timed('parseENW (%@, %D, %A)' + lab, function () { return P.parseENW('%0 Journal Article\n%T T\n%@ ' + big + '\n%D ' + big + '\n%A ' + big + '\n'); }, 200);
+  timed('parseBibTeX (title, isbn, date, author)' + lab, function () { return P.parseBibTeX('@article{k, title={' + big + '}, isbn={' + big + '}, date={' + big + '}, author={' + big + '}}'); }, 200);
+  timed('parseMixed' + lab, function () { return P.parseMixed(big); }, 200);
+  timed('parseDate' + lab, function () { return P.parseDate(big); }, 200);
+  timed('deLatex' + lab, function () { P.deLatex(big); return P.deLatex(big, true); }, 200);
+  timed('toSentenceCase' + lab, function () { return S.toSentenceCase(big, { words: WORDS }); }, 200);
+  timed('toTitleCase' + lab, function () { return S.toTitleCase(big, { words: WORDS }); }, 200);
+  timed('fromAllCaps' + lab, function () { return S.fromAllCaps(big, WORDS); }, 200);
+});
+
 // 3. Records with hostile field values through every style and export
 var HOSTILE = ['', null, undefined, 0, 1e21, -1, NaN, true, [], {}, ['a', 'b'], { a: 1 }, '<script>alert(1)</script>', '<img src=x onerror=alert(1)>', '&lt;i&gt;x&lt;/i&gt;', '', '\u0000', '‮evil', 'A'.repeat(10000), '  ', '\n\n', '..', ',,', '&&', '%s%s%n', '{}', '${x}', '<mml:math><mml:mi>x</mml:mi></mml:math>', '10.1000/<b>x</b>', 'javascript:alert(1)', '“”‘’', '(', ')', '[', '];', '1-', '-2', 'e5', '2020-13-45', '99999'];
 var FIELDS = ['title', 'subtitle', 'container', 'shortContainer', 'series', 'number', 'institution', 'edition', 'numPages', 'genre', 'year', 'month', 'day', 'volume', 'issue', 'pages', 'articleNumber', 'publisher', 'place', 'issn', 'isbn', 'doi', 'url', 'language', 'event', 'type', 'database', 'accession'];

@@ -100,6 +100,17 @@ eq('E III', sn('John Smith III'), JSON.stringify({ family: 'Smith', given: 'John
 eq('E van', sn('Ludwig van Beethoven'), JSON.stringify({ family: 'van Beethoven', given: 'Ludwig' }));
 eq('E De capital', sn('Juan De Cruz'), JSON.stringify({ family: 'Cruz', given: 'Juan De' }));
 eq('E comma', sn('van der Walt, Stéfan'), JSON.stringify({ family: 'van der Walt', given: 'Stéfan' }));
+// ordinal suffixes share the one list with person(); a degree after the name is not part of it, unless it may be initials ("Smith, MD")
+eq('E 2nd', sn('John Smith 2nd'), JSON.stringify({ family: 'Smith', given: 'John', suffix: '2nd' }));
+eq('E , 3rd', sn('Smith, John, 3rd'), JSON.stringify({ family: 'Smith', given: 'John', suffix: '3rd' }));
+eq('E PhD', sn('John Smith, PhD'), JSON.stringify({ family: 'Smith', given: 'John' }));
+eq('E PhD no comma', sn('John Smith PhD'), JSON.stringify({ family: 'Smith', given: 'John' }));
+eq('E Jr., PhD', sn('John Smith Jr., PhD'), JSON.stringify({ family: 'Smith', given: 'John', suffix: 'Jr.' }));
+eq('E , MD after a given name', sn('Smith, John, MD'), JSON.stringify({ family: 'Smith', given: 'John' }));
+eq('E MD after a full name', sn('Jane Smith, M.D.'), JSON.stringify({ family: 'Smith', given: 'Jane' }));
+eq('E MD alone may be initials', sn('Smith, MD'), JSON.stringify({ family: 'Smith', given: 'MD' }));
+eq('E J.D. alone is initials', sn('Smith, J.D.'), JSON.stringify({ family: 'Smith', given: 'J.D.' }));
+eq('E PhD alone', sn('Smith, PhD'), JSON.stringify({ name: 'Smith' }));
 const oa = A.normalize(A.fromOpenAlex({ type: 'article', title: 'X', authorships: [{ author: { display_name: 'Martin Luther King Jr.' } }], publication_year: 1960 }));
 eq('E openalex suffix', A.format(oa, 'apa').slice(0, 22), 'King, M. L., Jr. (1960');
 const ol = A.normalize(A.fromOpenLibrary({ title: 'Why', author_name: ['John Smith III'], first_publish_year: 1999, publisher: ['P'] }, '0521387078'));

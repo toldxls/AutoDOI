@@ -6,6 +6,16 @@
 exports.SENT = [1,3,6,7,13,23,25,31,35,39,40,41,42,43,46,48,52,53,54,55,57,60,61,62,63,65,66,68,69,70,71,72,73,74,77,78,79,82,89,90,92,97,98,99,101,105,106,107,108,110,111,114,122,124,126,137,140,141,143,144,149,162,166,167,189,190,192,193,195,196,198,203,206,208,209,210,211,212,213,214,216,217,218,219,221,222,223,224,225,228,229,231,232,233,234,235,240,241,243,245,250,251,252,253,254,255,256];
 exports.UPPER = [28,112,115,116,117,118,119,120,121,125,127,128,129,130,131,133,134,135,136,138,139,142,145,146,147,151,152,154,155,158,159,163,164,175,178,185,187,191,202,205,215,238,239,244,246,247,249];
 exports.SKIP = [21,194];
+// "X of Y Z W": the name ends after its name word. tests/sentencecase-edge.test.js checks both directions:
+// toSentenceCase(title) gives the sentence form and toTitleCase(sentence) gives the title form.
+exports.OF_NAMES = [
+  ['Gulf of Mexico Oil Spill Effects on Fish Populations', 'Gulf of Mexico oil spill effects on fish populations'],
+  ['University of Utah Students Protest Climate Policy', 'University of Utah students protest climate policy'],
+  ['Sea of Japan Deep Water Formation Rates', 'Sea of Japan deep water formation rates'],
+  ['Bay of Bengal Cyclone Tracks and Landfall', 'Bay of Bengal cyclone tracks and landfall'],
+  ['Museum of Natural History Specimens from Peru', 'Museum of Natural History specimens from Peru'],
+  ['Isle of Man Coastal Erosion Rates', 'Isle of Man coastal erosion rates']
+];
 exports.GOLD = {
 0:"A novel high-throughput PepT1 transporter assay differentiates between substrates and antagonists",
 2:"Studies on the total synthesis of lactonamycin: Construction of model ABCD ring systems",

@@ -787,897 +787,6 @@
     }
   },
   {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "book",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Binder, Amy J., and Jeffrey L. Kidder. 2022. *The Channels of Student Activism: How the Left and Right Are Winning (and Losing) in Campus Politics Today*. University of Chicago Press.",
-    "inText": "(Binder and Kidder 2022, 117–18)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Binder",
-          "given": "Amy J."
-        },
-        {
-          "family": "Kidder",
-          "given": "Jeffrey L."
-        }
-      ],
-      "editors": null,
-      "title": "The Channels of Student Activism: How the Left and Right Are Winning (and Losing) in Campus Politics Today",
-      "container": null,
-      "year": 2022,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "University of Chicago Press",
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Book",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries)"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "book",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Yu, Charles. 2020. *Interior Chinatown*. Pantheon Books.",
-    "inText": "(Yu 2020, 45)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Yu",
-          "given": "Charles"
-        }
-      ],
-      "editors": null,
-      "title": "Interior Chinatown",
-      "container": null,
-      "year": 2020,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "Pantheon Books",
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Book",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries)"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "book-chapter",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Doyle, Kathleen. 2023. “The Queen Mary Psalter.” In *The Book by Design: The Remarkable Story of the World’s Greatest Invention*, edited by P. J. M. Marks and Stephen Parkin. University of Chicago Press.",
-    "inText": "(Doyle 2023, 64)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Doyle",
-          "given": "Kathleen"
-        }
-      ],
-      "editors": [
-        {
-          "family": "Marks",
-          "given": "P. J. M."
-        },
-        {
-          "family": "Parkin",
-          "given": "Stephen"
-        }
-      ],
-      "title": "The Queen Mary Psalter",
-      "container": "The Book by Design: The Remarkable Story of the World’s Greatest Invention",
-      "year": 2023,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "University of Chicago Press",
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Chapter or other part of an edited book",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); page range for a chapter no longer required in the reference list (CMOS 14.8)"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "edited-book",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Marks, P. J. M., and Stephen Parkin, eds. 2023. *The Book by Design: The Remarkable Story of the World’s Greatest Invention*. University of Chicago Press.",
-    "inText": "(Marks and Parkin 2023)",
-    "metadata": {
-      "authors": null,
-      "editors": [
-        {
-          "family": "Marks",
-          "given": "P. J. M."
-        },
-        {
-          "family": "Parkin",
-          "given": "Stephen"
-        }
-      ],
-      "title": "The Book by Design: The Remarkable Story of the World’s Greatest Invention",
-      "container": null,
-      "year": 2023,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "University of Chicago Press",
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Chapter or other part of an edited book (collection as a whole)",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries)"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "book",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Borel, Brooke. 2023. *The Chicago Guide to Fact-Checking*. 2nd ed. University of Chicago Press. EBSCOhost.",
-    "inText": "(Borel 2023, 92)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Borel",
-          "given": "Brooke"
-        }
-      ],
-      "editors": null,
-      "title": "The Chicago Guide to Fact-Checking",
-      "container": null,
-      "year": 2023,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "University of Chicago Press",
-      "place": null,
-      "edition": "2nd ed.",
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Book consulted in an electronic format",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); database name (EBSCOhost) in place of URL"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "journal-article",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Dittmar, Emily L., and Douglas W. Schemske. 2023. “Temporal Variation in Selection Influences Microgeographic Local Adaptation.” *American Naturalist* 202 (4): 471–85. https://doi.org/10.1086/725865.",
-    "inText": "(Dittmar and Schemske 2023, 480)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Dittmar",
-          "given": "Emily L."
-        },
-        {
-          "family": "Schemske",
-          "given": "Douglas W."
-        }
-      ],
-      "editors": null,
-      "title": "Temporal Variation in Selection Influences Microgeographic Local Adaptation",
-      "container": "American Naturalist",
-      "year": 2023,
-      "month": null,
-      "day": null,
-      "volume": "202",
-      "issue": "4",
-      "pages": "471–85",
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": "10.1086/725865",
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); 2 authors; DOI URL"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "journal-article",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Hebert, B. T. 1925. “The Island of Bolsö: A Study of Norwegian Life.” *Sociological Review* 17 (4): 307–13. EBSCOhost.",
-    "inText": "(Hebert 1925, 310)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Hebert",
-          "given": "B. T."
-        }
-      ],
-      "editors": null,
-      "title": "The Island of Bolsö: A Study of Norwegian Life",
-      "container": "Sociological Review",
-      "year": 1925,
-      "month": null,
-      "day": null,
-      "volume": "17",
-      "issue": "4",
-      "pages": "307–13",
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); no DOI; database name"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "journal-article",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Kwon, Hyeyoung. 2022. “Inclusion Work: Children of Immigrants Claiming Membership in Everyday Life.” *American Journal of Sociology* 127 (6): 1818–59. https://doi.org/10.1086/720277.",
-    "inText": "(Kwon 2022, 1842–43)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Kwon",
-          "given": "Hyeyoung"
-        }
-      ],
-      "editors": null,
-      "title": "Inclusion Work: Children of Immigrants Claiming Membership in Everyday Life",
-      "container": "American Journal of Sociology",
-      "year": 2022,
-      "month": null,
-      "day": null,
-      "volume": "127",
-      "issue": "6",
-      "pages": "1818–59",
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": "10.1086/720277",
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); single author; abbreviated page range"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "journal-article",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Snyder, Carl D., Manuel Bedrossian, Casey Barr, et al. 2025. “Extant Life Detection Using Label-Free Video Microscopy in Analog Aquatic Environments.” *PLOS ONE* 20 (3): e0318239. https://doi.org/10.1371/journal.pone.0318239.",
-    "inText": "(Snyder et al. 2025, 9–10)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Snyder",
-          "given": "Carl D."
-        },
-        {
-          "family": "Bedrossian",
-          "given": "Manuel"
-        },
-        {
-          "family": "Barr",
-          "given": "Casey"
-        }
-      ],
-      "editors": null,
-      "title": "Extant Life Detection Using Label-Free Video Microscopy in Analog Aquatic Environments",
-      "container": "PLOS ONE",
-      "year": 2025,
-      "month": null,
-      "day": null,
-      "volume": "20",
-      "issue": "3",
-      "pages": null,
-      "articleNumber": "e0318239",
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": "10.1371/journal.pone.0318239",
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); the article credits seven authors; guide lists first three followed by et al. (rule: more than six authors); article ID in place of page range; only the three printed names are given in metadata"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "dissertation",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Blajer de la Garza, Yuna. 2019. “A House Is Not a Home: Citizenship and Belonging in Contemporary Democracies.” PhD diss., University of Chicago. ProQuest (13865986).",
-    "inText": "(Blajer de la Garza 2019, 66–67)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Blajer de la Garza",
-          "given": "Yuna"
-        }
-      ],
-      "editors": null,
-      "title": "A House Is Not a Home: Citizenship and Belonging in Contemporary Democracies",
-      "container": null,
-      "year": 2019,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "University of Chicago",
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Thesis or dissertation",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); ProQuest identification number in parentheses"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "webpage",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Google. 2023. “Privacy Policy.” Privacy & Terms. Effective November 15. https://policies.google.com/privacy.",
-    "inText": "(Google 2023)",
-    "metadata": {
-      "authors": [
-        {
-          "literal": "Google"
-        }
-      ],
-      "editors": null,
-      "title": "Privacy Policy",
-      "container": "Privacy & Terms",
-      "year": 2023,
-      "month": "November",
-      "day": 15,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": "https://policies.google.com/privacy",
-      "accessed": null,
-      "type": "Web page",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); group author; “Effective” date"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "webpage",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Yale University. n.d. “About Yale: Yale Facts.” Accessed March 8, 2022. https://www.yale.edu/about-yale/yale-facts.",
-    "inText": null,
-    "metadata": {
-      "authors": [
-        {
-          "literal": "Yale University"
-        }
-      ],
-      "editors": null,
-      "title": "About Yale: Yale Facts",
-      "container": null,
-      "year": null,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": "https://www.yale.edu/about-yale/yale-facts",
-      "accessed": "March 8, 2022",
-      "type": "Web page",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); no date (n.d.) with access date; no in-text example printed for this entry on the 18th-ed page"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "18",
-    "kind": "other",
-    "source": "https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Blum, Dani. 2023. “Are Flax Seeds All That?” *New York Times*, December 13. https://www.nytimes.com/2023/12/13/well/eat/flax-seeds-benefits.html.",
-    "inText": "(Blum 2023)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Blum",
-          "given": "Dani"
-        }
-      ],
-      "editors": null,
-      "title": "Are Flax Seeds All That?",
-      "container": "New York Times",
-      "year": 2023,
-      "month": "December",
-      "day": 13,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": "https://www.nytimes.com/2023/12/13/well/eat/flax-seeds-benefits.html",
-      "accessed": null,
-      "type": "News or magazine article",
-      "notes": "CMOS 18th-edition guide (live page; no place of publication in book entries); newspaper article; title ends with question mark so no period after it"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "book",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Grazer, Brian, and Charles Fishman. 2015. *A Curious Mind: The Secret to a Bigger Life*. New York: Simon & Schuster.",
-    "inText": "(Grazer and Fishman 2015, 12)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Grazer",
-          "given": "Brian"
-        },
-        {
-          "family": "Fishman",
-          "given": "Charles"
-        }
-      ],
-      "editors": null,
-      "title": "A Curious Mind: The Secret to a Bigger Life",
-      "container": null,
-      "year": 2015,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "Simon & Schuster",
-      "place": "New York",
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Book",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); in the page HTML the italic span swallows the period after the title; normalised to title-only italics"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "book",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Smith, Zadie. 2016. *Swing Time*. New York: Penguin Press.",
-    "inText": "(Smith 2016, 315–16)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Smith",
-          "given": "Zadie"
-        }
-      ],
-      "editors": null,
-      "title": "Swing Time",
-      "container": null,
-      "year": 2016,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "Penguin Press",
-      "place": "New York",
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Book",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included)"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "book-chapter",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Thoreau, Henry David. 2016. “Walking.” In *The Making of the American Essay*, edited by John D’Agata, 167–95. Minneapolis: Graywolf Press.",
-    "inText": "(Thoreau 2016, 177–78)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Thoreau",
-          "given": "Henry David"
-        }
-      ],
-      "editors": [
-        {
-          "family": "D’Agata",
-          "given": "John"
-        }
-      ],
-      "title": "Walking",
-      "container": "The Making of the American Essay",
-      "year": 2016,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": "167–95",
-      "articleNumber": null,
-      "publisher": "Graywolf Press",
-      "place": "Minneapolis",
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Chapter or other part of an edited book",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); page range included in reference list"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "edited-book",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "D’Agata, John, ed. 2016. *The Making of the American Essay*. Minneapolis: Graywolf Press.",
-    "inText": "(D’Agata 2016, 177–78)",
-    "metadata": {
-      "authors": null,
-      "editors": [
-        {
-          "family": "D’Agata",
-          "given": "John"
-        }
-      ],
-      "title": "The Making of the American Essay",
-      "container": null,
-      "year": 2016,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "Graywolf Press",
-      "place": "Minneapolis",
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Chapter or other part of an edited book (collection as a whole)",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included)"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "journal-article",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Keng, Shao-Hsun, Chun-Hung Lin, and Peter F. Orazem. 2017. “Expanding College Access in Taiwan, 1978–2014: Effects on Graduate Quality and Income Inequality.” *Journal of Human Capital* 11, no. 1 (Spring): 1–34. https://doi.org/10.1086/690235.",
-    "inText": "(Keng, Lin, and Orazem 2017, 9–10)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Keng",
-          "given": "Shao-Hsun"
-        },
-        {
-          "family": "Lin",
-          "given": "Chun-Hung"
-        },
-        {
-          "family": "Orazem",
-          "given": "Peter F."
-        }
-      ],
-      "editors": null,
-      "title": "Expanding College Access in Taiwan, 1978–2014: Effects on Graduate Quality and Income Inequality",
-      "container": "Journal of Human Capital",
-      "year": 2017,
-      "month": "Spring",
-      "day": null,
-      "volume": "11",
-      "issue": "1",
-      "pages": "1–34",
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": "10.1086/690235",
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); 3 authors, all named in text; season in parentheses; “no. 1” form"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "journal-article",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "LaSalle, Peter. 2017. “Conundrum: A Story about Reading.” *New England Review* 38 (1): 95–109. Project MUSE.",
-    "inText": "(LaSalle 2017, 95)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "LaSalle",
-          "given": "Peter"
-        }
-      ],
-      "editors": null,
-      "title": "Conundrum: A Story about Reading",
-      "container": "New England Review",
-      "year": 2017,
-      "month": null,
-      "day": null,
-      "volume": "38",
-      "issue": "1",
-      "pages": "95–109",
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no DOI; database name; issue in parentheses form"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "journal-article",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Satterfield, Susan. 2016. “Livy and the *Pax Deum*.” *Classical Philology* 111, no. 2 (April): 165–76.",
-    "inText": "(Satterfield 2016, 170)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Satterfield",
-          "given": "Susan"
-        }
-      ],
-      "editors": null,
-      "title": "Livy and the *Pax Deum*",
-      "container": "Classical Philology",
-      "year": 2016,
-      "month": "April",
-      "day": null,
-      "volume": "111",
-      "issue": "2",
-      "pages": "165–76",
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no DOI or URL (print); italic term inside article title"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "journal-article",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Bay, Rachael A., Noah Rose, Rowan Barrett, Louis Bernatchez, Cameron K. Ghalambor, Jesse R. Lasky, Rachel B. Brem, Stephen R. Palumbi, and Peter Ralph. 2017. “Predicting Responses to Contemporary Environmental Change Using Evolutionary Response Architectures.” *American Naturalist* 189, no. 5 (May): 463–73. https://doi.org/10.1086/691233.",
-    "inText": "(Bay et al. 2017, 465)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Bay",
-          "given": "Rachael A."
-        },
-        {
-          "family": "Rose",
-          "given": "Noah"
-        },
-        {
-          "family": "Barrett",
-          "given": "Rowan"
-        },
-        {
-          "family": "Bernatchez",
-          "given": "Louis"
-        },
-        {
-          "family": "Ghalambor",
-          "given": "Cameron K."
-        },
-        {
-          "family": "Lasky",
-          "given": "Jesse R."
-        },
-        {
-          "family": "Brem",
-          "given": "Rachel B."
-        },
-        {
-          "family": "Palumbi",
-          "given": "Stephen R."
-        },
-        {
-          "family": "Ralph",
-          "given": "Peter"
-        }
-      ],
-      "editors": null,
-      "title": "Predicting Responses to Contemporary Environmental Change Using Evolutionary Response Architectures",
-      "container": "American Naturalist",
-      "year": 2017,
-      "month": "May",
-      "day": null,
-      "volume": "189",
-      "issue": "5",
-      "pages": "463–73",
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": "10.1086/691233",
-      "url": null,
-      "accessed": null,
-      "type": "Journal article",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); 9 authors all listed (17th ed. rule: up to ten listed; first author + et al. in text)"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "dissertation",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Rutz, Cynthia Lillian. 2013. “*King Lear* and Its Folktale Analogues.” PhD diss., University of Chicago.",
-    "inText": "(Rutz 2013, 99–100)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Rutz",
-          "given": "Cynthia Lillian"
-        }
-      ],
-      "editors": null,
-      "title": "*King Lear* and Its Folktale Analogues",
-      "container": null,
-      "year": 2013,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "University of Chicago",
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "Thesis or dissertation",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); italic work title inside quoted dissertation title"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "book",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Borel, Brooke. 2016. *The Chicago Guide to Fact-Checking*. Chicago: University of Chicago Press. ProQuest Ebrary.",
-    "inText": "(Borel 2016, 92)",
-    "metadata": {
-      "authors": [
-        {
-          "family": "Borel",
-          "given": "Brooke"
-        }
-      ],
-      "editors": null,
-      "title": "The Chicago Guide to Fact-Checking",
-      "container": null,
-      "year": 2016,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": "University of Chicago Press",
-      "place": "Chicago",
-      "edition": null,
-      "doi": null,
-      "url": null,
-      "accessed": null,
-      "type": "E-book",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); database name after publication details"
-    }
-  },
-  {
-    "style": "chicago-ad",
-    "styleEdition": "17",
-    "kind": "webpage",
-    "source": "https://web.archive.org/web/20240111101703id_/https://www.chicagomanualofstyle.org/tools_citationguide/citation-guide-2.html",
-    "expected": "Yale University. n.d. “About Yale: Yale Facts.” Accessed May 1, 2017. https://www.yale.edu/about-yale/yale-facts.",
-    "inText": "(Yale University, n.d.)",
-    "metadata": {
-      "authors": [
-        {
-          "literal": "Yale University"
-        }
-      ],
-      "editors": null,
-      "title": "About Yale: Yale Facts",
-      "container": null,
-      "year": null,
-      "month": null,
-      "day": null,
-      "volume": null,
-      "issue": null,
-      "pages": null,
-      "articleNumber": null,
-      "publisher": null,
-      "place": null,
-      "edition": null,
-      "doi": null,
-      "url": "https://www.yale.edu/about-yale/yale-facts",
-      "accessed": "May 1, 2017",
-      "type": "Website content",
-      "notes": "CMOS 17th-edition guide (Wayback Machine snapshot of the official page; place of publication included); no date; note the comma before n.d. in the 17th-ed in-text form"
-    }
-  },
-  {
     "style": "chicago-nb",
     "styleEdition": "18",
     "kind": "book",
@@ -4768,5 +3877,421 @@
       "type": "C. Conferences — Conference Paper (Paper Presented at a Conference)",
       "notes": "IEEE Reference Guide V 3.28.2025 (journals.ieeeauthorcenter.ieee.org/wp-content/uploads/sites/7/IEEE_Reference_Guide.pdf redirected here); unpublished presentation: “presented at the …”, conference name not italicised, no pages"
     }
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "journal-article",
+    "source": "Pears, R. and Shields, G. (2022) Cite them right: the essential referencing guide, 12th edn, quoted verbatim in https://forums.zotero.org/discussion/98053/cite-them-right-harvard-12th-edition",
+    "expected": "Barke, M. and Mowl, G. (2016) ‘Málaga – a failed resort of the early twentieth century?’, *Journal of Tourism History*, 2(3), pp. 187–212. Available at: https://doi.org/10.1080/1755182X.2010.523145",
+    "inText": "(Barke and Mowl, 2016)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Barke",
+          "given": "M."
+        },
+        {
+          "family": "Mowl",
+          "given": "G."
+        }
+      ],
+      "editors": null,
+      "title": "Málaga – a failed resort of the early twentieth century?",
+      "container": "Journal of Tourism History",
+      "year": 2016,
+      "month": null,
+      "day": null,
+      "volume": "2",
+      "issue": "3",
+      "pages": "187–212",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1080/1755182X.2010.523145",
+      "url": null,
+      "accessed": null
+    },
+    "note": "the book's own journal-article example (two authors, DOI); the in-text form follows the book's \"(Author and Author, Year)\" rule"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "journal-article",
+    "source": "University of Aberdeen Library, \"Referencing and citing – Harvard\" (follows Cite Them Right 12th edn), https://abdn.ac.uk/library/support/harvard.php (read 2026-10-07)",
+    "expected": "Fischer, B.A. and Zigmond, M.J. (2011) 'Educational approaches for discouraging plagiarism', *Urologic Oncology: Seminars and Original Investigations*, 29(1), pp. 100-103. Available at: https://doi.org/10.1016/j.urolonc.2010.11.014",
+    "inText": "(Fischer and Zigmond, 2011)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Fischer",
+          "given": "B.A."
+        },
+        {
+          "family": "Zigmond",
+          "given": "M.J."
+        }
+      ],
+      "editors": null,
+      "title": "Educational approaches for discouraging plagiarism",
+      "container": "Urologic Oncology: Seminars and Original Investigations",
+      "year": 2011,
+      "month": null,
+      "day": null,
+      "volume": "29",
+      "issue": "1",
+      "pages": "100-103",
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": "10.1016/j.urolonc.2010.11.014",
+      "url": null,
+      "accessed": null
+    },
+    "note": "the guide types the book's curly quotes and en dashes as straight quotes and hyphens; the test normalises those for Harvard"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "journal-article",
+    "source": "Technological University of the Shannon library guide \"Harvard – Cite Them Right\" (12th edn), https://tus.libguides.com/c.php?g=702610&p=5052100",
+    "expected": "Erbil, D.G. (2020) ‘A review of flipped classroom and cooperative learning method within the context of Vygotsky theory’, *Frontiers in Psychology*, 11, article 1157. Available at: https://www.frontiersin.org/article/10.3389/fpsyg.2020.01157 (Accessed: 6 May 2024).",
+    "inText": "(Erbil, 2020)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Erbil",
+          "given": "D.G."
+        }
+      ],
+      "editors": null,
+      "title": "A review of flipped classroom and cooperative learning method within the context of Vygotsky theory",
+      "container": "Frontiers in Psychology",
+      "year": 2020,
+      "month": null,
+      "day": null,
+      "volume": "11",
+      "issue": null,
+      "pages": null,
+      "articleNumber": "1157",
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.frontiersin.org/article/10.3389/fpsyg.2020.01157",
+      "accessed": "2024-05-06"
+    },
+    "note": "one author, an article number instead of pages, a URL with an accessed date; the guide prints the narrative form \"Erbil (2020, p. 2) stated\""
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "book",
+    "source": "University of Aberdeen Library, \"Referencing and citing – Harvard\" (follows Cite Them Right 12th edn), https://abdn.ac.uk/library/support/harvard.php (read 2026-10-07)",
+    "expected": "Blaxter, L., Hughes, C. and Tight, M. (2010) *How to research*, 4th edn. Maidenhead: Open University Press.",
+    "inText": "(Blaxter, Hughes and Tight, 2010)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Blaxter",
+          "given": "L."
+        },
+        {
+          "family": "Hughes",
+          "given": "C."
+        },
+        {
+          "family": "Tight",
+          "given": "M."
+        }
+      ],
+      "editors": null,
+      "title": "How to research",
+      "container": null,
+      "year": 2010,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Open University Press",
+      "place": "Maidenhead",
+      "edition": "4",
+      "doi": null,
+      "url": null,
+      "accessed": null
+    },
+    "note": "three authors, a later edition (\"4th edn.\" after a comma); the in-text form follows the book's three-author rule, printed on the same page as \"(Pears, Smith and Shields, 2022)\" style"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "book-chapter",
+    "source": "Pears, R. and Shields, G. (2022) Cite them right: the essential referencing guide, 12th edn, quoted verbatim in https://forums.zotero.org/discussion/98053/cite-them-right-harvard-12th-edition",
+    "expected": "Karim, R., Tretten, T. and Kumar, U. (2018) ‘eMaintenance’, in M. Pecht and M. Kang (eds) *Prognostics and health management of electronics: fundamentals, machine learning, and the internet of things*. Hoboken, NJ: John Wiley & Sons, pp. 559–587.",
+    "inText": "(Karim, Tretten and Kumar, 2018)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Karim",
+          "given": "R."
+        },
+        {
+          "family": "Tretten",
+          "given": "T."
+        },
+        {
+          "family": "Kumar",
+          "given": "U."
+        }
+      ],
+      "editors": [
+        {
+          "family": "Pecht",
+          "given": "M."
+        },
+        {
+          "family": "Kang",
+          "given": "M."
+        }
+      ],
+      "title": "eMaintenance",
+      "container": "Prognostics and health management of electronics: fundamentals, machine learning, and the internet of things",
+      "year": 2018,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "559–587",
+      "articleNumber": null,
+      "publisher": "John Wiley & Sons",
+      "place": "Hoboken, NJ",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null
+    },
+    "note": "the book's own chapter example: since the 12th edition the editors are written initial then surname, \"(eds)\" without a stop"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "webpage",
+    "source": "University of Aberdeen Library, \"Referencing and citing – Harvard\" (follows Cite Them Right 12th edn), https://abdn.ac.uk/library/support/harvard.php (read 2026-10-07)",
+    "expected": "University of Aberdeen (2015) *Library.* Available at: https://www.abdn.ac.uk/library (Accessed: 22 June 2023).",
+    "inText": "(University of Aberdeen, 2015)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "University of Aberdeen"
+        }
+      ],
+      "editors": null,
+      "title": "Library",
+      "container": null,
+      "year": 2015,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": null,
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://www.abdn.ac.uk/library",
+      "accessed": "2023-06-22"
+    },
+    "note": "an organisation as author, the page title in italics, a URL with an accessed date"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "report",
+    "source": "University of Aberdeen Library, \"Referencing and citing – Harvard\" (follows Cite Them Right 12th edn), https://abdn.ac.uk/library/support/harvard.php (read 2026-10-07)",
+    "expected": "Tesco (2012) *Annual Report and Financial Statements 2012*. Cheshunt: Tesco PLC.",
+    "inText": "(Tesco, 2012)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "Tesco"
+        }
+      ],
+      "editors": null,
+      "title": "Annual Report and Financial Statements 2012",
+      "container": null,
+      "year": 2012,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Tesco PLC",
+      "place": "Cheshunt",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null
+    },
+    "note": "a print report by an organisation"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "report",
+    "source": "Technological University of the Shannon library guide \"Harvard – Cite Them Right\" (12th edn), https://tus.libguides.com/c.php?g=702610&p=5052108",
+    "expected": "European Commission (2003) *Making globalization work for everyone*. Luxembourg: Office for Official Publications of the European Communities.",
+    "inText": "(European Commission, 2003)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "literal": "European Commission"
+        }
+      ],
+      "editors": null,
+      "title": "Making globalization work for everyone",
+      "container": null,
+      "year": 2003,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Office for Official Publications of the European Communities",
+      "place": "Luxembourg",
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null
+    },
+    "note": "the guide prints the in-text form \"The predicted migration of labour (European Commission, 2003)\""
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "dissertation",
+    "source": "University of Aberdeen Library, \"Referencing and citing – Harvard\" (follows Cite Them Right 12th edn), https://abdn.ac.uk/library/support/harvard.php (read 2026-10-07)",
+    "expected": "Smallegoor, E. (2010) *Novel upstarts: Frances Burney and the lower middle class.* Unpublished PhD thesis. University of Aberdeen.",
+    "inText": "(Smallegoor, 2010)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Smallegoor",
+          "given": "E."
+        }
+      ],
+      "editors": null,
+      "title": "Novel upstarts: Frances Burney and the lower middle class",
+      "container": null,
+      "year": 2010,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "University of Aberdeen",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": null,
+      "accessed": null,
+      "genre": "Unpublished PhD thesis",
+      "institution": "University of Aberdeen"
+    },
+    "note": "a print thesis: the guide prints \"Unpublished PhD thesis.\" then the awarding university; the record carries that genre since no source states publication status"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "dissertation",
+    "source": "Technological University of the Shannon library guide \"Harvard – Cite Them Right\" (12th edn), https://tus.libguides.com/c.php?g=702610&p=5052110",
+    "expected": "Daly, L. (2022) *Performance attenuation and recovery in Gaelic games*. PhD thesis. Technological University of the Shannon: Midlands. Available at: https://research.thea.ie/handle/20.500.12065/4343 (Accessed: 23 August 2023).",
+    "inText": "(Daly, 2022)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Daly",
+          "given": "L."
+        }
+      ],
+      "editors": null,
+      "title": "Performance attenuation and recovery in Gaelic games",
+      "container": null,
+      "year": 2022,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": null,
+      "articleNumber": null,
+      "publisher": "Technological University of the Shannon: Midlands",
+      "place": null,
+      "edition": null,
+      "doi": null,
+      "url": "https://research.thea.ie/handle/20.500.12065/4343",
+      "accessed": "2023-08-23",
+      "genre": "PhD thesis",
+      "institution": "Technological University of the Shannon: Midlands"
+    },
+    "note": "an online thesis: \"PhD thesis.\" then the university, then the repository link with an accessed date"
+  },
+  {
+    "style": "harvard",
+    "styleEdition": "Cite Them Right 12",
+    "kind": "conference-paper",
+    "source": "University of Aberdeen Library, \"Referencing and citing – Harvard\" (follows Cite Them Right 12th edn), https://abdn.ac.uk/library/support/harvard.php (read 2026-10-07)",
+    "expected": "Andone, D., Vasiu, R. and Robu, N. (2011) 'Building a virtual campus for digital students', *IEEE Engineering Education 2011: Learning Environments and Ecosystems in Engineering Education*. Princess Sumaya University for Technology, Amman, Jordan, 4-6 April. Washington, DC: IEEE, pp. 1069-1073.",
+    "inText": "(Andone, Vasiu and Robu, 2011)",
+    "inTextNarrative": null,
+    "metadata": {
+      "authors": [
+        {
+          "family": "Andone",
+          "given": "D."
+        },
+        {
+          "family": "Vasiu",
+          "given": "R."
+        },
+        {
+          "family": "Robu",
+          "given": "N."
+        }
+      ],
+      "editors": null,
+      "title": "Building a virtual campus for digital students",
+      "container": "IEEE Engineering Education 2011: Learning Environments and Ecosystems in Engineering Education",
+      "year": 2011,
+      "month": null,
+      "day": null,
+      "volume": null,
+      "issue": null,
+      "pages": "1069-1073",
+      "articleNumber": null,
+      "publisher": "IEEE",
+      "place": "Washington, DC",
+      "edition": null,
+      "doi": "10.1109/EDUCON.2011.5773280",
+      "url": null,
+      "accessed": null
+    },
+    "note": "a published conference paper with the venue and the dates of the conference, which no metadata source supplies (the test lists it as not applicable for that reason, as it does the US-order day ranges)"
   }
 ]

@@ -3,37 +3,53 @@
  *
  *   autodoi 10.1038/nature12373                      the reference in APA
  *   autodoi 10.1038/nature12373 --style vancouver    any built-in style: apa, mla, chicago, harvard, vancouver, ieee, carnegie,
- *                                                    or an export: bibtex, ris, endnote; --style all prints every style
+ *                                                    or an export: bibtex, ris, endnote; --style all prints every style of one record
  *   autodoi arXiv:1706.03762 PMID:23903748 978-0-19-853453-2   arXiv IDs, PubMed IDs and ISBNs work too
- *   autodoi --match < references.txt                 one reference per line: each is matched at Crossref and graded
- *   autodoi --match --style ris < references.txt     the good matches as an RIS file (or bibtex, endnote, any style)
+ *   autodoi --match < references.txt                 one reference per line, or one per paragraph when blank lines separate them
+ *                                                    (a wrapped reference is one paragraph): each is matched at Crossref and graded
+ *   autodoi --match --style ris < references.txt     the good matches as an RIS file (or bibtex, endnote, any style), printed as they arrive;
+ *                                                    the rest are reported on stderr
  *   autodoi --match --json < references.txt          the records as JSON, with grade and DOI
  *   --email you@example.org                          Crossref's polite pool (faster); also read from AUTODOI_EMAIL
- *   --pages 45-47                                    the in-text citation with a page locator, printed after the reference
+ *   --pages 45-47                                    the in-text citation with a page locator, printed after the reference (not with --match)
  *
- * Only the identifiers or reference text given are sent, to api.crossref.org, doi.org and openlibrary.org. */
+ * Exit code: 0 done, 1 a lookup failed, 2 bad usage, 3 --match left a reference unmatched (its text is on stderr).
+ * Only the identifiers or reference text given are sent, to api.crossref.org, doi.org, ebi.ac.uk (Europe PMC) and openlibrary.org. */
 var path = require('path');
 var A = require(path.join(__dirname, '..', 'citations.js'));
 var UA = 'AutoDOI-cli/' + require(path.join(__dirname, '..', 'package.json')).version + ' (https://github.com/toldxls/AutoDOI)';
+var TIMEOUT_MS = 30000; // a request that has not answered by then is abandoned and retried, so a hung connection cannot hang the run
 
 function polite(url, email) { return email ? url + (url.indexOf('?') === -1 ? '?' : '&') + 'mailto=' + encodeURIComponent(email) : url; }
-var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function pause(ms) { return module.exports.sleep(ms); } // through the export so a test can swap the clock out and run without the throttle
+function timedOut(e) { return !!e && (e.name === 'TimeoutError' || e.name === 'AbortError'); } // what fetch throws for AbortSignal.timeout, by Node version
 var lastCrossref = 0;
-async function getJson(url, headers) { // Crossref's public pool takes about one request a second; the polite pool a few. 429 and 5xx are retried
+async function request(url, headers) { // one reply; a timeout, a 429 and a 5xx are retried three times with a growing pause
   var crossref = /api\.crossref\.org/.test(url), res;
   for (var attempt = 0; ; attempt++) {
-    if (crossref) { var wait = lastCrossref + (/mailto=/.test(url) ? 350 : 1100) - Date.now(); if (wait > 0) await sleep(wait); lastCrossref = Date.now(); }
-    res = await fetch(url, { headers: Object.assign({ 'User-Agent': UA }, headers || {}) });
-    if (res.ok) return res.json();
-    if ((res.status === 429 || res.status >= 500) && attempt < 3) { await sleep(2000 * (attempt + 1)); continue; }
-    var e = new Error('HTTP ' + res.status + ' from ' + url.split('?')[0]); e.status = res.status; throw e;
+    if (crossref) { var wait = lastCrossref + (/mailto=/.test(url) ? 350 : 1100) - Date.now(); if (wait > 0) await pause(wait); lastCrossref = Date.now(); } // Crossref's public pool takes about one request a second; the polite pool a few
+    try { res = await fetch(url, { headers: Object.assign({ 'User-Agent': UA }, headers || {}), signal: AbortSignal.timeout(TIMEOUT_MS) }); }
+    catch (e) {
+      if (!timedOut(e)) throw e;
+      if (attempt < 3) { await pause(2000 * (attempt + 1)); continue; }
+      throw new Error('No reply within ' + TIMEOUT_MS / 1000 + ' s from ' + url.split('?')[0]);
+    }
+    if ((res.status === 429 || res.status >= 500) && attempt < 3) { await pause(2000 * (attempt + 1)); continue; }
+    return res;
   }
+}
+async function getJson(url, headers) {
+  var res = await request(url, headers);
+  if (res.ok) return res.json();
+  var e = new Error('HTTP ' + res.status + ' from ' + url.split('?')[0]); e.status = res.status; throw e;
 }
 async function fetchRecord(doi, email) {
   try { return A.normalize((await getJson(polite('https://api.crossref.org/works/' + encodeURIComponent(doi), email))).message); }
   catch (e) { if (e.status !== 404) throw e; }
-  var res = await fetch('https://doi.org/' + doi.split('/').map(encodeURIComponent).join('/'), { headers: { Accept: 'application/vnd.citationstyles.csl+json', 'User-Agent': UA } });
+  var res = await request('https://doi.org/' + doi.split('/').map(encodeURIComponent).join('/'), { Accept: 'application/vnd.citationstyles.csl+json' });
   if (res.ok && /json/.test(res.headers.get('content-type') || '')) return A.normalize(await res.json());
+  if (res.status === 429 || res.status >= 500) throw new Error('HTTP ' + res.status + ' from doi.org for ' + doi + '; try again later');
   throw new Error('DOI not found at Crossref or doi.org: ' + doi);
 }
 async function pmidToDoi(pm) {
@@ -88,19 +104,31 @@ function parseArgs(argv) {
   }
   return o;
 }
+function usage() { // the comment block at the top of this file, up to its closing line
+  var lines = require('fs').readFileSync(__filename, 'utf8').split('\n'), out = [];
+  for (var i = 1; i < lines.length; i++) {
+    out.push(lines[i].replace(/^\/\* ?/, '').replace(/ ?\*\/\s*$/, '').replace(/^ \* ?/, ''));
+    if (/\*\/\s*$/.test(lines[i])) break;
+  }
+  return out.join('\n');
+}
 function stdinIsTty() { return !!process.stdin.isTTY; }
 function readStdin() { return new Promise(function (resolve) { var d = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', function (c) { d += c; }); process.stdin.on('end', function () { resolve(d); }); }); }
-function splitRefs(text) { // blank lines between references, or one per line
+function splitRefs(text) { // blank lines between references, or one per line (simpler than the page's splitter, which also cuts run-together lines)
   var t = text.replace(/\r\n?/g, '\n').trim(); if (!t) return [];
   return (/\n\s*\n/.test(t) ? t.split(/\n\s*\n+/).map(function (p) { return p.replace(/\s*\n\s*/g, ' '); }) : t.split('\n')).map(function (s) { return s.trim(); }).filter(Boolean);
 }
 async function run(argv, io) {
-  io = io || { out: function (s) { process.stdout.write(s + '\n'); }, err: function (s) { process.stderr.write(s + '\n'); }, stdin: readStdin, tty: stdinIsTty };
+  io = io || { out: function (s) { process.stdout.write(s + '\n'); }, write: function (s) { process.stdout.write(s); }, err: function (s) { process.stderr.write(s + '\n'); }, stdin: readStdin, tty: stdinIsTty };
   var o = parseArgs(argv);
   if (o.error) { io.err(o.error + '. See autodoi --help.'); return 2; }
+  if (o.help) { io.out(usage()); return 0; }
+  if (!o.ids.length && !o.match) { io.err(usage()); return 2; } // nothing to do: the usage is the error message, so it goes where errors go
   var known = A.STYLES.map(function (s) { return s.id; }).concat(A.EXPORTS.map(function (x) { return x.id; }), ['all']);
-  if (o.help || (!o.ids.length && !o.match)) { io.out(require('fs').readFileSync(__filename, 'utf8').split('\n').slice(1, 14).map(function (l) { return l.replace(/^ \* ?/, ''); }).join('\n')); return o.help ? 0 : 2; }
   if (known.indexOf(o.style) === -1) { io.err('Unknown style "' + o.style + '". Styles: ' + known.join(', ')); return 2; }
+  if (o.match && o.style === 'all') { io.err('--style all prints every style of one record; with --match choose one style or export. See autodoi --help.'); return 2; }
+  if (o.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) { io.err('--email (or AUTODOI_EMAIL) needs an address like you@example.org, not "' + o.email + '"'); return 2; } // Crossref would silently drop you from the polite pool
+  if (o.match && o.pages) io.err('Note: --pages is ignored with --match; it applies to the in-text citation of a single reference.');
   var failed = 0;
   if (!o.match) {
     var recs = [];
@@ -115,19 +143,29 @@ async function run(argv, io) {
   if (!o.ids.length && io.tty && io.tty()) { io.err('Nothing to match: pipe references on stdin or give them as arguments.'); return 2; } // else it would wait forever
   var refs = splitRefs(o.ids.length ? o.ids.join('\n') : await io.stdin());
   if (!refs.length) { io.err('Nothing to match: give references on stdin, one per line.'); return 2; }
-  var results = [];
+  // Each row is printed as its lookup finishes: the good matches in the style or export asked for, on stdout, the rest on stderr
+  // so nothing vanishes silently.  --json waits for the whole list, since it prints one array.
+  var results = [], good = 0;
+  var emit = function (x) {
+    if (x.grade !== 'good') io.err((x.grade === 'none' ? 'no match' : x.grade === 'error' ? 'error: ' + x.error : x.grade + ' (' + (x.record && x.record.doi || 'no DOI') + ')') + '\t' + x.text);
+    if (x.record && warnings(x.record)) io.err(warnings(x.record) + '\t' + x.text);
+    if (x.grade !== 'good') return;
+    if (o.style === 'ris') io.write(A.format(x.record, 'ris')); // a record ends with its own line break; records follow one another directly
+    else if (o.style === 'endnote') io.write((good ? '\n' : '') + A.format(x.record, 'endnote')); // a blank line between records
+    else if (o.style === 'bibtex') io.write((good ? '\n\n' : '') + A.format(x.record, 'bibtex')); // the entry has no final line break: the next one adds the blank line
+    else io.out(A.format(x.record, o.style, good + 1)); // numbered styles count the good matches
+    good++;
+  };
   for (var k = 0; k < refs.length; k++) {
-    try { var m = await matchReference(refs[k], o.email); results.push({ text: refs[k], record: m.record, conf: m.conf, grade: m.record ? (m.via === 'doi' ? 'good' : grade(m.conf)) : 'none' }); }
-    catch (e) { failed++; results.push({ text: refs[k], record: null, conf: 0, grade: 'error', error: e.message }); }
+    var x;
+    try { var m = await matchReference(refs[k], o.email); x = { text: refs[k], record: m.record, conf: m.conf, grade: m.record ? (m.via === 'doi' ? 'good' : grade(m.conf)) : 'none' }; }
+    catch (e) { failed++; x = { text: refs[k], record: null, conf: 0, grade: 'error', error: e.message }; }
+    results.push(x);
+    if (o.json) { if (x.grade === 'good') good++; } else emit(x);
   }
-  if (o.json) { io.out(JSON.stringify(results, null, 2)); return failed ? 1 : 0; }
-  // an export or a style: the good matches, in order; the rest reported on stderr so nothing vanishes silently
-  var good = results.filter(function (x) { return x.grade === 'good'; });
-  results.forEach(function (x) { if (x.grade !== 'good') io.err((x.grade === 'none' ? 'no match' : x.grade === 'error' ? 'error: ' + x.error : x.grade + ' (' + (x.record && x.record.doi || 'no DOI') + ')') + '\t' + x.text); if (x.record && warnings(x.record)) io.err(warnings(x.record) + '\t' + x.text); });
-  if (o.style === 'ris' || o.style === 'endnote') io.out(good.map(function (x) { return A.format(x.record, o.style); }).join(o.style === 'ris' ? '' : '\n'));
-  else if (o.style === 'bibtex') io.out(good.map(function (x) { return A.format(x.record, 'bibtex'); }).join('\n\n'));
-  else good.forEach(function (x, i) { io.out(A.format(x.record, o.style, i + 1)); });
-  return failed ? 1 : 0;
+  if (o.json) io.out(JSON.stringify(results, null, 2));
+  else if (o.style === 'bibtex' && good) io.write('\n');
+  return failed ? 1 : good < results.length ? 3 : 0;
 }
-module.exports = { run: run, matchReference: matchReference, resolveId: resolveId, splitRefs: splitRefs, parseArgs: parseArgs };
+module.exports = { run: run, matchReference: matchReference, resolveId: resolveId, splitRefs: splitRefs, parseArgs: parseArgs, usage: usage, sleep: sleep };
 if (require.main === module) run(process.argv.slice(2)).then(function (code) { process.exitCode = code; }, function (e) { process.stderr.write(e.message + '\n'); process.exitCode = 1; });
