@@ -101,6 +101,7 @@ eq('an accent drawn after its letter joins it (Krämer)', raw('BT /F1 10 Tf 72 7
 eq('an accent drawn before its letter joins the next one (Zieliński)', raw('BT /F1 10 Tf 72 700 Td (Zieli) Tj ET BT /F1 10 Tf 97 700 Td (\\264) Tj ET BT /F1 10 Tf 97 700 Td (nski, G.) Tj ET'), ['Zieliński, G.']);
 eq('a ligature glyph is its letters', D.pdfPages(W.pdf({ pages: [{ lines: [line(700, '\uFB01eld work', { font: 'F2' })] }] }))[0].lines[0].text, 'field work');
 eq('bold faked by striking the text twice is read once', raw('BT /F1 10 Tf 72 700 Td (Bold) Tj ET BT /F1 10 Tf 72.2 700 Td (Bold) Tj ET BT /F1 10 Tf 95 700 Td (text) Tj ET'), ['Bold text']);
+eq('a doubled narrow letter set glyph by glyph, closer than the font\'s width, is two letters, not bold', raw('BT /F1 12 Tf 72 700 Td (El) Tj ET BT /F1 12 Tf 81.5 700 Td (l) Tj ET BT /F1 12 Tf 85 700 Td (iott) Tj ET'), ['Elliott']);
 eq('negative character spacing before an explicit move opens no false gap (small capitals)', raw('BT /F1 10 Tf -0.3 Tc 72 700 Td (A) Tj 5 0 Td (T) Tj 5 0 Td (O) Tj ET'), ['ATO']);
 
 // A damaged file never hangs or throws anything but an Error with words
@@ -123,7 +124,16 @@ var wr = D.read(docx, 'manuscript.docx');
 eq('the Word manuscript gives up the two paragraphs after References, one reference each', [wr.heading, wr.layout, wr.refs.length, /^Kucsko, G\., Maurer/.test(wr.refs[0]) && /^Vaswani A/.test(wr.refs[1])], ['References', 'lines', 2, true]);
 throws('a file that is not a zip', function () { D.readDocx(Buffer.from(zlib.deflateRawSync(Buffer.alloc(0)))); }, /not a zip file/);
 eq('isDocument knows the two kinds by name', ['a.pdf', 'b.DOCX', 'c.doc', 'd.ris'].map(D.isDocument), [true, true, false, false]);
+eq('with no heading, only paragraphs that open like a reference are taken, not a letter\'s prose that mentions a year', D.referenceSection(['Reviewer: Dr A. Example, Associate Editor, 3 March 2026', 'Lines 40-41: probably "collected DURING 1990-1995"', 'The mineral was approved in 2004 and described only in a poster in 2008.', 'Abel, A. and Baker, B. (2008) A new sulfate. Abstract, Conference 2008, 1-2.', 'Smith JA, Jones B. A title. Journal. 2001;3:4-5.'].map(function (t) { return { text: t, style: '' }; })).refs.map(function (t) { return t.slice(0, 7); }), ['Abel, A', 'Smith J']);
 eq('referenceSection reads a numbered or Roman heading', ['3. References', 'IV. Literature cited'].map(function (h) { return D.referenceSection([{ text: h, style: '' }, { text: 'Abel, A. (2001) First. J 1, 1.', style: '' }]).refs.length; }), [1, 1]);
+
+// A proposal's list ends at a section in capitals, and a table's "Reference" column after it is not the list's heading
+var prop = W.pdf({ pages: [{ lines: [{ x: 72, y: 700, size: 10, text: 'Measured as before (Abel 2001).' }, { x: 72, y: 680, size: 10, text: 'REFERENCES' },
+  { x: 72, y: 666, size: 10, text: 'Abel, A. (2001) First paper. Journal, 1, 1-2.' }, { x: 72, y: 652, size: 10, text: 'Baker, B. (2002) Second paper. Journal, 2, 3-4.' },
+  { x: 72, y: 624, size: 10, text: "AUTHORS' REMARKS" }, { x: 72, y: 610, size: 10, text: 'Nil.' }] },
+  { lines: [{ x: 72, y: 700, size: 10, text: 'Table 9. Comparison' }, { x: 72, y: 686, size: 10, text: 'Reference' }, { x: 72, y: 672, size: 10, text: 'Yang et al. (2018)' }, { x: 72, y: 658, size: 10, text: 'This study' }] }] });
+var pr = D.readPdf(prop);
+eq('the heading a reference follows wins over a table\'s Reference column, and the list stops at AUTHORS\' REMARKS', [pr.heading, pr.refs], ['REFERENCES', ['Abel, A. (2001) First paper. Journal, 1, 1-2.', 'Baker, B. (2002) Second paper. Journal, 2, 3-4.']]);
 
 // ---------- the viewer: a Word manuscript laid out (tests/docx-writer.js writes one the ways Word does) ----------
 var X = require('./docx-writer.js'), rich = X.manuscript(), L = D.docxLayout(rich);
@@ -155,15 +165,24 @@ var at = D.locateEntries(ents, page, 0);
 eq('an entry is found however the page spaces, hyphenates or ligatures it, and keeps its closing full stop', page.slice(at[0].start, at[0].end), 'Smith, J. (2019a). The ﬁrst find-\ning. Journal, 1, 1–2.');
 eq('an entry the page does not hold is null; the others are still found, each ending where the next starts', [at.map(function (x) { return !!x; }), at[2].end <= at[4].start, page.slice(at[4].start, at[4].end)], [[true, true, true, false, true], true, 'World Health Organization. (2021). Report on things. Geneva.']);
 eq('an entry\'s keys: number, first surname without its initials, year and letter', [D.entryKeys('[12] J. A. Smith, Title, J. 2001.'), D.entryKeys('Vaswani A, Shazeer N. Attention. 2017;30:1.').first, D.entryKeys('van der Berg, C. (2018a). X.').first + ' ' + D.entryKeys('van der Berg, C. (2018a). X.').suffix, D.entryKeys('Smith, J. (n.d.). Undated.').year],
-  [{ num: 12, first: 'smith', authors: 'jasmithtitlej', year: '2001', suffix: '' }, 'vaswani', 'vanderberg a', 'nd']);
+  [{ num: 12, first: 'smith', alt: '', authors: 'jasmithtitlej', year: '2001', suffix: '' }, 'vaswani', 'vanderberg a', 'nd']);
 var cites = function (text) { return D.findCitations(text, ents).map(function (c) { return text.slice(c.start, c.end) + '=' + c.refs.join(','); }); };
 eq('author and year: parenthetical, narrative, a list split at its semicolons, and the same author again', cites('As Smith (2019a) showed (Lee & Kim, 2020; Smith 2019a, 2019b), and van der Berg (2018) agreed.'), ['Smith (2019a)=0', 'Lee & Kim, 2020=2', 'Smith 2019a=0', '2019b=1', 'van der Berg (2018)=3']);
 eq('"et al.", a possessive, an organisation cited by its last word, and "Smith 2019" naming both of that year', cites('Lee et al. (2020) and Smith\'s (2019) view; see the Organization (2021).'), ['Lee et al. (2020)=2', 'Smith\'s (2019)=0,1', 'Organization (2021)=4']);
+var ment = ['Brese, N.E. and O\u2019Keeffe, M. (1991) Bond-valence parameters.', 'Kravchenko S.M., Pokrovsky B.G. (1995) A title.', 'Bruker AXS (2022) APEX4. Madison.', 'Ledeneva N.V. Mineralogy of a deposit. Moscow, 2004.'];
+var mt = 'parameters after Brese and O\u2019Keeffe (1991), as found (Kravchenko, Pokrovsky, 1995) with (Bruker AXS, 2022) and (Ledeneva, 2004).';
+eq('authors after a word ending like a particle ("after Brese"), joined by commas alone, an organisation in two words, and a surname before its initials', D.findCitations(mt, ment).map(function (c) { return mt.slice(c.start, c.end) + '=' + c.refs.join(','); }), ['Brese and O\u2019Keeffe (1991)=0', 'Kravchenko, Pokrovsky, 1995=1', 'Bruker AXS, 2022=2', 'Ledeneva, 2004=3']);
+eq('a capitalised particle is part of the second author\'s name ("Dutta and Del Barco 1988")', D.findCitations('rings (Dutta and Del Barco 1988; Dutta et al. 1991)', ['Dutta, P.K. and Del Barco, B. (1988) Raman spectroscopy of zeolites. J Phys Chem, 92, 354.', 'Dutta, P.K., Shieh, D.C. and Puri, M. (1991) Zeolites. J Phys Chem, 95, 1.']).map(function (c) { return c.refs.join(','); }), ['0', '1']);
+eq('an entry written given name first is cited by its surname ("Leticia M. Torres-Martinez")', D.findCitations('as shown (Torres-Martinez et al., 1984).', ['Leticia M. Torres-Martinez, J. Smith and K. Lee (1984) A title. Journal, 1, 2.']).map(function (c) { return c.refs.join(','); }), ['0']);
+eq('a place before the author is not an author ("in Russia, Smith (2019a)")', cites('as found in Russia, Smith (2019a) and Lee (2020) agreed'), ['Smith (2019a)=0', 'Lee (2020)=2']);
 eq('no citation: a year no entry has, a name no entry has, a table or a month', cites('In 2020 we (Jones, 2019) used Table 2019 and May 2019 data.'), []);
 var nent = ['1. Abel A. First. 2001.', '2. Baker B. Second. 2002.', '3. Cole C. Third. 2003.', '4. Dean D. Fourth. 2004.'];
 var nt = 'As shown [1], and later [2–4] and [1, 3]; superscripts too.1,2 and Fe3+ stays [9].';
 eq('numbers cite a numbered list: one, a range and a list in brackets, a superscript, and never a number past the list', D.findCitations(nt, nent, { sups: [{ start: nt.indexOf('1,2'), end: nt.indexOf('1,2') + 3 }] }).map(function (c) { return nt.slice(c.start, c.end) + '=' + c.refs.join(','); }), ['[1]=0', '[2–4]=1,2,3', '[1, 3]=0,2', '1,2=0,1']);
 eq('beside an author-and-year list, a lone bracketed number is not a citation', D.findCitations('Smith (2019a) and the complex [2] and [3].', ents).map(function (c) { return c.refs.join(','); }), ['0']);
+var st = 'The cell is 1234.5 Å3 and Fe3 and (UO2)2 but the result is precise3 and known.4';
+var supAt = function (w) { var i = st.indexOf(w) + w.length - 1; return { start: i, end: i + 1 }; };
+eq('a superscript number cites after a word or its full stop, never after a unit, a symbol or a bracket (Å³, Fe³, (UO₂)₂)', D.findCitations(st, nent, { sups: [supAt('Å3'), supAt('Fe3'), supAt('(UO2)2'), supAt('precise3'), supAt('known.4')] }).map(function (c) { return st.slice(c.start, c.end) + '=' + c.refs.join(','); }), ['3=2', '4=3']);
 eq('an unnumbered list is cited by its order when the text cites by number', D.findCitations('Thermometry [1] and attention [2–3].', X.REFS).map(function (c) { return c.refs.join(','); }), ['0', '1,2']);
 
 console.log(pass + ' passed, ' + fail + ' failed');

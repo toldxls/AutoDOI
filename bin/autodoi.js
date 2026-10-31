@@ -130,7 +130,7 @@ function splitRefs(text) { // blank lines between references, a hanging indent, 
 }
 function readDocument(file) { // the reference list of a .docx or .pdf, as text for splitRefs
   var sec = DOCS.read(require('fs').readFileSync(file), path.basename(file));
-  if (!sec.refs.length) throw new Error('no References heading, and no paragraph with a year');
+  if (!sec.refs.length) throw new Error('no References heading, and no paragraph that reads as a reference');
   return sec.refs.join(sec.layout === 'lines' ? '\n\n' : '\n'); // a Word paragraph is one reference
 }
 async function run(argv, io) {

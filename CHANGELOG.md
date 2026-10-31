@@ -2,6 +2,18 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.0 - 2026-10-30
+
+### New
+
+- The viewer's popup moves by its title bar, and later popups open where it was left.
+
+### Fixed
+
+- Manuscripts: the list's heading is the one a reference follows, not a table's "Reference" column; a Word list ends at its captions and tables, a PDF list at a section in capitals ("AUTHORS' REMARKS"); a review letter with no list gives none instead of its paragraphs with a year.
+- PDFs: a doubled narrow letter is kept ("Elliott", not "El iott"); a first-line indent, margin line numbers and a crystal-data table after the list no longer break entries; a numbered agenda is not a reference list.
+- Viewer citations: a subscript or a power (UO₂, Å³) is never a numbered citation; "Smith, Jones, 2020", "Bruker AXS, 2022", "Del Barco", "Ledeneva N.V." and a name after "after" are linked.
+
 ## 1.17.0 - 2026-10-30
 
 ### New

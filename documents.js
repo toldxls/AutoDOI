@@ -135,8 +135,10 @@
     if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(b);
     try { return decodeURIComponent(escape(latin(b))); } catch (e) { return latin(b); }
   }
-  function docxParagraphs(xml) { // [{text, style}] in document order; tabs and breaks become spaces; sub/superscript runs become Unicode
-    var out = [], re = /<w:p[\s>][\s\S]*?<\/w:p>/g, m;
+  function docxParagraphs(xml) { // [{text, style, table}] in document order; tabs and breaks become spaces; sub/superscript runs become Unicode
+    var out = [], re = /<w:p[\s>][\s\S]*?<\/w:p>/g, m, tables = [], tr = /<(\/?)w:tbl[\s>]/g, t0, depth = 0, tm;
+    while ((tm = tr.exec(xml))) { if (!tm[1]) { if (!depth++) t0 = tm.index; } else if (depth && !--depth) tables.push([t0, tm.index]); } // where the tables are: a cell's paragraph is no reference
+    var inTable = function (at) { for (var i = 0; i < tables.length; i++) if (at > tables[i][0] && at < tables[i][1]) return true; return false; };
     var unesc = function (t) { return t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, function (x, d) { return String.fromCodePoint(Number(d)); }).replace(/&#x([0-9a-f]+);/gi, function (x, h) { return String.fromCodePoint(parseInt(h, 16)); }).replace(/&amp;/g, '&'); };
     while ((m = re.exec(xml))) {
       var para = m[0], style = (para.match(/<w:pStyle w:val="([^"]+)"/) || [])[1] || '', text = '';
@@ -150,7 +152,7 @@
         text += va && A && A.toScript ? A.toScript(t, va === 'superscript' ? 'sup' : 'sub') : t;
       }
       text = text.replace(/\s+/g, ' ').trim();
-      if (text) out.push({ text: text, style: style });
+      if (text) out.push({ text: text, style: style, table: tables.length > 0 && inTable(m.index) });
     }
     return out;
   }
@@ -481,8 +483,8 @@
     'литература', 'список литературы', 'литература цитированная', 'literatur', 'literaturverzeichnis', 'références', 'références bibliographiques', 'bibliographie', 'bibliografia', 'bibliografía', 'referencias', 'referências', 'riferimenti bibliografici', 'literatuur', 'literatura', 'piśmiennictwo'];
   var REF_HEADING = new RegExp('^(?:\\d+\\.?\\s*|[IVX]+\\.\\s*)?(?:' + REF_NAMES.join('|') + ')\\s*[:.]?$', 'i');
   var NEXT_HEADING = /^(?:\d+\.?\s*|[IVX]+\.\s*)?(?:tables?|figures?|figure (?:captions|legends)|captions|legends|appendix|appendices|supplementary(?: material| information| data)?|supplemental(?: material| information)?|acknowledg?ements?|author contributions|funding|data availability|competing interests|conflicts? of interest|glossary|index|about the authors?)\s*[:.]?$/i;
-  // what a publisher prints after the list: an article's notes and colophon (MDPI, Springer, Pleiades, AmMin, ResearchGate)
-  var AFTER_REFS = /^(?:disclaimer\/publisher|publisher[\u2019']?s note|this (?:manuscript|paper|article) was (?:handled|edited)|manuscript (?:received|handled)|editorial handling|endnotes?:|view publication stats|translated by\b|received:? \d|\u00A9 \d{4}|copyright \u00A9)/i;
+  // what a publisher prints after the list: an article's notes and colophon (MDPI, Springer, Pleiades, AmMin, ResearchGate), AmMin's deposit footnote
+  var AFTER_REFS = /^(?:[\u00B9\u00B2\u00B3*\u2020]?\s*deposit item\b|disclaimer\/publisher|publisher[\u2019']?s note|this (?:manuscript|paper|article) was (?:handled|edited)|manuscript (?:received|handled)|editorial handling|endnotes?:|view publication stats|translated by\b|received:? \d|\u00A9 \d{4}|copyright \u00A9)/i;
   var CAPTION = /^(?:table|fig\.?|figure)\s*S?\d{1,2}[a-z]?(?:[.:|]|\s+[A-Z(])/i; // "Table 2. Powder X-ray diffraction data", "FIG. 9 Pb3 coordination"
   var REF_OPENS = /^(?:\[\d{1,4}\]|\d{1,4}\.\s+[A-Z]|(?:(?:van|von|de|da|di|del|der|le|la)\s+)*[A-Z\u00C0-\u024F][\w\u00C0-\u024F'\u2019\-]+(?:\s[A-Z\u00C0-\u024F][\w\u00C0-\u024F'\u2019\-]+)?(?:,\s+(?:[A-Z]\.|[A-Z\u00C0-\u024F][a-z])|\s+[A-Z]{1,3}[\s,(]|\s+\(\d{4}))/; // "Smith, J.", "van der Berg, A.", "Smith JA,", "[12]", "12. Smith"
   function headingText(t) { // "R E F E R E N C E S", "rE f E r E n C E s" (letter-spaced or small capitals in a PDF) read as the heading they spell
@@ -491,14 +493,36 @@
     for (var i = 0; i < REF_NAMES.length; i++) if (REF_NAMES[i].replace(/ /g, '') === tight) return REF_NAMES[i].charAt(0).toUpperCase() + REF_NAMES[i].slice(1);
     return t;
   }
+  // The References heading: the last line that reads as one and that a reference follows (a table's "Reference" column after the
+  // list is followed by "Yang et al. (2018)" or "This study"), else the last that reads as one (an abstract's "References: 42" does not)
+  function headingAt(texts) {
+    var last = -1, followed = -1;
+    for (var i = 0; i < texts.length; i++) {
+      var h = headingText(texts[i].trim());
+      if (texts[i].length > 40 || !REF_HEADING.test(h) || /^[a-z]/.test(h)) continue; // "…in the literature." ends a sentence
+      var weak = /^(?:reference|sources|literature)\s*[:.]?$/i.test(h), opens = false; // a table's column, a memo's field: a heading only when a reference follows
+      for (var j = i + 1; j < texts.length && j <= i + 3; j++) if (texts[j].trim()) { opens = fullRef(texts[j].trim()); break; }
+      if (opens) followed = i;
+      if (!weak || opens) last = i;
+    }
+    return followed >= 0 ? followed : last;
+  }
+  // The first line of a reference, whole: it opens with an author ("Smith, J.", "Smith JA", "Agilent Technologies. (2013)") and names
+  // one year, where a table's row of sources ("Walitzi (1965) Miletich (1993) This study") names several
+  function fullRef(t) {
+    return t.length >= 30 && (REF_OPENS.test(t) || /^[A-Z\u00C0-\u024F][^()]{1,80}\(\s*(?:1[5-9]|20)\d{2}[a-z]?\s*\)/.test(t)) && (t.match(/\((?:1[5-9]|20)\d{2}[a-z]?\)/g) || []).length <= 1;
+  }
+  // A section after the list: a known name, or a short line in capitals ("AUTHORS' REMARKS", "CHAIRMAN'S REMARKS") with no digit or comma
+  function nextSection(t) { return t.length <= 40 && (NEXT_HEADING.test(t) || /^[A-Z][A-Z\u2019' \-]{5,39}$/.test(t) && /[A-Z]{3}/.test(t)); }
   function referenceSection(paras) { // the paragraphs after a References heading up to the next section; or the year-bearing paragraphs when there is none
-    var start = -1;
-    for (var i = 0; i < paras.length; i++) if (paras[i].text.length <= 40 && REF_HEADING.test(headingText(paras[i].text.trim()))) start = i; // the last such heading: an abstract's "References: 42" would not be one
-    if (start < 0) return { refs: paras.filter(function (p) { return /\b(?:1[5-9]|20)\d{2}\b/.test(p.text) && p.text.length >= 40 && !/^(?:Figure|Fig\.|Table)\s*\d/i.test(p.text); }).map(function (p) { return p.text; }), heading: '' };
+    var start = headingAt(paras.map(function (p) { return p.text; }));
+    // no heading: the paragraphs that open like a reference and carry a year (a letter to the reviewers mentions years in every other line)
+    if (start < 0) return { refs: paras.filter(function (p) { return /\b(?:1[5-9]|20)\d{2}\b/.test(p.text) && p.text.length >= 40 && REF_OPENS.test(p.text.trim()) && !/^(?:Figure|Fig\.|Table)\s*\d/i.test(p.text); }).map(function (p) { return p.text; }), heading: '' };
     var refs = [];
     for (var j = start + 1; j < paras.length; j++) {
       var p = paras[j], t = headingText(p.text.trim());
-      if (t.length <= 40 && (NEXT_HEADING.test(t) || /^Heading/i.test(p.style)) && refs.some(function (r) { return r.trim(); })) break;
+      if ((nextSection(t) || (t.length <= 40 && /^Heading/i.test(p.style)) || p.table || CAPTION.test(t) || AFTER_REFS.test(t)) && refs.some(function (r) { return r.trim(); })) break; // a Word list ends at the captions or tables that follow it
+      if (p.table) continue;
       if (t.length <= 40 && /^Heading|^Title/i.test(p.style)) continue;
       refs.push(p.text);
     }
@@ -551,12 +575,15 @@
     YEAR_IN.lastIndex = 0;
     var y = YEAR_IN.exec(s), authors = y ? s.slice(0, y.index) : s.slice(0, 120);
     var head = authors.replace(/^[^A-Za-zÀ-ɏ]+/, '').split(/,|;|\s(?:and|&)\s|\(/)[0];
-    var words = head.split(/\s+/).filter(function (w) { return w && !/^(?:[A-Z]\.?-?){1,3}\.?$/.test(w) && !/^[A-Z]\.[A-Z]\.?$/.test(w); }); // initials, before or after the surname
-    return { num: num, first: fold(words.join(' ')), authors: fold(authors), year: y ? (y[1] || (y[3] ? 'nd' : 'inpress')) : '', suffix: y && y[2] ? y[2].toLowerCase() : '' };
+    var init = function (w) { return /^(?:[A-Z]\.?-?){1,3}\.?$/.test(w) || /^[A-Z]\.[A-Z]\.?$/.test(w); }, all = head.split(/\s+/).filter(Boolean), at = all.findIndex ? all.findIndex(init) : -1;
+    var words = (at > 0 ? all.slice(0, at) : all).filter(function (w) { return !init(w); }); // the surname ends at its initials ("Ledeneva N.V. Mineralogy…"); initials before it are dropped ("J. A. Smith")
+    var alt = fold(all.filter(function (w) { return !init(w); }).join(' ')); // every word but the initials: "Leticia M. Torres-Martinez" ends in its surname
+    return { num: num, first: fold(words.join(' ')), alt: alt !== fold(words.join(' ')) ? alt : '', authors: fold(authors), year: y ? (y[1] || (y[3] ? 'nd' : 'inpress')) : '', suffix: y && y[2] ? y[2].toLowerCase() : '' };
   }
-  var PARTICLE = '(?:(?:van|von|de|del|della|der|den|du|da|di|dos|la|le|ter|ten)\\s+)*';
+  var PARTICLE = '(?:\\b(?:[Vv]an|[Vv]on|[Dd]e|[Dd]el|[Dd]ella|[Dd]er|[Dd]en|[Dd]u|[Dd]a|[Dd]i|[Dd]os|[Ll]a|[Ll]e|[Tt]er|[Tt]en)\\s+)*'; // whole words: "after Brese" is no "ter Brese"; "Del Barco", "van der Berg"
   var SURNAME = PARTICLE + "[A-Z\\u00C0-\\u00DE\\u0100-\\u024F][\\w\\u00C0-\\u024F'\\u2019\\-]+";
-  var CITE_AUTHORS = new RegExp('(' + SURNAME + ')((?:\\s*,\\s*' + SURNAME + ')*(?:,?\\s+(?:and|&)\\s+(' + SURNAME + ')))?(\\s+et\\s+al\\.?)?(?:[\\u2019\']s)?[\\s,(\\[]*$');
+  // "Smith", "Smith and Jones", "Smith, Jones and Lee", "Kravchenko, Pokrovsky" (commas alone), "Smith et al.", "Smith's", before the year
+  var CITE_AUTHORS = new RegExp('(' + SURNAME + ')((?:\\s*,\\s*(' + SURNAME + '))*(?:,?\\s+(?:and|&)\\s+(' + SURNAME + '))?)(\\s+et\\s+al\\.?)?(?:[\\u2019\']s)?[\\s,(\\[]*$');
   var NOT_NAME = /^(?:See|Also|In|And|The|Table|Tables|Fig|Figs|Figure|Figures|Eq|Eqs|Equation|Section|Chapter|Appendix|Supplementary|January|February|March|April|May|June|July|August|September|October|November|December|Spring|Summer|Autumn|Fall|Winter|AD|BC|BCE|CE|Ma|Ka)$/;
   // findCitations(text, entries, opts): [{start, end, refs: [entry indexes]}] for each in-text citation in text that names
   // entries of the list: "(Smith 2019)", "Smith and Jones (2019a)", "(Smith et al., 2019; Lee, 2020)" one by one, "[3]",
@@ -580,6 +607,10 @@
     var m, re = /\[(\d{1,4}(?:\s*[,–—\-]\s*\d{1,4})*)\]/g, numeric = [];
     while ((m = re.exec(text))) { var ix = nums(m[1]); if (ix) numeric.push({ start: m.index, end: m.index + m[0].length, refs: ix }); }
     (opts.sups || []).forEach(function (sp) {
+      // a citation's superscript follows a word or its punctuation ("shown.³", "minerals³"); after a unit, a symbol, a number or a
+      // bracket it is a power, a charge or a formula's count (Å³, cm², Fe³⁺, 10⁵, (UO₂)₂)
+      var before = text.slice(Math.max(0, sp.start - 12), sp.start), word = (before.match(/[A-Za-z\u00C0-\u024F]+$/) || [''])[0];
+      if (!(/[.,;:'"\u2019\u201D]$/.test(before) || (word.length >= 3 && /[a-z]$/.test(word) && !/^(?:mol|kbar|GPa|MPa|kPa|bar|ppm|cal|kcal|kJ|wt|apfu|hrs?|min|sec)$/.test(word)))) return;
       var t = text.slice(sp.start, sp.end), lead = t.length - t.replace(/^[\s(]+/, '').length;
       t = t.trim().replace(/^\(|\)$/g, '');
       if (!/^\d/.test(t)) return;
@@ -588,28 +619,46 @@
     // author and year: each year is read with the names written before it
     var prev = null;
     YEAR_IN.lastIndex = 0;
-    while ((m = YEAR_IN.exec(text))) {
-      var yEnd = m.index + m[0].length, year = m[1] || (m[3] ? 'nd' : 'inpress'), suffix = m[2] ? m[2].toLowerCase() : '', who = null, start = m.index;
-      if (prev && /^[\s,]*$/.test(text.slice(prev.end, m.index)) && m.index - prev.end <= 4) { who = prev.who; } // "Smith 2019, 2020a": the same author again
-      else {
-        var w0 = Math.max(0, m.index - 160), win = text.slice(w0, m.index), cut = Math.max(win.lastIndexOf(';'), win.lastIndexOf('\n'));
-        if (cut >= 0) { w0 += cut + 1; win = win.slice(cut + 1); }
-        var a = CITE_AUTHORS.exec(win);
-        if (a && !NOT_NAME.test(a[1].replace(/^.*\s/, ''))) { who = { first: fold(a[1].replace(/['\u2019]s$/, '')), second: a[3] && !a[4] ? fold(a[3]) : '' }; start = w0 + a.index; } // "Smith's (2019)" is Smith's
-      }
-      prev = null;
-      if (!who || who.first.length < 2) continue;
-      var refs = [];
+    var cited = function (who, year, suffix) { // the entries a citation's names and year answer: {refs, byOrg}
+      var refs = [], byOrg = false;
       keys.forEach(function (k, i) {
         if (k.year !== year || (suffix && k.suffix !== suffix) || !k.first) return;
-        if (k.first === who.first || (who.first.length >= 3 && k.first.length > who.first.length && k.first.slice(-who.first.length) === who.first)) refs.push(i); // "World Health Organization" cited as its last word, "de Silva" as "Silva"
+        var is = function (f) { return f && (f === who.first || (who.first.length >= 3 && f.length > who.first.length && f.slice(-who.first.length) === who.first)); };
+        if (is(k.first) || is(k.alt)) refs.push(i); // "World Health Organization" cited as its last word, "de Silva" as "Silva"
+      });
+      if (!refs.length && who.org) keys.forEach(function (k, i) { // "Bruker AXS" cited whole, listed as "Bruker"
+        if (k.year === year && (!suffix || k.suffix === suffix) && k.first.length >= 4 && who.org.indexOf(k.first) === 0) { refs.push(i); byOrg = true; }
       });
       if (refs.length > 1 && who.second) { var two = refs.filter(function (i) { return keys[i].authors.indexOf(who.second) >= 0; }); if (two.length) refs = two; }
       if (refs.length > 1 && !suffix) { var plain = refs.filter(function (i) { return !keys[i].suffix; }); if (plain.length) refs = plain; }
-      if (!refs.length) continue;
+      return { refs: refs, byOrg: byOrg };
+    };
+    while ((m = YEAR_IN.exec(text))) {
+      var yEnd = m.index + m[0].length, year = m[1] || (m[3] ? 'nd' : 'inpress'), suffix = m[2] ? m[2].toLowerCase() : '', who = null, start = m.index, hit = null;
+      if (prev && /^[\s,]*$/.test(text.slice(prev.end, m.index)) && m.index - prev.end <= 4) { who = prev.who; hit = cited(who, year, suffix); } // "Smith 2019, 2020a": the same author again
+      else {
+        var w0 = Math.max(0, m.index - 160), win = text.slice(w0, m.index), cut = Math.max(win.lastIndexOf(';'), win.lastIndexOf('\n'));
+        if (cut >= 0) { w0 += cut + 1; win = win.slice(cut + 1); }
+        // the names before the year; when the first answers no entry, the next ("in Russia, Smith (2019)" is Smith's)
+        for (var off = 0, tries = 0; tries < 4; tries++) {
+          var a = CITE_AUTHORS.exec(win.slice(off));
+          if (!a) break;
+          var at = off + a.index;
+          if (!NOT_NAME.test(a[1].replace(/^.*\s/, ''))) {
+            var org = win.slice(0, at).match(/(?:^|[\s(\[;])((?:[A-Z][\w&'\u2019\-]*\s+){1,3})$/); // "Bruker AXS", "World Health": an organisation's words before the last
+            var w = { first: fold(a[1].replace(/['\u2019]s$/, '')), org: org && !a[2] ? fold(org[1] + a[1]) : '', second: a[2] && !a[5] ? fold(a[4] || a[3] || '') : '' }; // "Smith's (2019)" is Smith's
+            if (w.org === w.first) w.org = '';
+            var h = w.first.length >= 2 ? cited(w, year, suffix) : { refs: [] };
+            if (h.refs.length) { who = w; hit = h; start = w0 + (h.byOrg ? at - org[1].length : at); break; }
+          }
+          off = at + a[1].length;
+        }
+      }
+      prev = null;
+      if (!hit || !hit.refs.length) continue;
       var end = yEnd, close = text.slice(yEnd).match(/^\)/), open = text.slice(start, m.index).indexOf('(') >= 0;
       if (close && open) end++; // "Smith (2019)": the brackets with it
-      out.push({ start: start, end: end, refs: refs });
+      out.push({ start: start, end: end, refs: hit.refs });
       prev = { end: yEnd, who: who };
     }
     // numbers cite a numbered list; beside an author-and-year list they are footnote marks, affiliations or chemistry ("[2]")
@@ -1230,7 +1279,7 @@
       if (cur) {
         var dy = c.y - cur.y, big = Math.max(cur.size, c.size), gap = c.x - cur.x1;
         if (Math.abs(dy) < 0.6 * big && c.x > cur.lastX - 0.6 * big && gap < 4 * big) { // back as far as the last chunk's start: a subscript set under a superscript (Fe²⁺₂)
-          if (t === cur.last && Math.abs(c.x - cur.lastX) < 0.3 * c.size) continue; // the same text struck twice for a bold effect
+          if (t === cur.last && Math.abs(c.x - cur.lastX) < Math.min(0.1 * c.size, 0.5 * (c.x1 - c.x))) continue; // the same text struck twice, a hair apart, for a bold effect; not a doubled narrow letter ("Elliott", "Newsletter")
           var script = c.size < 0.85 * cur.size && Math.abs(dy) > 0.15 * cur.size && /^[\d+−\-=()a-zA-Z,.\s]{1,8}$/.test(t.trim()) ? (dy > 0 ? 'sup' : 'sub') : '';
           if (gap > Math.max(0.12 * big, 0.4 * Math.min(c.space || big * 0.25, big * 0.3)) && !/\s$/.test(cur.text) && !/^\s/.test(t) && !script) cur.text += ' ';
           cur.text += script && A && A.toScript ? A.toScript(t.trim(), script) : t;
@@ -1263,9 +1312,12 @@
       var left = Infinity, gaps = [];
       run.forEach(function (l, i) { if (l.x < left) left = l.x; if (i) gaps.push(run[i - 1].y - l.y); });
       var sorted = gaps.slice().sort(function (a, b) { return a - b; }), med = sorted[(sorted.length - 1) >> 1] || 0; // the lower middle: within an entry the lines are closer
+      var inset = function (l) { return l.x - left > 0.6 * l.size; }, ins = run.filter(inset), flat = run.filter(function (l) { return !inset(l); });
+      var opens = function (list) { return list.filter(function (l) { return REF_OPENS.test(l.text) || fullRef(l.text); }).length; };
+      var firstLine = ins.length >= 2 && opens(ins) >= 0.6 * ins.length && opens(flat) <= 0.25 * flat.length; // each entry's first line set in, the rest flush: the reverse of a hanging indent
       run.forEach(function (l, i) {
         if (i && run.length >= 4 && med > 0 && gaps[i - 1] > 1.6 * med && gaps[i - 1] < 6 * med) out.push('');
-        out.push((l.x - left > 0.6 * l.size ? ' ' : '') + l.text);
+        out.push((inset(l) !== firstLine ? ' ' : '') + l.text); // given to the splitter as a hanging indent either way
       });
       run = [];
     };
@@ -1283,7 +1335,9 @@
     if (!pages.length) throw new Error('no pages found: the PDF is damaged');
     return pages.map(function (pg, n) {
       var r; try { r = pdf.pageChunks(pg); } catch (e) { if (/more than/.test(e.message)) throw e; r = { chunks: [], height: 792 }; }
-      var lines = linesOf(r.chunks); lines.forEach(function (l) { l.page = n; });
+      var lines = linesOf(r.chunks), col = Object.create(null);
+      lines.forEach(function (l) { l.page = n; if (/^\d{1,5}$/.test(l.text)) { var k = Math.round(l.x / 4); col[k] = (col[k] || 0) + 1; } });
+      lines = lines.filter(function (l) { return !(/^\d{1,5}$/.test(l.text) && col[Math.round(l.x / 4)] >= 8); }); // a manuscript's line numbers: a column of bare numbers down the margin
       return { lines: lines, height: r.height };
     });
   }
@@ -1293,16 +1347,16 @@
     furniture(pages);
     pages.forEach(function (p) { all = all.concat(p.lines); });
     var start = -1, i;
-    for (i = 0; i < all.length; i++) if (all[i].text.length <= 40 && REF_HEADING.test(headingText(all[i].text))) start = i;
+    start = headingAt(all.map(function (l) { return l.text; }));
     if (start < 0 && !looksLikeList(layout(all))) throw new Error('no References heading, and the text does not read as a reference list');
     var body = all.map(function (l) { return l.size; }).sort(function (a, b) { return a - b; })[Math.floor(all.length / 2)] || 10;
     var heading = start < 0 ? '' : headingText(all[start].text), refs = [], float = false;
     for (i = start + 1; i < all.length; i++) { // to the next section heading: a known name, or a short line set larger than the text
       var t = headingText(all[i].text);
-      if (refs.length && ((t.length <= 40 && (NEXT_HEADING.test(t) || (all[i].size > body * 1.25 && !/\d{4}/.test(t)))) || AFTER_REFS.test(t))) break;
+      if (refs.length && (nextSection(t) || (t.length <= 40 && all[i].size > body * 1.25 && !/\d{4}/.test(t)) || AFTER_REFS.test(t))) break;
       // a table or figure that floats onto a page of the list, or follows it: from its caption to the next line that opens like a reference
       if (CAPTION.test(t)) { float = true; continue; }
-      if (float && !REF_OPENS.test(t)) continue;
+      if (float && !(REF_OPENS.test(t) && /\b(?:1[5-9]|20)\d{2}\b/.test(t + ' ' + (all[i + 1] ? all[i + 1].text : '')))) continue; // the list resumes with a reference and its year, not a table's "Rint, Completeness to θmax"
       float = false;
       refs.push(all[i]);
     }
@@ -1318,7 +1372,8 @@
     var L = lines.filter(function (l) { return l.trim(); }), num = /^(?:\[\d{1,4}\]|\d{1,4}\.)\s/;
     var numbered = L.filter(function (l) { return num.test(l.trim()); }).length >= 0.15 * L.length;
     var starts = numbered ? L.filter(function (l) { return num.test(l.trim()); }) : L.filter(function (l) { return !/^ /.test(l); });
-    return L.length >= 2 && starts.length > 0 && (numbered || starts.filter(function (l) { return REF_OPENS.test(l.trim()); }).length >= 0.5 * starts.length);
+    var author = /^(?:\[\d{1,4}\]|\d{1,4}\.)\s+(?:(?:[A-Z]\.[\s-]?){1,3}\s?[A-Z\u00C0-\u024F][\w\u00C0-\u024F'\u2019\-]+|[A-Z\u00C0-\u024F][\w\u00C0-\u024F'\u2019\-]+,?\s+(?:[A-Z]\.|[A-Z]{1,3}[\s,]|[A-Z][a-z]))/; // "1. Smith J,", "[3] J. A. Smith,": an agenda's "2. The proposal…" is not
+    return L.length >= 2 && starts.length > 0 && (numbered ? starts.filter(function (l) { return author.test(l.trim()); }).length >= 0.5 * starts.length : starts.filter(function (l) { return REF_OPENS.test(l.trim()); }).length >= 0.5 * starts.length);
   }
   function read(buf, name) { // the reader the file's first bytes call for, else its name's; no error names the file, as errors travel in bug reports
     var b = bytesOf(buf);

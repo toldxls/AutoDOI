@@ -769,10 +769,16 @@ async function runFlows(browser, base, dark, cslReady) {
   await clickMark('.dv-mark.cite[role=button] >> nth=1');
   var pop = await textOf('#dv-pop');
   check(name('a numbered citation of a range opens a popup with each reference it names'), /^Cited here: “\[2–3\]”/.test(pop) && /Vaswani A, Shazeer N/.test(pop) && /Watson JD, Crick FHC/.test(pop) && (await page.locator('#dv-pop button:has-text("Add all 2")').count()) === 1, pop);
+  var popBox = async function () { return page.locator('#dv-pop').boundingBox(); }, was = await popBox(), grip = await page.locator('#dv-pop h3').boundingBox();
+  await page.mouse.move(grip.x + 30, grip.y + grip.height / 2); await page.mouse.down(); await page.mouse.move(grip.x - 170, grip.y + grip.height / 2 + 120, { steps: 5 }); await page.mouse.up();
+  var moved = await popBox();
+  check(name('the popup is moved by dragging its title bar'), Math.round(moved.x - was.x) === -200 && Math.round(moved.y - was.y) === 120 && /^Cited here/.test(await textOf('#dv-pop')), JSON.stringify([was, moved]));
   await page.click('#dv-pop button:has-text("Add all 2")');
   check(name('Add all picks both, and the popup closes'), (await textOf('#dv-picked')) === '2 picked' && (await page.locator('#dv-pop').isHidden()) && (await textOf('#dv-format')) === 'Format 2 picked');
   await clickMark('.dv-mark.entry[role=button] >> nth=0');
   pop = await textOf('#dv-pop');
+  var reopened = await popBox();
+  check(name('once moved, the next popup opens where the last was left'), Math.round(reopened.x) === Math.round(moved.x) && Math.round(reopened.y) === Math.round(moved.y), JSON.stringify([moved, reopened]));
   check(name('an entry of the list opens its own popup, which knows where it is cited'), /^Reference 1 of 3 in the list/.test(pop) && /Show where it is cited/.test(pop), pop);
   await page.click('#dv-pop button:has-text("Add to the list")');
   check(name('the popup\'s button turns to Remove once the entry is picked'), (await textOf('#dv-picked')) === '3 picked' && (await page.locator('#dv-pop button:has-text("Remove from the list")').count()) === 1);
@@ -821,6 +827,18 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the PDF opens in the viewer, drawn on a canvas, with its citation and list linked'), /Click a reference in the list \(2\) or one of the 1 citations/.test(status) && (await page.locator('#dv-pages .dv-page').count()) === 2 && (await page.locator('.dv-mark.cite[role=button]').getAttribute('aria-label')) === 'Citation: Kucsko et al. 2013', status);
   var pdfjsUrls = s.state.requests.slice(beforePdfView).filter(function (u) { return /pdfjs/.test(u); });
   check(name('pdf.js comes from the page\'s own pinned copy, and nothing else is fetched'), pdfjsUrls.some(function (u) { return u === base + 'vendor/pdfjs-6.4.299/pdf.min.mjs'; }) && s.state.requests.slice(beforePdfView).every(function (u) { return u.indexOf(base) === 0; }), s.state.requests.slice(beforePdfView).join(', '));
+  // a raised superscript cites the numbered list; a subscript in a formula (UO₂) does not
+  await page.click('#dv-close');
+  var supPdf = PW.pdf({ pages: [{ lines: [{ x: 72, y: 700, size: 10, text: 'Thermometry was precise' }, { x: 187, y: 704, size: 6, text: '1' },
+    { x: 72, y: 680, size: 10, text: 'Uranyl as UO' }, { x: 132, y: 677, size: 6, text: '2' }, { x: 136, y: 680, size: 10, text: 'ions.' },
+    { x: 72, y: 650, size: 10, text: 'References' }, { x: 72, y: 636, size: 10, text: '1. Kucsko, G. et al. (2013) Nanometre-scale thermometry. Nature, 500, 54.' }, { x: 72, y: 622, size: 10, text: '2. Vaswani, A. et al. (2017) Attention is all you need. NIPS, 30, 5998.' }] }] });
+  await page.setInputFiles('#export-pick-input', [{ name: 'sup.pdf', mimeType: 'application/pdf', buffer: supPdf }]);
+  await viewerReady();
+  var supCites = await page.locator('.dv-mark.cite[role=button]').evaluateAll(function (ms) { return ms.map(function (m) { return m.getAttribute('aria-label'); }); });
+  check(name('in a PDF a raised superscript number is a citation, and a formula\'s subscript is not'), JSON.stringify(supCites) === JSON.stringify(['Citation: 1']), JSON.stringify(supCites) + ' ' + await textOf('#dv-status'));
+  await page.click('#dv-close');
+  await page.click('#export-pick-last');
+  await viewerReady();
   await page.fill('#dv-q', 'kernite'); await page.press('#dv-q', 'Enter');
   check(name('the PDF\'s text is searched too'), (await textOf('#dv-count')) === '1 of 4', await textOf('#dv-count'));
   await clickMark('.dv-mark.entry[role=button] >> nth=1');
