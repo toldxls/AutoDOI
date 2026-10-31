@@ -508,10 +508,10 @@
       var gap = tw((xKid(tblPr, 'w:tblCellSpacing') || { a: {} }).a['w:w']) || 0; // half the room between two cells, and between a cell and the table's edge
       var fixed = xVal(xKid(tblPr, 'w:tblLayout'), 'type') === 'fixed'; // otherwise Word's AutoFit: a column widens for a word that does not fit
       var make = function () { return { t: 'table', cols: cols, rows: [], heights: [], border: ruled, borders: rules, jc: xVal(xKid(tblPr, 'w:jc')) || '', fixed: fixed, pad: pad, gap: gap }; }, t = make();
-      var autoCells = 0, sizedCells = 0, split = false;
+      var autoCells = 0, sizedCells = 0, split = false, above = []; // above: the grid columns where a cell of the row above starts, in this part of the table
       xKids(tNode, 'w:tr').forEach(function (tr) {
-        if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); split = true; } } // a row that opens a page
-        var row = [], trH = xKid(xKid(tr, 'w:trPr'), 'w:trHeight');
+        if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); split = true; above = []; } } // a row that opens a page
+        var row = [], trH = xKid(xKid(tr, 'w:trPr'), 'w:trHeight'), col = 0, starts = [];
         t.heights[t.rows.length] = trH && tw(trH.a['w:val']) > 0 ? tw(trH.a['w:val']) : 0; // at least this tall (an "exact" row is taken as at least: its text is not cut off)
         xKids(tr, 'w:tc').forEach(function (tc) {
           var tcPr = xKid(tc, 'w:tcPr'), vm = xKid(tcPr, 'w:vMerge'), shd = xKid(tcPr, 'w:shd');
@@ -519,9 +519,12 @@
             borders: readBorders(xKid(tcPr, 'w:tcBorders'), {}), valign: { center: 'middle', bottom: 'bottom' }[xVal(xKid(tcPr, 'w:vAlign'))] || 'top' };
           if (xKid(tcPr, 'w:tcMar')) cell.pad = readMargins(xKid(tcPr, 'w:tcMar'), { top: pad.top, right: pad.right, bottom: pad.bottom, left: pad.left });
           var tcw = xKid(tcPr, 'w:tcW'); if (!tcw || tcw.a['w:type'] === 'auto' || !(parseFloat(tcw.a['w:w']) > 0)) autoCells++; else sizedCells++;
+          if (cell.vm === 'continue' && !above[col]) cell.vm = 'restart'; // a merge carried over a page break, or a damaged file's: nothing above to merge into, so the cell starts its own
+          starts[col] = true; col += cell.span;
           body(tc, cell.blocks, { inCell: true, n: ctx.n, tStyle: style });
           row.push(cell);
         });
+        above = starts;
         t.rows.push(row);
       });
       var tblW = xKid(tblPr, 'w:tblW');
@@ -1405,8 +1408,11 @@
       var inset = function (l) { return l.x - left > 0.6 * l.size; }, ins = run.filter(inset), flat = run.filter(function (l) { return !inset(l); });
       var opens = function (list) { return list.filter(function (l) { return REF_OPENS.test(l.text) || fullRef(l.text); }).length; };
       var firstLine = ins.length >= 2 && opens(ins) >= 0.6 * ins.length && opens(flat) <= 0.25 * flat.length; // each entry's first line set in, the rest flush: the reverse of a hanging indent
+      // every line an entry of its own (it opens like one and names a year): a wider gap is the page's spacing, not a break between
+      // entries, which would join the lines on either side of it into one
+      var perLine = run.length >= 4 && run.filter(function (l) { return (REF_OPENS.test(l.text) || fullRef(l.text)) && /\b(?:1[5-9]|20)\d{2}\b/.test(l.text); }).length >= 0.9 * run.length;
       run.forEach(function (l, i) {
-        if (i && run.length >= 4 && med > 0 && gaps[i - 1] > 1.6 * med && gaps[i - 1] < 6 * med) out.push('');
+        if (i && !perLine && run.length >= 4 && med > 0 && gaps[i - 1] > 1.6 * med && gaps[i - 1] < 6 * med) out.push('');
         out.push((inset(l) !== firstLine ? ' ' : '') + l.text); // given to the splitter as a hanging indent either way
       });
       run = [];

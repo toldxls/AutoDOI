@@ -890,11 +890,17 @@ async function runFlows(browser, base, dark, cslReady) {
     }, { code: bm, sel: selectId });
   };
   var listPage = '<p>Warr, L.N. (2021). IMA–CNMNC approved mineral symbols. doi:10.1180/mgm.2021.43</p><ol><li>Bosi (2025) <a href="https://doi.org/10.5194/ejm-37-337-2025">10.5194/ejm-37-337-2025</a>CNMNC Newsletter 85</li>' +
-    '<li id="one">Plášil (2023) doi:10.1180/mgm.2022.106.</li><li>Other (2021) 10.1180/mgm.2021.4</li></ol>';
-  var bms = [await runBm(listPage), await runBm('<meta name="citation_doi" content="10.1038/nature12373">' + listPage), await runBm(listPage, 'one'), await runBm('<p>No identifiers here.</p>')];
+    '<li id="one">Plášil (2023) doi:10.1180/mgm.2022.106.</li><li>Other (2021) 10.1180/mgm.2021.4</li>' +
+    // Google Scholar's lookup link (Springer, Wiley): the DOI is its doi= parameter, not the rest of the query after it; a redirect's DOI ends at its "&"
+    '<li>Smith (2019) <a href="https://scholar.google.com/scholar_lookup?&title=Foo&journal=Phys%20Chem%20Min&doi=10.1007%2Fs00269-019-01234-5&volume=46&author=Smith%2CJ">Google Scholar</a>' +
+    ' <a href="https://example.org/out?url=https%3A%2F%2Fdoi.org%2F10.1000%2Fabc&src=refs">Publisher</a></li></ol>';
+  var manyDois = '<p>' + Array.from({ length: 300 }, function (x, i) { return 'doi:10.1234/a-rather-long-suffix-for-reference-number-' + i; }).join(' ') + '</p>';
+  var bms = [await runBm(listPage), await runBm('<meta name="citation_doi" content="10.1038/nature12373">' + listPage), await runBm(listPage, 'one'), await runBm('<p>No identifiers here.</p>'), await runBm(manyDois)];
   var after = function (u, k) { return decodeURIComponent((u.split(k)[1] || '').split('&')[0]); };
-  check(name('the bookmarklet cites an article\'s own DOI, opens every DOI on a list page (a glued word cut off), or those selected'),
-    JSON.stringify([after(bms[0], '&refs=').split(','), after(bms[1], '&q='), after(bms[2], '&q='), bms[3]]) === JSON.stringify([['10.5194/ejm-37-337-2025', '10.1180/mgm.2021.43', '10.1180/mgm.2022.106', '10.1180/mgm.2021.4'], '10.1038/nature12373', '10.1180/mgm.2022.106', 'alert:AutoDOI: no DOI found on this page.']) && /\?list=[^&]*&refs=/.test(bms[0]), JSON.stringify(bms));
+  check(name('the bookmarklet cites an article\'s own DOI, opens every DOI on a list page (a glued word cut off, a Scholar link\'s doi= read alone), or those selected'),
+    JSON.stringify([after(bms[0], '&refs=').split(','), after(bms[1], '&q='), after(bms[2], '&q='), bms[3]]) === JSON.stringify([['10.5194/ejm-37-337-2025', '10.1007/s00269-019-01234-5', '10.1000/abc', '10.1180/mgm.2021.43', '10.1180/mgm.2022.106', '10.1180/mgm.2021.4'], '10.1038/nature12373', '10.1180/mgm.2022.106', 'alert:AutoDOI: no DOI found on this page.']) && /\?list=[^&]*&refs=/.test(bms[0]), JSON.stringify(bms));
+  var manyRefs = bms[4].split('&refs=')[1] || '';
+  check(name('the bookmarklet\'s list is cut at 7,500 characters, as Copy link cuts it'), manyRefs.length <= 7500 && manyRefs.split(',').length > 100 && manyRefs.split(',').length < 200, manyRefs.length + ' chars, ' + manyRefs.split(',').length + ' DOIs');
   await bp.close();
   // A PDF, drawn by the pdf.js served with the page, opened from the link a dropped manuscript leaves
   await page.setInputFiles('#export-file-input', [{ name: 'manuscript.pdf', mimeType: 'application/pdf', buffer: PW.manuscript({ compress: true }) }]);
@@ -917,7 +923,15 @@ async function runFlows(browser, base, dark, cslReady) {
   await viewerReady();
   var supCites = await page.locator('.dv-mark.cite[role=button]').evaluateAll(function (ms) { return ms.map(function (m) { return m.getAttribute('aria-label'); }); });
   check(name('in a PDF a raised superscript number is a citation, and a formula\'s subscript is not'), JSON.stringify(supCites) === JSON.stringify(['Citation: 1']), JSON.stringify(supCites) + ' ' + await textOf('#dv-status'));
-  await page.click('#dv-close');
+  // picks from another file than the one whose list is in the box are added after that list, which stays
+  var listText = await page.inputValue('#export-input');
+  await clickMark('.dv-mark.entry[role=button] >> nth=0');
+  await page.click('#dv-pop button:has-text("Add to the list")');
+  await page.click('#dv-format');
+  await page.waitForFunction(function () { return /picked from sup\.pdf/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  picked = await page.inputValue('#export-input');
+  check(name('picks from another file are added after the list read from manuscript.pdf, which stays'), /Nanometre-scale thermometry in a living cell/.test(listText) && picked.indexOf(listText.trim() + '\n\n') === 0 && /^(?:1\. )?Kucsko, G\. et al\. \(2013\)/.test(picked.slice(listText.trim().length + 2)), JSON.stringify(picked));
+  await page.fill('#export-input', listText);
   await page.click('#export-pick-last');
   await viewerReady();
   await page.fill('#dv-q', 'kernite'); await page.press('#dv-q', 'Enter');

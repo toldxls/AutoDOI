@@ -111,6 +111,17 @@ var t0 = Date.now();
   eq('an unreadable manuscript: named on stderr and exit 2', code === 2 && /^Could not read .*autodoi-cli-\d+\.pdf: no pages found/.test(t.errs[0]), true, t.errs[0]);
   t = io(); code = await cli.run(['--match', pdfFile, 'Some reference text'], t);
   eq('a manuscript beside reference text is bad usage', code === 2 && /either manuscripts .* or references/.test(t.errs[0]), true);
+  // A flush list, one entry per line, with a wider gap in it: each line is a reference, alone and beside a Word file (whose
+  // paragraphs are set apart by blank lines, which must not join the PDF's lines)
+  var flushLine = function (y, text) { return { x: 72, y: y, size: 9, text: text }; };
+  fs.writeFileSync(pdfFile, require('./pdf-writer.js').pdf({ pages: [{ lines: [flushLine(720, 'References'), flushLine(700, 'Abel, A. (2001) First. J Chem 1, 1.'), flushLine(689, 'Baker, B. (2002) Second. J Chem 2, 2.'),
+    flushLine(678, 'Cole, C. (2003) Third. J Chem 3, 3.'), flushLine(652, 'Dunn, D. (2004) Fourth. J Chem 4, 4.'), flushLine(641, 'Ernst, E. (2005) Fifth. J Chem 5, 5.')] }] }));
+  t = io(); code = await cli.run(['--match', '--json', pdfFile], t);
+  eq('--match on a flush PDF list: one reference per line, across a wider gap', JSON.parse(t.outs[0]).map(function (r) { return r.text.slice(0, 5); }), ['Abel,', 'Baker', 'Cole,', 'Dunn,', 'Ernst']);
+  t = io(); code = await cli.run(['--match', '--json', path.join(__dirname, 'fixtures', 'manuscript.docx'), pdfFile], t);
+  eq('--match on a Word file and a flush PDF: each file split on its own', JSON.parse(t.outs[0]).length, 7);
+  t = io(); code = await cli.run(['--match', path.join(require('os').tmpdir(), 'no-such-manuscript-' + process.pid + '.pdf')], t);
+  eq('a manuscript that is not there: named on stderr and exit 2, not sent to Crossref as a reference', [code, /^No such file: .*no-such-manuscript-\d+\.pdf$/.test(t.errs[0]), t.outs.length], [2, true, 0]);
   fs.unlinkSync(pdfFile);
   eq('the suite runs without real waiting (the throttle is injected)', Date.now() - t0 < 2000, true);
   console.log(pass + ' passed, ' + fail + ' failed'); process.exitCode = fail ? 1 : 0;

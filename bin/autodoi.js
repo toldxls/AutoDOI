@@ -156,12 +156,14 @@ async function run(argv, io) {
     return failed ? 1 : 0;
   }
   if (!o.ids.length && io.tty && io.tty()) { io.err('Nothing to match: pipe references on stdin or give them as arguments.'); return 2; } // else it would wait forever
-  var docs = o.ids.filter(function (a) { return DOCS.isDocument(a) && require('fs').existsSync(a); }), text;
+  var fs = require('fs'), docs = o.ids.filter(function (a) { return DOCS.isDocument(a) && fs.existsSync(a); }), refs;
+  var missing = o.ids.filter(function (a) { return DOCS.isDocument(a) && !/\s/.test(a) && !fs.existsSync(a); }); // a mistyped file name, not a reference to send to Crossref
+  if (missing.length) { io.err('No such file: ' + missing[0]); return 2; }
   if (docs.length) {
     if (docs.length < o.ids.length) { io.err('Give either manuscripts (.docx, .pdf) or references to --match, not both.'); return 2; }
-    try { text = docs.map(readDocument).join('\n\n'); } catch (e) { io.err('Could not read ' + (docs.length === 1 ? docs[0] : 'a manuscript') + ': ' + e.message); return 2; }
-  } else text = o.ids.length ? o.ids.join('\n') : await io.stdin();
-  var refs = splitRefs(text);
+    var at = 0; // each file split on its own: one file's blank lines must not change how another's lines are joined
+    try { refs = []; for (; at < docs.length; at++) refs = refs.concat(splitRefs(readDocument(docs[at]))); } catch (e) { io.err('Could not read ' + docs[at] + ': ' + e.message); return 2; }
+  } else refs = splitRefs(o.ids.length ? o.ids.join('\n') : await io.stdin());
   if (!refs.length) { io.err('Nothing to match: give references on stdin, one per line.'); return 2; }
   // Each row is printed as its lookup finishes: the good matches in the style or export asked for, on stdout, the rest on stderr
   // so nothing vanishes silently.  --json waits for the whole list, since it prints one array.

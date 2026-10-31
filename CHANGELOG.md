@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.3 - 2026-10-31
+
+### Fixed
+
+- The bookmarklet reads a Google Scholar link's DOI on its own, not with the rest of the link run onto it, so a Springer or Wiley reference list no longer gets a failing row per reference; its list is cut at 7,500 characters, as Copy link's is.
+- A PDF list with one reference per line, set flush, stays one reference per line where the spacing widens; `autodoi --match` reads each manuscript on its own, and names a manuscript that is not there instead of matching its name.
+- The viewer keeps a merged Word cell that runs over a page break in its column, and picks from another file are added after the list in the box rather than replacing it.
+
 ## 1.18.2 - 2026-10-31
 
 ### Changed
