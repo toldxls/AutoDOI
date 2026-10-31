@@ -1,12 +1,12 @@
 #!/bin/sh
 # Inlines the library files into index.html (between marker comments) and refreshes the Apps Script copy,
-# so index.html works as a single downloaded file. Run after editing citations.js, parsers.js or sentencecase.js.
+# so index.html works as a single downloaded file. Run after editing citations.js, parsers.js, sentencecase.js or documents.js.
 set -e
 cd "$(dirname "$0")"
 python3 - <<'PY'
 import re, sys
 html = open('index.html', encoding='utf-8').read()
-for name in ('citations.js', 'parsers.js', 'sentencecase.js'):
+for name in ('citations.js', 'parsers.js', 'sentencecase.js', 'documents.js'):
     try:
         lib = open(name, encoding='utf-8').read()
     except FileNotFoundError:

@@ -10,6 +10,7 @@
  *   autodoi --match --style ris < references.txt     the good matches as an RIS file (or bibtex, endnote, any style), printed as they arrive;
  *                                                    the rest are reported on stderr
  *   autodoi --match --json < references.txt          the records as JSON, with grade and DOI
+ *   autodoi --match paper.pdf                        the reference list of a Word (.docx) or PDF manuscript, read after its References heading
  *   --email you@example.org                          Crossref's polite pool (faster); also read from AUTODOI_EMAIL
  *   --pages 45-47                                    the in-text citation with a page locator, printed after the reference (not with --match)
  *
@@ -17,6 +18,7 @@
  * Only the identifiers or reference text given are sent, to api.crossref.org, doi.org, ebi.ac.uk (Europe PMC) and openlibrary.org. */
 var path = require('path');
 var A = require(path.join(__dirname, '..', 'citations.js'));
+var DOCS = require(path.join(__dirname, '..', 'documents.js'));
 var UA = 'AutoDOI-cli/' + require(path.join(__dirname, '..', 'package.json')).version + ' (https://github.com/toldxls/AutoDOI)';
 var TIMEOUT_MS = 30000; // a request that has not answered by then is abandoned and retried, so a hung connection cannot hang the run
 
@@ -114,9 +116,22 @@ function usage() { // the comment block at the top of this file, up to its closi
 }
 function stdinIsTty() { return !!process.stdin.isTTY; }
 function readStdin() { return new Promise(function (resolve) { var d = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', function (c) { d += c; }); process.stdin.on('end', function () { resolve(d); }); }); }
-function splitRefs(text) { // blank lines between references, or one per line (simpler than the page's splitter, which also cuts run-together lines)
-  var t = text.replace(/\r\n?/g, '\n').trim(); if (!t) return [];
-  return (/\n\s*\n/.test(t) ? t.split(/\n\s*\n+/).map(function (p) { return p.replace(/\s*\n\s*/g, ' '); }) : t.split('\n')).map(function (s) { return s.trim(); }).filter(Boolean);
+function splitRefs(text) { // blank lines between references, a hanging indent, or one per line (simpler than the page's splitter, which also cuts run-together lines)
+  var t = text.replace(/\r\n?/g, '\n').replace(/^\s*\n/, '').trimEnd(); if (!t.trim()) return [];
+  var lines = t.split('\n'), filled = lines.filter(function (l) { return l.trim(); });
+  var hanging = !/^[ \t]/.test(filled[0]) && filled.some(function (l) { return /^[ \t]+\S/.test(l); }); // continuation lines indented, first lines not (as a PDF's list is read)
+  var out = [], cur = '', blank = /\n\s*\n/.test(t);
+  lines.forEach(function (l) {
+    if (!l.trim()) { if (cur) out.push(cur); cur = ''; return; }
+    if (cur && (hanging ? /^[ \t]/.test(l) : blank)) cur += ' ' + l.trim(); else { if (cur) out.push(cur); cur = l.trim(); }
+  });
+  if (cur) out.push(cur);
+  return out.map(function (r) { return r.replace(/^(?:\[\d{1,4}\]|(?!(?:1[5-9]|20)\d\d[.)])\d{1,4}[.)])\s+/, ''); }).filter(Boolean); // a list's own numbers ("12.", "[12]") are not part of the reference; "2019." opens a year-led one
+}
+function readDocument(file) { // the reference list of a .docx or .pdf, as text for splitRefs
+  var sec = DOCS.read(require('fs').readFileSync(file), path.basename(file));
+  if (!sec.refs.length) throw new Error('no References heading, and no paragraph with a year');
+  return sec.refs.join(sec.layout === 'lines' ? '\n\n' : '\n'); // a Word paragraph is one reference
 }
 async function run(argv, io) {
   io = io || { out: function (s) { process.stdout.write(s + '\n'); }, write: function (s) { process.stdout.write(s); }, err: function (s) { process.stderr.write(s + '\n'); }, stdin: readStdin, tty: stdinIsTty };
@@ -141,7 +156,12 @@ async function run(argv, io) {
     return failed ? 1 : 0;
   }
   if (!o.ids.length && io.tty && io.tty()) { io.err('Nothing to match: pipe references on stdin or give them as arguments.'); return 2; } // else it would wait forever
-  var refs = splitRefs(o.ids.length ? o.ids.join('\n') : await io.stdin());
+  var docs = o.ids.filter(function (a) { return DOCS.isDocument(a) && require('fs').existsSync(a); }), text;
+  if (docs.length) {
+    if (docs.length < o.ids.length) { io.err('Give either manuscripts (.docx, .pdf) or references to --match, not both.'); return 2; }
+    try { text = docs.map(readDocument).join('\n\n'); } catch (e) { io.err('Could not read ' + (docs.length === 1 ? docs[0] : 'a manuscript') + ': ' + e.message); return 2; }
+  } else text = o.ids.length ? o.ids.join('\n') : await io.stdin();
+  var refs = splitRefs(text);
   if (!refs.length) { io.err('Nothing to match: give references on stdin, one per line.'); return 2; }
   // Each row is printed as its lookup finishes: the good matches in the style or export asked for, on stdout, the rest on stderr
   // so nothing vanishes silently.  --json waits for the whole list, since it prints one array.

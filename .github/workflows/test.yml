@@ -81,13 +81,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
-      # Only what the page serves: itself, the worker and its manifest and icon, the data/ files it fetches, the libraries
+      # Only what the page serves: itself, the worker and its manifest and icon, the data/ files it fetches, the PDF viewer, the libraries
       # (for anyone who wants them unbundled) and the licence; not the tests, fixtures, tooling or the Sheets script.
       - name: Assemble the site
         run: |
           mkdir dist
-          cp index.html sw.js manifest.webmanifest icon.svg citations.js parsers.js sentencecase.js LICENSE dist/
+          cp index.html sw.js manifest.webmanifest icon.svg citations.js parsers.js sentencecase.js documents.js LICENSE dist/
           cp -R data dist/data
+          cp -R vendor dist/vendor
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: dist

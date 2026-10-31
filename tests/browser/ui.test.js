@@ -1,6 +1,7 @@
 // Drives the built page in headless Chromium with every external API mocked, so it runs offline and gives
 // the same answer every time.  Covers the three tabs, deep links, a lookup, single-style mode and copy,
-// the DOI finder, reference matching, RIS and BibTeX file import, a journal style rendered through
+// the DOI finder, reference matching, RIS and BibTeX file import, the document viewer (a Word file laid out, a PDF
+// through the page's own pdf.js, references picked from either), a journal style rendered through
 // citeproc, the error path with its bug-report link, and axe accessibility checks on each tab with
 // content, in light and dark mode.
 //
@@ -63,7 +64,7 @@ async function loadUpstream() {
 }
 
 // --- a static server for the repository root, so data/ loads like it does on GitHub Pages ---
-var TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.css': 'text/css', '.svg': 'image/svg+xml' };
+var TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.wasm': 'application/wasm', '.json': 'application/json', '.css': 'text/css', '.svg': 'image/svg+xml' }; // .mjs as GitHub Pages serves it: a module must come as JavaScript
 function serve() {
   return new Promise(function (resolve) {
     var srv = http.createServer(function (req, res) {
@@ -708,10 +709,10 @@ async function runFlows(browser, base, dark, cslReady) {
   // The Word reader inflates only the parts it reads, and refuses a file that says it is huge, before touching it; a dropped file's name
   // is shown on the page and never put in a bug report
   var issueHrefs = function () { return page.evaluate(function () { return Array.prototype.map.call(document.querySelectorAll('a[href*="issues/new"]'), function (a) { return a.href; }); }); };
-  var dropStatus = async function (fname, buf) {
+  var dropStatus = async function (fname, buf, mime) {
     await page.evaluate(function () { document.getElementById('export-status').textContent = ''; }); // the last run's summary must not pass for this file's
-    await page.setInputFiles('#export-file-input', [{ name: fname, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: buf }]);
-    await page.waitForFunction(function (f) { return new RegExp(f.replace(/\./g, '\\.')).test(document.querySelector('#export-status').textContent) || /Read \d+ paragraphs/.test(document.querySelector('#export-status').textContent); }, fname, { timeout: 10000 });
+    await page.setInputFiles('#export-file-input', [{ name: fname, mimeType: mime || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: buf }]);
+    await page.waitForFunction(function (f) { var t = document.querySelector('#export-status').textContent; return new RegExp('^Could not read ' + f.replace(/\./g, '\\.')).test(t) || /Read \d+ (?:paragraphs|lines)/.test(t); }, fname, { timeout: 10000 }); // not "Reading <name>…", which comes first
     return textOf('#export-status');
   };
   var DOC_XML = '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>References</w:t></w:r></w:p><w:p><w:r><w:t>Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., &amp; Lukin, M. D. (2013). Nanometre-scale thermometry in a living cell. Nature, 500(7460), 54-58.</w:t></w:r></w:p></w:body></w:document>';
@@ -727,6 +728,108 @@ async function runFlows(browser, base, dark, cslReady) {
   status = await dropStatus('crafted.docx', zipOf([{ name: 'word/document.xml', data: Buffer.from(DOC_XML) }, { name: 'word/media/image1.png', data: Buffer.from('not really deflated'), method: 8 }]));
   await page.waitForFunction(function () { return /good|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
   check(name('a part the reader does not need is never inflated: a garbage image beside a good document.xml does no harm'), /Read 1 paragraphs? after "References" in crafted\.docx/.test(await textOf('#export-status')) && /Nanometre-scale thermometry/.test(await page.inputValue('#export-input')), await textOf('#export-status'));
+  await page.fill('#export-input', '');
+  // 9c. A PDF manuscript, encrypted as publishers do and packed in object streams: its lines after References, the hanging indent kept
+  // for the splitter, which makes one reference of each entry; the running heads, page numbers and the caption after the list stay out
+  var PW = require('../pdf-writer.js'), beforePdf = s.state.requests.length;
+  status = await dropStatus('manuscript.pdf', PW.manuscript({ compress: true, objstm: true, encrypt: 'aes' }), 'application/pdf');
+  await page.waitForFunction(function () { return /good|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  var pdfText = await page.inputValue('#export-input');
+  check(name('the PDF gives up its list, continuation lines indented'), pdfText === 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., and Lukin,\n M. D. (2013) Nanometre-scale thermometry in a living cell. Nature, 500, 54\u201358.\nVaswani, A., Shazeer, N. and Parmar, N. (2017) Attention is all you need. Advances in\n Neural Information Processing Systems, 30, 5998\u20136008.', JSON.stringify(pdfText));
+  status = await textOf('#export-status');
+  check(name('the PDF\'s two entries are matched as two references'), /Read 4 lines after "References" in manuscript\.pdf\. 1 good, 1 not matched/.test(status), status);
+  check(name('the PDF itself never left the browser'), !s.state.requests.slice(beforePdf).some(function (u) { return /kernite|THERMOMETRY%20OF|Temperature%20map/i.test(u); }));
+  await page.fill('#export-input', '');
+  status = await dropStatus('prose.pdf', PW.pdf({ pages: [{ lines: [{ x: 72, y: 700, size: 10, text: 'Diamond thermometers reach sub-degree precision in living cells.' }] }] }), 'application/pdf');
+  check(name('a PDF with no References heading and no list is refused in words'), /^Could not read prose\.pdf: no References heading, and the text does not read as a reference list/.test(status) && (await page.inputValue('#export-input')) === '', status);
+  await page.fill('#export-input', '');
+  // 9d. The document viewer: a Word manuscript laid out as Word laid it out, its references picked from the text (citations) or
+  // the list, with search and its arrows; the picks go to the box and are matched
+  var DX = require('../docx-writer.js'), beforeView = s.state.requests.length;
+  var viewerReady = function () { return page.waitForFunction(function () { return /Click a reference|Could not show/.test(document.getElementById('dv-status').textContent); }, null, { timeout: 30000 }); };
+  var clickMark = async function (sel) { await page.locator(sel).evaluate(function (m) { m.scrollIntoView({ block: 'center' }); }); var bb = await page.locator(sel).boundingBox(); await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2); };
+  await page.setInputFiles('#export-pick-input', [{ name: 'rich.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: DX.manuscript() }]);
+  await viewerReady();
+  status = await textOf('#dv-status');
+  check(name('the viewer opens the Word file and says what can be picked'), (await page.locator('#viewer').evaluate(function (d) { return d.open; })) && /Click a reference in the list \(3\) or one of the 2 citations marked in the text/.test(status), status);
+  var layout = await page.evaluate(function () {
+    var pages = document.querySelectorAll('#dv-pages .dv-page'), r = pages[0].getBoundingClientRect();
+    return { pages: pages.length, ratio: Math.round(r.width / r.height * 1000) / 1000, labels: Array.prototype.map.call(pages[1].querySelectorAll('.dv-p > span[style*="inline-block"]'), function (x) { return x.textContent; }),
+      note: pages[0].querySelector('.dv-notes') && !pages[0].querySelector('.dv-notes').hidden ? pages[0].querySelector('.dv-notes').textContent : '', img: !!pages[0].querySelector('img[src^="data:image/png;base64,"]'), cont: pages[1].querySelector('.dv-p').textContent };
+  });
+  check(name('the Word file is laid out on A4 pages broken where Word broke them, with its list numbers, its footnote at the foot of its page and its picture'), JSON.stringify(layout) === JSON.stringify({ pages: 2, ratio: 0.707, labels: ['1.', '2.', '3.'], note: '1 Kernite is mined at Boron, California.', img: true, cont: 'measured the next day.' }), JSON.stringify(layout));
+  await page.fill('#dv-q', 'kernite'); await page.press('#dv-q', 'Enter');
+  var counts = [await textOf('#dv-count')];
+  await page.click('#dv-next'); counts.push(await textOf('#dv-count'));
+  await page.click('#dv-prev'); await page.click('#dv-prev'); counts.push(await textOf('#dv-count'));
+  await page.press('#dv-q', 'Enter'); counts.push(await textOf('#dv-count'));
+  check(name('a search marks every match, and the arrows and Enter step through them, round the ends'), JSON.stringify(counts) === JSON.stringify(['1 of 4', '2 of 4', '4 of 4', '1 of 4']) && (await page.locator('.dv-mark.hit.current').count()) >= 1 && (await page.locator('.dv-mark.hit').count()) >= 4, counts.join(', '));
+  await page.fill('#dv-q', 'no such words'); await page.press('#dv-q', 'Enter');
+  check(name('a search with no match says so and turns the arrows off'), (await textOf('#dv-count')) === 'No matches' && (await page.locator('#dv-next').isDisabled()), await textOf('#dv-count'));
+  await clickMark('.dv-mark.cite[role=button] >> nth=1');
+  var pop = await textOf('#dv-pop');
+  check(name('a numbered citation of a range opens a popup with each reference it names'), /^Cited here: “\[2–3\]”/.test(pop) && /Vaswani A, Shazeer N/.test(pop) && /Watson JD, Crick FHC/.test(pop) && (await page.locator('#dv-pop button:has-text("Add all 2")').count()) === 1, pop);
+  await page.click('#dv-pop button:has-text("Add all 2")');
+  check(name('Add all picks both, and the popup closes'), (await textOf('#dv-picked')) === '2 picked' && (await page.locator('#dv-pop').isHidden()) && (await textOf('#dv-format')) === 'Format 2 picked');
+  await clickMark('.dv-mark.entry[role=button] >> nth=0');
+  pop = await textOf('#dv-pop');
+  check(name('an entry of the list opens its own popup, which knows where it is cited'), /^Reference 1 of 3 in the list/.test(pop) && /Show where it is cited/.test(pop), pop);
+  await page.click('#dv-pop button:has-text("Add to the list")');
+  check(name('the popup\'s button turns to Remove once the entry is picked'), (await textOf('#dv-picked')) === '3 picked' && (await page.locator('#dv-pop button:has-text("Remove from the list")').count()) === 1);
+  await page.keyboard.press('Escape');
+  check(name('Escape closes the popup and leaves the viewer open'), (await page.locator('#dv-pop').isHidden()) && (await page.locator('#viewer').evaluate(function (d) { return d.open; })));
+  await page.locator('.dv-mark.cite[role=button] >> nth=0').focus(); await page.keyboard.press('Enter');
+  pop = await textOf('#dv-pop');
+  await page.keyboard.press('Escape');
+  check(name('a citation is reached and opened from the keyboard, and the focus comes back to it'), /^Cited here: “\[1\]”/.test(pop) && (await page.evaluate(function () { return document.activeElement.classList.contains('cite'); })), pop);
+  await page.evaluate(function () { // a selection made by hand: the words after the page break
+    var w = document.createTreeWalker(document.getElementById('dv-pages'), NodeFilter.SHOW_TEXT), n;
+    while ((n = w.nextNode()) && n.nodeValue.indexOf('measured the next day') < 0);
+    var r = document.createRange(); r.setStart(n, 0); r.setEnd(n, 'measured the next day'.length);
+    getSelection().removeAllRanges(); getSelection().addRange(r);
+    n.parentNode.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 300, clientY: 300 }));
+  });
+  await page.waitForSelector('#dv-pop:not([hidden])');
+  pop = await textOf('#dv-pop');
+  await page.click('#dv-pop button:has-text("Add to the list")');
+  check(name('selected text can be added as a reference of its own'), /^Selected text/.test(pop) && /measured the next day/.test(pop) && (await textOf('#dv-picked')) === '4 picked', pop);
+  await page.click('#dv-picked');
+  check(name('the picked button opens the tray, which lists the picks in order'), (await page.locator('#dv-tray').isVisible()) && (await page.locator('#dv-picked').getAttribute('aria-expanded')) === 'true' && (await page.locator('#dv-tray li').count()) === 4);
+  await axeCheck('the document viewer with its tray open');
+  await page.click('#dv-tray li:last-child button:has-text("Remove")');
+  check(name('a pick is removed from the tray'), (await textOf('#dv-picked')) === '3 picked' && (await page.locator('#dv-tray li').count()) === 3);
+  await page.click('#dv-format');
+  await page.waitForFunction(function () { return /picked from rich\.docx/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  var picked = await page.inputValue('#export-input');
+  check(name('Format closes the viewer and puts the picks in the box, one per line, to be matched'), !(await page.locator('#viewer').evaluate(function (d) { return d.open; })) && picked === [DX.REFS[1], DX.REFS[2], DX.REFS[0]].join('\n') && (await page.inputValue('#split-mode')) === 'lines', picked);
+  check(name('the status says how many were picked and from where'), /^Read 3 references picked from rich\.docx\./.test(await textOf('#export-status')), await textOf('#export-status'));
+  check(name('the manuscript itself never left the browser'), !s.state.requests.slice(beforeView).some(function (u) { return /Boron|kernite|crystals/i.test(decodeURIComponent(u)); }));
+  await page.fill('#export-input', '');
+  await page.setInputFiles('#export-pick-input', [{ name: 'prose.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: DX.docx({ body: '<w:p><w:r><w:t>In 2019 we measured kernite crystals at the mine, as described by Smith (2019), for a long while.</w:t></w:r></w:p>' }) }]);
+  await page.waitForFunction(function () { return /No reference list/.test(document.getElementById('dv-status').textContent); }, null, { timeout: 30000 });
+  check(name('a Word file with no References heading is shown, with nothing marked as a reference and selection offered instead'), /^No reference list was found \(no References heading\)\. Select any text/.test(await textOf('#dv-status')) && (await page.locator('.dv-mark').count()) === 0, await textOf('#dv-status'));
+  await page.click('#dv-close');
+  // A PDF, drawn by the pdf.js served with the page, opened from the link a dropped manuscript leaves
+  await page.setInputFiles('#export-file-input', [{ name: 'manuscript.pdf', mimeType: 'application/pdf', buffer: PW.manuscript({ compress: true }) }]);
+  await page.waitForFunction(function () { return !document.getElementById('export-pick-last').hidden && !document.querySelector('#export-go').disabled && /good|not matched/.test(document.querySelector('#export-status').textContent); }, null, { timeout: 30000 });
+  check(name('reading a manuscript into the box leaves a link to pick from it instead'), (await textOf('#export-pick-last')) === 'Pick single references from manuscript.pdf');
+  var beforePdfView = s.state.requests.length;
+  await page.click('#export-pick-last');
+  await viewerReady();
+  await page.waitForSelector('#dv-pages .dv-page canvas');
+  status = await textOf('#dv-status');
+  check(name('the PDF opens in the viewer, drawn on a canvas, with its citation and list linked'), /Click a reference in the list \(2\) or one of the 1 citations/.test(status) && (await page.locator('#dv-pages .dv-page').count()) === 2 && (await page.locator('.dv-mark.cite[role=button]').getAttribute('aria-label')) === 'Citation: Kucsko et al. 2013', status);
+  var pdfjsUrls = s.state.requests.slice(beforePdfView).filter(function (u) { return /pdfjs/.test(u); });
+  check(name('pdf.js comes from the page\'s own pinned copy, and nothing else is fetched'), pdfjsUrls.some(function (u) { return u === base + 'vendor/pdfjs-6.4.299/pdf.min.mjs'; }) && s.state.requests.slice(beforePdfView).every(function (u) { return u.indexOf(base) === 0; }), s.state.requests.slice(beforePdfView).join(', '));
+  await page.fill('#dv-q', 'kernite'); await page.press('#dv-q', 'Enter');
+  check(name('the PDF\'s text is searched too'), (await textOf('#dv-count')) === '1 of 4', await textOf('#dv-count'));
+  await clickMark('.dv-mark.entry[role=button] >> nth=1');
+  check(name('an entry of the PDF\'s list opens its popup'), /^Reference 2 of 2 in the list/.test(await textOf('#dv-pop')), await textOf('#dv-pop'));
+  await page.click('#dv-pop button:has-text("Add to the list")');
+  await page.click('#dv-format');
+  await page.waitForFunction(function () { return /picked from manuscript\.pdf/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  picked = await page.inputValue('#export-input');
+  check(name('the whole list read from the PDF gives way to the one reference picked from it'), picked === 'Vaswani, A., Shazeer, N. and Parmar, N. (2017) Attention is all you need. Advances in Neural Information Processing Systems, 30, 5998–6008.', JSON.stringify(picked));
   await page.fill('#export-input', '');
   // 10. A retracted paper is flagged on the DOI tab and on a matcher row, with the notices, and the reference itself is left alone
   await page.click('#tab-cite');

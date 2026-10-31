@@ -1,0 +1,170 @@
+var ROOT = require('path').resolve(__dirname, '..');
+// documents.js: the inflate both readers use, checked against zlib; the PDF reader on files written the ways real ones are
+// (tests/pdf-writer.js: compressed, packed in object streams, composite fonts, encrypted as publishers do); the Word reader on
+// the manuscript fixture.  Run: node tests/documents.test.js
+var fs = require('fs'), path = require('path'), zlib = require('zlib'), crypto = require('crypto');
+var D = require(path.join(ROOT, 'documents.js')), W = require('./pdf-writer.js');
+let pass = 0, fail = 0;
+const eq = (label, got, exp) => { if (JSON.stringify(got) === JSON.stringify(exp)) pass++; else { fail++; console.log('FAIL', label, '\n   got ', JSON.stringify(got), '\n   want', JSON.stringify(exp)); } };
+const throws = (label, fn, re) => { try { fn(); fail++; console.log('FAIL', label, '(no error)'); } catch (e) { if (re.test(e.message)) pass++; else { fail++; console.log('FAIL', label, '\n   got error', e.message); } } };
+
+// ---------- inflate: every block type, every level, against zlib ----------
+var rnd = crypto.createHash('sha256'), seed = 1;
+function bytes(n, kind) { // text-like, random, or long runs: each drives the encoder to other block types
+  var b = Buffer.alloc(n);
+  for (var i = 0; i < n; i++) { seed = (seed * 1103515245 + 12345) >>> 0; b[i] = kind === 'random' ? seed >>> 24 : kind === 'runs' ? (i >> 9) & 7 : 'the quick brown fox jumps over the lazy dog 0123456789 '.charCodeAt((seed >>> 16) % 55); }
+  return b;
+}
+var same = 0, cases = 0;
+['text', 'random', 'runs'].forEach(function (kind) {
+  [0, 1, 100, 5000, 70000, 300000].forEach(function (n) {
+    var src = bytes(n, kind);
+    [0, 1, 6, 9].forEach(function (level) {
+      [zlib.constants.Z_DEFAULT_STRATEGY, zlib.constants.Z_FIXED, zlib.constants.Z_HUFFMAN_ONLY, zlib.constants.Z_RLE].forEach(function (strategy) {
+        cases++;
+        var raw = zlib.deflateRawSync(src, { level: level, strategy: strategy }), wrapped = zlib.deflateSync(src, { level: level, strategy: strategy });
+        if (Buffer.from(D.inflate(raw, { zlib: false, strict: true })).equals(src) && Buffer.from(D.inflate(wrapped, { strict: true })).equals(src)) same++;
+        else console.log('   inflate differs:', kind, n, 'level', level, 'strategy', strategy);
+      });
+    });
+  });
+});
+eq('inflate gives zlib\'s bytes for every level and strategy, raw and with the zlib header (' + cases + ' cases)', same, cases);
+var long = bytes(200000, 'text'), packed = zlib.deflateSync(long), cut = packed.subarray(0, packed.length >> 1);
+var part = D.inflate(cut);
+var zpart = zlib.inflateSync(cut, { finishFlush: zlib.constants.Z_SYNC_FLUSH });
+eq('a truncated stream keeps what was decoded before the cut, as zlib does', zpart.length > 1000 && part.length >= zpart.length && Buffer.from(part.subarray(0, zpart.length)).equals(zpart), true);
+throws('a truncated stream throws when strict', function () { D.inflate(cut, { strict: true }); }, /ends early/);
+throws('a stream past its limit throws, kept or not', function () { D.inflate(zlib.deflateSync(Buffer.alloc(5000)), { max: 4096 }); }, /more than/);
+throws('garbage throws when strict', function () { D.inflate(Buffer.from('not a deflate stream at all, honestly'), { zlib: false, strict: true }); }, /bad|ends early/);
+
+// ---------- a PDF manuscript, however it is written ----------
+var LIST = ['Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., and Lukin,', ' M. D. (2013) Nanometre-scale thermometry in a living cell. Nature, 500, 54–58.',
+  'Vaswani, A., Shazeer, N. and Parmar, N. (2017) Attention is all you need. Advances in', ' Neural Information Processing Systems, 30, 5998–6008.'];
+[['plain', {}], ['compressed', { compress: true }], ['in an object stream with an xref stream', { compress: true, objstm: true }], ['in a composite font with a ToUnicode map', { compress: true, font: 'F2' }],
+ ['encrypted with RC4 40-bit', { encrypt: 'rc4' }], ['encrypted with AES-128', { compress: true, encrypt: 'aes' }], ['encrypted with AES-128, objects packed', { compress: true, objstm: true, encrypt: 'aes' }]].forEach(function (c) {
+  var r = D.readPdf(W.manuscript(c[1]));
+  eq('PDF ' + c[0] + ': the list after References, continuation lines indented, without the running head, page number or caption', [r.heading, r.layout, r.refs], ['References', 'auto', LIST]);
+});
+eq('read() knows a PDF by its first bytes', D.read(W.manuscript({}), 'x.bin').refs, LIST);
+
+// Encryption that needs a password, or that is not read here, is refused in words
+var locked = W.manuscript({ encrypt: 'rc4' }).toString('latin1').replace(/\/U <([0-9a-f]+)>/, function (m, h) { return '/U <' + h.replace(/./g, '0') + '>'; });
+throws('a PDF that needs a password is refused', function () { D.readPdf(Buffer.from(locked, 'latin1')); }, /needs a password/);
+var aes256 = W.manuscript({ encrypt: 'aes' }).toString('latin1').replace('/V 4 /R 4', '/V 5 /R 6');
+throws('AES-256 is refused by name', function () { D.readPdf(Buffer.from(aes256, 'latin1')); }, /AES-256/);
+throws('a certificate handler is refused', function () { D.readPdf(Buffer.from(W.manuscript({ encrypt: 'rc4' }).toString('latin1').replace('/Filter /Standard', '/Filter /Adobe.PubSec'), 'latin1')); }, /certificate/);
+throws('not a PDF', function () { D.readPdf(Buffer.from('hello')); }, /not a PDF/);
+throws('neither a zip nor a PDF', function () { D.read(Buffer.from('hello'), 'notes.txt'); }, /^this is neither a Word document nor a PDF$/);
+throws('a .docx that is not a zip says so, and no error names the file', function () { D.read(Buffer.from('hello'), 'secret-draft.docx'); }, /^not a zip file$/);
+throws('a .pdf that is not a PDF says so', function () { D.read(Buffer.from('hello'), 'secret-draft.pdf'); }, /^not a PDF file$/);
+
+// No text, no heading
+var line = function (y, text, o) { return Object.assign({ x: 72, y: y, size: 9, text: text }, o || {}); };
+throws('a scanned page has no text to read', function () { D.readPdf(W.pdf({ pages: [{ lines: [], raw: 'q 100 0 0 100 0 0 cm 0 0 1 1 re f Q' }] })); }, /no text to read/);
+throws('prose with no References heading is refused', function () { D.readPdf(W.pdf({ pages: [{ lines: [line(700, 'Diamond thermometers reach sub-degree precision in living cells,'), line(689, 'as Kucsko et al. (2013) showed, and attention models changed'), line(678, 'machine translation (Vaswani et al. 2017) in a few years.')] }] })); }, /no References heading, and the text does not read as a reference list/);
+var bare = D.readPdf(W.pdf({ pages: [{ lines: [line(700, 'Kucsko, G. and Lukin, M. D. (2013) Nanometre-scale thermometry'), line(689, 'in a living cell. Nature, 500, 54-58.', { x: 81 }), line(678, 'Vaswani, A. and Shazeer, N. (2017) Attention is all you need.'), line(667, 'NeurIPS, 30, 5998-6008.', { x: 81 })] }] }));
+eq('a PDF that is only a list, with a hanging indent, is read whole', [bare.heading, bare.refs.length], ['', 4]);
+
+// Layout: two columns, each with its own left edge; a gap wider than the line spacing is a blank line
+var cols = D.readPdf(W.pdf({ pages: [{ lines: [line(720, 'References'), line(700, 'Abel, A. (2001) First title that runs'), line(689, 'onto a second line. J 1, 1.', { x: 81 }), line(678, 'Baker, B. (2002) Second. J 2, 2.'),
+  line(720, 'Cole, C. (2003) Third title that runs', { x: 320 }), line(709, 'onto its own second line. J 3, 3.', { x: 329 }), line(698, 'Dunn, D. (2004) Fourth. J 4, 4.', { x: 320 })] }] }));
+eq('two columns: each column\'s hanging indent is read from its own edge', cols.refs, ['Abel, A. (2001) First title that runs', ' onto a second line. J 1, 1.', 'Baker, B. (2002) Second. J 2, 2.', 'Cole, C. (2003) Third title that runs', ' onto its own second line. J 3, 3.', 'Dunn, D. (2004) Fourth. J 4, 4.']);
+var spaced = D.readPdf(W.pdf({ pages: [{ lines: [line(720, 'References'), line(700, 'Abel, A. (2001) First title. J 1, 1.'), line(689, 'Its second line. 2001.'), line(670, 'Baker, B. (2002) Second. J 2, 2.'), line(659, 'Its second line too. 2002.'), line(640, 'Cole, C. (2003) Third. J 3, 3.')] }] }));
+eq('entries set apart by space, not indent: a blank line between them', spaced.refs, ['Abel, A. (2001) First title. J 1, 1.', 'Its second line. 2001.', '', 'Baker, B. (2002) Second. J 2, 2.', 'Its second line too. 2002.', '', 'Cole, C. (2003) Third. J 3, 3.']);
+
+// The section's end, and what floats into it
+var ends = D.readPdf(W.pdf({ pages: [{ lines: [line(720, 'References'), line(700, 'Abel, A. (2001) First. J 1, 1.'), line(689, 'Table 1. Unit-cell parameters of kernite'), line(678, 'a [Å] 15.6 b [Å] 9.1'), line(667, 'Baker, B. (2002) Second. J 2, 2.'),
+  line(656, 'A line in another size: a label from a figure, 2001', { size: 12 }), line(645, 'Cole, C. (2003) Third. J 3, 3.'), line(625, 'This manuscript was handled by Associate Editor A. Editor.'), line(614, 'Dunn, D. (2004) Not a reference of this paper. J 4, 4.')] }] }));
+eq('a table floating into the list is skipped to the next reference; a line in another size is dropped; the editor\'s note ends the list', ends.refs, ['Abel, A. (2001) First. J 1, 1.', 'Baker, B. (2002) Second. J 2, 2.', 'Cole, C. (2003) Third. J 3, 3.']);
+var next = D.readPdf(W.pdf({ pages: [{ lines: [line(720, 'References'), line(700, 'Abel, A. (2001) First. J 1, 1.'), line(680, 'Appendix', { size: 12 }), line(660, 'Further text of the appendix, 2020.')] }] }));
+eq('the next section heading ends the list', next.refs, ['Abel, A. (2001) First. J 1, 1.']);
+[['letter-spaced', 'R E F E R E N C E S'], ['small capitals read apart', 'rE f E r E n C E s'], ['numbered', '7. References'], ['Russian', 'Литература'], ['German', 'Literaturverzeichnis'], ['spaced "References cited"', 're F e re n c e s c i t e D']].forEach(function (h) {
+  var r = D.readPdf(W.pdf({ pages: [{ lines: [line(720, 'Body text that cites Abel (2001) in passing, at length.'), line(700, h[1], { font: 'F2' }), line(680, 'Abel, A. (2001) First. J 1, 1.')] }] }));
+  eq('a heading ' + h[0] + ' starts the list', r.refs, ['Abel, A. (2001) First. J 1, 1.']);
+});
+
+// Pages and text that run another way, and text a figure hides
+var turned = D.readPdf(W.pdf({ pages: [{ rotate: 180, lines: [line(720, 'References'), line(700, 'Abel, A. (2001) First. J 1, 1.')] }] }));
+eq('a page with /Rotate 180 over upright text is read the way its text runs', turned.refs, ['Abel, A. (2001) First. J 1, 1.']);
+var stamp = D.readPdf(W.pdf({ pages: [{ lines: [line(720, 'References'), line(700, 'Abel, A. (2001) First. J 1, 1.')], raw: 'BT /F1 8 Tf 0 1 -1 0 590 100 Tm (Downloaded 2024) Tj ET' }] }));
+eq('a sideways download stamp in the margin is not read', stamp.refs, ['Abel, A. (2001) First. J 1, 1.']);
+var fig = D.readPdf(W.pdf({ pages: [{ lines: [line(720, 'References'), line(700, 'Abel, A. (2001) First. J 1, 1.')], forms: [{ bbox: [0, 0, 612, 300], lines: [line(500, 'Baker, B. (2002) Text of the figure\'s source page, outside its box. J 2, 2.'), line(200, 'Cole, C. (2003) Text inside the figure. J 3, 3.')] }] }] }));
+eq('a figure drawn from another PDF\'s page shows only what is inside its box', fig.refs, ['Abel, A. (2001) First. J 1, 1.', 'Cole, C. (2003) Text inside the figure. J 3, 3.']);
+
+// Glyph-level detail: spacing, scripts, accents set as glyphs of their own, ligatures, bold struck twice
+var raw = function (ops) { return D.pdfPages(W.pdf({ pages: [{ lines: [], raw: ops }] }))[0].lines.map(function (l) { return l.text; }); };
+eq('a gap wider than a fraction of a space is a space; kerning is not', raw('BT /F1 10 Tf 72 700 Td [(Ker) 30 (ning) -400 (gap)] TJ ET'), ['Kerning gap']);
+eq('a raised smaller run is a superscript, a lowered one a subscript', raw('BT /F1 10 Tf 72 700 Td (Fe) Tj ET BT /F1 6 Tf 82 704 Td (3+) Tj ET BT /F1 10 Tf 90 700 Td ( and SiO) Tj ET BT /F1 6 Tf 135 697 Td (2) Tj ET'), ['Fe³⁺ and SiO₂']);
+eq('a subscript set under a superscript stays on the line (Fe²⁺₂)', raw('BT /F1 10 Tf 72 700 Td (Fe) Tj ET BT /F1 6 Tf 82 704 Td (2+) Tj ET BT /F1 6 Tf 82 697 Td (2) Tj ET BT /F1 10 Tf 89 700 Td (Al) Tj ET'), ['Fe²⁺₂Al']);
+eq('an accent drawn after its letter joins it (Krämer)', raw('BT /F1 10 Tf 72 700 Td (Kra) Tj ET BT /F1 10 Tf 82 700 Td (\\250) Tj ET BT /F1 10 Tf 87 700 Td (mer, V.) Tj ET'), ['Krämer, V.']);
+eq('an accent drawn before its letter joins the next one (Zieliński)', raw('BT /F1 10 Tf 72 700 Td (Zieli) Tj ET BT /F1 10 Tf 97 700 Td (\\264) Tj ET BT /F1 10 Tf 97 700 Td (nski, G.) Tj ET'), ['Zieliński, G.']);
+eq('a ligature glyph is its letters', D.pdfPages(W.pdf({ pages: [{ lines: [line(700, '\uFB01eld work', { font: 'F2' })] }] }))[0].lines[0].text, 'field work');
+eq('bold faked by striking the text twice is read once', raw('BT /F1 10 Tf 72 700 Td (Bold) Tj ET BT /F1 10 Tf 72.2 700 Td (Bold) Tj ET BT /F1 10 Tf 95 700 Td (text) Tj ET'), ['Bold text']);
+eq('negative character spacing before an explicit move opens no false gap (small capitals)', raw('BT /F1 10 Tf -0.3 Tc 72 700 Td (A) Tj 5 0 Td (T) Tj 5 0 Td (O) Tj ET'), ['ATO']);
+
+// A damaged file never hangs or throws anything but an Error with words
+var good = W.manuscript({ compress: true, objstm: true }), errs = 0, t0 = Date.now();
+for (var k = 0; k < 300; k++) {
+  var bad = Buffer.from(good);
+  seed = (seed * 1103515245 + 12345) >>> 0;
+  if (k % 3 === 0) bad = bad.subarray(0, seed % bad.length); // truncated
+  else for (var j = 0; j < 1 + (k % 7); j++) { seed = (seed * 1103515245 + 12345) >>> 0; bad[seed % bad.length] = seed >>> 24; } // bytes overwritten
+  try { D.readPdf(bad); } catch (e) { if (!(e instanceof Error) || !e.message) errs++; }
+}
+eq('300 damaged copies: each is read or refused in words, in good time', [errs, Date.now() - t0 < 20000], [0, true]);
+var z = zlib.deflateSync(Buffer.alloc(70 * 1024 * 1024, 32)); // 70 MB of spaces, 70 kB packed
+var bomb = Buffer.concat([Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Filter /FlateDecode /Length ' + z.length + ' >>\nstream\n', 'latin1'), z, Buffer.from('\nendstream\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF\n', 'latin1')]);
+throws('a stream that would unpack past 64 MB is refused', function () { D.readPdf(bomb); }, /unpacks to more than 64 MB, which no manuscript does/);
+
+// ---------- a Word manuscript ----------
+var docx = fs.readFileSync(path.join(__dirname, 'fixtures', 'manuscript.docx'));
+var wr = D.read(docx, 'manuscript.docx');
+eq('the Word manuscript gives up the two paragraphs after References, one reference each', [wr.heading, wr.layout, wr.refs.length, /^Kucsko, G\., Maurer/.test(wr.refs[0]) && /^Vaswani A/.test(wr.refs[1])], ['References', 'lines', 2, true]);
+throws('a file that is not a zip', function () { D.readDocx(Buffer.from(zlib.deflateRawSync(Buffer.alloc(0)))); }, /not a zip file/);
+eq('isDocument knows the two kinds by name', ['a.pdf', 'b.DOCX', 'c.doc', 'd.ris'].map(D.isDocument), [true, true, false, false]);
+eq('referenceSection reads a numbered or Roman heading', ['3. References', 'IV. Literature cited'].map(function (h) { return D.referenceSection([{ text: h, style: '' }, { text: 'Abel, A. (2001) First. J 1, 1.', style: '' }]).refs.length; }), [1, 1]);
+
+// ---------- the viewer: a Word manuscript laid out (tests/docx-writer.js writes one the ways Word does) ----------
+var X = require('./docx-writer.js'), rich = X.manuscript(), L = D.docxLayout(rich);
+var runText = function (b) { return (b.runs || []).map(function (r) { return r.text !== undefined ? r.text : r.tab ? '\t' : r.img !== undefined ? '[img]' : ''; }).join(''); };
+var paras = L.blocks.filter(function (b) { return b.t === 'p'; });
+eq('the page is the section\'s A4 with its margins, in points', [L.page.w, L.page.h, L.page.left, L.page.top], [595.3, 841.9, 56.7, 56.7]);
+eq('a style takes its base\'s properties and adds its own (Heading1 on Normal on the defaults)', [paras[0].runs[0].r.b, paras[0].runs[0].r.size, paras[0].runs[0].r.font, paras[0].p.before, paras[0].p.line], [true, 14, 'Times New Roman', 12, { mult: 2 }]);
+eq('a run keeps its italics and subscript; hidden and deleted text are left out', runText(paras[2]) + '|' + paras[2].runs.filter(function (r) { return r.r && (r.r.i || r.r.va); }).map(function (r) { return r.text + ':' + (r.r.i ? 'i' : r.r.va); }).join(','), 'Kernite\tis Na2B borax|2:sub, borax:i');
+eq('a footnote mark is numbered in the text\'s order, and its note is kept by that number', [paras[1].runs[1].note, paras[1].runs[1].n, paras[1].runs[1].r.va, runText(L.footnotes[1][0])], ['footnote', 1, 'sup', '1 Kernite is mined at Boron, California.']);
+eq('the reference list carries Word\'s numbers as labels, in a hanging indent, outside the text', paras.slice(-3).map(function (b, i) { return [b.label.text, b.p.left, b.p.first, runText(b) === X.REFS[i]]; }), [['1.', 36, -18, true], ['2.', 36, -18, true], ['3.', 36, -18, true]]);
+var tbl = L.blocks.filter(function (b) { return b.t === 'table'; })[0];
+eq('a table keeps its grid, its rules and a cell merged down', [tbl.cols, tbl.border, tbl.rows.map(function (r) { return r.map(function (c) { return c.vm + ':' + runText(c.blocks[0]); }).join(' | '); })], [[100, 150], true, ['restart:Phase | :Kernite', 'continue: | :Borax']]);
+var img = paras.filter(function (b) { return b.runs.some(function (r) { return r.img !== undefined; }); })[0].runs[0];
+eq('a picture is its part in the file, with its size in points', [img.img, img.w, img.h, L.media[img.img].mime, L.media[img.img].bytes.length], ['word/media/image1.png', 72, 36, 'image/png', X.PNG.length]);
+var bi = L.blocks.map(function (b) { return b.t; }).indexOf('break');
+eq('where Word last broke the page, the paragraph is split and goes on, without its indent, on the next', [L.paged, runText(L.blocks[bi - 1]), runText(L.blocks[bi + 1]), !!L.blocks[bi + 1].cont], [true, 'The crystals were grown at 300 K and ', 'measured the next day.', true]);
+var plain = D.docxLayout(docx);
+eq('a file with no styles gets Word\'s own defaults and is not paged', [plain.paged, plain.page.w, plain.blocks[0].runs[0].r.size, plain.blocks[0].runs[0].r.font], [false, 612, 10, 'Times New Roman']);
+var lists = D.docxLayout(X.docx({ body: [['0', '1'], ['1', '1'], ['1', '1'], ['0', '1'], ['0', '2']].map(function (x) { return '<w:p><w:pPr><w:numPr><w:ilvl w:val="' + x[0] + '"/><w:numId w:val="' + x[1] + '"/></w:numPr></w:pPr><w:r><w:t>item</w:t></w:r></w:p>'; }).join(''),
+  numbering: '<w:abstractNum w:abstractNumId="7"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="upperRoman"/><w:lvlText w:val="%1."/></w:lvl><w:lvl w:ilvl="1"><w:start w:val="1"/><w:numFmt w:val="lowerLetter"/><w:lvlText w:val="%1.%2)"/></w:lvl></w:abstractNum><w:abstractNum w:abstractNumId="8"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlText w:val=""/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="7"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="8"/></w:num>' }));
+eq('list numbers count by level, a deeper level starts again, and a Symbol bullet is a bullet', lists.blocks.map(function (b) { return b.label.text; }), ['I.', 'I.a)', 'I.b)', 'II.', '•']);
+eq('XML: entities, CDATA and a stray closing tag', (function () { var t = D.xmlTree('<a x="1&amp;2"><b>&lt;&#233;&#x4E2D;</b></c><![CDATA[<raw>]]></a>'); return [t.a.x, t.c[0].c[0], t.c[1]]; })(), ['1&2', '<é中', '<raw>']);
+throws('a Word file with no document part', function () { D.docxLayout(X.zip([{ name: 'word/other.xml', data: '<x/>' }])); }, /no word\/document\.xml/);
+
+// ---------- the viewer: each entry of the list found in the page's text, and the citations that name them ----------
+var ents = ['Smith, J. (2019a). The first finding. Journal, 1, 1–2.', 'Smith, J. (2019b). The second. Journal, 2, 3.', 'Lee, A., & Kim, B. (2020). Joint work. Other Journal, 3, 4.', 'van der Berg, C. (2018). A Dutch name. J, 4, 5.', 'World Health Organization. (2021). Report on things. Geneva.'];
+var page = 'Body text here.\nReferences\nSmith, J. (2019a). The ﬁrst find-\ning. Journal, 1, 1–2.\nSmith, J. (2019b). The second. Journal, 2, 3.\nLee, A., & Kim, B. (2020). Joint work. Other Journal, 3, 4.\nWorld Health Organization. (2021). Report on things. Geneva.\n';
+var at = D.locateEntries(ents, page, 0);
+eq('an entry is found however the page spaces, hyphenates or ligatures it, and keeps its closing full stop', page.slice(at[0].start, at[0].end), 'Smith, J. (2019a). The ﬁrst find-\ning. Journal, 1, 1–2.');
+eq('an entry the page does not hold is null; the others are still found, each ending where the next starts', [at.map(function (x) { return !!x; }), at[2].end <= at[4].start, page.slice(at[4].start, at[4].end)], [[true, true, true, false, true], true, 'World Health Organization. (2021). Report on things. Geneva.']);
+eq('an entry\'s keys: number, first surname without its initials, year and letter', [D.entryKeys('[12] J. A. Smith, Title, J. 2001.'), D.entryKeys('Vaswani A, Shazeer N. Attention. 2017;30:1.').first, D.entryKeys('van der Berg, C. (2018a). X.').first + ' ' + D.entryKeys('van der Berg, C. (2018a). X.').suffix, D.entryKeys('Smith, J. (n.d.). Undated.').year],
+  [{ num: 12, first: 'smith', authors: 'jasmithtitlej', year: '2001', suffix: '' }, 'vaswani', 'vanderberg a', 'nd']);
+var cites = function (text) { return D.findCitations(text, ents).map(function (c) { return text.slice(c.start, c.end) + '=' + c.refs.join(','); }); };
+eq('author and year: parenthetical, narrative, a list split at its semicolons, and the same author again', cites('As Smith (2019a) showed (Lee & Kim, 2020; Smith 2019a, 2019b), and van der Berg (2018) agreed.'), ['Smith (2019a)=0', 'Lee & Kim, 2020=2', 'Smith 2019a=0', '2019b=1', 'van der Berg (2018)=3']);
+eq('"et al.", a possessive, an organisation cited by its last word, and "Smith 2019" naming both of that year', cites('Lee et al. (2020) and Smith\'s (2019) view; see the Organization (2021).'), ['Lee et al. (2020)=2', 'Smith\'s (2019)=0,1', 'Organization (2021)=4']);
+eq('no citation: a year no entry has, a name no entry has, a table or a month', cites('In 2020 we (Jones, 2019) used Table 2019 and May 2019 data.'), []);
+var nent = ['1. Abel A. First. 2001.', '2. Baker B. Second. 2002.', '3. Cole C. Third. 2003.', '4. Dean D. Fourth. 2004.'];
+var nt = 'As shown [1], and later [2–4] and [1, 3]; superscripts too.1,2 and Fe3+ stays [9].';
+eq('numbers cite a numbered list: one, a range and a list in brackets, a superscript, and never a number past the list', D.findCitations(nt, nent, { sups: [{ start: nt.indexOf('1,2'), end: nt.indexOf('1,2') + 3 }] }).map(function (c) { return nt.slice(c.start, c.end) + '=' + c.refs.join(','); }), ['[1]=0', '[2–4]=1,2,3', '[1, 3]=0,2', '1,2=0,1']);
+eq('beside an author-and-year list, a lone bracketed number is not a citation', D.findCitations('Smith (2019a) and the complex [2] and [3].', ents).map(function (c) { return c.refs.join(','); }), ['0']);
+eq('an unnumbered list is cited by its order when the text cites by number', D.findCitations('Thermometry [1] and attention [2–3].', X.REFS).map(function (c) { return c.refs.join(','); }), ['0', '1,2']);
+
+console.log(pass + ' passed, ' + fail + ' failed');
+process.exitCode = fail ? 1 : 0;

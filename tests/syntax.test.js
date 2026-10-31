@@ -16,7 +16,7 @@ function parses(label, source) {
   check(label + ' parses', res.status === 0, res.stderr);
 }
 
-['citations.js', 'parsers.js', 'sentencecase.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js', 'sw.js', 'bin/autodoi.js']
+['citations.js', 'parsers.js', 'sentencecase.js', 'documents.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js', 'sw.js', 'bin/autodoi.js']
   .forEach(function (rel) { parses(rel, read(rel)); });
 
 // Every inline <script> block in index.html (the app code, plus the inlined libraries)
@@ -29,7 +29,7 @@ check('index.html has no external <script src>', !/<script[^>]*\ssrc=/.test(html
 
 // Apps Script copy and inlined copies are current (CI also rebuilds and diffs; this catches it locally)
 check('apps-script/Citations.gs is identical to citations.js', read('apps-script/Citations.gs') === read('citations.js'), 'run ./build.sh');
-['citations.js', 'parsers.js', 'sentencecase.js'].forEach(function (name) {
+['citations.js', 'parsers.js', 'sentencecase.js', 'documents.js'].forEach(function (name) {
   var block = html.match(new RegExp('<!-- ' + name.replace('.', '\\.') + ' [^\\n]*-->\\n<script>\\n([\\s\\S]*?)\\n</script>\\n<!-- /' + name.replace('.', '\\.') + ' -->'));
   check('index.html inlines the current ' + name, !!block && block[1] === read(name), 'run ./build.sh');
 });
@@ -93,6 +93,10 @@ check('connect-src covers the services the README names', ['api.crossref.org', '
 check('index.html has no inline event handlers', !/<[a-z][^>]*\son[a-z]+\s*=/i.test(html.replace(/<script>[\s\S]*?<\/script>/g, '')));
 check('CSL styles are pinned to a commit, not master', /citation-style-language\/styles\/' \+ CSL_STYLES_COMMIT/.test(html) && /CSL_STYLES_COMMIT = '[0-9a-f]{40}'/.test(html));
 check('CSL locale is pinned to a commit, not master', /CSL_LOCALES_COMMIT = '[0-9a-f]{40}'/.test(html));
+// The PDF viewer is the pinned pdf.js under vendor/, the folder the page names, whole, with its licence
+var pdfjsDir = (html.match(/var PDFJS = '(vendor\/pdfjs-\d+\.\d+\.\d+\/)'/) || [])[1];
+check('the page names a versioned pdf.js folder, and it holds the library, its worker, its fonts, maps and licence', !!pdfjsDir && ['pdf.min.mjs', 'pdf.worker.min.mjs', 'LICENSE', 'cmaps/UniJIS-UTF16-H.bcmap', 'standard_fonts/LiberationSans-Regular.ttf', 'wasm/openjpeg.wasm', 'iccs/CGATS001Compat-v2-micro.icc'].every(function (f) { return fs.existsSync(path.join(ROOT, pdfjsDir, f)); }), pdfjsDir);
+check('the PDF viewer folder is deployed', /cp -R vendor dist\/vendor/.test(read('.github/workflows/test.yml')));
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(passed + ' passed, ' + failed + ' failed');

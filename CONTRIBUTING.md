@@ -15,7 +15,7 @@ npx playwright install chromium
 npm run test:browser    # page smoke tests and axe accessibility checks, offline
 ```
 
-Open `index.html` in a browser to try the page; it works from a `file://` URL for the built-in styles, and from any static server for style search and title conversion.
+Open `index.html` in a browser to try the page; it works from a `file://` URL for the built-in styles, and from any static server for style search, title conversion and showing a PDF in the viewer.
 
 ## Where things live
 
@@ -24,10 +24,13 @@ Open `index.html` in a browser to try the page; it works from a `file://` URL fo
 | A citation rule, style or export format | `citations.js` | `./build.sh` |
 | Reading RIS / EndNote / BibTeX files | `parsers.js` | `./build.sh` |
 | Sentence case / Title Case | `sentencecase.js` | `./build.sh` |
+| Reading a Word or PDF manuscript's reference list | `documents.js` | `./build.sh` |
+| The document viewer (layout of a Word file, finding entries and citations) | `documents.js`; its UI in `index.html` | `./build.sh` |
+| pdf.js | `vendor/pdfjs-<version>/` (the npm package's `legacy/build`, cmaps, standard fonts, wasm and iccs) and `PDFJS` in `index.html` | nothing |
 | The page itself (markup, UI logic, network) | `index.html`, outside the inlined blocks | nothing |
 | The Google Sheets functions | `apps-script/Code.gs` | nothing (`Citations.gs` is a copy of `citations.js` made by `build.sh`) |
 
-`build.sh` inlines the three libraries into `index.html` and refreshes `apps-script/Citations.gs`. CI rebuilds and fails if the committed copies are stale, so run it before committing.
+`build.sh` inlines the four libraries into `index.html` and refreshes `apps-script/Citations.gs`. CI rebuilds and fails if the committed copies are stale, so run it before committing.
 
 ## Tests
 
@@ -43,7 +46,7 @@ Open `index.html` in a browser to try the page; it works from a `file://` URL fo
 
 ## Style
 
-ES5-flavoured JavaScript (`var`, `function`) in the libraries so they run unchanged in Google Apps Script and old browsers; the page code may use `async`/`await`. Two-space indent, single quotes, comments that say why. Keep the page dependency-free at runtime: the only external script is the pinned citeproc build, loaded with an integrity hash.
+ES5-flavoured JavaScript (`var`, `function`) in the libraries so they run unchanged in Google Apps Script and old browsers; the page code may use `async`/`await`. Two-space indent, single quotes, comments that say why. Keep the page dependency-free at runtime: the only external script is the pinned citeproc build, loaded with an integrity hash, and the only vendored one is pdf.js, served from `vendor/` and loaded only when a PDF is opened in the viewer.
 
 ## Versioning
 

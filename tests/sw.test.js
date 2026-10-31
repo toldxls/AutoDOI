@@ -1,7 +1,7 @@
 // The service worker (sw.js) run in a vm context against an in-memory CacheStorage, a scripted fetch and a fake
 // clients list: install caches the page, activate drops the old autodoi-* caches, navigations are network first
 // with the cached index.html when offline, data/ files are cache first and refreshed behind, the pinned engine,
-// styles and locales are cache first, and the lookups (Crossref and the rest) are never intercepted.
+// styles and locales and the PDF viewer's versioned files are cache first, and the lookups (Crossref and the rest) are never intercepted.
 // Usage: node tests/sw.test.js
 var fs = require('fs'), path = require('path'), vm = require('vm');
 var ROOT = path.resolve(__dirname, '..');
@@ -136,8 +136,8 @@ function cached(url) { var c = store[CACHE] || {}; return c[key(url)]; }
   res = await fire('fetch', Req(dataUrl)).promise.catch(function (e) { return { error: e.message }; });
   check('an uncached data/ request offline does not return a cache miss as a response', !res || res.error || res.status, JSON.stringify(res)); // undefined or a rejection: the page sees a failed fetch
 
-  // pinned engine, styles and locales: cache first, the network once
-  var PINNED = ['https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js', 'https://raw.githubusercontent.com/citation-style-language/styles/' + 'a'.repeat(40) + '/nature.csl', 'https://raw.githubusercontent.com/citation-style-language/locales/' + 'b'.repeat(40) + '/locales-en-US.xml'];
+  // pinned engine, styles and locales, and the PDF viewer under its version: cache first, the network once
+  var PINNED = [BASE + 'vendor/pdfjs-6.4.299/pdf.worker.min.mjs', BASE + 'vendor/pdfjs-6.4.299/cmaps/UniJIS-UTF16-H.bcmap', 'https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js', 'https://raw.githubusercontent.com/citation-style-language/styles/' + 'a'.repeat(40) + '/nature.csl', 'https://raw.githubusercontent.com/citation-style-language/locales/' + 'b'.repeat(40) + '/locales-en-US.xml'];
   for (var i = 0; i < PINNED.length; i++) {
     fetched = []; net = function (req) { return Promise.resolve(Res(200, 'net ' + req.url)); };
     var pin = fire('fetch', Req(PINNED[i]));

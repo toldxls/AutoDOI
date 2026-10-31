@@ -2,6 +2,19 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.17.0 - 2026-10-30
+
+### New
+
+- **PDF manuscripts.** Drop a PDF on the References tab, or give one to `--match`, and the list after its References heading is matched; a hanging indent keeps each entry whole, and running heads, tables and captions stay out. Publisher PDFs locked with an empty password open; scans, password-protected and AES-256 files are refused in words.
+- **Pick from a manuscript.** *Pick from a .docx / .pdf* shows the file as it is laid out, with search and arrows; click a citation in the text or an entry in the list, or select any text, to add references one by one, then format them. PDFs are drawn by pdf.js, served with the page.
+- **Command line.** `--match paper.docx` reads a Word manuscript's reference list as the page does; an indented line continues the reference above, and a list's numbers are dropped.
+
+### Changed
+
+- The Word reader is now `documents.js`, shared by the page and the command line, with its own inflate in place of the browser's.
+- More list headings are found: Литература, Literatur, Références, Bibliografía and others, numbered or letter-spaced.
+
 ## 1.16.0 - 2026-10-07
 
 Fixes from an adversarial review of the whole codebase.

@@ -6,7 +6,7 @@ var cli = require(path.join(ROOT, 'bin', 'autodoi.js'));
 var A = require(path.join(ROOT, 'citations.js'));
 var work = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'w.json'), 'utf8'));
 let pass = 0, fail = 0;
-const eq = (label, got, exp) => { if (got === exp) pass++; else { fail++; console.log('FAIL', label, '\n   got ', JSON.stringify(got), '\n   want', JSON.stringify(exp)); } };
+const eq = (label, got, exp) => { if (got === exp || (typeof exp === 'object' && JSON.stringify(got) === JSON.stringify(exp))) pass++; else { fail++; console.log('FAIL', label, '\n   got ', JSON.stringify(got), '\n   want', JSON.stringify(exp)); } };
 var calls = [], optsSeen = [], failNext = null; // failNext: an error the next fetch throws instead of answering (a timed-out request)
 var sleeps = []; cli.sleep = async function (ms) { sleeps.push(ms); }; // no real waiting: the Crossref throttle and the retry pauses are recorded instead
 global.fetch = async function (url, opts) {
@@ -96,6 +96,22 @@ var t0 = Date.now();
   eq('parseArgs: -p at the end is an error, not pages "undefined"', cli.parseArgs(['x', '-p']).error, 'Option -p needs a value');
   eq('splitRefs: blank lines join wrapped lines', cli.splitRefs('A b\nc d\n\nE f').length, 2);
   eq('splitRefs: one per line otherwise', cli.splitRefs('A\nB\nC').length, 3);
+  eq('splitRefs: a list\'s numbers are dropped, a year that opens a reference is not', cli.splitRefs('1. Abel, A. One.\n[12] Baker, B. Two.\n2019. Cole, C. Three.'), ['Abel, A. One.', 'Baker, B. Two.', '2019. Cole, C. Three.']);
+  eq('splitRefs: an indented line continues the line above (a PDF\'s hanging indent)', cli.splitRefs('Smith, J. (2020) A title that wraps\n onto a second line. J 1, 1.\nJones, K. (2021) Another. J 2, 2.'), ['Smith, J. (2020) A title that wraps onto a second line. J 1, 1.', 'Jones, K. (2021) Another. J 2, 2.']);
+  // A manuscript as the argument: its reference list is read and matched; the Word file's paragraphs and the PDF's hanging indent give one reference each
+  t = io(); code = await cli.run(['--match', '--style', 'apa', path.join(__dirname, 'fixtures', 'manuscript.docx')], t);
+  eq('--match manuscript.docx matches its two references, the one Crossref holds as good', [code, t.outs.length, /^Kucsko, G\./.test(t.outs[0]), t.errs.length === 1 && /Attention is all you need/.test(t.errs[0])], [3, 1, true, true]);
+  var pdfFile = path.join(require('os').tmpdir(), 'autodoi-cli-' + process.pid + '.pdf');
+  fs.writeFileSync(pdfFile, require('./pdf-writer.js').manuscript({ compress: true, encrypt: 'aes' }));
+  t = io(); code = await cli.run(['--match', '--json', pdfFile], t);
+  var rows = JSON.parse(t.outs[0]);
+  eq('--match paper.pdf reads the list after References, a wrapped entry as one reference', [code, rows.length, rows[0].text, rows[0].grade], [3, 2, 'Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P. K., Park, H., and Lukin, M. D. (2013) Nanometre-scale thermometry in a living cell. Nature, 500, 54\u201358.', 'good']);
+  fs.writeFileSync(pdfFile, Buffer.from('%PDF-1.4\n%%EOF\n'));
+  t = io(); code = await cli.run(['--match', pdfFile], t);
+  eq('an unreadable manuscript: named on stderr and exit 2', code === 2 && /^Could not read .*autodoi-cli-\d+\.pdf: no pages found/.test(t.errs[0]), true, t.errs[0]);
+  t = io(); code = await cli.run(['--match', pdfFile, 'Some reference text'], t);
+  eq('a manuscript beside reference text is bad usage', code === 2 && /either manuscripts .* or references/.test(t.errs[0]), true);
+  fs.unlinkSync(pdfFile);
   eq('the suite runs without real waiting (the throttle is injected)', Date.now() - t0 < 2000, true);
   console.log(pass + ' passed, ' + fail + ' failed'); process.exitCode = fail ? 1 : 0;
 })();

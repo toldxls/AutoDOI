@@ -1,8 +1,9 @@
-/* AutoDOI service worker: the page, its data files and the pinned citation engine, styles and locales are kept for offline use.
+/* AutoDOI service worker: the page, its data files, the pinned citation engine, styles and locales, and the PDF viewer once used are kept for offline use.
  * The page itself is fetched from the network first so an update arrives as soon as it is deployed; the data files are served
- * from the cache and refreshed behind; the engine, styles and locales are pinned to commits, so once cached they never change.
+ * from the cache and refreshed behind; the engine, styles and locales are pinned to commits and the PDF viewer (vendor/pdfjs-<version>/) to
+ * its version, so once cached they never change.
  * Lookups (Crossref, doi.org, OpenAlex and the rest) always go to the network and are never cached. */
-var VERSION = '1.16.0'; // keep in step with APP_VERSION (tests/syntax.test.js checks)
+var VERSION = '1.17.0'; // keep in step with APP_VERSION (tests/syntax.test.js checks)
 var CACHE = 'autodoi-' + VERSION;
 var PAGE = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 var PINNED = /^https:\/\/(?:cdn\.jsdelivr\.net\/npm\/citeproc@|raw\.githubusercontent\.com\/citation-style-language\/(?:styles|locales)\/[0-9a-f]{40}\/)/;
@@ -36,7 +37,7 @@ self.addEventListener('fetch', function (ev) {
     }); }));
     return;
   }
-  if (PINNED.test(req.url) || (same && /\.(?:svg|webmanifest)$/.test(url.pathname))) { // pinned by commit or version: cache first
+  if (PINNED.test(req.url) || (same && (/\.(?:svg|webmanifest)$/.test(url.pathname) || /\/vendor\/pdfjs-\d+\.\d+\.\d+\//.test(url.pathname)))) { // pinned by commit or version: cache first
     ev.respondWith(caches.open(CACHE).then(function (c) { return c.match(req).then(function (hit) { return hit || fetch(req).then(function (res) { if (res.ok) ev.waitUntil(c.put(req, res.clone()).catch(function () {})); return res; }); }); }));
   }
   // anything else (the lookups) goes straight to the network
