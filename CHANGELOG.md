@@ -2,6 +2,18 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.2 - 2026-10-31
+
+### Changed
+
+- The bookmarklet, on a page with no article DOI (a mindat reference list, say), opens every DOI on it as a list; with text selected, only the DOIs in the selection.
+
+### Fixed
+
+- Viewer marks: a citation's underline sits under its letters, not a line below, and a picked or hovered reference is shaded evenly, never darker where its lines meet.
+- Word tables in the viewer, checked against Word on the corpus: a table style's spacing ("Table Grid": none after, single lines), row heights, cell margins and room between cells; each font's own line height (Calibri, Aptos, Arial Unicode MS), so close-set lines no longer overlap; columns widen only as far as the page allows, and a long table breaks over pages by its rows.
+- Symbol and Wingdings characters (σ, ±, arrows) are shown and read as the characters they stand for.
+
 ## 1.18.1 - 2026-10-30
 
 ### Fixed

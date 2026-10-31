@@ -135,6 +135,25 @@
     if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(b);
     try { return decodeURIComponent(escape(latin(b))); } catch (e) { return latin(b); }
   }
+  // Symbol and Wingdings set each character by its own code, often in Word's private range (U+F0xx): the character it stands for
+  var SYMBOL_UP = 'ΑΒΧΔΕΦΓΗΙϑΚΛΜΝΟΠΘΡΣΤΥςΩΞΨΖ', SYMBOL_LOW = 'αβχδεφγηιϕκλμνοπθρστυϖωξψζ';
+  var SYMBOL = { 0x22: '∀', 0x24: '∃', 0x27: '∋', 0x2A: '∗', 0x2D: '−', 0x40: '≅', 0x5C: '∴', 0x5E: '⊥', 0x7E: '∼', 0xA1: 'ϒ', 0xA2: '′', 0xA3: '≤', 0xA4: '⁄', 0xA5: '∞', 0xA6: 'ƒ',
+    0xAB: '↔', 0xAC: '←', 0xAD: '↑', 0xAE: '→', 0xAF: '↓', 0xB0: '°', 0xB1: '±', 0xB2: '″', 0xB3: '≥', 0xB4: '×', 0xB5: '∝', 0xB6: '∂', 0xB7: '•', 0xB8: '÷', 0xB9: '≠', 0xBA: '≡',
+    0xBB: '≈', 0xBC: '…', 0xC0: 'ℵ', 0xC4: '⊗', 0xC5: '⊕', 0xC6: '∅', 0xC7: '∩', 0xC8: '∪', 0xC9: '⊃', 0xCA: '⊇', 0xCB: '⊄', 0xCC: '⊂', 0xCD: '⊆', 0xCE: '∈', 0xCF: '∉', 0xD0: '∠',
+    0xD1: '∇', 0xD2: '®', 0xD3: '©', 0xD4: '™', 0xD5: '∏', 0xD6: '√', 0xD7: '⋅', 0xD8: '¬', 0xD9: '∧', 0xDA: '∨', 0xDB: '⇔', 0xDC: '⇐', 0xDD: '⇑', 0xDE: '⇒', 0xDF: '⇓', 0xE0: '◊',
+    0xE1: '〈', 0xE5: '∑', 0xF1: '〉', 0xF2: '∫' };
+  var WINGDINGS = { 0x6C: '●', 0x6E: '■', 0x71: '❑', 0x75: '◆', 0x76: '❖', 0x9F: '•', 0xA7: '▪', 0xA8: '◻', 0xD8: '➢', 0xDF: '←', 0xE0: '→', 0xE1: '↑', 0xE2: '↓', 0xE8: '➔',
+    0xEF: '⇦', 0xF0: '⇨', 0xF1: '⇧', 0xF2: '⇩', 0xFB: '✗', 0xFC: '✓', 0xFD: '☒', 0xFE: '☑' };
+  var SYMBOLIC = /^(?:Symbol|Wingdings)/i;
+  function symbolChars(t, font) {
+    var wing = /^Wingdings/i.test(font);
+    return String(t).replace(/[\s\S]/g, function (ch) {
+      var c = ch.charCodeAt(0);
+      if (c >= 0xF020 && c <= 0xF0FF) c -= 0xF000; else if (c > 0xFF) return ch;
+      if (wing) return WINGDINGS[c] || ch;
+      return c >= 65 && c <= 90 ? SYMBOL_UP.charAt(c - 65) : c >= 97 && c <= 122 ? SYMBOL_LOW.charAt(c - 97) : SYMBOL[c] || String.fromCharCode(c);
+    });
+  }
   function docxParagraphs(xml) { // [{text, style, table}] in document order; tabs and breaks become spaces; sub/superscript runs become Unicode
     var out = [], re = /<w:p[\s>][\s\S]*?<\/w:p>/g, m, tables = [], tr = /<(\/?)w:tbl[\s>]/g, t0, depth = 0, tm;
     while ((tm = tr.exec(xml))) { if (!tm[1]) { if (!depth++) t0 = tm.index; } else if (depth && !--depth) tables.push([t0, tm.index]); } // where the tables are: a cell's paragraph is no reference
@@ -145,9 +164,12 @@
       var runRe = /<w:r[\s>][\s\S]*?<\/w:r>|<w:tab\/>|<w:br\/>|<w:cr\/>/g, r;
       while ((r = runRe.exec(para))) {
         if (r[0] === '<w:tab/>' || r[0] === '<w:br/>' || r[0] === '<w:cr/>') { text += ' '; continue; }
-        var run = r[0], va = (run.match(/<w:vertAlign w:val="(superscript|subscript)"/) || [])[1], t = '';
-        var tRe = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>|<w:br\/>/g, tm;
-        while ((tm = tRe.exec(run))) t += tm[1] === undefined ? ' ' : unesc(tm[1]);
+        var run = r[0], va = (run.match(/<w:vertAlign w:val="(superscript|subscript)"/) || [])[1], t = '', sym = (run.match(/<w:rFonts[^>]*w:(?:ascii|hAnsi)="((?:Symbol|Wingdings)[^"]*)"/) || [])[1];
+        var tRe = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>|<w:br\/>|<w:sym\b([^>]*)>/g, tm;
+        while ((tm = tRe.exec(run))) {
+          if (tm[2] !== undefined) { var sf = (tm[2].match(/w:font="([^"]*)"/) || [])[1] || '', sc = parseInt((tm[2].match(/w:char="([0-9a-fA-F]+)"/) || [])[1], 16); if (sc > 0) t += SYMBOLIC.test(sf) ? symbolChars(String.fromCharCode(sc), sf) : String.fromCharCode(sc >= 0xF000 ? sc - 0xF000 : sc); }
+          else t += tm[1] === undefined ? ' ' : sym ? symbolChars(unesc(tm[1]), sym) : unesc(tm[1]);
+        }
         if (/<w:vanish\/>|<w:del[\s>]/.test(run)) continue; // hidden or deleted text
         text += va && A && A.toScript ? A.toScript(t, va === 'superscript' ? 'sup' : 'sub') : t;
       }
@@ -288,14 +310,14 @@
     return into;
   }
   function docxStyles(xml) {
-    var out = { r: {}, p: {}, byId: Object.create(null), para: '' };
+    var out = { r: {}, p: {}, byId: Object.create(null), para: '', table: '' };
     if (!xml) return out;
     var root = xmlTree(utf8(xml)), dd = xKid(root, 'w:docDefaults');
     if (dd) { readRPr(xKid(xKid(dd, 'w:rPrDefault'), 'w:rPr'), out.r); readPPr(xKid(xKid(dd, 'w:pPrDefault'), 'w:pPr'), out.p); }
     xKids(root, 'w:style').forEach(function (s) {
       var id = s.a['w:styleId']; if (!id) return;
       out.byId[id] = { type: s.a['w:type'], based: xVal(xKid(s, 'w:basedOn')), pPr: xKid(s, 'w:pPr'), rPr: xKid(s, 'w:rPr'), tblPr: xKid(s, 'w:tblPr') };
-      if (s.a['w:type'] === 'paragraph' && /^(?:1|true|on)$/.test(s.a['w:default'] || '')) out.para = id;
+      if (/^(?:paragraph|table)$/.test(s.a['w:type']) && /^(?:1|true|on)$/.test(s.a['w:default'] || '')) out[s.a['w:type'] === 'table' ? 'table' : 'para'] = id;
     });
     return out;
   }
@@ -310,6 +332,15 @@
       if (!side) return;
       var v = b.a['w:val'] || 'single';
       into[side] = /^(?:nil|none)$/.test(v) ? null : { w: Math.max(0.25, (parseFloat(b.a['w:sz']) || 4) / 8), color: hex6(b.a['w:color']) || '#000', style: LINE[v] || 'solid' };
+    });
+    return into;
+  }
+  function readMargins(node, into) { // a cell's margins, in points
+    if (!node) return into;
+    node.c.forEach(function (m) {
+      if (typeof m !== 'object' || (m.a['w:type'] && m.a['w:type'] !== 'dxa')) return;
+      var side = { 'w:top': 'top', 'w:bottom': 'bottom', 'w:left': 'left', 'w:start': 'left', 'w:right': 'right', 'w:end': 'right' }[m.n], v = tw(m.a['w:w']);
+      if (side && v !== undefined && v >= 0 && v < 144) into[side] = v;
     });
     return into;
   }
@@ -361,12 +392,14 @@
     if (!baseR.font) baseR.font = 'Times New Roman';
     var media = Object.create(null), noteRefs = { footnote: [], endnote: [] }, paged = false;
     var fontOf = function (f) { return f && f.charAt(0) === '@' ? (/major/i.test(f) ? theme.major : theme.minor) || '' : f || ''; };
-    function paraStyle(id) { // {p, r} of a paragraph style, its bases applied first
+    function paraStyle(id, tStyle) { // {p, r} of a paragraph style, its bases applied first, over the table style of a cell it is in
       id = id || styles.para;
-      if (cache[id]) return cache[id];
-      var p = own(baseP), r = own(baseR);
-      styleChain(styles, id).forEach(function (s) { readPPr(s.pPr, p); readRPr(s.rPr, r); });
-      return (cache[id] = { p: p, r: r });
+      var key = id + '\u0000' + (tStyle || '');
+      if (cache[key]) return cache[key];
+      var p = own(baseP), r = own(baseR), read = function (s) { readPPr(s.pPr, p); readRPr(s.rPr, r); };
+      if (tStyle) styleChain(styles, tStyle).forEach(read); // "Table Grid": no space after, single lines
+      styleChain(styles, id).forEach(read);
+      return (cache[key] = { p: p, r: r });
     }
     function label(numId, ilvl) { // a list item's number or bullet, counting on from the list's last item
       var nm = numbering.nums[numId], lv = nm && numbering.abs[nm.abs], L = lv && lv[ilvl];
@@ -386,12 +419,12 @@
       return { img: file && parts[file] ? file : '', w: w || 0, h: h || 0, r: r };
     }
     function paragraph(pNode, out, ctx) {
-      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle'))), p = own(st.p), direct = readPPr(pPr, p.tabs ? { tabs: p.tabs } : {}); // the paragraph's tab stops add to its style's
+      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle')), ctx.tStyle), p = own(st.p), direct = readPPr(pPr, p.tabs ? { tabs: p.tabs } : {}); // the paragraph's tab stops add to its style's
       var numId = direct.numId !== undefined ? direct.numId : p.numId, ilvl = direct.ilvl !== undefined ? direct.ilvl : p.ilvl || 0, lab = null;
       if (numId && numId !== '0') { lab = label(numId, Math.min(8, ilvl)); var nm = numbering.nums[numId], lv = nm && numbering.abs[nm.abs]; if (lv && lv[ilvl]) readPPr(lv[ilvl].pPr, p); }
       for (var k in direct) p[k] = direct[k];
-      if (lab) lab.r = readRPr(lab.rPr, own(st.r));
-      var markR = readRPr(xKid(pPr, 'w:rPr'), own(st.r));
+      if (lab) { lab.r = readRPr(lab.rPr, own(st.r)); lab.r.font = fontOf(lab.r.font); }
+      var markR = readRPr(xKid(pPr, 'w:rPr'), own(st.r)); markR.font = fontOf(markR.font); // a theme's font ("@minorHAnsi") by its name, as a run's
       if (p.pbb && !ctx.inCell && out.length) out.push({ t: 'break' });
       var cur = { t: 'p', p: p, runs: [], label: lab, mark: markR };
       var brk = function () { // a page ends here: the paragraph goes on on the next one
@@ -404,12 +437,15 @@
         list.forEach(function (k) {
           if (typeof k !== 'object') return;
           switch (k.n) {
-            case 'w:t': text(xText(k), r); break;
+            case 'w:t': text(r.sym ? symbolChars(xText(k), r.sym) : xText(k), r); break;
             case 'w:tab': cur.runs.push({ tab: true, r: r }); break;
             case 'w:br': if (k.a['w:type'] === 'page') brk(); else cur.runs.push({ br: true, r: r }); break;
             case 'w:cr': cur.runs.push({ br: true, r: r }); break;
             case 'w:noBreakHyphen': text('‑', r); break;
-            case 'w:sym': var ch = parseInt(k.a['w:char'], 16); if (isFinite(ch) && ch > 0) { var sr = own(r); sr.font = k.a['w:font'] || r.font; cur.runs.push({ text: String.fromCharCode(ch >= 0xF000 ? ch - 0xF000 : ch), r: sr }); } break;
+            case 'w:sym':
+              var ch = parseInt(k.a['w:char'], 16), sf = k.a['w:font'] || r.sym || r.font;
+              if (isFinite(ch) && ch > 0) { var sr = own(r); sr.font = SYMBOLIC.test(sf) ? '' : sf; cur.runs.push({ text: SYMBOLIC.test(sf) ? symbolChars(String.fromCharCode(ch), sf) : String.fromCharCode(ch >= 0xF000 ? ch - 0xF000 : ch), r: sr }); }
+              break;
             case 'w:lastRenderedPageBreak': paged = true; brk(); break;
             case 'w:footnoteReference': case 'w:endnoteReference':
               var kind = k.n === 'w:footnoteReference' ? 'footnote' : 'endnote', nr = own(r), n = noteRefs[kind].length + 1;
@@ -441,6 +477,7 @@
               readRPr(rPr, r);
               if (r.hide) return;
               r.font = fontOf(r.font);
+              if (SYMBOLIC.test(r.font)) { r.sym = r.font; r.font = ''; } // its characters as Unicode, in the paragraph's font
               items(c.c, r);
               break;
             case 'w:hyperlink': case 'w:ins': case 'w:moveTo': case 'w:smartTag': case 'w:customXml': case 'w:fldSimple': case 'w:dir': case 'w:bdo': walk(c); break;
@@ -459,26 +496,30 @@
       if (sect && !ctx.inCell) { endSection(sect, out); if (xVal(xKid(sect, 'w:type')) !== 'continuous') out.push({ t: 'break' }); } // a section ends with this paragraph
     }
     function table(tNode, out, ctx) {
-      var tblPr = xKid(tNode, 'w:tblPr'), style = xVal(xKid(tblPr, 'w:tblStyle')) || '';
+      var tblPr = xKid(tNode, 'w:tblPr'), style = xVal(xKid(tblPr, 'w:tblStyle')) || styles.table; // a table with none has the default ("Normal Table")
       var cols = xKids(xKid(tNode, 'w:tblGrid'), 'w:gridCol').map(function (g) { return tw(g.a['w:w']) || 0; });
       var rules = {}; // the table style's borders ("Table Grid"), then the table's own
       styleChain(styles, style).forEach(function (st) { readBorders(xKid(st.tblPr, 'w:tblBorders'), rules); });
       readBorders(xKid(tblPr, 'w:tblBorders'), rules);
       var ruled = Object.keys(rules).some(function (k) { return rules[k]; });
-      var mar = xKid(tblPr, 'w:tblCellMar'), side = function (k) { var v = xKid(mar, 'w:' + k); return v ? tw(v.a['w:w']) : undefined; };
-      var pad = side('left') !== undefined ? side('left') : side('start') !== undefined ? side('start') : 5.4; // Word's own cell margin, 0.075 inch
+      var pad = { top: 0, right: 5.4, bottom: 0, left: 5.4 }; // Word's own cell margins, 0.075 inch either side; the style's, then the table's
+      styleChain(styles, style).forEach(function (st) { readMargins(xKid(st.tblPr, 'w:tblCellMar'), pad); });
+      readMargins(xKid(tblPr, 'w:tblCellMar'), pad);
+      var gap = tw((xKid(tblPr, 'w:tblCellSpacing') || { a: {} }).a['w:w']) || 0; // half the room between two cells, and between a cell and the table's edge
       var fixed = xVal(xKid(tblPr, 'w:tblLayout'), 'type') === 'fixed'; // otherwise Word's AutoFit: a column widens for a word that does not fit
-      var make = function () { return { t: 'table', cols: cols, rows: [], border: ruled, borders: rules, jc: xVal(xKid(tblPr, 'w:jc')) || '', fixed: fixed, pad: pad }; }, t = make();
+      var make = function () { return { t: 'table', cols: cols, rows: [], heights: [], border: ruled, borders: rules, jc: xVal(xKid(tblPr, 'w:jc')) || '', fixed: fixed, pad: pad, gap: gap }; }, t = make();
       var autoCells = 0, sizedCells = 0, split = false;
       xKids(tNode, 'w:tr').forEach(function (tr) {
         if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); split = true; } } // a row that opens a page
-        var row = [];
+        var row = [], trH = xKid(xKid(tr, 'w:trPr'), 'w:trHeight');
+        t.heights[t.rows.length] = trH && tw(trH.a['w:val']) > 0 ? tw(trH.a['w:val']) : 0; // at least this tall (an "exact" row is taken as at least: its text is not cut off)
         xKids(tr, 'w:tc').forEach(function (tc) {
           var tcPr = xKid(tc, 'w:tcPr'), vm = xKid(tcPr, 'w:vMerge'), shd = xKid(tcPr, 'w:shd');
           var cell = { span: Math.max(1, Math.min(64, Number(xVal(xKid(tcPr, 'w:gridSpan'))) || 1)), vm: vm ? (vm.a['w:val'] === 'restart' ? 'restart' : 'continue') : '', fill: shd ? hex6(shd.a['w:fill']) : '', blocks: [],
             borders: readBorders(xKid(tcPr, 'w:tcBorders'), {}), valign: { center: 'middle', bottom: 'bottom' }[xVal(xKid(tcPr, 'w:vAlign'))] || 'top' };
+          if (xKid(tcPr, 'w:tcMar')) cell.pad = readMargins(xKid(tcPr, 'w:tcMar'), { top: pad.top, right: pad.right, bottom: pad.bottom, left: pad.left });
           var tcw = xKid(tcPr, 'w:tcW'); if (!tcw || tcw.a['w:type'] === 'auto' || !(parseFloat(tcw.a['w:w']) > 0)) autoCells++; else sizedCells++;
-          body(tc, cell.blocks, { inCell: true, n: ctx.n });
+          body(tc, cell.blocks, { inCell: true, n: ctx.n, tStyle: style });
           row.push(cell);
         });
         t.rows.push(row);

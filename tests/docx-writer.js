@@ -76,8 +76,8 @@ function tables() {
   return docx({ body: body });
 }
 // cells(): a title whose mark is caps, highlighted and subscript, as Word leaves it after a formula; an empty highlighted
-// paragraph; a table AutoFit to its contents whose rules are each cell's own, one cell centred; a reference list, and a figure
-// caption after it that cites it
+// paragraph; a table AutoFit to its contents whose rules are each cell's own, one cell centred; a reference list whose first
+// entry runs over lines set closer than its font is tall, and a figure caption after it that cites it
 function cells() {
   var cell = function (t, sides, mid) { return '<w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/><w:tcBorders>' + sides.map(function (s) { return '<w:' + s + ' w:val="single" w:sz="4" w:color="000000"/>'; }).join('') + '</w:tcBorders>' + (mid ? '<w:vAlign w:val="center"/>' : '') + '</w:tcPr>' + p(t) + '</w:tc>'; };
   var body = '<w:p><w:pPr><w:jc w:val="center"/><w:rPr><w:caps/><w:highlight w:val="green"/><w:vertAlign w:val="subscript"/></w:rPr></w:pPr><w:r><w:rPr><w:caps/></w:rPr><w:t xml:space="preserve">Title of the paper, </w:t></w:r><w:r><w:t>HAl(UO</w:t></w:r></w:p>' +
@@ -85,8 +85,20 @@ function cells() {
     '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr><w:tblGrid><w:gridCol w:w="300"/><w:gridCol w:w="300"/></w:tblGrid>' +
     '<w:tr>' + cell('Range', ['top', 'left', 'bottom', 'right']) + cell('Mean', ['top', 'bottom']) + '</w:tr>' +
     '<w:tr>' + cell('18.76\u201319.66 and more', ['left', 'bottom', 'right']) + cell('x', ['bottom'], true) + '</w:tr></w:tbl>' +
-    p('References') + p('Abel, A. (2001) A first paper on the crystals. Journal of Things, 1, 1-2.') + p('Baker, B. (2002) A second paper on the crystals. Journal of Things, 2, 3-4.') +
+    p('References') + p('Abel, A. (2001) A first paper on the crystals, long enough in its title and its many words to run over several lines of the page at this size. Journal of Things, 1, 1-2.', '', '<w:spacing w:line="220" w:lineRule="exact"/>') + p('Baker, B. (2002) A second paper on the crystals. Journal of Things, 2, 3-4.') +
     p('Figure 1. The crystal, as drawn after Baker (2002).');
   return docx({ body: body });
 }
-module.exports = { docx: docx, zip: zip, manuscript: manuscript, tables: tables, cells: cells, REFS: REFS, PNG: PNG };
+// rows(): a body whose default spacing is 8 pt after, and tables in "Table Grid", whose paragraphs have none; one row at least
+// half an inch tall, a table with room between its cells, and a 60-row table that runs over two pages (Word never rendered it)
+function rows() {
+  var styles = '<w:docDefaults><w:pPrDefault><w:pPr><w:spacing w:after="160" w:line="259" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+    '<w:style w:type="table" w:styleId="TableGrid"><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4"/><w:bottom w:val="single" w:sz="4"/><w:insideH w:val="single" w:sz="4"/></w:tblBorders></w:tblPr></w:style>';
+  var tbl = function (pr, trs) { return '<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/>' + pr + '</w:tblPr><w:tblGrid><w:gridCol w:w="3000"/><w:gridCol w:w="3000"/></w:tblGrid>' + trs + '</w:tbl>'; };
+  var tr = function (a, b, h) { return '<w:tr>' + (h ? '<w:trPr><w:trHeight w:val="' + h + '"/></w:trPr>' : '') + '<w:tc>' + p(a) + '</w:tc><w:tc>' + p(b) + '</w:tc></w:tr>'; };
+  var many = ''; for (var i = 1; i <= 60; i++) many += tr('Row ' + i, String(i * 1.5));
+  var body = p('Table 1. A tall row.') + tbl('', tr('Tall', 'row', 720) + tr('Short', 'row')) + p('Table 2. Cells apart.') + tbl('<w:tblCellSpacing w:w="30" w:type="dxa"/>', tr('a', 'b')) +
+    p('Table 3. A long table.') + tbl('', many);
+  return docx({ body: body, styles: styles });
+}
+module.exports = { docx: docx, zip: zip, manuscript: manuscript, tables: tables, cells: cells, rows: rows, REFS: REFS, PNG: PNG };

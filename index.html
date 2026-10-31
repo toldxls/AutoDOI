@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5U2hWyf02EzKYjSabHYEyJezGxFrFAYycg6VZrr3m1Y=' 'sha256-OxlwqoeEsyRHbLDv8GguQ4vjvaaTusnSxeCOnSiAsMY=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-cEMJKMWXBUkQKXW0WYxK4Zbxf6Wy6PrBflzT44y7Nn4=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5U2hWyf02EzKYjSabHYEyJezGxFrFAYycg6VZrr3m1Y=' 'sha256-feHoEg+lDatrVPQNxiquF4cNeov4xuQSCZV+nc7mS3k=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-41AeBxJolIMsgrBOKwHwvUFufzgmqfmnhaXpLniSYZo=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -265,11 +265,11 @@
   .dv-tray li { margin: 4px 0; }
   .dv-tray li .btn { margin-left: 8px; }
   .dv-pages { flex: 1; overflow: auto; padding: 20px 16px 48px; position: relative; }
-  .dv-page { position: relative; margin: 0 auto 20px; background: #fff; color: #000; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+  .dv-page { position: relative; margin: 0 auto 20px; background: #fff; color: #000; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); text-decoration-skip-ink: none; } /* Word's underlines run through the descenders */
   .dv-page canvas { position: absolute; left: 0; top: 0; display: block; }
   .dv-page.over { cursor: pointer; }
   .dv-marks { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
-  .dv-mark { position: absolute; border-radius: 2px; }
+  .dv-mark { position: absolute; display: block; padding: 0; border: 0; border-radius: 2px; } /* not the Cite tab's .cite card, whose padding and rule a citation's mark would take */
   .dv-mark:focus-visible { outline: 2px solid #1E5EB8; outline-offset: 1px; }
   .dv-mark.cite { background: rgba(30, 94, 184, .13); box-shadow: inset 0 -2px 0 rgba(30, 94, 184, .75); }
   .dv-mark.cite.hover, .dv-mark.entry.hover { background: rgba(30, 94, 184, .2); }
@@ -277,6 +277,15 @@
   .dv-mark.hit { background: rgba(255, 196, 0, .42); }
   .dv-mark.hit.current { background: rgba(255, 128, 0, .5); box-shadow: 0 0 0 2px #D35400; }
   .dv-mark.flash { background: rgba(255, 196, 0, .5); }
+  /* where the browser paints highlights, the shading is the text's own (once, where two lines' boxes meet) and a citation's
+     underline sits under its letters; the marks are then only the boxes that are clicked and focused */
+  #dv-pages.hl .dv-mark:not(.hit) { background: none; box-shadow: none; }
+  #dv-pages.hl .dv-mark.picked { box-shadow: inset 3px 0 0 rgba(39, 107, 67, .8); }
+  ::highlight(dv-cite) { background-color: rgba(30, 94, 184, .13); text-decoration: underline 2px rgba(30, 94, 184, .75); }
+  ::highlight(dv-cite-hover) { background-color: rgba(30, 94, 184, .2); text-decoration: underline 2px rgba(30, 94, 184, .75); }
+  ::highlight(dv-hover) { background-color: rgba(30, 94, 184, .2); }
+  ::highlight(dv-picked) { background-color: rgba(39, 107, 67, .18); }
+  ::highlight(dv-flash) { background-color: rgba(255, 196, 0, .5); }
   .dv-pop { position: fixed; z-index: 5; width: min(460px, calc(100vw - 32px)); max-height: min(60vh, 520px); overflow: auto; background: var(--surface); color: var(--ink);
     border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 28px rgba(0, 0, 0, .25); padding: 12px 14px; font-size: 13.5px; }
   .dv-pop h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; color: var(--muted); }
@@ -297,6 +306,7 @@
   .dv-table td { vertical-align: top; } /* each cell's lines are its own or the table's (docxTable) */
   .dv-table.fit { table-layout: auto; max-width: 100%; }
   .dv-table .dv-p { overflow-wrap: normal; } /* a cell's number is never split across lines ("0.2" over "0") */
+  .dv-table.tight .dv-p { overflow-wrap: anywhere; } /* unless the table has no more room: Word breaks the word (docxFit) */
   .dv-notes { position: relative; padding-top: 6px; margin-top: 8px; }
   .dv-notes::before { content: ''; position: absolute; left: 0; top: 0; width: 33%; border-top: 1px solid #000; }
   /* pdf.js's text layer: transparent text over the drawn page, there to be selected and searched (its pdf_viewer.css, flattened) */
@@ -345,7 +355,7 @@
       <label class="check" for="opt-formulas"><input type="checkbox" id="opt-formulas" checked> Format chemical formulas and isotopes in titles (Fe₂O₃, Fe³⁺, ⁴⁰Ar/³⁹Ar)</label>
     </div>
     <div class="row">
-      <span>Bookmarklet: drag this to your bookmarks bar, then click it on any journal article page to cite it here.</span>
+      <span>Bookmarklet: drag this to your bookmarks bar, then click it on a journal article to cite it here, or on any page with DOIs to open them all as a list (select part of the page first to take only its DOIs).</span>
       <a class="bookmarklet" id="bookmarklet" href="#">Cite with AutoDOI</a>
     </div>
     <div class="row"><span>Link directly to a lookup with <code>?q=</code>, for example <code id="qexample"></code>.</span></div>
@@ -2917,6 +2927,25 @@
     if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(b);
     try { return decodeURIComponent(escape(latin(b))); } catch (e) { return latin(b); }
   }
+  // Symbol and Wingdings set each character by its own code, often in Word's private range (U+F0xx): the character it stands for
+  var SYMBOL_UP = 'ΑΒΧΔΕΦΓΗΙϑΚΛΜΝΟΠΘΡΣΤΥςΩΞΨΖ', SYMBOL_LOW = 'αβχδεφγηιϕκλμνοπθρστυϖωξψζ';
+  var SYMBOL = { 0x22: '∀', 0x24: '∃', 0x27: '∋', 0x2A: '∗', 0x2D: '−', 0x40: '≅', 0x5C: '∴', 0x5E: '⊥', 0x7E: '∼', 0xA1: 'ϒ', 0xA2: '′', 0xA3: '≤', 0xA4: '⁄', 0xA5: '∞', 0xA6: 'ƒ',
+    0xAB: '↔', 0xAC: '←', 0xAD: '↑', 0xAE: '→', 0xAF: '↓', 0xB0: '°', 0xB1: '±', 0xB2: '″', 0xB3: '≥', 0xB4: '×', 0xB5: '∝', 0xB6: '∂', 0xB7: '•', 0xB8: '÷', 0xB9: '≠', 0xBA: '≡',
+    0xBB: '≈', 0xBC: '…', 0xC0: 'ℵ', 0xC4: '⊗', 0xC5: '⊕', 0xC6: '∅', 0xC7: '∩', 0xC8: '∪', 0xC9: '⊃', 0xCA: '⊇', 0xCB: '⊄', 0xCC: '⊂', 0xCD: '⊆', 0xCE: '∈', 0xCF: '∉', 0xD0: '∠',
+    0xD1: '∇', 0xD2: '®', 0xD3: '©', 0xD4: '™', 0xD5: '∏', 0xD6: '√', 0xD7: '⋅', 0xD8: '¬', 0xD9: '∧', 0xDA: '∨', 0xDB: '⇔', 0xDC: '⇐', 0xDD: '⇑', 0xDE: '⇒', 0xDF: '⇓', 0xE0: '◊',
+    0xE1: '〈', 0xE5: '∑', 0xF1: '〉', 0xF2: '∫' };
+  var WINGDINGS = { 0x6C: '●', 0x6E: '■', 0x71: '❑', 0x75: '◆', 0x76: '❖', 0x9F: '•', 0xA7: '▪', 0xA8: '◻', 0xD8: '➢', 0xDF: '←', 0xE0: '→', 0xE1: '↑', 0xE2: '↓', 0xE8: '➔',
+    0xEF: '⇦', 0xF0: '⇨', 0xF1: '⇧', 0xF2: '⇩', 0xFB: '✗', 0xFC: '✓', 0xFD: '☒', 0xFE: '☑' };
+  var SYMBOLIC = /^(?:Symbol|Wingdings)/i;
+  function symbolChars(t, font) {
+    var wing = /^Wingdings/i.test(font);
+    return String(t).replace(/[\s\S]/g, function (ch) {
+      var c = ch.charCodeAt(0);
+      if (c >= 0xF020 && c <= 0xF0FF) c -= 0xF000; else if (c > 0xFF) return ch;
+      if (wing) return WINGDINGS[c] || ch;
+      return c >= 65 && c <= 90 ? SYMBOL_UP.charAt(c - 65) : c >= 97 && c <= 122 ? SYMBOL_LOW.charAt(c - 97) : SYMBOL[c] || String.fromCharCode(c);
+    });
+  }
   function docxParagraphs(xml) { // [{text, style, table}] in document order; tabs and breaks become spaces; sub/superscript runs become Unicode
     var out = [], re = /<w:p[\s>][\s\S]*?<\/w:p>/g, m, tables = [], tr = /<(\/?)w:tbl[\s>]/g, t0, depth = 0, tm;
     while ((tm = tr.exec(xml))) { if (!tm[1]) { if (!depth++) t0 = tm.index; } else if (depth && !--depth) tables.push([t0, tm.index]); } // where the tables are: a cell's paragraph is no reference
@@ -2927,9 +2956,12 @@
       var runRe = /<w:r[\s>][\s\S]*?<\/w:r>|<w:tab\/>|<w:br\/>|<w:cr\/>/g, r;
       while ((r = runRe.exec(para))) {
         if (r[0] === '<w:tab/>' || r[0] === '<w:br/>' || r[0] === '<w:cr/>') { text += ' '; continue; }
-        var run = r[0], va = (run.match(/<w:vertAlign w:val="(superscript|subscript)"/) || [])[1], t = '';
-        var tRe = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>|<w:br\/>/g, tm;
-        while ((tm = tRe.exec(run))) t += tm[1] === undefined ? ' ' : unesc(tm[1]);
+        var run = r[0], va = (run.match(/<w:vertAlign w:val="(superscript|subscript)"/) || [])[1], t = '', sym = (run.match(/<w:rFonts[^>]*w:(?:ascii|hAnsi)="((?:Symbol|Wingdings)[^"]*)"/) || [])[1];
+        var tRe = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>|<w:br\/>|<w:sym\b([^>]*)>/g, tm;
+        while ((tm = tRe.exec(run))) {
+          if (tm[2] !== undefined) { var sf = (tm[2].match(/w:font="([^"]*)"/) || [])[1] || '', sc = parseInt((tm[2].match(/w:char="([0-9a-fA-F]+)"/) || [])[1], 16); if (sc > 0) t += SYMBOLIC.test(sf) ? symbolChars(String.fromCharCode(sc), sf) : String.fromCharCode(sc >= 0xF000 ? sc - 0xF000 : sc); }
+          else t += tm[1] === undefined ? ' ' : sym ? symbolChars(unesc(tm[1]), sym) : unesc(tm[1]);
+        }
         if (/<w:vanish\/>|<w:del[\s>]/.test(run)) continue; // hidden or deleted text
         text += va && A && A.toScript ? A.toScript(t, va === 'superscript' ? 'sup' : 'sub') : t;
       }
@@ -3070,14 +3102,14 @@
     return into;
   }
   function docxStyles(xml) {
-    var out = { r: {}, p: {}, byId: Object.create(null), para: '' };
+    var out = { r: {}, p: {}, byId: Object.create(null), para: '', table: '' };
     if (!xml) return out;
     var root = xmlTree(utf8(xml)), dd = xKid(root, 'w:docDefaults');
     if (dd) { readRPr(xKid(xKid(dd, 'w:rPrDefault'), 'w:rPr'), out.r); readPPr(xKid(xKid(dd, 'w:pPrDefault'), 'w:pPr'), out.p); }
     xKids(root, 'w:style').forEach(function (s) {
       var id = s.a['w:styleId']; if (!id) return;
       out.byId[id] = { type: s.a['w:type'], based: xVal(xKid(s, 'w:basedOn')), pPr: xKid(s, 'w:pPr'), rPr: xKid(s, 'w:rPr'), tblPr: xKid(s, 'w:tblPr') };
-      if (s.a['w:type'] === 'paragraph' && /^(?:1|true|on)$/.test(s.a['w:default'] || '')) out.para = id;
+      if (/^(?:paragraph|table)$/.test(s.a['w:type']) && /^(?:1|true|on)$/.test(s.a['w:default'] || '')) out[s.a['w:type'] === 'table' ? 'table' : 'para'] = id;
     });
     return out;
   }
@@ -3092,6 +3124,15 @@
       if (!side) return;
       var v = b.a['w:val'] || 'single';
       into[side] = /^(?:nil|none)$/.test(v) ? null : { w: Math.max(0.25, (parseFloat(b.a['w:sz']) || 4) / 8), color: hex6(b.a['w:color']) || '#000', style: LINE[v] || 'solid' };
+    });
+    return into;
+  }
+  function readMargins(node, into) { // a cell's margins, in points
+    if (!node) return into;
+    node.c.forEach(function (m) {
+      if (typeof m !== 'object' || (m.a['w:type'] && m.a['w:type'] !== 'dxa')) return;
+      var side = { 'w:top': 'top', 'w:bottom': 'bottom', 'w:left': 'left', 'w:start': 'left', 'w:right': 'right', 'w:end': 'right' }[m.n], v = tw(m.a['w:w']);
+      if (side && v !== undefined && v >= 0 && v < 144) into[side] = v;
     });
     return into;
   }
@@ -3143,12 +3184,14 @@
     if (!baseR.font) baseR.font = 'Times New Roman';
     var media = Object.create(null), noteRefs = { footnote: [], endnote: [] }, paged = false;
     var fontOf = function (f) { return f && f.charAt(0) === '@' ? (/major/i.test(f) ? theme.major : theme.minor) || '' : f || ''; };
-    function paraStyle(id) { // {p, r} of a paragraph style, its bases applied first
+    function paraStyle(id, tStyle) { // {p, r} of a paragraph style, its bases applied first, over the table style of a cell it is in
       id = id || styles.para;
-      if (cache[id]) return cache[id];
-      var p = own(baseP), r = own(baseR);
-      styleChain(styles, id).forEach(function (s) { readPPr(s.pPr, p); readRPr(s.rPr, r); });
-      return (cache[id] = { p: p, r: r });
+      var key = id + '\u0000' + (tStyle || '');
+      if (cache[key]) return cache[key];
+      var p = own(baseP), r = own(baseR), read = function (s) { readPPr(s.pPr, p); readRPr(s.rPr, r); };
+      if (tStyle) styleChain(styles, tStyle).forEach(read); // "Table Grid": no space after, single lines
+      styleChain(styles, id).forEach(read);
+      return (cache[key] = { p: p, r: r });
     }
     function label(numId, ilvl) { // a list item's number or bullet, counting on from the list's last item
       var nm = numbering.nums[numId], lv = nm && numbering.abs[nm.abs], L = lv && lv[ilvl];
@@ -3168,12 +3211,12 @@
       return { img: file && parts[file] ? file : '', w: w || 0, h: h || 0, r: r };
     }
     function paragraph(pNode, out, ctx) {
-      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle'))), p = own(st.p), direct = readPPr(pPr, p.tabs ? { tabs: p.tabs } : {}); // the paragraph's tab stops add to its style's
+      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle')), ctx.tStyle), p = own(st.p), direct = readPPr(pPr, p.tabs ? { tabs: p.tabs } : {}); // the paragraph's tab stops add to its style's
       var numId = direct.numId !== undefined ? direct.numId : p.numId, ilvl = direct.ilvl !== undefined ? direct.ilvl : p.ilvl || 0, lab = null;
       if (numId && numId !== '0') { lab = label(numId, Math.min(8, ilvl)); var nm = numbering.nums[numId], lv = nm && numbering.abs[nm.abs]; if (lv && lv[ilvl]) readPPr(lv[ilvl].pPr, p); }
       for (var k in direct) p[k] = direct[k];
-      if (lab) lab.r = readRPr(lab.rPr, own(st.r));
-      var markR = readRPr(xKid(pPr, 'w:rPr'), own(st.r));
+      if (lab) { lab.r = readRPr(lab.rPr, own(st.r)); lab.r.font = fontOf(lab.r.font); }
+      var markR = readRPr(xKid(pPr, 'w:rPr'), own(st.r)); markR.font = fontOf(markR.font); // a theme's font ("@minorHAnsi") by its name, as a run's
       if (p.pbb && !ctx.inCell && out.length) out.push({ t: 'break' });
       var cur = { t: 'p', p: p, runs: [], label: lab, mark: markR };
       var brk = function () { // a page ends here: the paragraph goes on on the next one
@@ -3186,12 +3229,15 @@
         list.forEach(function (k) {
           if (typeof k !== 'object') return;
           switch (k.n) {
-            case 'w:t': text(xText(k), r); break;
+            case 'w:t': text(r.sym ? symbolChars(xText(k), r.sym) : xText(k), r); break;
             case 'w:tab': cur.runs.push({ tab: true, r: r }); break;
             case 'w:br': if (k.a['w:type'] === 'page') brk(); else cur.runs.push({ br: true, r: r }); break;
             case 'w:cr': cur.runs.push({ br: true, r: r }); break;
             case 'w:noBreakHyphen': text('‑', r); break;
-            case 'w:sym': var ch = parseInt(k.a['w:char'], 16); if (isFinite(ch) && ch > 0) { var sr = own(r); sr.font = k.a['w:font'] || r.font; cur.runs.push({ text: String.fromCharCode(ch >= 0xF000 ? ch - 0xF000 : ch), r: sr }); } break;
+            case 'w:sym':
+              var ch = parseInt(k.a['w:char'], 16), sf = k.a['w:font'] || r.sym || r.font;
+              if (isFinite(ch) && ch > 0) { var sr = own(r); sr.font = SYMBOLIC.test(sf) ? '' : sf; cur.runs.push({ text: SYMBOLIC.test(sf) ? symbolChars(String.fromCharCode(ch), sf) : String.fromCharCode(ch >= 0xF000 ? ch - 0xF000 : ch), r: sr }); }
+              break;
             case 'w:lastRenderedPageBreak': paged = true; brk(); break;
             case 'w:footnoteReference': case 'w:endnoteReference':
               var kind = k.n === 'w:footnoteReference' ? 'footnote' : 'endnote', nr = own(r), n = noteRefs[kind].length + 1;
@@ -3223,6 +3269,7 @@
               readRPr(rPr, r);
               if (r.hide) return;
               r.font = fontOf(r.font);
+              if (SYMBOLIC.test(r.font)) { r.sym = r.font; r.font = ''; } // its characters as Unicode, in the paragraph's font
               items(c.c, r);
               break;
             case 'w:hyperlink': case 'w:ins': case 'w:moveTo': case 'w:smartTag': case 'w:customXml': case 'w:fldSimple': case 'w:dir': case 'w:bdo': walk(c); break;
@@ -3241,26 +3288,30 @@
       if (sect && !ctx.inCell) { endSection(sect, out); if (xVal(xKid(sect, 'w:type')) !== 'continuous') out.push({ t: 'break' }); } // a section ends with this paragraph
     }
     function table(tNode, out, ctx) {
-      var tblPr = xKid(tNode, 'w:tblPr'), style = xVal(xKid(tblPr, 'w:tblStyle')) || '';
+      var tblPr = xKid(tNode, 'w:tblPr'), style = xVal(xKid(tblPr, 'w:tblStyle')) || styles.table; // a table with none has the default ("Normal Table")
       var cols = xKids(xKid(tNode, 'w:tblGrid'), 'w:gridCol').map(function (g) { return tw(g.a['w:w']) || 0; });
       var rules = {}; // the table style's borders ("Table Grid"), then the table's own
       styleChain(styles, style).forEach(function (st) { readBorders(xKid(st.tblPr, 'w:tblBorders'), rules); });
       readBorders(xKid(tblPr, 'w:tblBorders'), rules);
       var ruled = Object.keys(rules).some(function (k) { return rules[k]; });
-      var mar = xKid(tblPr, 'w:tblCellMar'), side = function (k) { var v = xKid(mar, 'w:' + k); return v ? tw(v.a['w:w']) : undefined; };
-      var pad = side('left') !== undefined ? side('left') : side('start') !== undefined ? side('start') : 5.4; // Word's own cell margin, 0.075 inch
+      var pad = { top: 0, right: 5.4, bottom: 0, left: 5.4 }; // Word's own cell margins, 0.075 inch either side; the style's, then the table's
+      styleChain(styles, style).forEach(function (st) { readMargins(xKid(st.tblPr, 'w:tblCellMar'), pad); });
+      readMargins(xKid(tblPr, 'w:tblCellMar'), pad);
+      var gap = tw((xKid(tblPr, 'w:tblCellSpacing') || { a: {} }).a['w:w']) || 0; // half the room between two cells, and between a cell and the table's edge
       var fixed = xVal(xKid(tblPr, 'w:tblLayout'), 'type') === 'fixed'; // otherwise Word's AutoFit: a column widens for a word that does not fit
-      var make = function () { return { t: 'table', cols: cols, rows: [], border: ruled, borders: rules, jc: xVal(xKid(tblPr, 'w:jc')) || '', fixed: fixed, pad: pad }; }, t = make();
+      var make = function () { return { t: 'table', cols: cols, rows: [], heights: [], border: ruled, borders: rules, jc: xVal(xKid(tblPr, 'w:jc')) || '', fixed: fixed, pad: pad, gap: gap }; }, t = make();
       var autoCells = 0, sizedCells = 0, split = false;
       xKids(tNode, 'w:tr').forEach(function (tr) {
         if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); split = true; } } // a row that opens a page
-        var row = [];
+        var row = [], trH = xKid(xKid(tr, 'w:trPr'), 'w:trHeight');
+        t.heights[t.rows.length] = trH && tw(trH.a['w:val']) > 0 ? tw(trH.a['w:val']) : 0; // at least this tall (an "exact" row is taken as at least: its text is not cut off)
         xKids(tr, 'w:tc').forEach(function (tc) {
           var tcPr = xKid(tc, 'w:tcPr'), vm = xKid(tcPr, 'w:vMerge'), shd = xKid(tcPr, 'w:shd');
           var cell = { span: Math.max(1, Math.min(64, Number(xVal(xKid(tcPr, 'w:gridSpan'))) || 1)), vm: vm ? (vm.a['w:val'] === 'restart' ? 'restart' : 'continue') : '', fill: shd ? hex6(shd.a['w:fill']) : '', blocks: [],
             borders: readBorders(xKid(tcPr, 'w:tcBorders'), {}), valign: { center: 'middle', bottom: 'bottom' }[xVal(xKid(tcPr, 'w:vAlign'))] || 'top' };
+          if (xKid(tcPr, 'w:tcMar')) cell.pad = readMargins(xKid(tcPr, 'w:tcMar'), { top: pad.top, right: pad.right, bottom: pad.bottom, left: pad.left });
           var tcw = xKid(tcPr, 'w:tcW'); if (!tcw || tcw.a['w:type'] === 'auto' || !(parseFloat(tcw.a['w:w']) > 0)) autoCells++; else sizedCells++;
-          body(tc, cell.blocks, { inCell: true, n: ctx.n });
+          body(tc, cell.blocks, { inCell: true, n: ctx.n, tStyle: style });
           row.push(cell);
         });
         t.rows.push(row);
@@ -6862,7 +6913,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.18.1'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.18.2'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -9031,7 +9082,15 @@
       if (b.sec !== undefined && b.sec !== pg.sec && pg.n) newPage(b.sec); // a new section starts a page of its own size
       pg.body.appendChild(node); pg.n++;
       docxTabs(node, u); docxFit(node);
-      if (!L.paged && pg.n > 1 && used() > pg.room + 1) { pg.body.removeChild(node); newPage(pg.sec); pg.body.appendChild(node); pg.n++; } // it does not fit: the next page
+      while (!L.paged && used() > pg.room + 1) { // it does not fit: a table's rows from the first that does not go on the next page, else the whole of it
+        var rest = node.tagName === 'TABLE' ? splitRows(node, pg.body.getBoundingClientRect().top + pg.room) : null;
+        if (rest) { notes(node); newPage(pg.sec); pg.body.appendChild(rest); pg.n++; node = rest; }
+        else if (pg.n > 1 && node.getBoundingClientRect().height <= pg.room) { pg.body.removeChild(node); newPage(pg.sec); pg.body.appendChild(node); pg.n++; }
+        else break; // taller than a page by itself: it starts here, as in Word, rather than leaving this page empty
+      }
+      notes(node);
+    };
+    var notes = function (node) {
       Array.prototype.forEach.call(node.querySelectorAll('[data-note="footnote"]'), function (ref) { // a footnote at the foot of the page that cites it
         var bl = L.footnotes[ref.getAttribute('data-n')]; if (!bl) return;
         pg.notes.hidden = false;
@@ -9041,6 +9100,20 @@
     newPage(L.blocks[0] && L.blocks[0].sec !== undefined ? L.blocks[0].sec : 0);
     L.blocks.forEach(function (b, i) { if (b.t === 'break') { if (pg.n) { var next = L.blocks[i + 1]; newPage(next && next.sec !== undefined ? next.sec : pg.sec); } } else place(b); });
     Object.keys(L.endnotes).forEach(function (k) { L.endnotes[k].forEach(place); }); // endnotes follow the text
+  }
+  // A table's rows from the first that ends below the page's foot, moved to a copy of the table for the next page, as Word
+  // breaks a table; never through a merged cell. Null when no row would stay or none would move.
+  function splitRows(t, limit) {
+    var rows = Array.prototype.slice.call(t.rows), cut = -1;
+    for (var i = 0; i < rows.length; i++) if (rows[i].getBoundingClientRect().bottom > limit) { cut = i; break; }
+    var spansInto = function (k) { return rows.slice(0, k).some(function (r, i) { return Array.prototype.some.call(r.cells, function (td) { return i + td.rowSpan > k; }); }); };
+    while (cut > 0 && spansInto(cut)) cut--;
+    if (cut <= 0) return null;
+    var rest = t.cloneNode(false), body = el('tbody'), cg = t.querySelector('colgroup');
+    if (cg) rest.appendChild(cg.cloneNode(true));
+    rest.appendChild(body);
+    rows.slice(cut).forEach(function (r) { body.appendChild(r); });
+    return rest;
   }
   // Tabs to the paragraph's own stops (left, right, centre or decimal), then Word's default every half inch; a hanging
   // indent is a stop too.  Laid out once the paragraph is on the page, each tab from where its text has reached.
@@ -9072,28 +9145,41 @@
     });
   }
   // A table keeps its columns' widths, and a column widens only for a word that does not fit in it: Word's AutoFit, and in a
-  // fixed table the hair this page's fonts may set wider than Word's ("0.20" in a 0.4-inch column)
+  // fixed table the hair this page's fonts may set wider than Word's ("0.20" in a 0.4-inch column); each only as far as the page
+  // or its cell has room, past which a word breaks, as in Word
   function docxFit(node) {
     var tables = node.tagName === 'TABLE' ? [node] : Array.prototype.slice.call(node.querySelectorAll('table.dv-table'));
-    tables.forEach(function (t) {
-      if (t.classList.contains('fit')) return; // sized to its contents already
-      var cols = t.querySelectorAll('col'), need = [], grew = false;
+    tables.reverse().forEach(function (t) { // a table inside a cell first, within its cell
+      var up = t.parentElement, cs = getComputedStyle(up), room = up.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      if (t.classList.contains('fit')) { if (t.getBoundingClientRect().width > room + 1) t.classList.add('tight'); return; } // sized to its contents already
+      var cols = t.querySelectorAll('col'), need = [];
       Array.prototype.forEach.call(t.rows, function (tr) {
         var at = 0;
         Array.prototype.forEach.call(tr.cells, function (td) {
           while (need[at] === -1) at++;
           if (td.colSpan === 1 && cols[at]) {
-            var pad = parseFloat(td.style.paddingLeft) * 2 || 0, wide = 0;
+            var pad = (parseFloat(td.style.paddingLeft) || 0) + (parseFloat(td.style.paddingRight) || 0), wide = 0;
             Array.prototype.forEach.call(td.querySelectorAll('.dv-p'), function (p) { if (p.scrollWidth > p.clientWidth + 1) wide = Math.max(wide, p.scrollWidth); });
             if (wide) need[at] = Math.max(need[at] || 0, wide + pad + 1);
           }
           at += td.colSpan;
         });
       });
-      need.forEach(function (w, i) { if (w > 0 && cols[i] && w > parseFloat(cols[i].style.width)) { cols[i].style.width = w + 'px'; grew = true; } });
-      if (grew) t.style.width = Array.prototype.reduce.call(cols, function (a, c) { return a + parseFloat(c.style.width || 0); }, 0) + 'px';
+      var was = Array.prototype.map.call(cols, function (c) { return parseFloat(c.style.width) || 0; }), total = was.reduce(function (a, w) { return a + w; }, 0);
+      var want = was.map(function (w, i) { return Math.max(w, need[i] || 0); }), more = want.reduce(function (a, w) { return a + w; }, 0) - total;
+      if (!(more > 0.5)) return;
+      var share = Math.min(1, Math.max(0, Math.max(total * 1.08, room) - total) / more); // of each column's growth, the part there is room for (a hair always: this page's fonts may be wider than Word's)
+      if (share < 1) t.classList.add('tight');
+      want.forEach(function (w, i) { cols[i].style.width = was[i] + (w - was[i]) * share + 'px'; });
+      t.style.width = total + more * share + 'px';
     });
   }
+  // Word's single line spacing is the font's own line height, in ems of its size (measured in Word for Mac); other fonts are taken as Times New Roman's
+  var WORD_LINE = { 'times new roman': 1.15, times: 1.15, arial: 1.15, helvetica: 1.15, 'arial unicode ms': 1.741, calibri: 1.223, 'calibri light': 1.222, cambria: 1.172, 'cambria math': 1.171,
+    aptos: 1.219, 'aptos display': 1.222, 'courier new': 1.134, garamond: 1.125, georgia: 1.135, verdana: 1.218, tahoma: 1.21, 'segoe ui': 1.328, 'palatino linotype': 1.351, 'book antiqua': 1.241,
+    'century gothic': 1.205, 'trebuchet ms': 1.16, 'gill sans mt': 1.16, candara: 1.222, constantia: 1.222, corbel: 1.209, 'franklin gothic book': 1.135, 'microsoft sans serif': 1.131,
+    'ms mincho': 1.298, simsun: 1.295, lato: 1.2, 'open sans': 1.363, roboto: 1.172, 'source sans pro': 1.255, 'noto serif': 1.363, 'noto sans': 1.363, consolas: 1.173 };
+  function wordLine(f) { return WORD_LINE[String(f || '').toLowerCase()] || 1.15; }
   function fontStack(f) { return '"' + String(f).replace(/["\\]/g, '') + '", ' + (/courier|mono|consol/i.test(f) ? 'monospace' : /arial|helvetica|calibri|segoe|verdana|tahoma|gill|futura|aptos|sans/i.test(f) ? 'sans-serif' : 'serif'); }
   function runStyle(e, r, u) {
     var s = e.style, size = r.size || 10;
@@ -9115,7 +9201,11 @@
     p.style.paddingLeft = Math.max(0, pp.left || 0) * u + 'px'; p.style.paddingRight = Math.max(0, pp.right || 0) * u + 'px';
     if (first) p.style.textIndent = first * u + 'px';
     p.style.textAlign = { both: 'justify', distribute: 'justify', center: 'center', right: 'right', end: 'right' }[pp.jc] || 'left';
-    p.style.lineHeight = !pp.line ? '1.15' : pp.line.mult ? String(Math.round(pp.line.mult * 115) / 100) : pp.line.pt * u + 'px'; // Word's single spacing is about 1.15 of the font's size
+    var line = pp.line || { mult: 1 }, lineOf = function (font) { // each run's line as tall as its font's, so a run in a taller font is not squashed; an exact line is the paragraph's
+      var f = wordLine(font);
+      return line.mult ? String(Math.round(line.mult * f * 1000) / 1000) : line.least ? 'max(' + line.pt * u + 'px, ' + f + 'em)' : '';
+    };
+    p.style.lineHeight = lineOf((b.mark || {}).font) || line.pt * u + 'px';
     if (pp.shd) p.style.background = pp.shd;
     var mark = { size: (b.mark || {}).size, font: (b.mark || {}).font };
     runStyle(p, mark, u); // the paragraph mark's font and size, for the height of an empty paragraph; not its caps, underline, highlight or superscript, which its runs would inherit (or the lines squash)
@@ -9123,7 +9213,7 @@
     if (first < 0) p.dvHang = pp.left || 0;
     if (b.label && b.label.text) {
       var lab = el('span', '', b.label.text + (b.label.suff === 'space' ? ' ' : ''));
-      runStyle(lab, b.label.r || mark, u);
+      runStyle(lab, b.label.r || mark, u); if (lineOf()) lab.style.lineHeight = lineOf((b.label.r || mark).font);
       lab.style.display = 'inline-block'; lab.style.textIndent = '0';
       if (b.label.suff === 'tab') { if (first < 0) lab.style.minWidth = -first * u + 'px'; else lab.style.paddingRight = 18 * u + 'px'; } // the number sits in the hanging indent
       p.appendChild(lab); any = true;
@@ -9140,6 +9230,7 @@
       if (!r.text) return;
       var rr = r.r || {}, s = el(rr.va === 'sup' ? 'sup' : rr.va === 'sub' ? 'sub' : 'span', '', r.text);
       runStyle(s, rr, u);
+      if (!rr.va && lineOf()) s.style.lineHeight = lineOf(rr.font);
       if (r.note) { s.setAttribute('data-note', r.note); s.setAttribute('data-n', String(r.n)); }
       else if (rr.va === 'sup' && !r.noteMark) s.className = 'dv-sup'; // a superscript that may be a numbered citation; a note's marks are not
       p.appendChild(s); any = true;
@@ -9155,14 +9246,19 @@
     if (b.fit) t.classList.add('fit'); // AutoFit to contents: each column as wide as its text, as Word lays it out
     else if (total) t.style.width = total * u + 'px';
     if (b.jc === 'center') { t.style.marginLeft = 'auto'; t.style.marginRight = 'auto'; }
+    if (b.gap) { // room between the cells: each drawn in its own lines, the table's edge around them all
+      t.style.borderCollapse = 'separate'; t.style.borderSpacing = 2 * b.gap * u + 'px';
+      t.style.borderTop = line(tb.top); t.style.borderRight = line(tb.right); t.style.borderBottom = line(tb.bottom); t.style.borderLeft = line(tb.left);
+    }
     t.appendChild(cg); t.appendChild(body);
     var grid = b.rows.map(function (row) { var at = 0; return row.map(function (c) { var o = { c: c, col: at }; at += c.span; return o; }); });
     grid.forEach(function (row, ri) {
       var tr = el('tr'); body.appendChild(tr);
+      if (b.heights && b.heights[ri]) tr.style.height = b.heights[ri] * u + 'px'; // a row's height is at least this
       row.forEach(function (o) {
         if (o.c.vm === 'continue') return; // merged into the cell above, whose rowspan counts it
-        var td = el('td');
-        td.style.padding = '0 ' + (b.pad === undefined ? 5.4 : b.pad) * u + 'px';
+        var td = el('td'), pad = o.c.pad || b.pad || { top: 0, right: 5.4, bottom: 0, left: 5.4 };
+        td.style.padding = [pad.top, pad.right, pad.bottom, pad.left].map(function (v) { return v * u + 'px'; }).join(' ');
         if (o.c.span > 1) td.colSpan = o.c.span;
         if (o.c.vm === 'restart') {
           var down = 1;
@@ -9170,7 +9266,7 @@
           if (down > 1) td.rowSpan = down;
         }
         if (o.c.fill) td.style.background = o.c.fill;
-        var cb = o.c.borders || {}, side = function (k, edge, inner) { return line(cb[k] !== undefined ? cb[k] : edge ? tb[k] : tb[inner]); }; // the cell's own line, else the table's edge or inside line
+        var cb = o.c.borders || {}, side = function (k, edge, inner) { return line(cb[k] !== undefined ? cb[k] : edge && !b.gap ? tb[k] : tb[inner]); }; // the cell's own line, else the table's edge or inside line
         td.style.borderTop = side('top', ri === 0, 'insideH');
         td.style.borderBottom = side('bottom', rowsLeft(ri, td.rowSpan || 1), 'insideH');
         td.style.borderLeft = side('left', o.col === 0, 'insideV');
@@ -9234,18 +9330,23 @@
 
   /* stretches of the text as boxes on the pages */
   function segAt(me, i) { var lo = 0, hi = me.segs.length - 1; while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (me.segs[mid].start <= i) lo = mid; else hi = mid - 1; } return lo; }
-  function boxesOf(me, start, end, rects) {
-    if (!me.segs.length || end <= start) return [];
+  function rangeOf(me, start, end) { // the stretch as a Range, with the pages it starts and ends on
+    if (!me.segs.length || end <= start) return null;
     var a = segAt(me, start), sa = me.segs[a];
-    if (start >= sa.start + sa.node.nodeValue.length) { sa = me.segs[++a]; if (!sa) return []; start = sa.start; } // it starts between two text nodes
+    if (start >= sa.start + sa.node.nodeValue.length) { sa = me.segs[++a]; if (!sa) return null; start = sa.start; } // it starts between two text nodes
     var b = segAt(me, end - 1), sb = me.segs[b];
-    if (b < a) return [];
-    var r = document.createRange(), out = [];
-    try { r.setStart(sa.node, start - sa.start); r.setEnd(sb.node, Math.min(end - sb.start, sb.node.nodeValue.length)); } catch (e) { return []; }
-    Array.prototype.forEach.call(r.getClientRects(), function (c) {
+    if (b < a) return null;
+    var r = document.createRange();
+    try { r.setStart(sa.node, start - sa.start); r.setEnd(sb.node, Math.min(end - sb.start, sb.node.nodeValue.length)); } catch (e) { return null; }
+    return { range: r, from: sa.page, to: sb.page };
+  }
+  function boxesOf(me, start, end, rects) {
+    var rg = rangeOf(me, start, end), out = [];
+    if (!rg) return out;
+    Array.prototype.forEach.call(rg.range.getClientRects(), function (c) {
       if (c.width < 0.5 || c.height < 0.5) return;
       var cy = c.top + c.height / 2;
-      for (var p = sa.page; p <= sb.page; p++) {
+      for (var p = rg.from; p <= rg.to; p++) {
         var pr = rects[p]; if (cy < pr.top || cy > pr.bottom) continue;
         var bx = { p: p, x: c.left - pr.left, y: c.top - pr.top, w: c.width, h: c.height }, lastB = out[out.length - 1];
         if (lastB && lastB.p === p && Math.abs(lastB.y - bx.y) < Math.max(2, 0.5 * Math.min(lastB.h, bx.h)) && bx.x <= lastB.x + lastB.w + 3 && bx.x + bx.w >= lastB.x - 3) { // the same line: one box
@@ -9255,7 +9356,21 @@
         break;
       }
     });
+    for (var i = 1; i < out.length; i++) { // a line's box ends where the next line's starts: a font's box is taller than tight spacing leaves it
+      var up = out[i - 1], dn = out[i], over = up.y + up.h - dn.y;
+      if (up.p === dn.p && over > 0 && dn.y > up.y + 0.5 * Math.min(up.h, dn.h)) { up.h -= over / 2; dn.y += over / 2; dn.h -= over / 2; }
+    }
     return out;
+  }
+  // The browser's own highlights (CSS Custom Highlight API), where it has them: each item's range is in one, by its state
+  var HL = typeof CSS !== 'undefined' && CSS.highlights && typeof Highlight === 'function' ? {} : null;
+  function hlPaint(me, it) {
+    if (!HL || !it.range || me.closed) return;
+    var name = it.flash ? 'dv-flash' : it.picked ? 'dv-picked' : it.hover ? (it.kind === 'cite' ? 'dv-cite-hover' : 'dv-hover') : it.kind === 'cite' ? 'dv-cite' : '';
+    if (name === it.hl) return;
+    if (it.hl) HL[it.hl].delete(it.range);
+    if (name) { if (!HL[name]) CSS.highlights.set(name, HL[name] = new Highlight()); HL[name].add(it.range); }
+    it.hl = name;
   }
   function pageRects(me) { return me.pages.map(function (pg) { return pg.div.getBoundingClientRect(); }); }
   function markBox(me, b, cls) {
@@ -9270,6 +9385,7 @@
     me.items.sort(function (a, b) { return a.start - b.start; });
     me.items.forEach(function (it) {
       it.boxes = boxesOf(me, it.start, it.end, rects);
+      if (HL) { var rg = rangeOf(me, it.start, it.end); it.range = rg && rg.range; it.hl = ''; hlPaint(me, it); }
       it.els = it.boxes.map(function (b, k) {
         var m = markBox(me, b, it.kind);
         if (!k) { m.tabIndex = 0; m.setAttribute('role', 'button'); m.setAttribute('aria-label', (it.kind === 'cite' ? 'Citation: ' : 'Reference: ') + me.text.slice(it.start, it.end).replace(/\s+/g, ' ').slice(0, 140)); m.dvItem = it; }
@@ -9289,8 +9405,8 @@
   function showItem(me, it) {
     if (!it || !it.boxes.length) return;
     scrollToBox(me, it.boxes[0]);
-    it.els.forEach(function (m) { m.classList.add('flash'); });
-    setTimeout(function () { it.els.forEach(function (m) { m.classList.remove('flash'); }); }, 1400);
+    it.els.forEach(function (m) { m.classList.add('flash'); }); it.flash = true; hlPaint(me, it);
+    setTimeout(function () { it.els.forEach(function (m) { m.classList.remove('flash'); }); it.flash = false; hlPaint(me, it); }, 1400);
     if (it.els[0]) it.els[0].focus({ preventScroll: true });
   }
   function itemAt(me, ev) { // the citation, else the entry, under the pointer
@@ -9314,6 +9430,7 @@
     me.items.forEach(function (it) {
       var on = it.refs.some(function (i) { return isPicked(me, me.entries[i]); });
       (it.els || []).forEach(function (m) { m.classList.toggle('picked', on); });
+      it.picked = on; hlPaint(me, it);
     });
   }
   function updateTray() {
@@ -9410,6 +9527,7 @@
   function teardownViewer() {
     var me = dv; if (!me) return;
     me.closed = true; dv = null;
+    if (HL) Object.keys(HL).forEach(function (k) { HL[k].clear(); });
     hidePop();
     if (me.io) me.io.disconnect();
     if (me.task) me.task.destroy().catch(function () {});
@@ -9452,6 +9570,7 @@
     scrollToBox(me, h.boxes[0]);
   }
 
+  if (HL) $('dv-pages').classList.add('hl');
   $('export-pick').addEventListener('click', function () { $('export-pick-input').click(); });
   $('export-pick-input').addEventListener('change', function () { var f = this.files && this.files[0]; this.value = ''; if (f) openViewer(f, $('export-pick')); });
   $('export-pick-last').addEventListener('click', function () { if (lastDoc) openViewer(lastDoc.file, this); });
@@ -9493,9 +9612,9 @@
     if (me.overDiv && me.overDiv !== div) me.overDiv.classList.remove('over');
     me.overDiv = div; if (div) div.classList.toggle('over', !!it);
     if (it === me.hover) return;
-    if (me.hover) me.hover.els.forEach(function (m) { m.classList.remove('hover'); });
+    if (me.hover) { me.hover.els.forEach(function (m) { m.classList.remove('hover'); }); me.hover.hover = false; hlPaint(me, me.hover); }
     me.hover = it;
-    if (it) it.els.forEach(function (m) { m.classList.add('hover'); });
+    if (it) { it.els.forEach(function (m) { m.classList.add('hover'); }); it.hover = true; hlPaint(me, it); }
   });
   $('dv-pages').addEventListener('mouseup', function (ev) {
     var me = dv, x = ev.clientX, y = ev.clientY; if (!me) return;
@@ -10166,12 +10285,21 @@
   $('bookmarklet').addEventListener('click', function (ev) { ev.preventDefault(); });
 
   function styleParam() { return styleState.mode === 'csl' ? 'csl:' + styleState.csl.name : styleState.mode; }
+  // An article's own DOI (its citation_doi tag) is cited; a page without one, or the text selected on any page, gives every DOI
+  // in it, its links' first (a DOI in the text may run into the word after it: "…2025CNMNC"), opened as a list
   function updateBookmarklet() {
-    var target = base + '?style=' + encodeURIComponent(styleParam()) + '&q=';
-    $('bookmarklet').href = "javascript:(function(){var m=document.querySelector('meta[name=\"citation_doi\"],meta[name=\"dc.identifier\"],meta[name=\"DC.Identifier\"],meta[name=\"prism.doi\"]');" +
-      "var t=m?m.content:(document.body.innerText.match(/10\\.\\d{4,9}\\/[^\\s\"'<>]+/)||[''])[0];" +
-      "if(!t){alert('AutoDOI: no DOI found on this page.');return;}" +
-      "location.href=" + JSON.stringify(target) + "+encodeURIComponent(t.slice(0,300));})();";
+    var one = base + '?style=' + encodeURIComponent(styleParam()) + '&q=', many = base + '?list=' + encodeURIComponent(styleParam()) + '&refs=';
+    $('bookmarklet').href = "javascript:(function(){var d=document,s=getSelection(),sel=s&&s.rangeCount&&String(s).trim(),out=[],k={};" +
+      "var m=!sel&&d.querySelector('meta[name=\"citation_doi\"],meta[name=\"dc.identifier\"],meta[name=\"DC.Identifier\"],meta[name=\"prism.doi\"]');" +
+      "function add(t,txt){var x=(String(t).match(/10\\.\\d{4,9}\\/[^\\s\"'<>?#]+/)||[''])[0].replace(/[.,;:)\\]]+$/,''),l=x.toLowerCase();" +
+      "if(x&&!k[l]&&!(txt&&out.some(function(o){return l.indexOf(o.toLowerCase())===0&&/^[a-z]{2}/i.test(x.slice(o.length));}))){k[l]=1;out.push(x);}}" +
+      "if(m&&/10\\.\\d/.test(m.content))add(m.content);else{" +
+      "var root=sel?s.getRangeAt(0).cloneContents():d.body;" +
+      "Array.prototype.forEach.call(root.querySelectorAll('a[href*=\"10.\"]'),function(a){var h=a.getAttribute('href');try{h=decodeURIComponent(h);}catch(e){}add(h);});" +
+      "((sel?String(s):d.body.innerText).match(/10\\.\\d{4,9}\\/[^\\s\"'<>]+/g)||[]).forEach(function(t){add(t,1);});}" +
+      "if(!out.length){alert('AutoDOI: no DOI found on this '+(sel?'selection.':'page.'));return;}" +
+      "location.href=out.length===1?" + JSON.stringify(one) + "+encodeURIComponent(out[0].slice(0,300)):" + JSON.stringify(many) +
+      "+out.slice(0,200).map(function(x){return encodeURIComponent(x.slice(0,300));}).join(',');})();";
   }
   updateBookmarklet();
   $('copy-link').addEventListener('click', function () {

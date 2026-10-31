@@ -758,6 +758,14 @@ async function runFlows(browser, base, dark, cslReady) {
       note: pages[0].querySelector('.dv-notes') && !pages[0].querySelector('.dv-notes').hidden ? pages[0].querySelector('.dv-notes').textContent : '', img: !!pages[0].querySelector('img[src^="data:image/png;base64,"]'), cont: pages[1].querySelector('.dv-p').textContent };
   });
   check(name('the Word file is laid out on A4 pages broken where Word broke them, with its list numbers, its footnote at the foot of its page and its picture'), JSON.stringify(layout) === JSON.stringify({ pages: 2, ratio: 0.707, labels: ['1.', '2.', '3.'], note: '1 Kernite is mined at Boron, California.', img: true, cont: 'measured the next day.' }), JSON.stringify(layout));
+  // a mark is only the box of its text (never the Cite tab's .cite card, whose padding put the underline a line low); the browser's
+  // highlights paint the shading once, and a hovered entry's lines are boxes that do not overlap
+  var marks = await page.evaluate(function () {
+    var m = document.querySelector('.dv-mark.cite[role=button]'), cs = getComputedStyle(m), hl = window.CSS && CSS.highlights;
+    return { box: Math.abs(m.getBoundingClientRect().height - parseFloat(m.style.height)) < 0.5 && cs.paddingTop === '0px' && cs.borderBottomStyle === 'none',
+      painted: hl ? [hl.has('dv-cite') && hl.get('dv-cite').size, document.getElementById('dv-pages').classList.contains('hl'), cs.backgroundColor] : 'none' };
+  });
+  check(name('viewer marks: a citation\'s box is its text\'s, and the browser paints its shading and underline'), JSON.stringify(marks) === JSON.stringify({ box: true, painted: [2, true, 'rgba(0, 0, 0, 0)'] }), JSON.stringify(marks));
   await page.fill('#dv-q', 'kernite'); await page.press('#dv-q', 'Enter');
   var counts = [await textOf('#dv-count')];
   await page.click('#dv-next'); counts.push(await textOf('#dv-count'));
@@ -842,7 +850,52 @@ async function runFlows(browser, base, dark, cslReady) {
       cites: Array.prototype.map.call(document.querySelectorAll('.dv-mark.cite[role=button]'), function (m) { return m.getAttribute('aria-label'); }) };
   });
   check(name('Word: a mark\'s caps and highlight stay off its runs, cells keep their own rules and centring, AutoFit keeps a range on one line, and a caption after the list cites'), JSON.stringify(cl) === JSON.stringify({ caps: ['uppercase', 'none'], noBar: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'], tall: true, rules: ['solid', 'solid', 'none', 'middle'], oneLine: true, cites: ['Citation: Abel (2001)', 'Citation: Baker (2002)'] }), JSON.stringify(cl));
+  var longest = 0; // Abel's, over several close-set lines
+  var entryMark = page.locator('.dv-mark.entry[role=button] >> nth=' + longest);
+  await entryMark.evaluate(function (m) { m.scrollIntoView({ block: 'center' }); });
+  var eb = await entryMark.boundingBox();
+  await page.mouse.move(eb.x + 10, eb.y + eb.height / 2);
+  var hov = await page.evaluate(function (k) {
+    var it = document.querySelectorAll('.dv-mark.entry[role=button]')[k].dvItem, bs = it.boxes, over = 0;
+    for (var i = 1; i < bs.length; i++) if (bs[i].p === bs[i - 1].p && bs[i].y < bs[i - 1].y + bs[i - 1].h - 0.01) over++;
+    return { hover: CSS.highlights.has('dv-hover') && CSS.highlights.get('dv-hover').size, lines: bs.length > 1, over: over };
+  }, longest);
+  check(name('a hovered entry is shaded by the browser, its lines\' boxes never one over another'), JSON.stringify(hov) === JSON.stringify({ hover: 1, lines: true, over: 0 }), JSON.stringify(hov));
+  await page.mouse.move(5, 5);
   await page.click('#dv-close');
+  // Tables as Word lays them out: a table style's paragraphs (no space after), a row's height, room between cells, and a long table
+  // broken over two pages by its rows
+  await page.setInputFiles('#export-pick-input', [{ name: 'rows.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: DX.rows() }]);
+  await page.waitForFunction(function () { return /No reference list|Click a reference/.test(document.getElementById('dv-status').textContent); }, null, { timeout: 30000 });
+  var rw = await page.evaluate(function () {
+    var pages = Array.prototype.slice.call(document.querySelectorAll('#dv-pages .dv-page')), u = pages[0].getBoundingClientRect().width / 612;
+    var ts = Array.prototype.slice.call(document.querySelectorAll('#dv-pages table.dv-table')), cellP = ts[0].querySelector('td .dv-p');
+    var long = ts.slice(2), rowsOf = long.map(function (t) { return t.rows.length; });
+    var fits = long.every(function (t) { var pg = t.closest('.dv-page'), b = pg.querySelector('.dv-body').getBoundingClientRect(); return t.getBoundingClientRect().bottom <= b.top + (792 - 144) * u + 1; });
+    return { cellAfter: cellP.style.paddingBottom, bodyAfter: Math.round(parseFloat(document.querySelector('#dv-pages .dv-body > .dv-p').style.paddingBottom) / u), tall: ts[0].rows[0].getBoundingClientRect().height >= 36 * u - 1,
+      apart: getComputedStyle(ts[1]).borderCollapse, parts: long.length, rows: rowsOf.reduce(function (a, n) { return a + n; }, 0), pages: long.map(function (t) { return pages.indexOf(t.closest('.dv-page')); }), fits: fits };
+  });
+  check(name('Word tables: Table Grid\'s cells have no space after, a row keeps its height, cells stand apart, a long table breaks over pages by its rows'), JSON.stringify(rw) === JSON.stringify({ cellAfter: '0px', bodyAfter: 8, tall: true, apart: 'separate', parts: 2, rows: 60, pages: [0, 1], fits: true }), JSON.stringify(rw));
+  await page.click('#dv-close');
+  // The bookmarklet: an article's own DOI; every DOI on a page without one, its links' first and a DOI run into the next word cut
+  // there; the DOIs in a selection only
+  var bm = await page.locator('#bookmarklet').getAttribute('href'), bp = await page.context().newPage();
+  var runBm = async function (html, selectId) {
+    await bp.setContent(html);
+    return bp.evaluate(function (a) {
+      if (a.sel) { var r = document.createRange(); r.selectNodeContents(document.getElementById(a.sel)); getSelection().removeAllRanges(); getSelection().addRange(r); }
+      window.alert = function (m) { window.__go = 'alert:' + m; };
+      (0, eval)(decodeURIComponent(a.code.replace(/^javascript:/, '')).replace('location.href=', 'window.__go='));
+      return window.__go;
+    }, { code: bm, sel: selectId });
+  };
+  var listPage = '<p>Warr, L.N. (2021). IMA–CNMNC approved mineral symbols. doi:10.1180/mgm.2021.43</p><ol><li>Bosi (2025) <a href="https://doi.org/10.5194/ejm-37-337-2025">10.5194/ejm-37-337-2025</a>CNMNC Newsletter 85</li>' +
+    '<li id="one">Plášil (2023) doi:10.1180/mgm.2022.106.</li><li>Other (2021) 10.1180/mgm.2021.4</li></ol>';
+  var bms = [await runBm(listPage), await runBm('<meta name="citation_doi" content="10.1038/nature12373">' + listPage), await runBm(listPage, 'one'), await runBm('<p>No identifiers here.</p>')];
+  var after = function (u, k) { return decodeURIComponent((u.split(k)[1] || '').split('&')[0]); };
+  check(name('the bookmarklet cites an article\'s own DOI, opens every DOI on a list page (a glued word cut off), or those selected'),
+    JSON.stringify([after(bms[0], '&refs=').split(','), after(bms[1], '&q='), after(bms[2], '&q='), bms[3]]) === JSON.stringify([['10.5194/ejm-37-337-2025', '10.1180/mgm.2021.43', '10.1180/mgm.2022.106', '10.1180/mgm.2021.4'], '10.1038/nature12373', '10.1180/mgm.2022.106', 'alert:AutoDOI: no DOI found on this page.']) && /\?list=[^&]*&refs=/.test(bms[0]), JSON.stringify(bms));
+  await bp.close();
   // A PDF, drawn by the pdf.js served with the page, opened from the link a dropped manuscript leaves
   await page.setInputFiles('#export-file-input', [{ name: 'manuscript.pdf', mimeType: 'application/pdf', buffer: PW.manuscript({ compress: true }) }]);
   await page.waitForFunction(function () { return !document.getElementById('export-pick-last').hidden && !document.querySelector('#export-go').disabled && /good|not matched/.test(document.querySelector('#export-status').textContent); }, null, { timeout: 30000 });
