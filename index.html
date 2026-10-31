@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5U2hWyf02EzKYjSabHYEyJezGxFrFAYycg6VZrr3m1Y=' 'sha256-TDSbwn/f8hkGPYymfGCjZi1MOInqEGk8uS7t3UodIOo=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-zKeHWekIvtQtutv0204lYg/vmccLSkj28nBCyqbMcIc=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-5U2hWyf02EzKYjSabHYEyJezGxFrFAYycg6VZrr3m1Y=' 'sha256-OxlwqoeEsyRHbLDv8GguQ4vjvaaTusnSxeCOnSiAsMY=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-cEMJKMWXBUkQKXW0WYxK4Zbxf6Wy6PrBflzT44y7Nn4=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -294,8 +294,9 @@
   .dv-pic { display: inline-block; vertical-align: bottom; background: #EEE; border: 1px dashed #999; color: #666; font: 11px var(--sans); text-align: center; }
   .dv-tab { display: inline-block; }
   .dv-table { border-collapse: collapse; table-layout: fixed; }
-  .dv-table td { vertical-align: top; padding: 0 .08in; }
-  .dv-table.ruled td { border: 1px solid #000; }
+  .dv-table td { vertical-align: top; } /* each cell's lines are its own or the table's (docxTable) */
+  .dv-table.fit { table-layout: auto; max-width: 100%; }
+  .dv-table .dv-p { overflow-wrap: normal; } /* a cell's number is never split across lines ("0.2" over "0") */
   .dv-notes { position: relative; padding-top: 6px; margin-top: 8px; }
   .dv-notes::before { content: ''; position: absolute; left: 0; top: 0; width: 33%; border-top: 1px solid #000; }
   /* pdf.js's text layer: transparent text over the drawn page, there to be selected and searched (its pdf_viewer.css, flattened) */
@@ -379,7 +380,7 @@
         <button class="btn" type="button" id="export-stop" hidden>Stop</button>
         <button class="btn" type="button" id="export-file" title="A .ris, .enw or .bib export is read record by record; a Word or PDF manuscript gives up its reference list, after its References heading">Open a .ris / .enw / .bib / .docx / .pdf file…</button>
         <input type="file" id="export-file-input" accept=".ris,.enw,.bib,.txt,.bibtex,.docx,.pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" multiple hidden>
-        <button class="btn" type="button" id="export-pick" title="Shows a Word or PDF manuscript as it is laid out: click a reference in its text or its list to pick it">Pick from a .docx / .pdf…</button>
+        <button class="btn" type="button" id="export-pick">Pick from a .docx / .pdf…</button>
         <input type="file" id="export-pick-input" accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf" hidden>
         <span class="status" id="export-status" style="margin:0" role="status" aria-live="polite"></span>
         <button type="button" class="linkish" id="export-pick-last" hidden></button>
@@ -2994,8 +2995,9 @@
    * docxLayout(bytes) gives the page's size and margins and the body as blocks: paragraphs with their indents, spacing, list
    * numbers and runs (bold, italic, underline, size, font, colour, sub- and superscript), tables, pictures, footnote marks and
    * page breaks, with the footnotes and endnotes in the order their marks appear.  Word records where it last broke the
-   * pages (lastRenderedPageBreak); a file that has them is laid out on those pages (paged: true).  Headers, footers, text
-   * boxes and columns are not laid out.  Sizes are in points. */
+   * pages (lastRenderedPageBreak); a file that has them is laid out on those pages (paged: true).  Each block names its
+   * section (sec), whose page size and margins are in sections; page is the last's.  Headers, footers, text boxes and
+   * columns are not laid out.  Sizes are in points. */
   var LAYOUT_PART = /^word\/(?:document|styles|numbering|footnotes|endnotes)\.xml$|^word\/_rels\/document\.xml\.rels$|^word\/theme\/theme1\.xml$|^word\/media\/[^\/]+\.(?:png|jpe?g|gif|bmp|svg)$/i;
   var MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', svg: 'image/svg+xml' };
   var HIGHLIGHT = { yellow: '#FFFF00', green: '#00FF00', cyan: '#00FFFF', magenta: '#FF00FF', blue: '#0000FF', red: '#FF0000', darkBlue: '#000080', darkCyan: '#008080', darkGreen: '#008000', darkMagenta: '#800080', darkRed: '#800000', darkYellow: '#808000', darkGray: '#808080', lightGray: '#C0C0C0', black: '#000000', white: '#FFFFFF' };
@@ -3054,6 +3056,15 @@
           break;
         case 'w:shd': if (hex6(a['w:fill'])) into.shd = hex6(a['w:fill']); break;
         case 'w:contextualSpacing': into.ctx = xOn(p); break;
+        case 'w:tabs': // the style's stops, with the paragraph's added and its "clear"s taken away
+          var stops = (into.tabs || []).slice();
+          xKids(p, 'w:tab').forEach(function (t) {
+            var pos = tw(t.a['w:pos']); if (pos === undefined) return;
+            stops = stops.filter(function (x) { return Math.abs(x.pos - pos) > 0.5; });
+            if (t.a['w:val'] !== 'clear') stops.push({ pos: pos, val: { right: 'right', end: 'right', center: 'center', decimal: 'decimal' }[t.a['w:val']] || 'left' });
+          });
+          into.tabs = stops.sort(function (a, b) { return a.pos - b.pos; });
+          break;
       }
     });
     return into;
@@ -3065,10 +3076,24 @@
     if (dd) { readRPr(xKid(xKid(dd, 'w:rPrDefault'), 'w:rPr'), out.r); readPPr(xKid(xKid(dd, 'w:pPrDefault'), 'w:pPr'), out.p); }
     xKids(root, 'w:style').forEach(function (s) {
       var id = s.a['w:styleId']; if (!id) return;
-      out.byId[id] = { type: s.a['w:type'], based: xVal(xKid(s, 'w:basedOn')), pPr: xKid(s, 'w:pPr'), rPr: xKid(s, 'w:rPr') };
+      out.byId[id] = { type: s.a['w:type'], based: xVal(xKid(s, 'w:basedOn')), pPr: xKid(s, 'w:pPr'), rPr: xKid(s, 'w:rPr'), tblPr: xKid(s, 'w:tblPr') };
       if (s.a['w:type'] === 'paragraph' && /^(?:1|true|on)$/.test(s.a['w:default'] || '')) out.para = id;
     });
     return out;
+  }
+  // Borders: {top, bottom, left, right, insideH, insideV} each {w: points, color, style: a CSS line}, or null where a side is
+  // drawn as none (which overrides what the table or its style draws there)
+  var LINE = { single: 'solid', thick: 'solid', double: 'double', dotted: 'dotted', dashed: 'dashed', dashSmallGap: 'dashed', dotDash: 'dashed', dotDotDash: 'dotted', triple: 'double', wave: 'solid' };
+  function readBorders(node, into) {
+    if (!node) return into;
+    node.c.forEach(function (b) {
+      if (typeof b !== 'object') return;
+      var side = { 'w:top': 'top', 'w:bottom': 'bottom', 'w:left': 'left', 'w:start': 'left', 'w:right': 'right', 'w:end': 'right', 'w:insideH': 'insideH', 'w:insideV': 'insideV' }[b.n];
+      if (!side) return;
+      var v = b.a['w:val'] || 'single';
+      into[side] = /^(?:nil|none)$/.test(v) ? null : { w: Math.max(0.25, (parseFloat(b.a['w:sz']) || 4) / 8), color: hex6(b.a['w:color']) || '#000', style: LINE[v] || 'solid' };
+    });
+    return into;
   }
   function styleChain(styles, id) { // the style and its bases, the most basic first
     var chain = [], seen = Object.create(null);
@@ -3143,7 +3168,7 @@
       return { img: file && parts[file] ? file : '', w: w || 0, h: h || 0, r: r };
     }
     function paragraph(pNode, out, ctx) {
-      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle'))), p = own(st.p), direct = readPPr(pPr, {});
+      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle'))), p = own(st.p), direct = readPPr(pPr, p.tabs ? { tabs: p.tabs } : {}); // the paragraph's tab stops add to its style's
       var numId = direct.numId !== undefined ? direct.numId : p.numId, ilvl = direct.ilvl !== undefined ? direct.ilvl : p.ilvl || 0, lab = null;
       if (numId && numId !== '0') { lab = label(numId, Math.min(8, ilvl)); var nm = numbering.nums[numId], lv = nm && numbering.abs[nm.abs]; if (lv && lv[ilvl]) readPPr(lv[ilvl].pPr, p); }
       for (var k in direct) p[k] = direct[k];
@@ -3213,24 +3238,36 @@
       walk(pNode);
       if (!cur.cont || cur.runs.length) out.push(cur);
       var sect = xKid(pPr, 'w:sectPr');
-      if (sect && !ctx.inCell && xVal(xKid(sect, 'w:type')) !== 'continuous') out.push({ t: 'break' });
+      if (sect && !ctx.inCell) { endSection(sect, out); if (xVal(xKid(sect, 'w:type')) !== 'continuous') out.push({ t: 'break' }); } // a section ends with this paragraph
     }
     function table(tNode, out, ctx) {
-      var tblPr = xKid(tNode, 'w:tblPr'), borders = xKid(tblPr, 'w:tblBorders'), style = xVal(xKid(tblPr, 'w:tblStyle')) || '';
+      var tblPr = xKid(tNode, 'w:tblPr'), style = xVal(xKid(tblPr, 'w:tblStyle')) || '';
       var cols = xKids(xKid(tNode, 'w:tblGrid'), 'w:gridCol').map(function (g) { return tw(g.a['w:w']) || 0; });
-      var ruled = borders ? borders.c.some(function (b) { return typeof b === 'object' && !/^(?:nil|none)$/.test(b.a['w:val'] || ''); }) : /grid|table ?grid/i.test(style);
-      var make = function () { return { t: 'table', cols: cols, rows: [], border: ruled, jc: xVal(xKid(tblPr, 'w:jc')) || '' }; }, t = make();
+      var rules = {}; // the table style's borders ("Table Grid"), then the table's own
+      styleChain(styles, style).forEach(function (st) { readBorders(xKid(st.tblPr, 'w:tblBorders'), rules); });
+      readBorders(xKid(tblPr, 'w:tblBorders'), rules);
+      var ruled = Object.keys(rules).some(function (k) { return rules[k]; });
+      var mar = xKid(tblPr, 'w:tblCellMar'), side = function (k) { var v = xKid(mar, 'w:' + k); return v ? tw(v.a['w:w']) : undefined; };
+      var pad = side('left') !== undefined ? side('left') : side('start') !== undefined ? side('start') : 5.4; // Word's own cell margin, 0.075 inch
+      var fixed = xVal(xKid(tblPr, 'w:tblLayout'), 'type') === 'fixed'; // otherwise Word's AutoFit: a column widens for a word that does not fit
+      var make = function () { return { t: 'table', cols: cols, rows: [], border: ruled, borders: rules, jc: xVal(xKid(tblPr, 'w:jc')) || '', fixed: fixed, pad: pad }; }, t = make();
+      var autoCells = 0, sizedCells = 0, split = false;
       xKids(tNode, 'w:tr').forEach(function (tr) {
-        if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); } } // a row that opens a page
+        if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); split = true; } } // a row that opens a page
         var row = [];
         xKids(tr, 'w:tc').forEach(function (tc) {
           var tcPr = xKid(tc, 'w:tcPr'), vm = xKid(tcPr, 'w:vMerge'), shd = xKid(tcPr, 'w:shd');
-          var cell = { span: Math.max(1, Math.min(64, Number(xVal(xKid(tcPr, 'w:gridSpan'))) || 1)), vm: vm ? (vm.a['w:val'] === 'restart' ? 'restart' : 'continue') : '', fill: shd ? hex6(shd.a['w:fill']) : '', blocks: [] };
+          var cell = { span: Math.max(1, Math.min(64, Number(xVal(xKid(tcPr, 'w:gridSpan'))) || 1)), vm: vm ? (vm.a['w:val'] === 'restart' ? 'restart' : 'continue') : '', fill: shd ? hex6(shd.a['w:fill']) : '', blocks: [],
+            borders: readBorders(xKid(tcPr, 'w:tcBorders'), {}), valign: { center: 'middle', bottom: 'bottom' }[xVal(xKid(tcPr, 'w:vAlign'))] || 'top' };
+          var tcw = xKid(tcPr, 'w:tcW'); if (!tcw || tcw.a['w:type'] === 'auto' || !(parseFloat(tcw.a['w:w']) > 0)) autoCells++; else sizedCells++;
           body(tc, cell.blocks, { inCell: true, n: ctx.n });
           row.push(cell);
         });
         t.rows.push(row);
       });
+      var tblW = xKid(tblPr, 'w:tblW');
+      // AutoFit to contents: the grid's widths are only Word's cache; a table over two pages keeps the grid, so its halves agree
+      t.fit = !fixed && !split && autoCells > sizedCells && (!tblW || tblW.a['w:type'] === 'auto' || !(parseFloat(tblW.a['w:w']) > 0));
       out.push(t);
     }
     function body(node, out, ctx) {
@@ -3242,13 +3279,26 @@
         else if (c.n === 'w:customXml' || c.n === 'w:ins' || c.n === 'w:moveTo') body(c, out, ctx);
       });
     }
+    // Sections: each has its page (a landscape table's, say); its properties close it, at its last paragraph or the body's end
+    var sections = [], secFrom = 0;
+    function pageOf(sect) {
+      var sz = xKid(sect, 'w:pgSz'), mar = xKid(sect, 'w:pgMar');
+      var pt = function (node, k, d) { var v = tw(xVal(node, k)); return v === undefined || v < 0 || v > 1440 ? d : v; }; // a size past 20 inches is a damaged file's
+      var pg = { w: pt(sz, 'w', 612), h: pt(sz, 'h', 792), top: pt(mar, 'top', 72), right: pt(mar, 'right', 72), bottom: pt(mar, 'bottom', 72), left: pt(mar, 'left', 72) };
+      if (pg.w < 72 || pg.h < 72) { pg.w = 612; pg.h = 792; }
+      if (pg.left + pg.right > pg.w - 72) { pg.left = pg.right = 72; }
+      return pg;
+    }
+    function endSection(sect, out) {
+      sections.push(pageOf(sect));
+      for (var i = secFrom; i < out.length; i++) out[i].sec = sections.length - 1;
+      secFrom = out.length;
+    }
     var bodyNode = xKid(xmlTree(utf8(parts['word/document.xml'])), 'w:body');
     if (!bodyNode) throw new Error('the Word document has no body');
     var blocks = []; body(bodyNode, blocks, {});
-    var sect = xKid(bodyNode, 'w:sectPr'), sz = xKid(sect, 'w:pgSz'), mar = xKid(sect, 'w:pgMar');
-    var pt = function (node, k, d) { var v = tw(xVal(node, k)); return v === undefined || v < 0 || v > 1440 ? d : v; }; // a size past 20 inches is a damaged file's
-    var page = { w: pt(sz, 'w', 612), h: pt(sz, 'h', 792), top: pt(mar, 'top', 72), right: pt(mar, 'right', 72), bottom: pt(mar, 'bottom', 72), left: pt(mar, 'left', 72) };
-    if (page.w < 72 || page.h < 72) { page.w = 612; page.h = 792; }
+    endSection(xKid(bodyNode, 'w:sectPr'), blocks);
+    var page = sections[sections.length - 1];
     var notes = { footnote: Object.create(null), endnote: Object.create(null) };
     ['footnote', 'endnote'].forEach(function (kind) { // the notes, numbered in the order their marks appear in the text
       var xml = parts['word/' + kind + 's.xml']; if (!xml || !noteRefs[kind].length) return;
@@ -3256,7 +3306,7 @@
       xKids(xmlTree(utf8(xml)), 'w:' + kind).forEach(function (nd) { var ty = nd.a['w:type']; if (!ty || ty === 'normal') byId[nd.a['w:id']] = nd; });
       noteRefs[kind].forEach(function (ref) { var nd = byId[ref.id]; if (!nd) return; var bl = []; body(nd, bl, { inCell: true, n: ref.n }); notes[kind][ref.n] = bl; });
     });
-    return { page: page, blocks: blocks, footnotes: notes.footnote, endnotes: notes.endnote, media: media, paged: paged };
+    return { page: page, sections: sections, blocks: blocks, footnotes: notes.footnote, endnotes: notes.endnote, media: media, paged: paged };
   }
 
   /* ---------- the reference section of a document's paragraphs or lines ---------- */
@@ -6812,7 +6862,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.18.0'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.18.1'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -8965,31 +9015,84 @@
 
   /* a Word file: its blocks laid out on pages of its size and margins, broken where Word last broke them or where they fill */
   function renderDocx(me, bytes) {
-    var L = DOCS.docxLayout(bytes), pagesEl = $('dv-pages'), pg = null;
-    var u = Math.max(0.5, Math.min(1.25 * CSS_PX, (pagesEl.clientWidth - 40) / L.page.w)); // CSS pixels per point
-    var room = (L.page.h - L.page.top - L.page.bottom) * u;
-    var newPage = function () {
-      var div = el('div', 'dv-page dv-docx'), body = el('div', 'dv-body'), notes = el('div', 'dv-notes'), marks = el('div', 'dv-marks');
-      div.style.width = L.page.w * u + 'px'; div.style.minHeight = L.page.h * u + 'px';
-      div.style.padding = [L.page.top, L.page.right, L.page.bottom, L.page.left].map(function (v) { return v * u + 'px'; }).join(' ');
+    var L = DOCS.docxLayout(bytes), pagesEl = $('dv-pages'), pg = null, first = (L.blocks[0] && L.sections[L.blocks[0].sec]) || L.page;
+    var u = Math.max(0.5, Math.min(1.25 * CSS_PX, (pagesEl.clientWidth - 40) / first.w)); // CSS pixels per point, from the first page: a landscape section's pages are wider, as in Word
+    var newPage = function (sec) {
+      var P = L.sections[sec] || L.page, div = el('div', 'dv-page dv-docx'), body = el('div', 'dv-body'), notes = el('div', 'dv-notes'), marks = el('div', 'dv-marks');
+      div.style.width = P.w * u + 'px'; div.style.minHeight = P.h * u + 'px';
+      div.style.padding = [P.top, P.right, P.bottom, P.left].map(function (v) { return v * u + 'px'; }).join(' ');
       notes.hidden = true;
       div.appendChild(body); div.appendChild(notes); div.appendChild(marks); pagesEl.appendChild(div);
-      pg = { i: me.pages.length, div: div, body: body, notes: notes, marks: marks, n: 0 }; div.dvPage = pg; me.pages.push(pg);
+      pg = { i: me.pages.length, div: div, body: body, notes: notes, marks: marks, n: 0, sec: sec, room: (P.h - P.top - P.bottom) * u }; div.dvPage = pg; me.pages.push(pg);
     };
     var used = function () { var last = pg.body.lastElementChild; return last ? last.getBoundingClientRect().bottom - pg.body.getBoundingClientRect().top : 0; };
     var place = function (b) {
       var node = docxBlock(b, L, u);
+      if (b.sec !== undefined && b.sec !== pg.sec && pg.n) newPage(b.sec); // a new section starts a page of its own size
       pg.body.appendChild(node); pg.n++;
-      if (!L.paged && pg.n > 1 && used() > room + 1) { pg.body.removeChild(node); newPage(); pg.body.appendChild(node); pg.n++; } // it does not fit: the next page
+      docxTabs(node, u); docxFit(node);
+      if (!L.paged && pg.n > 1 && used() > pg.room + 1) { pg.body.removeChild(node); newPage(pg.sec); pg.body.appendChild(node); pg.n++; } // it does not fit: the next page
       Array.prototype.forEach.call(node.querySelectorAll('[data-note="footnote"]'), function (ref) { // a footnote at the foot of the page that cites it
         var bl = L.footnotes[ref.getAttribute('data-n')]; if (!bl) return;
         pg.notes.hidden = false;
-        bl.forEach(function (nb) { pg.notes.appendChild(docxBlock(nb, L, u)); });
+        bl.forEach(function (nb) { var nn = docxBlock(nb, L, u); pg.notes.appendChild(nn); docxTabs(nn, u); });
       });
     };
-    newPage();
-    L.blocks.forEach(function (b) { if (b.t === 'break') { if (pg.n) newPage(); } else place(b); });
+    newPage(L.blocks[0] && L.blocks[0].sec !== undefined ? L.blocks[0].sec : 0);
+    L.blocks.forEach(function (b, i) { if (b.t === 'break') { if (pg.n) { var next = L.blocks[i + 1]; newPage(next && next.sec !== undefined ? next.sec : pg.sec); } } else place(b); });
     Object.keys(L.endnotes).forEach(function (k) { L.endnotes[k].forEach(place); }); // endnotes follow the text
+  }
+  // Tabs to the paragraph's own stops (left, right, centre or decimal), then Word's default every half inch; a hanging
+  // indent is a stop too.  Laid out once the paragraph is on the page, each tab from where its text has reached.
+  function docxTabs(node, u) {
+    var paras = node.classList && node.classList.contains('dv-p') ? [node] : Array.prototype.slice.call(node.querySelectorAll('.dv-p'));
+    paras.forEach(function (p) {
+      var tabs = Array.prototype.slice.call(p.querySelectorAll('.dv-tab')); if (!tabs.length) return;
+      var stops = (p.dvTabs || []).slice();
+      if (p.dvHang) stops.push({ pos: p.dvHang, val: 'left' });
+      stops.sort(function (a, b) { return a.pos - b.pos; });
+      tabs.forEach(function (t) { t.style.width = '0px'; });
+      tabs.forEach(function (t, k) {
+        var left = p.getBoundingClientRect().left, x = (t.getBoundingClientRect().left - left) / u; // points from the paragraph's edge, as Word measures
+        var seg = document.createRange(), next = tabs[k + 1];
+        seg.setStartAfter(t); if (next) seg.setEndBefore(next); else seg.setEnd(p, p.childNodes.length);
+        var text = seg.toString(), dot = text.indexOf('.'), w = seg.getBoundingClientRect().width / u, wDot = w;
+        if (dot >= 0) { var r2 = document.createRange(), walk = document.createTreeWalker(seg.commonAncestorContainer, NodeFilter.SHOW_TEXT), n, seen = 0;
+          r2.setStart(seg.startContainer, seg.startOffset);
+          while ((n = walk.nextNode())) { if (!seg.intersectsNode(n)) continue; var from = n === seg.startContainer ? seg.startOffset : 0, at = n.nodeValue.indexOf('.', from); if (at >= 0) { r2.setEnd(n, at); wDot = r2.getBoundingClientRect().width / u; break; } seen++; } }
+        var width = 0, done = false;
+        stops.forEach(function (s) {
+          if (done || s.pos <= x + 0.5) return;
+          var lead = s.val === 'right' ? w : s.val === 'center' ? w / 2 : s.val === 'decimal' ? wDot : 0;
+          if (s.pos - lead > x + 0.5) { width = s.pos - lead - x; done = true; }
+        });
+        if (!done) width = (Math.floor(x / 36) + 1) * 36 - x; // past the last stop: Word's default stops
+        t.style.width = Math.max(0, width) * u + 'px';
+      });
+    });
+  }
+  // A table keeps its columns' widths, and a column widens only for a word that does not fit in it: Word's AutoFit, and in a
+  // fixed table the hair this page's fonts may set wider than Word's ("0.20" in a 0.4-inch column)
+  function docxFit(node) {
+    var tables = node.tagName === 'TABLE' ? [node] : Array.prototype.slice.call(node.querySelectorAll('table.dv-table'));
+    tables.forEach(function (t) {
+      if (t.classList.contains('fit')) return; // sized to its contents already
+      var cols = t.querySelectorAll('col'), need = [], grew = false;
+      Array.prototype.forEach.call(t.rows, function (tr) {
+        var at = 0;
+        Array.prototype.forEach.call(tr.cells, function (td) {
+          while (need[at] === -1) at++;
+          if (td.colSpan === 1 && cols[at]) {
+            var pad = parseFloat(td.style.paddingLeft) * 2 || 0, wide = 0;
+            Array.prototype.forEach.call(td.querySelectorAll('.dv-p'), function (p) { if (p.scrollWidth > p.clientWidth + 1) wide = Math.max(wide, p.scrollWidth); });
+            if (wide) need[at] = Math.max(need[at] || 0, wide + pad + 1);
+          }
+          at += td.colSpan;
+        });
+      });
+      need.forEach(function (w, i) { if (w > 0 && cols[i] && w > parseFloat(cols[i].style.width)) { cols[i].style.width = w + 'px'; grew = true; } });
+      if (grew) t.style.width = Array.prototype.reduce.call(cols, function (a, c) { return a + parseFloat(c.style.width || 0); }, 0) + 'px';
+    });
   }
   function fontStack(f) { return '"' + String(f).replace(/["\\]/g, '') + '", ' + (/courier|mono|consol/i.test(f) ? 'monospace' : /arial|helvetica|calibri|segoe|verdana|tahoma|gill|futura|aptos|sans/i.test(f) ? 'sans-serif' : 'serif'); }
   function runStyle(e, r, u) {
@@ -8998,9 +9101,9 @@
     if (r.font) s.fontFamily = fontStack(r.font);
     s.fontWeight = r.b ? '700' : '400'; s.fontStyle = r.i ? 'italic' : 'normal';
     s.textDecoration = [r.u ? 'underline' : '', r.s ? 'line-through' : ''].join(' ').trim() || 'none';
-    if (r.caps) s.textTransform = 'uppercase';
-    if (r.sc) s.fontVariant = 'small-caps';
-    if (r.color) s.color = r.color;
+    s.textTransform = r.caps ? 'uppercase' : 'none';
+    s.fontVariant = r.sc ? 'small-caps' : 'normal';
+    s.color = r.color || '#000';
     if (r.hl || r.shd) s.background = r.hl || r.shd;
   }
   function base64(bytes) { var s = ''; for (var i = 0; i < bytes.length; i += 32768) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 32768)); return btoa(s); }
@@ -9014,17 +9117,20 @@
     p.style.textAlign = { both: 'justify', distribute: 'justify', center: 'center', right: 'right', end: 'right' }[pp.jc] || 'left';
     p.style.lineHeight = !pp.line ? '1.15' : pp.line.mult ? String(Math.round(pp.line.mult * 115) / 100) : pp.line.pt * u + 'px'; // Word's single spacing is about 1.15 of the font's size
     if (pp.shd) p.style.background = pp.shd;
-    runStyle(p, b.mark || {}, u); // the paragraph mark's font: the height of an empty paragraph
+    var mark = { size: (b.mark || {}).size, font: (b.mark || {}).font };
+    runStyle(p, mark, u); // the paragraph mark's font and size, for the height of an empty paragraph; not its caps, underline, highlight or superscript, which its runs would inherit (or the lines squash)
+    if (pp.tabs && pp.tabs.length) p.dvTabs = pp.tabs;
+    if (first < 0) p.dvHang = pp.left || 0;
     if (b.label && b.label.text) {
       var lab = el('span', '', b.label.text + (b.label.suff === 'space' ? ' ' : ''));
-      runStyle(lab, b.label.r || b.mark || {}, u);
+      runStyle(lab, b.label.r || mark, u);
       lab.style.display = 'inline-block'; lab.style.textIndent = '0';
       if (b.label.suff === 'tab') { if (first < 0) lab.style.minWidth = -first * u + 'px'; else lab.style.paddingRight = 18 * u + 'px'; } // the number sits in the hanging indent
       p.appendChild(lab); any = true;
     }
     b.runs.forEach(function (r) {
       if (r.br) { p.appendChild(document.createElement('br')); return; }
-      if (r.tab) { var t = el('span', 'dv-tab', ' '); t.style.width = 36 * u + 'px'; p.appendChild(t); any = true; return; } // half an inch, Word's default tab stop
+      if (r.tab) { var t = el('span', 'dv-tab', ' '); t.style.width = 36 * u + 'px'; p.appendChild(t); any = true; return; } // laid out to its stop once on the page (docxTabs)
       if (r.img !== undefined) {
         var m = r.img && L.media[r.img], w = Math.max(8, (r.w || 72) * u), h = Math.max(8, (r.h || 72) * u), pic;
         if (m && m.mime) { pic = new Image(); pic.alt = ''; pic.width = Math.round(w); pic.height = Math.round(h); pic.src = m.url || (m.url = 'data:' + m.mime + ';base64,' + base64(m.bytes)); }
@@ -9042,9 +9148,12 @@
     return p;
   }
   function docxTable(b, L, u) {
-    var t = el('table', 'dv-table' + (b.border ? ' ruled' : '')), cg = el('colgroup'), body = el('tbody'), total = 0;
-    b.cols.forEach(function (w) { var c = el('col'); c.style.width = w * u + 'px'; cg.appendChild(c); total += w; });
-    if (total) t.style.width = total * u + 'px';
+    var t = el('table', 'dv-table'), cg = el('colgroup'), body = el('tbody'), total = 0, tb = b.borders || {}, ncols = b.cols.length;
+    var line = function (x) { return x ? Math.max(1, Math.round(x.w * u)) + 'px ' + (x.style === 'double' && x.w * u < 3 ? 'solid' : x.style) + ' ' + x.color : 'none'; };
+    var rowsLeft = function (ri, down) { return ri + down >= b.rows.length; };
+    b.cols.forEach(function (w) { var c = el('col'); if (!b.fit) c.style.width = w * u + 'px'; cg.appendChild(c); total += w; });
+    if (b.fit) t.classList.add('fit'); // AutoFit to contents: each column as wide as its text, as Word lays it out
+    else if (total) t.style.width = total * u + 'px';
     if (b.jc === 'center') { t.style.marginLeft = 'auto'; t.style.marginRight = 'auto'; }
     t.appendChild(cg); t.appendChild(body);
     var grid = b.rows.map(function (row) { var at = 0; return row.map(function (c) { var o = { c: c, col: at }; at += c.span; return o; }); });
@@ -9053,6 +9162,7 @@
       row.forEach(function (o) {
         if (o.c.vm === 'continue') return; // merged into the cell above, whose rowspan counts it
         var td = el('td');
+        td.style.padding = '0 ' + (b.pad === undefined ? 5.4 : b.pad) * u + 'px';
         if (o.c.span > 1) td.colSpan = o.c.span;
         if (o.c.vm === 'restart') {
           var down = 1;
@@ -9060,6 +9170,12 @@
           if (down > 1) td.rowSpan = down;
         }
         if (o.c.fill) td.style.background = o.c.fill;
+        var cb = o.c.borders || {}, side = function (k, edge, inner) { return line(cb[k] !== undefined ? cb[k] : edge ? tb[k] : tb[inner]); }; // the cell's own line, else the table's edge or inside line
+        td.style.borderTop = side('top', ri === 0, 'insideH');
+        td.style.borderBottom = side('bottom', rowsLeft(ri, td.rowSpan || 1), 'insideH');
+        td.style.borderLeft = side('left', o.col === 0, 'insideV');
+        td.style.borderRight = side('right', o.col + o.c.span >= ncols, 'insideV');
+        td.style.verticalAlign = o.c.valign || 'top';
         o.c.blocks.forEach(function (bl) { td.appendChild(docxBlock(bl, L, u)); });
         tr.appendChild(td);
       });
@@ -9109,7 +9225,10 @@
       me.items.push(me.entryItem[i] = { kind: 'entry', start: w.start, end: w.end, refs: [i] });
     });
     if (me.notes || !me.found) return; // a notes style: the notes are the list, and their marks are its citations
-    DOCS.findCitations(me.text.slice(0, firstAt), me.entries, { sups: me.sups.filter(function (s) { return s.end <= firstAt; }) })
+    // the whole text is searched, the list's own entries blanked out: captions, tables and appendices after the list cite too
+    var masked = me.text.split(''), inList = function (i) { return me.items.some(function (it) { return i >= it.start && i < it.end; }); };
+    me.items.forEach(function (it) { for (var i = it.start; i < it.end; i++) if (masked[i] !== '\n') masked[i] = ' '; });
+    DOCS.findCitations(masked.join(''), me.entries, { sups: me.sups.filter(function (s) { return !inList(s.start); }) })
       .forEach(function (c) { me.items.push({ kind: 'cite', start: c.start, end: c.end, refs: c.refs }); });
   }
 

@@ -213,8 +213,9 @@
    * docxLayout(bytes) gives the page's size and margins and the body as blocks: paragraphs with their indents, spacing, list
    * numbers and runs (bold, italic, underline, size, font, colour, sub- and superscript), tables, pictures, footnote marks and
    * page breaks, with the footnotes and endnotes in the order their marks appear.  Word records where it last broke the
-   * pages (lastRenderedPageBreak); a file that has them is laid out on those pages (paged: true).  Headers, footers, text
-   * boxes and columns are not laid out.  Sizes are in points. */
+   * pages (lastRenderedPageBreak); a file that has them is laid out on those pages (paged: true).  Each block names its
+   * section (sec), whose page size and margins are in sections; page is the last's.  Headers, footers, text boxes and
+   * columns are not laid out.  Sizes are in points. */
   var LAYOUT_PART = /^word\/(?:document|styles|numbering|footnotes|endnotes)\.xml$|^word\/_rels\/document\.xml\.rels$|^word\/theme\/theme1\.xml$|^word\/media\/[^\/]+\.(?:png|jpe?g|gif|bmp|svg)$/i;
   var MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', svg: 'image/svg+xml' };
   var HIGHLIGHT = { yellow: '#FFFF00', green: '#00FF00', cyan: '#00FFFF', magenta: '#FF00FF', blue: '#0000FF', red: '#FF0000', darkBlue: '#000080', darkCyan: '#008080', darkGreen: '#008000', darkMagenta: '#800080', darkRed: '#800000', darkYellow: '#808000', darkGray: '#808080', lightGray: '#C0C0C0', black: '#000000', white: '#FFFFFF' };
@@ -273,6 +274,15 @@
           break;
         case 'w:shd': if (hex6(a['w:fill'])) into.shd = hex6(a['w:fill']); break;
         case 'w:contextualSpacing': into.ctx = xOn(p); break;
+        case 'w:tabs': // the style's stops, with the paragraph's added and its "clear"s taken away
+          var stops = (into.tabs || []).slice();
+          xKids(p, 'w:tab').forEach(function (t) {
+            var pos = tw(t.a['w:pos']); if (pos === undefined) return;
+            stops = stops.filter(function (x) { return Math.abs(x.pos - pos) > 0.5; });
+            if (t.a['w:val'] !== 'clear') stops.push({ pos: pos, val: { right: 'right', end: 'right', center: 'center', decimal: 'decimal' }[t.a['w:val']] || 'left' });
+          });
+          into.tabs = stops.sort(function (a, b) { return a.pos - b.pos; });
+          break;
       }
     });
     return into;
@@ -284,10 +294,24 @@
     if (dd) { readRPr(xKid(xKid(dd, 'w:rPrDefault'), 'w:rPr'), out.r); readPPr(xKid(xKid(dd, 'w:pPrDefault'), 'w:pPr'), out.p); }
     xKids(root, 'w:style').forEach(function (s) {
       var id = s.a['w:styleId']; if (!id) return;
-      out.byId[id] = { type: s.a['w:type'], based: xVal(xKid(s, 'w:basedOn')), pPr: xKid(s, 'w:pPr'), rPr: xKid(s, 'w:rPr') };
+      out.byId[id] = { type: s.a['w:type'], based: xVal(xKid(s, 'w:basedOn')), pPr: xKid(s, 'w:pPr'), rPr: xKid(s, 'w:rPr'), tblPr: xKid(s, 'w:tblPr') };
       if (s.a['w:type'] === 'paragraph' && /^(?:1|true|on)$/.test(s.a['w:default'] || '')) out.para = id;
     });
     return out;
+  }
+  // Borders: {top, bottom, left, right, insideH, insideV} each {w: points, color, style: a CSS line}, or null where a side is
+  // drawn as none (which overrides what the table or its style draws there)
+  var LINE = { single: 'solid', thick: 'solid', double: 'double', dotted: 'dotted', dashed: 'dashed', dashSmallGap: 'dashed', dotDash: 'dashed', dotDotDash: 'dotted', triple: 'double', wave: 'solid' };
+  function readBorders(node, into) {
+    if (!node) return into;
+    node.c.forEach(function (b) {
+      if (typeof b !== 'object') return;
+      var side = { 'w:top': 'top', 'w:bottom': 'bottom', 'w:left': 'left', 'w:start': 'left', 'w:right': 'right', 'w:end': 'right', 'w:insideH': 'insideH', 'w:insideV': 'insideV' }[b.n];
+      if (!side) return;
+      var v = b.a['w:val'] || 'single';
+      into[side] = /^(?:nil|none)$/.test(v) ? null : { w: Math.max(0.25, (parseFloat(b.a['w:sz']) || 4) / 8), color: hex6(b.a['w:color']) || '#000', style: LINE[v] || 'solid' };
+    });
+    return into;
   }
   function styleChain(styles, id) { // the style and its bases, the most basic first
     var chain = [], seen = Object.create(null);
@@ -362,7 +386,7 @@
       return { img: file && parts[file] ? file : '', w: w || 0, h: h || 0, r: r };
     }
     function paragraph(pNode, out, ctx) {
-      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle'))), p = own(st.p), direct = readPPr(pPr, {});
+      var pPr = xKid(pNode, 'w:pPr'), st = paraStyle(xVal(xKid(pPr, 'w:pStyle'))), p = own(st.p), direct = readPPr(pPr, p.tabs ? { tabs: p.tabs } : {}); // the paragraph's tab stops add to its style's
       var numId = direct.numId !== undefined ? direct.numId : p.numId, ilvl = direct.ilvl !== undefined ? direct.ilvl : p.ilvl || 0, lab = null;
       if (numId && numId !== '0') { lab = label(numId, Math.min(8, ilvl)); var nm = numbering.nums[numId], lv = nm && numbering.abs[nm.abs]; if (lv && lv[ilvl]) readPPr(lv[ilvl].pPr, p); }
       for (var k in direct) p[k] = direct[k];
@@ -432,24 +456,36 @@
       walk(pNode);
       if (!cur.cont || cur.runs.length) out.push(cur);
       var sect = xKid(pPr, 'w:sectPr');
-      if (sect && !ctx.inCell && xVal(xKid(sect, 'w:type')) !== 'continuous') out.push({ t: 'break' });
+      if (sect && !ctx.inCell) { endSection(sect, out); if (xVal(xKid(sect, 'w:type')) !== 'continuous') out.push({ t: 'break' }); } // a section ends with this paragraph
     }
     function table(tNode, out, ctx) {
-      var tblPr = xKid(tNode, 'w:tblPr'), borders = xKid(tblPr, 'w:tblBorders'), style = xVal(xKid(tblPr, 'w:tblStyle')) || '';
+      var tblPr = xKid(tNode, 'w:tblPr'), style = xVal(xKid(tblPr, 'w:tblStyle')) || '';
       var cols = xKids(xKid(tNode, 'w:tblGrid'), 'w:gridCol').map(function (g) { return tw(g.a['w:w']) || 0; });
-      var ruled = borders ? borders.c.some(function (b) { return typeof b === 'object' && !/^(?:nil|none)$/.test(b.a['w:val'] || ''); }) : /grid|table ?grid/i.test(style);
-      var make = function () { return { t: 'table', cols: cols, rows: [], border: ruled, jc: xVal(xKid(tblPr, 'w:jc')) || '' }; }, t = make();
+      var rules = {}; // the table style's borders ("Table Grid"), then the table's own
+      styleChain(styles, style).forEach(function (st) { readBorders(xKid(st.tblPr, 'w:tblBorders'), rules); });
+      readBorders(xKid(tblPr, 'w:tblBorders'), rules);
+      var ruled = Object.keys(rules).some(function (k) { return rules[k]; });
+      var mar = xKid(tblPr, 'w:tblCellMar'), side = function (k) { var v = xKid(mar, 'w:' + k); return v ? tw(v.a['w:w']) : undefined; };
+      var pad = side('left') !== undefined ? side('left') : side('start') !== undefined ? side('start') : 5.4; // Word's own cell margin, 0.075 inch
+      var fixed = xVal(xKid(tblPr, 'w:tblLayout'), 'type') === 'fixed'; // otherwise Word's AutoFit: a column widens for a word that does not fit
+      var make = function () { return { t: 'table', cols: cols, rows: [], border: ruled, borders: rules, jc: xVal(xKid(tblPr, 'w:jc')) || '', fixed: fixed, pad: pad }; }, t = make();
+      var autoCells = 0, sizedCells = 0, split = false;
       xKids(tNode, 'w:tr').forEach(function (tr) {
-        if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); } } // a row that opens a page
+        if (!ctx.inCell && xFind(tr, 'w:lastRenderedPageBreak')) { paged = true; if (t.rows.length) { out.push(t); out.push({ t: 'break' }); t = make(); split = true; } } // a row that opens a page
         var row = [];
         xKids(tr, 'w:tc').forEach(function (tc) {
           var tcPr = xKid(tc, 'w:tcPr'), vm = xKid(tcPr, 'w:vMerge'), shd = xKid(tcPr, 'w:shd');
-          var cell = { span: Math.max(1, Math.min(64, Number(xVal(xKid(tcPr, 'w:gridSpan'))) || 1)), vm: vm ? (vm.a['w:val'] === 'restart' ? 'restart' : 'continue') : '', fill: shd ? hex6(shd.a['w:fill']) : '', blocks: [] };
+          var cell = { span: Math.max(1, Math.min(64, Number(xVal(xKid(tcPr, 'w:gridSpan'))) || 1)), vm: vm ? (vm.a['w:val'] === 'restart' ? 'restart' : 'continue') : '', fill: shd ? hex6(shd.a['w:fill']) : '', blocks: [],
+            borders: readBorders(xKid(tcPr, 'w:tcBorders'), {}), valign: { center: 'middle', bottom: 'bottom' }[xVal(xKid(tcPr, 'w:vAlign'))] || 'top' };
+          var tcw = xKid(tcPr, 'w:tcW'); if (!tcw || tcw.a['w:type'] === 'auto' || !(parseFloat(tcw.a['w:w']) > 0)) autoCells++; else sizedCells++;
           body(tc, cell.blocks, { inCell: true, n: ctx.n });
           row.push(cell);
         });
         t.rows.push(row);
       });
+      var tblW = xKid(tblPr, 'w:tblW');
+      // AutoFit to contents: the grid's widths are only Word's cache; a table over two pages keeps the grid, so its halves agree
+      t.fit = !fixed && !split && autoCells > sizedCells && (!tblW || tblW.a['w:type'] === 'auto' || !(parseFloat(tblW.a['w:w']) > 0));
       out.push(t);
     }
     function body(node, out, ctx) {
@@ -461,13 +497,26 @@
         else if (c.n === 'w:customXml' || c.n === 'w:ins' || c.n === 'w:moveTo') body(c, out, ctx);
       });
     }
+    // Sections: each has its page (a landscape table's, say); its properties close it, at its last paragraph or the body's end
+    var sections = [], secFrom = 0;
+    function pageOf(sect) {
+      var sz = xKid(sect, 'w:pgSz'), mar = xKid(sect, 'w:pgMar');
+      var pt = function (node, k, d) { var v = tw(xVal(node, k)); return v === undefined || v < 0 || v > 1440 ? d : v; }; // a size past 20 inches is a damaged file's
+      var pg = { w: pt(sz, 'w', 612), h: pt(sz, 'h', 792), top: pt(mar, 'top', 72), right: pt(mar, 'right', 72), bottom: pt(mar, 'bottom', 72), left: pt(mar, 'left', 72) };
+      if (pg.w < 72 || pg.h < 72) { pg.w = 612; pg.h = 792; }
+      if (pg.left + pg.right > pg.w - 72) { pg.left = pg.right = 72; }
+      return pg;
+    }
+    function endSection(sect, out) {
+      sections.push(pageOf(sect));
+      for (var i = secFrom; i < out.length; i++) out[i].sec = sections.length - 1;
+      secFrom = out.length;
+    }
     var bodyNode = xKid(xmlTree(utf8(parts['word/document.xml'])), 'w:body');
     if (!bodyNode) throw new Error('the Word document has no body');
     var blocks = []; body(bodyNode, blocks, {});
-    var sect = xKid(bodyNode, 'w:sectPr'), sz = xKid(sect, 'w:pgSz'), mar = xKid(sect, 'w:pgMar');
-    var pt = function (node, k, d) { var v = tw(xVal(node, k)); return v === undefined || v < 0 || v > 1440 ? d : v; }; // a size past 20 inches is a damaged file's
-    var page = { w: pt(sz, 'w', 612), h: pt(sz, 'h', 792), top: pt(mar, 'top', 72), right: pt(mar, 'right', 72), bottom: pt(mar, 'bottom', 72), left: pt(mar, 'left', 72) };
-    if (page.w < 72 || page.h < 72) { page.w = 612; page.h = 792; }
+    endSection(xKid(bodyNode, 'w:sectPr'), blocks);
+    var page = sections[sections.length - 1];
     var notes = { footnote: Object.create(null), endnote: Object.create(null) };
     ['footnote', 'endnote'].forEach(function (kind) { // the notes, numbered in the order their marks appear in the text
       var xml = parts['word/' + kind + 's.xml']; if (!xml || !noteRefs[kind].length) return;
@@ -475,7 +524,7 @@
       xKids(xmlTree(utf8(xml)), 'w:' + kind).forEach(function (nd) { var ty = nd.a['w:type']; if (!ty || ty === 'normal') byId[nd.a['w:id']] = nd; });
       noteRefs[kind].forEach(function (ref) { var nd = byId[ref.id]; if (!nd) return; var bl = []; body(nd, bl, { inCell: true, n: ref.n }); notes[kind][ref.n] = bl; });
     });
-    return { page: page, blocks: blocks, footnotes: notes.footnote, endnotes: notes.endnote, media: media, paged: paged };
+    return { page: page, sections: sections, blocks: blocks, footnotes: notes.footnote, endnotes: notes.endnote, media: media, paged: paged };
   }
 
   /* ---------- the reference section of a document's paragraphs or lines ---------- */

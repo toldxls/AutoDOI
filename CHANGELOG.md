@@ -2,6 +2,13 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.1 - 2026-10-30
+
+### Fixed
+
+- Word files in the viewer: text sits at the paragraph's own tab stops; a landscape section has its own page; a paragraph whose mark is caps, highlighted or a sub- or superscript no longer passes that to its text or squashes its lines; tables draw each cell's own rules and centring, and size to their contents when Word does, a number never split across lines.
+- Viewer citations after the reference list (figure captions, table notes) are linked too; the Pick button no longer leaves its tooltip over the opened file.
+
 ## 1.18.0 - 2026-10-30
 
 ### New

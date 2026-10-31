@@ -63,4 +63,30 @@ function manuscript() {
   var footnotes = '<w:footnote w:id="1"><w:p><w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteRef/></w:r><w:r><w:t xml:space="preserve"> Kernite is mined at Boron, California.</w:t></w:r></w:p></w:footnote>';
   return docx({ body: body, styles: styles, numbering: numbering, footnotes: footnotes, media: { 'word/media/image1.png': PNG } });
 }
-module.exports = { docx: docx, zip: zip, manuscript: manuscript, REFS: REFS, PNG: PNG };
+// tables(): a data table set with tab stops (a left stop and a right one) on paragraphs whose marks are subscript, as Word
+// leaves them after a formula; a fixed table with a column too narrow for its number; and a landscape section after a portrait one
+function tables() {
+  var tabbed = function (label, value, mark) { return '<w:p><w:pPr><w:tabs><w:tab w:val="left" w:pos="3240"/><w:tab w:val="right" w:pos="9000"/></w:tabs><w:rPr><w:vertAlign w:val="' + mark + '"/></w:rPr></w:pPr><w:r><w:t>' + label + '</w:t></w:r><w:r><w:tab/><w:t>' + value + '</w:t></w:r><w:r><w:tab/><w:t>99.5</w:t></w:r></w:p>'; };
+  var body = p('Table 3. Data collection details.') + tabbed('Temperature', '296 K', 'subscript') + tabbed('Structural formula', 'Cd2(SO4)', 'superscript') +
+    '<w:p><w:pPr><w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:pPr></w:p>' +
+    p('Table 4. A wide table on its own page.') +
+    '<w:tbl><w:tblPr><w:tblLayout w:type="fixed"/><w:tblBorders><w:top w:val="single"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="400"/><w:gridCol w:w="12000"/></w:tblGrid>' +
+    '<w:tr><w:tc>' + p('0.20') + '</w:tc><w:tc>' + p('wide') + '</w:tc></w:tr></w:tbl>' +
+    '<w:sectPr><w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/><w:pgMar w:top="1418" w:right="1440" w:bottom="1418" w:left="1440"/></w:sectPr>';
+  return docx({ body: body });
+}
+// cells(): a title whose mark is caps, highlighted and subscript, as Word leaves it after a formula; an empty highlighted
+// paragraph; a table AutoFit to its contents whose rules are each cell's own, one cell centred; a reference list, and a figure
+// caption after it that cites it
+function cells() {
+  var cell = function (t, sides, mid) { return '<w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/><w:tcBorders>' + sides.map(function (s) { return '<w:' + s + ' w:val="single" w:sz="4" w:color="000000"/>'; }).join('') + '</w:tcBorders>' + (mid ? '<w:vAlign w:val="center"/>' : '') + '</w:tcPr>' + p(t) + '</w:tc>'; };
+  var body = '<w:p><w:pPr><w:jc w:val="center"/><w:rPr><w:caps/><w:highlight w:val="green"/><w:vertAlign w:val="subscript"/></w:rPr></w:pPr><w:r><w:rPr><w:caps/></w:rPr><w:t xml:space="preserve">Title of the paper, </w:t></w:r><w:r><w:t>HAl(UO</w:t></w:r></w:p>' +
+    '<w:p><w:pPr><w:rPr><w:highlight w:val="green"/></w:rPr></w:pPr></w:p>' + p('As shown by Abel (2001), the crystals are small.') +
+    '<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/></w:tblPr><w:tblGrid><w:gridCol w:w="300"/><w:gridCol w:w="300"/></w:tblGrid>' +
+    '<w:tr>' + cell('Range', ['top', 'left', 'bottom', 'right']) + cell('Mean', ['top', 'bottom']) + '</w:tr>' +
+    '<w:tr>' + cell('18.76\u201319.66 and more', ['left', 'bottom', 'right']) + cell('x', ['bottom'], true) + '</w:tr></w:tbl>' +
+    p('References') + p('Abel, A. (2001) A first paper on the crystals. Journal of Things, 1, 1-2.') + p('Baker, B. (2002) A second paper on the crystals. Journal of Things, 2, 3-4.') +
+    p('Figure 1. The crystal, as drawn after Baker (2002).');
+  return docx({ body: body });
+}
+module.exports = { docx: docx, zip: zip, manuscript: manuscript, tables: tables, cells: cells, REFS: REFS, PNG: PNG };

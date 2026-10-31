@@ -815,6 +815,34 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForFunction(function () { return /No reference list/.test(document.getElementById('dv-status').textContent); }, null, { timeout: 30000 });
   check(name('a Word file with no References heading is shown, with nothing marked as a reference and selection offered instead'), /^No reference list was found \(no References heading\)\. Select any text/.test(await textOf('#dv-status')) && (await page.locator('.dv-mark').count()) === 0, await textOf('#dv-status'));
   await page.click('#dv-close');
+  // Word's tables as Word sets them: tab stops (left and right) on paragraphs whose marks are subscript, a landscape section, and a
+  // fixed table's number that this page's font sets a hair wider than its column
+  await page.setInputFiles('#export-pick-input', [{ name: 'tables.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: DX.tables() }]);
+  await page.waitForFunction(function () { return /No reference list|Click a reference/.test(document.getElementById('dv-status').textContent); }, null, { timeout: 30000 });
+  var tl = await page.evaluate(function () {
+    var pages = Array.prototype.map.call(document.querySelectorAll('#dv-pages .dv-page'), function (d) { var r = d.getBoundingClientRect(); return Math.round(r.width / r.height * 100) / 100; });
+    var pg = document.querySelector('#dv-pages .dv-page'), u = pg.getBoundingClientRect().width / 612, ps = Array.prototype.slice.call(pg.querySelectorAll('.dv-p'));
+    var spanAt = function (p, t) { var s = Array.prototype.find.call(p.querySelectorAll('span'), function (x) { return x.textContent === t; }); return s.getBoundingClientRect(); };
+    var t1 = ps[1], t2 = ps[2], left = t1.getBoundingClientRect().left;
+    var cell = document.querySelector('#dv-pages table.dv-table td .dv-p');
+    return { pages: pages, leftStop: Math.abs((spanAt(t1, '296 K').left - left) / u - 162) < 1.5, rightStop: Math.abs((spanAt(t1, '99.5').right - left) / u - 450) < 1.5,
+      lines: t1.getBoundingClientRect().height > 10 && t2.getBoundingClientRect().top >= t1.getBoundingClientRect().bottom - 1, cell: cell.scrollWidth <= cell.clientWidth + 1 && cell.getBoundingClientRect().height < 30 };
+  });
+  check(name('Word tables: a landscape section\'s page, text at its left and right tab stops, lines a subscript mark does not squash, a number kept whole in a narrow cell'), JSON.stringify(tl) === JSON.stringify({ pages: [0.77, 1.29], leftStop: true, rightStop: true, lines: true, cell: true }), JSON.stringify(tl));
+  await page.click('#dv-close');
+  // A title whose mark is caps, highlighted and subscript; an empty highlighted paragraph; a table drawn with each cell's own rules and
+  // AutoFit to its contents; and a figure caption after the list whose citation is linked like the text's
+  await page.setInputFiles('#export-pick-input', [{ name: 'cells.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: DX.cells() }]);
+  await viewerReady();
+  var cl = await page.evaluate(function () {
+    var ps = document.querySelectorAll('#dv-pages .dv-p'), spans = ps[0].querySelectorAll('span'), cs = function (e) { return getComputedStyle(e); };
+    var tds = document.querySelectorAll('#dv-pages table.dv-table td'), range = tds[2].querySelector('.dv-p');
+    return { caps: [cs(spans[0]).textTransform, cs(spans[1]).textTransform], noBar: [cs(ps[0]).backgroundColor, cs(ps[1]).backgroundColor], tall: ps[0].getBoundingClientRect().height > 12,
+      rules: [cs(tds[0]).borderTopStyle, cs(tds[1]).borderTopStyle, cs(tds[3]).borderRightStyle, cs(tds[3]).verticalAlign], oneLine: range.getBoundingClientRect().height < 30,
+      cites: Array.prototype.map.call(document.querySelectorAll('.dv-mark.cite[role=button]'), function (m) { return m.getAttribute('aria-label'); }) };
+  });
+  check(name('Word: a mark\'s caps and highlight stay off its runs, cells keep their own rules and centring, AutoFit keeps a range on one line, and a caption after the list cites'), JSON.stringify(cl) === JSON.stringify({ caps: ['uppercase', 'none'], noBar: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'], tall: true, rules: ['solid', 'solid', 'none', 'middle'], oneLine: true, cites: ['Citation: Abel (2001)', 'Citation: Baker (2002)'] }), JSON.stringify(cl));
+  await page.click('#dv-close');
   // A PDF, drawn by the pdf.js served with the page, opened from the link a dropped manuscript leaves
   await page.setInputFiles('#export-file-input', [{ name: 'manuscript.pdf', mimeType: 'application/pdf', buffer: PW.manuscript({ compress: true }) }]);
   await page.waitForFunction(function () { return !document.getElementById('export-pick-last').hidden && !document.querySelector('#export-go').disabled && /good|not matched/.test(document.querySelector('#export-status').textContent); }, null, { timeout: 30000 });
