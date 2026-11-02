@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.4 - 2026-11-02
+
+### Changed
+
+- The bookmarklet opens AutoDOI in a new tab and leaves the page it was clicked on; only where a popup blocker refuses the tab does it open in place.
+
 ## 1.18.3 - 2026-10-31
 
 ### Fixed

@@ -885,8 +885,10 @@ async function runFlows(browser, base, dark, cslReady) {
     return bp.evaluate(function (a) {
       if (a.sel) { var r = document.createRange(); r.selectNodeContents(document.getElementById(a.sel)); getSelection().removeAllRanges(); getSelection().addRange(r); }
       window.alert = function (m) { window.__go = 'alert:' + m; };
-      (0, eval)(decodeURIComponent(a.code.replace(/^javascript:/, '')).replace('location.href=', 'window.__go='));
-      return window.__go;
+      window.open = function (u, target) { window.__go = target === '_blank' ? u : 'target:' + target; return {}; };
+      var before = location.href;
+      (0, eval)(decodeURIComponent(a.code.replace(/^javascript:/, '')));
+      return location.href === before ? window.__go : 'navigated:' + location.href;
     }, { code: bm, sel: selectId });
   };
   var listPage = '<p>Warr, L.N. (2021). IMA–CNMNC approved mineral symbols. doi:10.1180/mgm.2021.43</p><ol><li>Bosi (2025) <a href="https://doi.org/10.5194/ejm-37-337-2025">10.5194/ejm-37-337-2025</a>CNMNC Newsletter 85</li>' +
@@ -897,7 +899,7 @@ async function runFlows(browser, base, dark, cslReady) {
   var manyDois = '<p>' + Array.from({ length: 300 }, function (x, i) { return 'doi:10.1234/a-rather-long-suffix-for-reference-number-' + i; }).join(' ') + '</p>';
   var bms = [await runBm(listPage), await runBm('<meta name="citation_doi" content="10.1038/nature12373">' + listPage), await runBm(listPage, 'one'), await runBm('<p>No identifiers here.</p>'), await runBm(manyDois)];
   var after = function (u, k) { return decodeURIComponent((u.split(k)[1] || '').split('&')[0]); };
-  check(name('the bookmarklet cites an article\'s own DOI, opens every DOI on a list page (a glued word cut off, a Scholar link\'s doi= read alone), or those selected'),
+  check(name('the bookmarklet, in a new tab, cites an article\'s own DOI, opens every DOI on a list page (a glued word cut off, a Scholar link\'s doi= read alone), or those selected'),
     JSON.stringify([after(bms[0], '&refs=').split(','), after(bms[1], '&q='), after(bms[2], '&q='), bms[3]]) === JSON.stringify([['10.5194/ejm-37-337-2025', '10.1007/s00269-019-01234-5', '10.1000/abc', '10.1180/mgm.2021.43', '10.1180/mgm.2022.106', '10.1180/mgm.2021.4'], '10.1038/nature12373', '10.1180/mgm.2022.106', 'alert:AutoDOI: no DOI found on this page.']) && /\?list=[^&]*&refs=/.test(bms[0]), JSON.stringify(bms));
   var manyRefs = bms[4].split('&refs=')[1] || '';
   check(name('the bookmarklet\'s list is cut at 7,500 characters, as Copy link cuts it'), manyRefs.length <= 7500 && manyRefs.split(',').length > 100 && manyRefs.split(',').length < 200, manyRefs.length + ' chars, ' + manyRefs.split(',').length + ' DOIs');

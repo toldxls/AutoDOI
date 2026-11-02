@@ -3,7 +3,7 @@
  * from the cache and refreshed behind; the engine, styles and locales are pinned to commits and the PDF viewer (vendor/pdfjs-<version>/) to
  * its version, so once cached they never change.
  * Lookups (Crossref, doi.org, OpenAlex and the rest) always go to the network and are never cached. */
-var VERSION = '1.18.3'; // keep in step with APP_VERSION (tests/syntax.test.js checks)
+var VERSION = '1.18.4'; // keep in step with APP_VERSION (tests/syntax.test.js checks)
 var CACHE = 'autodoi-' + VERSION;
 var PAGE = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 var PINNED = /^https:\/\/(?:cdn\.jsdelivr\.net\/npm\/citeproc@|raw\.githubusercontent\.com\/citation-style-language\/(?:styles|locales)\/[0-9a-f]{40}\/)/;
