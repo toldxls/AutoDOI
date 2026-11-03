@@ -19,6 +19,7 @@ The record you are working with follows you across the tabs.
 ## Details worth knowing
 
 - **Titles.** The *Titles* control converts article titles to Sentence case or Title Case, keeping taxa, place names and acronyms; click a highlighted word to override it. Chemical formulas, isotopes and charges are set with real sub- and superscripts (Mg₂SiO₄, Fe³⁺, ⁴⁰Ar/³⁹Ar); turn this off under Settings if a title is misread.
+- **Bookmarklet.** Drag *Cite with AutoDOI* from Settings to your bookmarks bar; clicked on a journal article it opens that article's reference in a new tab, and on any other page it opens every DOI on the page (or in the text you selected) as a list.
 - **Journal abbreviations** for Vancouver and short-form styles come from the NLM Catalog, then the JabRef lists.
 - **Speed.** Crossref's public pool answers one search at a time (about 2 s per reference). An email under Settings puts you in the polite pool, about three times faster; it goes only to Crossref and OpenAlex.
 - **EndNote styles.** `.ens` files are a closed format and cannot be read; the CSL repository covers most of the same journals, and a checkbox narrows the search to the 261 that ship with EndNote 21. A journal missing from both can be hand-written in `citations.js`, as Annals of Carnegie Museum was (it follows the CMNH authors' guide of 6 January 2010).
