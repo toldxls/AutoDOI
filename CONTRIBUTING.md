@@ -22,6 +22,8 @@ Open `index.html` in a browser to try the page; it works from a `file://` URL fo
 | Change | Edit | Then |
 | --- | --- | --- |
 | A citation rule, style or export format | `citations.js` | `./build.sh` |
+| Choosing among search hits (`matchPicker`), for the page, the command line and Sheets | `citations.js` | `./build.sh` |
+| Cutting a pasted list into references, for the page and the command line | `splitter.js` | `./build.sh` |
 | Reading RIS / EndNote / BibTeX files | `parsers.js` | `./build.sh` |
 | Sentence case / Title Case | `sentencecase.js` | `./build.sh` |
 | Reading a Word or PDF manuscript's reference list | `documents.js` | `./build.sh` |
@@ -30,7 +32,7 @@ Open `index.html` in a browser to try the page; it works from a `file://` URL fo
 | The page itself (markup, UI logic, network) | `index.html`, outside the inlined blocks | nothing |
 | The Google Sheets functions | `apps-script/Code.gs` | nothing (`Citations.gs` is a copy of `citations.js` made by `build.sh`) |
 
-`build.sh` inlines the four libraries into `index.html` and refreshes `apps-script/Citations.gs`. CI rebuilds and fails if the committed copies are stale, so run it before committing.
+`build.sh` inlines the five libraries into `index.html` and refreshes `apps-script/Citations.gs`. CI rebuilds and fails if the committed copies are stale, so run it before committing.
 
 ## Tests
 
@@ -39,8 +41,9 @@ Open `index.html` in a browser to try the page; it works from a `file://` URL fo
 - `tests/splitter-bench.test.js` holds accuracy thresholds on 85 real reference lists; if you raise accuracy, raise the threshold.
 - `tests/golden-styleguides.test.js` and `tests/golden-carnegie.test.js` hold the style authorities' own printed examples; a change to a style must keep them exact. When an example needs a datum no source supplies, add it to the `NOT_APPLICABLE` list with the reason rather than loosening the comparison. `tests/golden-carnegie.test.js` holds the journal's own printed examples; a change to the Carnegie style must keep them byte for byte. `tests/invariants.test.js` and `tests/fuzz.test.js` need no expected strings: add a property there when you find a new class of bad output. `./tools/harvest-corpus.sh` draws a fresh random corpus; commit it with the tests passing.
 - `tests/canary.js` and `tests/browser/live.test.js` hit the real services and are run weekly, not on push; `npm run canary` runs both locally. The live test drives the deployed page unless `LIVE_URL` points at a local server; after a change to the Content Security Policy run it against a local build, since doi.org redirects to the registration agencies' hosts and the policy applies to every hop.
+- `tests/pdf-oracle.test.js` reads every kind of file `tests/pdf-writer.js` writes (each filter, predictors, object streams, encryption) through the vendored pdf.js, so the reader's tests do not rest on the writer's mistakes; give the writer a new option and add it there. It needs Node 22.
 - `tests/sw.test.js` runs `sw.js` in a `vm` with a fake cache; extend it when the worker's caching rules change.
-- `tests/browser/match-bench.js` (`npm run bench:match`) is the yardstick for any change to `matchConfidence` or the page's `resolve()`: green precision must stay at 100% on the deposited variant and recall should not fall. Its `nonlatin` variant (Cyrillic, CJK and Greek references) guards the Unicode handling in `tokens()`. Its `glued` variant is the yardstick for in-line splitting (`gluePoint` in `index.html`), together with the "no single real reference is split" check in `tests/splitter-bench.test.js`. `tests/matching.test.js` pins the cases it has already taught us.
+- `tests/browser/match-bench.js` (`npm run bench:match`) is the yardstick for any change to `matchConfidence`, `matchPicker` or the page's `resolve()`: green precision must stay at 100% on the deposited variant and recall should not fall. Its `nonlatin` variant (Cyrillic, CJK and Greek references) guards the Unicode handling in `tokens()`. Its `glued` variant is the yardstick for in-line splitting (`gluePoint` in `splitter.js`), together with the "no single real reference is split" check in `tests/splitter-bench.test.js`. `tests/matching.test.js` pins the cases it has already taught us.
 - `tests/browser/ui.test.js` drives the built page in headless Chromium with every external API mocked, in light and dark mode and at phone width. It fetches citeproc, one style and the locale once into `tests/browser/cache/`; after that it is offline. Extend it when you change the page's behaviour.
 - `tests/sheets-menu.test.js` and `tests/smoke-sheets.js` run the Sheets script with stubbed Apps Script services; add a case there for changes to `Code.gs`.
 

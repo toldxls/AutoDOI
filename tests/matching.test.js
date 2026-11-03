@@ -90,5 +90,42 @@ ge('…and a GOST reference naming the issue and pages but not the volume, the j
 var book = function (o) { return A.normalize({ type: 'book', title: [o.title], author: [{ family: o.author, given: 'M.' }], issued: { 'date-parts': [[o.year]] }, publisher: o.publisher, DOI: o.doi }); };
 ge('a short book title with the publisher said and a subtitle the record lacks', 'Alberti M (2008) Advances in urban ecology: integrating humans and ecological processes in urban ecosystems. Springer, New York', book({ title: 'Advances in Urban Ecology', author: 'Alberti', year: 2008, publisher: 'Springer US', doi: '10.1007/978-0-387-75510-6' }), GOOD);
 lt('a short book title from another publisher inside a longer reference title is not', 'Smith J (2020) Climate change impacts on coral reef fish assemblages in the Pacific. Springer, New York', book({ title: 'Climate change', author: 'Smith', year: 2020, publisher: 'Wiley', doi: '10.1000/x' }), GOOD);
+
+// a record's main title, its subtitle dropped, found inside a longer reference title: another paper unless the locators or the DOI agree
+var kRef = 'Kucsko G, Maurer PC (2013) Nanometre-scale thermometry in a living cell. Nature 500:54-58';
+lt('a review whose main title is all in the reference title is not the paper', kRef, rec({ title: 'Thermometry in living cells: a review', author: 'Kucsko', year: 2013, journal: 'Nature' }), GOOD);
+lt('nor with locators of its own', kRef, rec({ title: 'Thermometry in living cells: a review', author: 'Kucsko', year: 2013, journal: 'Nature', volume: '501', page: '100-110' }), GOOD);
+ge('the same main title with the volume and first page agreeing is the paper', kRef, rec({ title: 'Thermometry in living cells: a review', author: 'Kucsko', year: 2013, journal: 'Nature', volume: '500', page: '54-58' }), GOOD);
+ge('a reference deposited cut off mid-subtitle is the paper (the bench: Barbeau 2009)', 'Barbeau D.L., Olivero E.B., Swanson-Hysell N.L., Zahid K.M., Murray K.E., Gehrel G.E. (2009) Detrital-zircon geochronology of the eastern Magallanes Foreland basin: implications for Eocene kinematics of the Northern', rec({ title: 'Detrital-zircon geochronology of the eastern Magallanes foreland basin: Implications for Eocene kinematics of the northern Scotia Arc and Drake Passage', author: 'Barbeau', year: 2009, journal: 'Earth and Planetary Science Letters', volume: '284', page: '489-503' }), GOOD);
+ge('a record whose title has the journal run onto it is the paper (the bench: Tang 2018)', 'Tang J., Петров П.С., Piao Sh., Козицкий С.Б. К вопросу о методе изображений в задаче о распространении звука в клине в акустике океана: некоторые исправления и дополнения // Акуст. журн. 2018. Т. 64. № 2. С. 228-240', rec({ title: 'К вопросу о методе изображений в задаче о распространении звука в клине в акустике океана: некоторые исправления и дополнения, "Акустический журнал"', authors: [{ family: 'Tang', given: 'J.' }], year: 2018, journal: 'Акустический журнал', page: '228-240' }), GOOD);
+ge('a reference that drops the subtitle and says nothing else is the paper', 'Kucsko G (2013) Nanometre-scale thermometry in a living cell. Nature 500:54', rec({ title: 'Nanometre-scale thermometry in a living cell: a diamond probe', author: 'Kucsko', year: 2013, journal: 'Nature' }), GOOD);
+
+// Choosing among hits (A.matchPicker, shared by the page, the command line and the Sheets functions)
+function picks(label, got, want) { if (got === want) pass++; else { fail++; console.log('FAIL ' + label + ': got ' + got + ', want ' + want); } }
+var kref = 'Kucsko G, Maurer PC (2013) Nanometre-scale thermometry in a living cell. Nature 500:54-58';
+var kart = A.normalize({ type: 'journal-article', DOI: '10.1038/nature12373', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'G.' }], issued: { 'date-parts': [[2013]] }, 'container-title': ['Nature'], volume: '500', page: '54-58' });
+var kds = A.normalize({ type: 'dataset', DOI: '10.5061/dryad.x1', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'G.' }], issued: { 'date-parts': [[2013]] } });
+var kpre = A.normalize({ type: 'posted-content', DOI: '10.48550/arxiv.1304.1068', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'G.' }], issued: { 'date-parts': [[2013]] } });
+var ksmith = A.normalize({ type: 'journal-article', DOI: '10.1/smith', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Smith', given: 'J.' }], issued: { 'date-parts': [[2013]] }, 'container-title': ['Nature'] }); // another first author: 0.85
+var klate = A.normalize({ type: 'journal-article', DOI: '10.1/late', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'G.' }], issued: { 'date-parts': [[2015]] }, 'container-title': ['Nature'] }); // two years out: 0.65
+var pk = A.matchPicker(kref).add([kds, kart]);
+picks('a dataset listed first with the same title stands back for the paper', pk.best.doi, '10.1038/nature12373');
+picks('the dataset is the runner-up', (pk.runnerUp() || { record: {} }).record.doi, '10.5061/dryad.x1');
+picks('a preprint listed first stands back too', A.matchPicker(kref).add([kpre, kart]).best.doi, '10.1038/nature12373');
+picks('a dataset alone is still found', A.matchPicker(kref).add([kds]).best.doi, '10.5061/dryad.x1');
+picks('the best score wins, not the first hit (the old rule kept a first hit unless beaten by 0.2)', A.matchPicker(kref).add([ksmith, kart]).best.doi, '10.1038/nature12373');
+var ktwin = A.normalize({ type: 'journal-article', DOI: '10.1/twin', title: ['Nanometre-scale thermometry in a living cell'], author: [{ family: 'Kucsko', given: 'G.' }], issued: { 'date-parts': [[2013]] }, 'container-title': ['Nature'] });
+var tpk = A.matchPicker(kref).add([kart, ktwin]);
+picks('of two equal scores the earlier hit stands, as the search ranked it', tpk.best.doi, '10.1038/nature12373');
+picks('and the other is the runner-up', (tpk.runnerUp() || { record: {} }).record.doi, '10.1/twin');
+picks('no runner-up far below the winner', A.matchPicker(kref).add([kart, klate]).runnerUp(), null);
+picks('a later batch (the OpenAlex second opinion) must beat the best so far', A.matchPicker(kref).add([kart]).add([kds]).best.doi, '10.1038/nature12373');
+picks('no hits: no best', A.matchPicker(kref).add([]).best, null);
+var bk = A.normalize({ type: 'book', DOI: '10.1515/9781501508998', title: ['Reviews in Mineralogy: Sulfide mineralogy'], editor: [{ family: 'Ribbe', given: 'P. H.' }], issued: { 'date-parts': [[1974]] }, publisher: 'De Gruyter' });
+var chp = A.normalize({ type: 'book-chapter', DOI: '10.1515/9781501508998-015', title: ['Sulfide mineralogy'], author: [{ family: 'Ribbe', given: 'P. H.' }], editor: [{ family: 'Ribbe', given: 'P. H.' }], issued: { 'date-parts': [[1974]] }, 'container-title': ['Reviews in Mineralogy: Sulfide mineralogy'], publisher: 'De Gruyter', page: '1-50' });
+var cref = 'Ribbe PH (ed) (1974) Sulfide mineralogy. Reviews in Mineralogy 1. De Gruyter, pp 1-50';
+var cpk = A.matchPicker(cref).add([bk, chp]);
+picks('a reference with a page range takes the chapter of the book it names, though the book scores as well', cpk.best.doi, '10.1515/9781501508998-015');
+picks('without a page range the book stands', A.matchPicker('Ribbe PH (ed) (1974) Sulfide mineralogy. Reviews in Mineralogy 1. De Gruyter').add([bk, chp]).best.doi, '10.1515/9781501508998');
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

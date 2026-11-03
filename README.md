@@ -42,7 +42,7 @@ node bin/autodoi.js --match --json < references.txt            # the records wit
 node bin/autodoi.js --match paper.pdf                           # the reference list of a Word or PDF manuscript
 ```
 
-`--email you@example.org` (or `AUTODOI_EMAIL`) uses Crossref's polite pool. `--match` reads one reference per line, or one per paragraph when blank lines or a hanging indent set them apart, prints each match as it arrives, and exits 0 when every reference matched, 1 when a lookup failed, 2 on bad usage and 3 when some stayed unmatched (their text is on stderr). `require('./citations.js')` gives the library itself: `normalize`, `format`, `formatHtml`, `inTextForms`, `matchConfidence`.
+`--email you@example.org` (or `AUTODOI_EMAIL`) uses Crossref's polite pool. `--match` splits the list as the page does (`--split lines`, `blank` or `numbered` to choose), matches each reference as the page does, prints each match as it arrives, and exits 0 when every reference matched, 1 when a lookup failed, 2 on bad usage and 3 when some stayed unmatched (their text is on stderr). `require('./citations.js')` gives the library itself: `normalize`, `format`, `formatHtml`, `inTextForms`, `matchConfidence`.
 
 ## Bugs and missing styles
 
@@ -50,7 +50,7 @@ Use **Report a bug** and **Request a journal style** at the foot of the page; th
 
 ## Development
 
-Plain JavaScript, no runtime dependencies. `citations.js` holds every citation rule, `parsers.js` reads RIS, EndNote and BibTeX, `sentencecase.js` converts titles, `documents.js` reads a Word or PDF manuscript and lays out a Word one for the viewer; PDFs are shown by the pinned pdf.js in `vendor/`; `build.sh` inlines them into `index.html` and refreshes the Sheets copy.
+Plain JavaScript, no runtime dependencies. `citations.js` holds every citation rule, `splitter.js` cuts a pasted list into references, `parsers.js` reads RIS, EndNote and BibTeX, `sentencecase.js` converts titles, `documents.js` reads a Word or PDF manuscript and lays out a Word one for the viewer; PDFs are shown by the pinned pdf.js in `vendor/`; `build.sh` inlines them into `index.html` and refreshes the Sheets copy.
 
 ```
 ./build.sh              # after editing any library file

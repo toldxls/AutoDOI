@@ -16,7 +16,7 @@ function parses(label, source) {
   check(label + ' parses', res.status === 0, res.stderr);
 }
 
-['citations.js', 'parsers.js', 'sentencecase.js', 'documents.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js', 'sw.js', 'bin/autodoi.js']
+['citations.js', 'splitter.js', 'parsers.js', 'sentencecase.js', 'documents.js', 'data/common-words.js', 'apps-script/Code.gs', 'apps-script/Citations.gs', 'tests/run.js', 'sw.js', 'bin/autodoi.js']
   .forEach(function (rel) { parses(rel, read(rel)); });
 
 // Every inline <script> block in index.html (the app code, plus the inlined libraries)
@@ -29,7 +29,7 @@ check('index.html has no external <script src>', !/<script[^>]*\ssrc=/.test(html
 
 // Apps Script copy and inlined copies are current (CI also rebuilds and diffs; this catches it locally)
 check('apps-script/Citations.gs is identical to citations.js', read('apps-script/Citations.gs') === read('citations.js'), 'run ./build.sh');
-['citations.js', 'parsers.js', 'sentencecase.js', 'documents.js'].forEach(function (name) {
+['citations.js', 'splitter.js', 'parsers.js', 'sentencecase.js', 'documents.js'].forEach(function (name) {
   var block = html.match(new RegExp('<!-- ' + name.replace('.', '\\.') + ' [^\\n]*-->\\n<script>\\n([\\s\\S]*?)\\n</script>\\n<!-- /' + name.replace('.', '\\.') + ' -->'));
   check('index.html inlines the current ' + name, !!block && block[1] === read(name), 'run ./build.sh');
 });

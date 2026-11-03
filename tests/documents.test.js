@@ -47,6 +47,20 @@ var LIST = ['Kucsko, G., Maurer, P. C., Yao, N. Y., Kubo, M., Noh, H. J., Lo, P.
   eq('PDF ' + c[0] + ': the list after References, continuation lines indented, without the running head, page number or caption', [r.heading, r.layout, r.refs], ['References', 'auto', LIST]);
 });
 eq('read() knows a PDF by its first bytes', D.read(W.manuscript({}), 'x.bin').refs, LIST);
+// every filter a PDF may use for text, written by tests/pdf-writer.js's own encoders (checked against pdf.js in tests/pdf-oracle.test.js)
+[['LZW'], ['A85'], ['AHx'], ['RL'], ['A85', 'Fl'], ['AHx', 'LZW']].forEach(function (f) {
+  [false, true].forEach(function (pred) {
+    var label = 'PDF with ' + f.join(' over ') + (pred ? ', PNG row predictors' : '');
+    eq(label + ': the list as from a plain file', D.readPdf(W.manuscript({ filters: f, predictor: pred })).refs, LIST);
+    eq(label + ', objects packed: the same', D.readPdf(W.manuscript({ filters: f, predictor: pred, objstm: true })).refs, LIST);
+  });
+});
+eq('PDF with Flate and PNG row predictors, encrypted with RC4: the same', D.readPdf(W.manuscript({ compress: true, predictor: true, encrypt: 'rc4' })).refs, LIST);
+// a long page: LZW codes widen to 12 bits and the table is cleared and begun again mid-stream
+var longLines = []; for (var li = 0; li < 90; li++) longLines.push({ x: 72, y: 780 - li * 8, size: 7, text: (li ? '' : 'References ') + 'Abel, A. (' + (1900 + li) + ') A title about kernite number ' + (li * 7919 % 1000) + '. J Chem ' + li + ', ' + li + '.' });
+var longPlain = D.readPdf(W.pdf({ pages: [{ lines: longLines }] })), longLzw = D.readPdf(W.pdf({ pages: [{ lines: longLines }], filters: ['LZW'], predictor: true }));
+eq('a long LZW stream through a table reset reads as the plain one', [longLzw.refs.length > 80, longLzw.refs], [true, longPlain.refs]);
+
 
 // Encryption that needs a password, or that is not read here, is refused in words
 var locked = W.manuscript({ encrypt: 'rc4' }).toString('latin1').replace(/\/U <([0-9a-f]+)>/, function (m, h) { return '/U <' + h.replace(/./g, '0') + '>'; });

@@ -2,9 +2,7 @@
 // bench, as deposited, in lowercase without punctuation, and with its year removed, is a reference and stays on the matching path
 var ROOT = require('path').resolve(__dirname, '..');
 const fs = require('fs'), path = require('path');
-const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-const a = html.indexOf('  // Lines that are nothing but an identifier'), b = html.indexOf('  async function resolve(refText)');
-const looksLikeTitle = new Function('A', html.slice(a, b) + '; return looksLikeTitle;')(require(path.join(ROOT, 'citations.js')));
+const looksLikeTitle = require(path.join(ROOT, 'splitter.js')).looksLikeTitle;
 let pass = 0, fail = 0;
 const DOI_RE = /(?:\bdoi:?\s*)?(?:https?:\/\/(?:dx\.)?doi\.org\/)?\b10\.\d{4,9}\/[^\s"'<>]+/gi;
 const degrade = { // as tests/browser/match-bench.js degrades them

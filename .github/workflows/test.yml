@@ -86,7 +86,7 @@ jobs:
       - name: Assemble the site
         run: |
           mkdir dist
-          cp index.html sw.js manifest.webmanifest icon.svg citations.js parsers.js sentencecase.js documents.js LICENSE dist/
+          cp index.html sw.js manifest.webmanifest icon.svg citations.js splitter.js parsers.js sentencecase.js documents.js LICENSE dist/
           cp -R data dist/data
           cp -R vendor dist/vendor
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5

@@ -48,7 +48,7 @@ var t0 = Date.now();
   eq('no arguments: usage on stderr and exit 2', code === 2 && /autodoi 10\.1038\/nature12373/.test(t.errs[0]) && t.outs.length === 0, true);
   t = io(); code = await cli.run(['--help'], t);
   eq('--help: usage on stdout and exit 0', code === 0 && /autodoi 10\.1038\/nature12373/.test(t.outs[0]) && t.errs.length === 0, true);
-  eq('the usage names the exit codes and how --match splits its input', /0 done, 1 a lookup failed, 2 bad usage, 3 --match/.test(t.outs[0]) && /one reference per line, or one per paragraph when blank lines separate them/.test(t.outs[0]), true);
+  eq('the usage names the exit codes and how --match splits its input', /0 done, 1 a lookup failed, 2 bad usage, 3 --match/.test(t.outs[0]) && /the list split as the page splits it/.test(t.outs[0]) && /--split lines\|blank\|numbered/.test(t.outs[0]), true);
   eq('the usage ends with the comment block, not the code', /openlibrary\.org\.$/.test(t.outs[0].trim()) && !/require\(/.test(t.outs[0]), true);
   t = io(); code = await cli.run(['10.1038/nature12373', '--email', 'not-an-address'], t);
   eq('a malformed --email: exit 2 before any request', code === 2 && /--email .*not-an-address/.test(t.errs[0]), true);
@@ -94,9 +94,16 @@ var t0 = Date.now();
   t = io(); code = await cli.run(['--match', '--email'], t);
   eq('--email without a value: exit 2', code === 2 && /^Option --email needs a value/.test(t.errs[0]), true);
   eq('parseArgs: -p at the end is an error, not pages "undefined"', cli.parseArgs(['x', '-p']).error, 'Option -p needs a value');
-  eq('splitRefs: blank lines join wrapped lines', cli.splitRefs('A b\nc d\n\nE f').length, 2);
-  eq('splitRefs: one per line otherwise', cli.splitRefs('A\nB\nC').length, 3);
-  eq('splitRefs: a list\'s numbers are dropped, a year that opens a reference is not', cli.splitRefs('1. Abel, A. One.\n[12] Baker, B. Two.\n2019. Cole, C. Three.'), ['Abel, A. One.', 'Baker, B. Two.', '2019. Cole, C. Three.']);
+  // the page's splitter (splitter.js): tests/splitter.test.js holds its cases; these check the command line reaches it
+  var abel = 'Abel, A. (2001) First title. J Chem 1, 1.', baker = 'Baker, B. (2002) Second title. J Chem 2, 2.', cole = 'Cole, C. (2003) Third title. J Chem 3, 3.';
+  eq('splitRefs: blank lines set wrapped references apart', cli.splitRefs('Abel, A. (2001) First title that\nwraps. J Chem 1, 1.\n\nBaker, B. (2002) Second title that\nwraps. J Chem 2, 2.').length, 2);
+  eq('splitRefs: one per line', cli.splitRefs([abel, baker, cole].join('\n')), [abel, baker, cole]);
+  eq('splitRefs: a list\'s numbers are dropped', cli.splitRefs(['1. ' + abel, '2. ' + baker, '[3] ' + cole].join('\n')), [abel, baker, cole]);
+  eq('splitRefs: a year that opens a reference is kept', cli.splitRefs('2019. Abel, A. First title. J Chem 1, 1.'), ['2019. Abel, A. First title. J Chem 1, 1.']);
+  eq('splitRefs: two references run together on one line are cut apart, as on the page', cli.splitRefs('A. Smith, Phys. Rev. B 12 (1990) 100; B. Jones, Phys. Rev. B 13 (1991) 200.'), ['A. Smith, Phys. Rev. B 12 (1990) 100;', 'B. Jones, Phys. Rev. B 13 (1991) 200.']);
+  eq('splitRefs: a split mode, as the page\'s menu', cli.splitRefs('Abel, A. (2001) First title that\nwraps. J Chem 1, 1.', 'lines').length, 2);
+  t = io(); code = await cli.run(['--match', '--split', 'paragraphs', abel], t);
+  eq('--split with an unknown mode: exit 2, naming the modes', [code, /--split takes one of auto, lines, blank, numbered/.test(t.errs[0])], [2, true]);
   eq('splitRefs: an indented line continues the line above (a PDF\'s hanging indent)', cli.splitRefs('Smith, J. (2020) A title that wraps\n onto a second line. J 1, 1.\nJones, K. (2021) Another. J 2, 2.'), ['Smith, J. (2020) A title that wraps onto a second line. J 1, 1.', 'Jones, K. (2021) Another. J 2, 2.']);
   // A manuscript as the argument: its reference list is read and matched; the Word file's paragraphs and the PDF's hanging indent give one reference each
   t = io(); code = await cli.run(['--match', '--style', 'apa', path.join(__dirname, 'fixtures', 'manuscript.docx')], t);
@@ -123,6 +130,49 @@ var t0 = Date.now();
   t = io(); code = await cli.run(['--match', path.join(require('os').tmpdir(), 'no-such-manuscript-' + process.pid + '.pdf')], t);
   eq('a manuscript that is not there: named on stderr and exit 2, not sent to Crossref as a reference', [code, /^No such file: .*no-such-manuscript-\d+\.pdf$/.test(t.errs[0]), t.outs.length], [2, true, 0]);
   fs.unlinkSync(pdfFile);
+  // Choosing among hits goes through A.matchPicker, as on the page: these are the page's own rules, reached from the command line
+  var stub = global.fetch, oaWork = { id: 'https://openalex.org/W1', doi: 'https://doi.org/10.1038/nature12373', title: 'Nanometre-scale thermometry in a living cell', display_name: 'Nanometre-scale thermometry in a living cell',
+    authorships: [{ author: { display_name: 'G. Kucsko' } }], publication_year: 2013, type: 'article', primary_location: { source: { display_name: 'Nature' } }, biblio: { volume: '500', first_page: '54', last_page: '58' } };
+  var answer = function (status, body) { return { ok: status === 200, status: status, headers: { get: function () { return 'application/json'; } }, json: async function () { return body; }, text: async function () { return JSON.stringify(body); } }; };
+  var dataset = JSON.parse(JSON.stringify(work.message)); dataset.DOI = '10.5061/dryad.x1'; dataset.type = 'dataset'; dataset['container-title'] = [];
+  global.fetch = async function (url, opts) { if (/api\.crossref\.org\/works\?/.test(url)) { calls.push(url); return answer(200, { message: { items: [dataset, work.message] } }); } return stub(url, opts); };
+  t = io(); code = await cli.run(['--match', '--json', 'Kucsko G, Maurer PC (2013) Nanometre-scale thermometry in a living cell. Nature 500:54-58'], t);
+  var got = JSON.parse(t.outs[0])[0];
+  eq('a dataset Crossref lists before the paper, with the same title: the paper wins, the dataset is the runner-up', [got.record.doi, got.grade, got.alt && got.alt.record.doi], ['10.1038/nature12373', 'good', '10.5061/dryad.x1']);
+  global.fetch = stub; calls = [];
+  t = io(); code = await cli.run(['--match', '--json', 'Hardy GH, Wright EM (1938) An introduction to the theory of numbers. Clarendon Press, Oxford. ISBN 978-0-19-853453-2'], t);
+  got = JSON.parse(t.outs[0])[0];
+  eq('an ISBN in a reference is looked up as the book, without a search', [got.record.title, got.grade, calls.some(function (u) { return /query\.bibliographic/.test(u); })], ['Introduction to the Theory of Numbers', 'good', false]);
+  var oaAsked = 0;
+  global.fetch = async function (url, opts) {
+    calls.push(url);
+    if (/api\.crossref\.org\/works\?/.test(url)) return answer(200, { message: { items: [] } });
+    if (/api\.openalex\.org\/works\?/.test(url)) { oaAsked++; return oaAsked === 1 ? answer(200, { results: [oaWork] }) : answer(429, { error: 'Rate limit exceeded' }); }
+    return stub(url, opts);
+  };
+  calls = []; t = io(); code = await cli.run(['--match', '--json', '--email', 'me@example.org', 'Kucsko G (2013) Nanometre-scale thermometry in a living cell. Nature 500:54-58'], t);
+  got = JSON.parse(t.outs[0])[0];
+  eq('nothing at Crossref: OpenAlex is the second opinion, and its DOI is regraded on the Crossref record', [got.record.doi, got.record.source !== 'openalex', got.grade, code], ['10.1038/nature12373', true, 'good', 0]);
+  eq('the email goes to OpenAlex too', calls.some(function (u) { return /api\.openalex\.org\/works\?.*mailto=me%40example\.org/.test(u); }), true);
+  sleeps = []; t = io(); code = await cli.run(['--match', '--json', 'Abel A (2001) First title. J 1:1\nBaker B (2002) Second title. J 2:2'], t);
+  eq('a 429 from OpenAlex: no waiting, no retry, and the rest of the run asks Crossref alone', [oaAsked, sleeps.filter(function (ms) { return ms >= 2000; }).length, JSON.parse(t.outs[0]).map(function (r) { return r.grade; }), code], [2, 0, ['none', 'none'], 3]);
+  global.fetch = async function (url, opts) { calls.push(url); if (/api\.crossref\.org\/works\?/.test(url)) return answer(500, {}); return stub(url, opts); };
+  sleeps = []; t = io(); code = await cli.run(['--match', '--json', 'Abel A (2001) First title. J 1:1'], t);
+  eq('Crossref failing with nothing from OpenAlex is a failed lookup (exit 1), not "no match"', [JSON.parse(t.outs[0])[0].grade, code], ['error', 1]);
+  oaAsked = 0; t = io(); code = await cli.run(['--match', '--json', 'Abel A (2001) First title. J 1:1'], t);
+  eq('...and OpenAlex, once refused, is not asked again in the run', oaAsked, 0);
+  global.fetch = stub;
+  // a PubMed or PMC ID goes to Europe PMC for its DOI, then to Crossref
+  global.fetch = async function (url, opts) {
+    calls.push(url);
+    if (/ebi\.ac\.uk\/europepmc\/webservices\/rest\/search/.test(url)) return answer(200, { resultList: { result: /23903748|PMC4221854/.test(decodeURIComponent(url)) ? [{ doi: '10.1038/nature12373' }] : [] } });
+    return stub(url, opts);
+  };
+  calls = []; t = io(); code = await cli.run(['PMID:23903748', 'PMC4221854'], t);
+  eq('a PubMed ID and a PMC ID: each resolved through Europe PMC, as the page asks it', [code, t.outs.length, /^Kucsko, G\./.test(t.outs[0]), calls.some(function (u) { return /query=EXT_ID%3A23903748%20AND%20SRC%3AMED/.test(u); }), calls.some(function (u) { return /query=PMCID%3APMC4221854/.test(u); })], [0, 2, true, true, true]);
+  t = io(); code = await cli.run(['PMID:11111111'], t);
+  eq('a PubMed ID Europe PMC has no DOI for: named on stderr, exit 1', [code, /PMID:11111111: No DOI known for 11111111/.test(t.errs[0])], [1, true]);
+  global.fetch = stub;
   eq('the suite runs without real waiting (the throttle is injected)', Date.now() - t0 < 2000, true);
   console.log(pass + ' passed, ' + fail + ' failed'); process.exitCode = fail ? 1 : 0;
 })();

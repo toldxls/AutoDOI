@@ -5,8 +5,10 @@
  *   autodoi 10.1038/nature12373 --style vancouver    any built-in style: apa, mla, chicago, harvard, vancouver, ieee, carnegie,
  *                                                    or an export: bibtex, ris, endnote; --style all prints every style of one record
  *   autodoi arXiv:1706.03762 PMID:23903748 978-0-19-853453-2   arXiv IDs, PubMed IDs and ISBNs work too
- *   autodoi --match < references.txt                 one reference per line, or one per paragraph when blank lines separate them
- *                                                    (a wrapped reference is one paragraph): each is matched at Crossref and graded
+ *   autodoi --match < references.txt                 the list split as the page splits it (one per line, per paragraph, per number,
+ *                                                    wrapped lines joined, run-together references cut apart); each is matched at
+ *                                                    Crossref, with OpenAlex as a second opinion, and graded
+ *   --split lines|blank|numbered                     split one per line, at blank lines, or at the list's numbers instead
  *   autodoi --match --style ris < references.txt     the good matches as an RIS file (or bibtex, endnote, any style), printed as they arrive;
  *                                                    the rest are reported on stderr
  *   autodoi --match --json < references.txt          the records as JSON, with grade and DOI
@@ -15,10 +17,12 @@
  *   --pages 45-47                                    the in-text citation with a page locator, printed after the reference (not with --match)
  *
  * Exit code: 0 done, 1 a lookup failed, 2 bad usage, 3 --match left a reference unmatched (its text is on stderr).
- * Only the identifiers or reference text given are sent, to api.crossref.org, doi.org, ebi.ac.uk (Europe PMC) and openlibrary.org. */
+ * Only the identifiers or reference text given are sent, to api.crossref.org, api.openalex.org, doi.org, ebi.ac.uk (Europe PMC)
+ * and openlibrary.org. */
 var path = require('path');
 var A = require(path.join(__dirname, '..', 'citations.js'));
 var DOCS = require(path.join(__dirname, '..', 'documents.js'));
+var SPLIT = require(path.join(__dirname, '..', 'splitter.js')); // the page's splitter
 var UA = 'AutoDOI-cli/' + require(path.join(__dirname, '..', 'package.json')).version + ' (https://github.com/toldxls/AutoDOI)';
 var TIMEOUT_MS = 30000; // a request that has not answered by then is abandoned and retried, so a hung connection cannot hang the run
 
@@ -61,11 +65,26 @@ async function pmidToDoi(pm) {
   if (!hit || !hit.doi) throw new Error('No DOI known for ' + pm.id);
   return hit.doi;
 }
-async function fetchIsbn(isbn, email) {
-  // the work search, as the page asks it: its fields (author_name, publisher, publish_place, first_publish_year) are what A.fromOpenLibrary reads
-  var j = await getJson('https://openlibrary.org/search.json?isbn=' + isbn + '&fields=key,title,subtitle,author_name,publisher,first_publish_year,publish_year,publish_place,number_of_pages_median,isbn');
-  var doc = j.docs && j.docs[0]; if (!doc) throw new Error('ISBN not found at Open Library: ' + isbn);
-  var r = A.normalize(A.fromOpenLibrary(doc, isbn)); r.url = ''; return r; // as the page: an Open Library link is not part of a book reference
+var OL_SEARCH_FIELDS = 'key,title,subtitle,author_name,publisher,first_publish_year,publish_year,publish_place,number_of_pages_median,isbn'; // what A.fromOpenLibrary reads
+async function fetchIsbn(isbn, email) { // as the page asks: Crossref for the book's DOI, Open Library's edition record, its author records,
+  // then the work search; A.fromOpenLibraryEdition and A.bookRecord read the answers, as on the page
+  var items = [], ol = null, ed = null;
+  try { items = (await getJson(polite('https://api.crossref.org/works?rows=5&filter=isbn:' + isbn + '&select=' + SELECT, email))).message.items || []; } catch (e) { /* try Open Library */ }
+  try { ed = await getJson('https://openlibrary.org/isbn/' + isbn + '.json'); ol = A.fromOpenLibraryEdition(ed, isbn); } catch (e) { /* try the work search */ }
+  if (ol && !ol.author && !ol.editor && ed.authors && ed.authors.length) {
+    var names = [];
+    for (var i = 0; i < Math.min(ed.authors.length, 12); i++) { try { var p = await getJson('https://openlibrary.org' + ed.authors[i].key + '.json'); names.push(p.name || p.personal_name || ''); } catch (e) { /* that name is lost */ } }
+    ol = A.fromOpenLibraryEdition(ed, isbn, { authorNames: names });
+  }
+  if (ol && !ol.author && !ol.editor) { // names from the work record as a last resort
+    try { var d = await getJson('https://openlibrary.org/search.json?isbn=' + isbn + '&fields=author_name'); ol = A.fromOpenLibraryEdition(ed, isbn, { searchNames: d.docs && d.docs[0] && d.docs[0].author_name }); } catch (e) { /* no names */ }
+  }
+  if (!ol) {
+    try { var d2 = await getJson('https://openlibrary.org/search.json?isbn=' + isbn + '&fields=' + OL_SEARCH_FIELDS); if (d2.docs && d2.docs.length) { ol = A.fromOpenLibrary(d2.docs[0], isbn); ol.namesUnsure = true; } } catch (e) { /* nothing */ }
+  }
+  var r = A.bookRecord(items, ol, isbn);
+  if (!r) throw new Error('No book found for ISBN ' + isbn + ' at Crossref or Open Library');
+  return r;
 }
 async function resolveId(text, email) { // a DOI, arXiv ID, PMID, PMC ID or ISBN, or text holding one
   var doi = A.toDoi(text); if (doi) return fetchRecord(doi, email);
@@ -74,13 +93,39 @@ async function resolveId(text, email) { // a DOI, arXiv ID, PMID, PMC ID or ISBN
   throw new Error('No DOI, arXiv ID, PubMed ID or ISBN in: ' + text);
 }
 var SELECT = 'DOI,URL,title,subtitle,original-title,author,editor,container-title,short-container-title,issued,published-print,published-online,volume,issue,page,article-number,type,publisher,publisher-location,ISSN,ISBN,score,event,relation,updated-by,update-to';
-async function matchReference(text, email) { // as the page does: a DOI in the text is trusted, otherwise Crossref's best of three, graded 0..1
+var OA_SELECT = 'id,doi,title,display_name,authorships,publication_year,publication_date,biblio,primary_location,type,ids,is_retracted'; // as the page asks
+var oaOff = ''; // set once OpenAlex refuses (its free allowance spent, or a pause asked for): the rest of the run asks Crossref alone
+async function openAlexSearch(text, email) { // the second opinion, best effort: one try, no retries, so a spent allowance costs no waiting
+  if (oaOff) throw new Error(oaOff);
+  var res;
+  try { res = await fetch(polite('https://api.openalex.org/works?per-page=3&select=' + OA_SELECT + '&search=' + encodeURIComponent(String(text).slice(0, 300)), email), { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(TIMEOUT_MS) }); }
+  catch (e) { if (timedOut(e)) oaOff = 'OpenAlex did not answer within ' + TIMEOUT_MS / 1000 + ' s'; throw e; } // a hung service is not waited on again for every reference
+  if (res.status === 429) { oaOff = 'OpenAlex is refusing requests (HTTP 429)'; throw new Error(oaOff); }
+  if (!res.ok) throw new Error('HTTP ' + res.status + ' from OpenAlex');
+  return ((await res.json()).results || []).map(function (w) { return A.normalize(A.fromOpenAlex(w)); });
+}
+async function matchReference(text, email) { // as the page does: a DOI or ISBN in the text is trusted, otherwise Crossref's best of three with
+  // OpenAlex as a second opinion, chosen by A.matchPicker (shared with the page and the Sheets functions) and graded 0..1
   var doi = A.toDoi(text);
   if (doi) { try { return { record: await fetchRecord(doi, email), conf: 1, via: 'doi' }; } catch (e) { /* search instead */ } }
-  var j = await getJson(polite('https://api.crossref.org/works?rows=3&select=' + SELECT + '&query.bibliographic=' + encodeURIComponent(text), email));
-  var best = null, bestConf = 0;
-  (j.message.items || []).map(A.normalize).forEach(function (h) { var c = A.matchConfidence(text, h); if (!best || c > bestConf + 0.2) { best = h; bestConf = c; } });
-  return { record: best, conf: bestConf, via: 'search' };
+  var isbn = A.extractIsbn(String(text).replace(/10\.\d{4,9}\/\S+/g, ' ')); // an ISBN inside a chapter DOI (10.1007/978-…) is not the book being cited
+  if (isbn) { try { return { record: await fetchIsbn(isbn, email), conf: 1, via: 'isbn' }; } catch (e) { /* search instead */ } }
+  var pk = A.matchPicker(text), via = 'search', crossrefError = null;
+  try { pk.add(((await getJson(polite('https://api.crossref.org/works?rows=3&select=' + SELECT + '&query.bibliographic=' + encodeURIComponent(text), email))).message.items || []).map(A.normalize)); }
+  catch (e) { crossrefError = e; }
+  if (!pk.best || pk.conf < 0.5) {
+    try {
+      var before = pk.eff;
+      pk.add(await openAlexSearch(text, email));
+      if (pk.best && pk.eff > before && pk.best.source === 'openalex') {
+        via = 'openalex';
+        // Crossref's record for the DOI, graded afresh: an OpenAlex work merged under another paper's DOI must not pass as that paper
+        if (pk.best.doi) { try { pk.best = await fetchRecord(pk.best.doi, email); pk.conf = A.matchConfidence(text, pk.best); } catch (e) { /* keep the OpenAlex record */ } }
+      }
+    } catch (e) { /* Crossref's answer stands */ }
+  }
+  if (!pk.best && crossrefError) throw crossrefError; // a failed lookup, not "no match": exit 1, so the run can be repeated
+  return { record: pk.best, conf: pk.conf, via: via, alt: pk.runnerUp() };
 }
 function grade(conf) { return conf >= 0.8 ? 'good' : conf >= 0.5 ? 'check' : 'weak'; }
 function warnings(r) { return (r.updates || []).filter(function (u) { return u.kind === 'retraction'; }).length ? 'RETRACTED' + ((r.updates.filter(function (u) { return u.doi; })[0] || {}).doi ? ' (see ' + r.updates.filter(function (u) { return u.doi; })[0].doi + ')' : '') : ''; }
@@ -91,13 +136,14 @@ function render(r, style, pages) {
   return out;
 }
 function parseArgs(argv) {
-  var o = { ids: [], style: 'apa', match: false, json: false, email: process.env.AUTODOI_EMAIL || '', pages: '', help: false };
+  var o = { ids: [], style: 'apa', match: false, json: false, email: process.env.AUTODOI_EMAIL || '', pages: '', split: '', help: false };
   var value = function (i) { if (i + 1 >= argv.length) o.error = 'Option ' + argv[i] + ' needs a value'; return argv[i + 1]; };
   for (var i = 0; i < argv.length; i++) {
     var a = argv[i];
     if (a === '--style' || a === '-s') o.style = value(i++);
     else if (a === '--email') o.email = value(i++);
     else if (a === '--pages' || a === '-p') o.pages = value(i++);
+    else if (a === '--split') o.split = value(i++);
     else if (a === '--match' || a === '-m') o.match = true;
     else if (a === '--json') o.json = true;
     else if (a === '--help' || a === '-h') o.help = true;
@@ -116,22 +162,13 @@ function usage() { // the comment block at the top of this file, up to its closi
 }
 function stdinIsTty() { return !!process.stdin.isTTY; }
 function readStdin() { return new Promise(function (resolve) { var d = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', function (c) { d += c; }); process.stdin.on('end', function () { resolve(d); }); }); }
-function splitRefs(text) { // blank lines between references, a hanging indent, or one per line (simpler than the page's splitter, which also cuts run-together lines)
-  var t = text.replace(/\r\n?/g, '\n').replace(/^\s*\n/, '').trimEnd(); if (!t.trim()) return [];
-  var lines = t.split('\n'), filled = lines.filter(function (l) { return l.trim(); });
-  var hanging = !/^[ \t]/.test(filled[0]) && filled.some(function (l) { return /^[ \t]+\S/.test(l); }); // continuation lines indented, first lines not (as a PDF's list is read)
-  var out = [], cur = '', blank = /\n\s*\n/.test(t);
-  lines.forEach(function (l) {
-    if (!l.trim()) { if (cur) out.push(cur); cur = ''; return; }
-    if (cur && (hanging ? /^[ \t]/.test(l) : blank)) cur += ' ' + l.trim(); else { if (cur) out.push(cur); cur = l.trim(); }
-  });
-  if (cur) out.push(cur);
-  return out.map(function (r) { return r.replace(/^(?:\[\d{1,4}\]|(?!(?:1[5-9]|20)\d\d[.)])\d{1,4}[.)])\s+/, ''); }).filter(Boolean); // a list's own numbers ("12.", "[12]") are not part of the reference; "2019." opens a year-led one
-}
-function readDocument(file) { // the reference list of a .docx or .pdf, as text for splitRefs
+var SPLIT_MODES = ['auto', 'lines', 'blank', 'numbered']; // the page's "References are" menu
+function splitRefs(text, mode) { return SPLIT.splitReferences(text, mode || 'auto'); }
+function readDocument(file, mode) { // the reference list of a .docx or .pdf, split as the page splits a dropped file: a Word paragraph
+  // is one reference; a PDF's lines, a hanging indent kept as a leading space, go through the automatic layout
   var sec = DOCS.read(require('fs').readFileSync(file), path.basename(file));
   if (!sec.refs.length) throw new Error('no References heading, and no paragraph that reads as a reference');
-  return sec.refs.join(sec.layout === 'lines' ? '\n\n' : '\n'); // a Word paragraph is one reference
+  return splitRefs(sec.refs.join('\n'), mode || (sec.layout === 'lines' ? 'lines' : 'auto'));
 }
 async function run(argv, io) {
   io = io || { out: function (s) { process.stdout.write(s + '\n'); }, write: function (s) { process.stdout.write(s); }, err: function (s) { process.stderr.write(s + '\n'); }, stdin: readStdin, tty: stdinIsTty };
@@ -143,6 +180,8 @@ async function run(argv, io) {
   if (known.indexOf(o.style) === -1) { io.err('Unknown style "' + o.style + '". Styles: ' + known.join(', ')); return 2; }
   if (o.match && o.style === 'all') { io.err('--style all prints every style of one record; with --match choose one style or export. See autodoi --help.'); return 2; }
   if (o.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) { io.err('--email (or AUTODOI_EMAIL) needs an address like you@example.org, not "' + o.email + '"'); return 2; } // Crossref would silently drop you from the polite pool
+  if (o.split && SPLIT_MODES.indexOf(o.split) === -1) { io.err('--split takes one of ' + SPLIT_MODES.join(', ') + ', not "' + o.split + '"'); return 2; }
+  if (o.split && !o.match) io.err('Note: --split applies only to --match.');
   if (o.match && o.pages) io.err('Note: --pages is ignored with --match; it applies to the in-text citation of a single reference.');
   var failed = 0;
   if (!o.match) {
@@ -162,8 +201,8 @@ async function run(argv, io) {
   if (docs.length) {
     if (docs.length < o.ids.length) { io.err('Give either manuscripts (.docx, .pdf) or references to --match, not both.'); return 2; }
     var at = 0; // each file split on its own: one file's blank lines must not change how another's lines are joined
-    try { refs = []; for (; at < docs.length; at++) refs = refs.concat(splitRefs(readDocument(docs[at]))); } catch (e) { io.err('Could not read ' + docs[at] + ': ' + e.message); return 2; }
-  } else refs = splitRefs(o.ids.length ? o.ids.join('\n') : await io.stdin());
+    try { refs = []; for (; at < docs.length; at++) refs = refs.concat(readDocument(docs[at], o.split)); } catch (e) { io.err('Could not read ' + docs[at] + ': ' + e.message); return 2; }
+  } else refs = splitRefs(o.ids.length ? o.ids.join('\n') : await io.stdin(), o.split);
   if (!refs.length) { io.err('Nothing to match: give references on stdin, one per line.'); return 2; }
   // Each row is printed as its lookup finishes: the good matches in the style or export asked for, on stdout, the rest on stderr
   // so nothing vanishes silently.  --json waits for the whole list, since it prints one array.
@@ -180,7 +219,9 @@ async function run(argv, io) {
   };
   for (var k = 0; k < refs.length; k++) {
     var x;
-    try { var m = await matchReference(refs[k], o.email); x = { text: refs[k], record: m.record, conf: m.conf, grade: m.record ? (m.via === 'doi' ? 'good' : grade(m.conf)) : 'none' }; }
+    try { var m = await matchReference(refs[k], o.email); x = { text: refs[k], record: m.record, conf: m.conf, grade: m.record ? (m.via === 'doi' || m.via === 'isbn' ? 'good' : grade(m.conf)) : 'none' };
+      if (m.alt) x.alt = { record: m.alt.record, conf: m.alt.conf }; // the close second the page offers under "Not this one?"
+    }
     catch (e) { failed++; x = { text: refs[k], record: null, conf: 0, grade: 'error', error: e.message }; }
     results.push(x);
     if (o.json) { if (x.grade === 'good') good++; } else emit(x);

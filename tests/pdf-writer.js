@@ -2,8 +2,63 @@
 // composite one (Identity-H glyph numbers with a ToUnicode map), streams compressed or not, objects packed in an object stream with an
 // xref stream, form XObjects, /Rotate, and encryption as publishers set it (RC4 40-bit or AES-128, empty user password).  The
 // encryption uses Node's MD5 and AES and its own RC4, not documents.js, so a test of the reader is not a test of itself.
-//   pdf({ pages: [{ lines: [{ x, y, size, text, font: 'F1' | 'F2' }], raw: 'extra content', rotate, forms: [...] }], compress, objstm, encrypt: 'rc4' | 'aes' })
+//   pdf({ pages: [{ lines: [{ x, y, size, text, font: 'F1' | 'F2' }], raw: 'extra content', rotate, forms: [...] }], compress, objstm, encrypt: 'rc4' | 'aes',
+//         filters: ['A85', 'Fl'], predictor: true })
+// filters names a stream's /Filter chain in the order a reader undoes it (compress is ['Fl']); each encoder is written here, from the
+// PDF reference, not taken from documents.js.  predictor runs the PNG row filters (all five, row by row) before Flate or LZW.
 var zlib = require('zlib'), crypto = require('crypto');
+var FILTER_NAMES = { Fl: '/FlateDecode', LZW: '/LZWDecode', A85: '/ASCII85Decode', AHx: '/ASCIIHexDecode', RL: '/RunLengthDecode' };
+function hexEncode(b) { return Buffer.from(b.toString('hex').toUpperCase().replace(/(.{64})/g, '$1\n') + '>', 'latin1'); } // a line break every 32 bytes, as real files have
+function a85Encode(b) {
+  var out = '', i, group = function (bytes, keep) { var v = bytes.readUInt32BE(0), c = ''; for (var k = 0; k < 5; k++) { c = String.fromCharCode(33 + v % 85) + c; v = Math.floor(v / 85); } return c.slice(0, keep); };
+  for (i = 0; i + 4 <= b.length; i += 4) out += b.readUInt32BE(i) === 0 ? 'z' : group(b.subarray(i, i + 4), 5);
+  if (i < b.length) { var t = Buffer.alloc(4); b.copy(t, 0, i); out += group(t, b.length - i + 1); }
+  return Buffer.from(out.replace(/(.{75})/g, '$1\n') + '~>', 'latin1');
+}
+function rlEncode(b) { // runs of two or more equal bytes as (257 - n) and the byte, the rest as (n - 1) and n literal bytes, then 128
+  var out = [], i = 0;
+  while (i < b.length) {
+    var j = i; while (j + 1 < b.length && b[j + 1] === b[i] && j - i < 127) j++;
+    if (j > i) { out.push(257 - (j - i + 1), b[i]); i = j + 1; continue; }
+    var start = i; while (i < b.length && i - start < 128 && !(i + 1 < b.length && b[i + 1] === b[i])) i++;
+    out.push(i - start - 1); for (var k = start; k < i; k++) out.push(b[k]);
+  }
+  out.push(128); return Buffer.from(out);
+}
+function lzwEncode(b) { // 9 to 12 bit codes, a clear code first and whenever the table fills, EarlyChange 1 (a code wider one code early)
+  var out = [], acc = 0, nb = 0, bits = 9, dict, next;
+  var emit = function (code) { acc = (acc * (1 << bits)) + code; nb += bits; while (nb >= 8) { nb -= 8; out.push(Math.floor(acc / Math.pow(2, nb)) & 255); acc %= Math.pow(2, nb); } };
+  var reset = function () { dict = new Map(); for (var k = 0; k < 256; k++) dict.set(String.fromCharCode(k), k); next = 258; bits = 9; };
+  emit(256); reset();
+  var w = '';
+  for (var i = 0; i < b.length; i++) {
+    var c = String.fromCharCode(b[i]), wc = w + c;
+    if (dict.has(wc)) { w = wc; continue; }
+    emit(dict.get(w)); dict.set(wc, next++);
+    if (next >= 4095) { emit(256); reset(); } // the clear code goes out at the current width, before the table is full
+    else if (next >= (1 << bits) && bits < 12) bits++; // the reader widens after its table (one entry behind the writer's) reaches 2^bits - 1
+    w = c;
+  }
+  if (w) emit(dict.get(w));
+  emit(257); if (nb) out.push((acc * Math.pow(2, 8 - nb)) & 255);
+  return Buffer.from(out);
+}
+function pngRows(b, cols) { // PNG row filters 0-4 in turn, each row tagged with its type; the data padded with spaces to whole rows
+  var n = Math.ceil(b.length / cols), data = Buffer.alloc(n * cols, 0x20), out = [], prev = Buffer.alloc(cols);
+  b.copy(data);
+  for (var r = 0; r < n; r++) {
+    var row = data.subarray(r * cols, (r + 1) * cols), t = r % 5; out.push(t);
+    for (var i = 0; i < cols; i++) {
+      var a = i ? row[i - 1] : 0, up = prev[i], c = i ? prev[i - 1] : 0, pred = 0;
+      if (t === 1) pred = a; else if (t === 2) pred = up; else if (t === 3) pred = (a + up) >> 1;
+      else if (t === 4) { var p = a + up - c, pa = Math.abs(p - a), pb = Math.abs(p - up), pc = Math.abs(p - c); pred = pa <= pb && pa <= pc ? a : pb <= pc ? up : c; }
+      out.push((row[i] - pred) & 255);
+    }
+    prev = row;
+  }
+  return Buffer.from(out);
+}
+var ENCODE = { Fl: function (b) { return zlib.deflateSync(b); }, LZW: lzwEncode, A85: a85Encode, AHx: hexEncode, RL: rlEncode };
 var PAD = Buffer.from('28BF4E5E4E758A4164004E56FFFA01082E2E00B6D0683E802F0CA9FE6453697A', 'hex');
 function md5(b) { return crypto.createHash('md5').update(b).digest(); }
 function rc4(key, data) {
@@ -68,10 +123,15 @@ function pdf(opts) {
     var iv = crypto.randomBytes(16), c = crypto.createCipheriv('aes-128-cbc', k, iv);
     return Buffer.concat([iv, c.update(data), c.final()]);
   };
+  var chain = opts.filters || (opts.compress ? ['Fl'] : []), COLS = 13;
   var streamOf = function (num, o) {
-    var data = opts.compress ? zlib.deflateSync(o.data) : o.data;
+    var data = Buffer.from(o.data), last = chain[chain.length - 1];
+    if (opts.predictor && (last === 'Fl' || last === 'LZW')) data = pngRows(data, COLS);
+    for (var i = chain.length - 1; i >= 0; i--) data = ENCODE[chain[i]](data); // the last filter a reader undoes is the first applied
     data = seal(num, data);
-    return Buffer.concat([Buffer.from(num + ' 0 obj\n<< ' + o.dict + (opts.compress ? ' /Filter /FlateDecode' : '') + ' /Length ' + data.length + ' >>\nstream\n', 'latin1'), data, Buffer.from('\nendstream\nendobj\n', 'latin1')]);
+    var filt = chain.length ? ' /Filter ' + (chain.length === 1 ? FILTER_NAMES[chain[0]] : '[' + chain.map(function (f) { return FILTER_NAMES[f]; }).join(' ') + ']') : '';
+    var parms = opts.predictor && (last === 'Fl' || last === 'LZW') ? ' /DecodeParms ' + (chain.length === 1 ? '' : '[' + chain.slice(0, -1).map(function () { return 'null'; }).join(' ') + ' ') + '<< /Predictor 12 /Columns ' + COLS + ' >>' + (chain.length === 1 ? '' : ']') : '';
+    return Buffer.concat([Buffer.from(num + ' 0 obj\n<< ' + o.dict + filt + parms + ' /Length ' + data.length + ' >>\nstream\n', 'latin1'), data, Buffer.from('\nendstream\nendobj\n', 'latin1')]);
   };
   var parts = [Buffer.from('%PDF-1.7\n%\xE2\xE3\xCF\xD3\n', 'latin1')], offsets = [], at = function () { return parts.reduce(function (s, b) { return s + b.length; }, 0); };
   var packed = [];
@@ -114,6 +174,6 @@ function manuscript(opts) {
   y = 684;
   refs.forEach(function (r) { page2.push({ x: 72, y: y, size: 9, text: r[0], font: opts.font }); page2.push({ x: 81, y: y - 11, size: 9, text: r[1], font: opts.font }); y -= 26; });
   page2.push({ x: 72, y: y - 20, size: 9, text: 'Figure 1. Temperature map of a kernite crystal at 300 K (2013 sample).' });
-  return pdf({ pages: [{ lines: page1 }, { lines: page2 }], compress: opts.compress, objstm: opts.objstm, encrypt: opts.encrypt });
+  return pdf({ pages: [{ lines: page1 }, { lines: page2 }], compress: opts.compress, objstm: opts.objstm, encrypt: opts.encrypt, filters: opts.filters, predictor: opts.predictor });
 }
 module.exports = { pdf: pdf, manuscript: manuscript, rc4: rc4 };

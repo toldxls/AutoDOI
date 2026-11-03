@@ -274,14 +274,10 @@ function idToDoi_(text, isNumber) {
 function resolve_(text, isNumber) {
   var doi = idToDoi_(text, isNumber);
   if (doi) { var rec = fetchRecord_(doi); if (!rec.notFound) return rec; }
-  var hits = search_({ 'query.bibliographic': text }, 3);
-  if (!hits.length) return null;
-  var best = hits[0], bestConf = AutoDOI.matchConfidence(text, hits[0]);
-  for (var i = 1; i < hits.length; i++) {
-    var c = AutoDOI.matchConfidence(text, hits[i]);
-    if (c > bestConf + 0.2) { best = hits[i]; bestConf = c; }
-  }
-  return bestConf >= MIN_CONFIDENCE ? best : null;
+  // chosen as the page and the command line choose (AutoDOI.matchPicker): the best score wins, and a dataset or preprint of the paper
+  // stands back once the paper itself scores as a match.  No OpenAlex second opinion here: a cell has 30 seconds.
+  var pk = AutoDOI.matchPicker(text).add(search_({ 'query.bibliographic': text }, 3));
+  return pk.best && pk.conf >= MIN_CONFIDENCE ? pk.best : null;
 }
 
 /* ------------------------------------------------------------------ */

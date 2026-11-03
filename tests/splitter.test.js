@@ -1,8 +1,6 @@
 var ROOT = require('path').resolve(__dirname, '..');
 var FIX = require('path').join(__dirname, 'fixtures');
-const html = require('fs').readFileSync(require('path').join(ROOT, 'index.html'), 'utf8');
-const a = html.indexOf('  // Lines that are nothing but an identifier'), b = html.indexOf('  async function resolve(refText)');
-const splitReferences = new Function('A', html.slice(a, b) + '; return splitReferences;')(require(require('path').join(ROOT, 'citations.js')));
+const splitReferences = require(require('path').join(ROOT, 'splitter.js')).splitReferences;
 let pass = 0, fail = 0;
 // Arabic and Hebrew references open with a name run and a year, with no capitals to go by
 [['Arabic, one per line', 'العمري، محمد أحمد (2019). التغيرات المناخية وأثرها على الزراعة في اليمن. مجلة الدراسات الجغرافية، 12(3)، 45-67.\nالحسني، فاطمة (2020). إدارة الموارد المائية في المناطق الجافة. مجلة العلوم البيئية، 8، 101-120.\nالخطيب، أحمد (2018). التصحر في شمال أفريقيا. مجلة البحوث الجغرافية، 5(1)، 1-20.', 3],
@@ -65,7 +63,7 @@ t('run together after a DOI link', 'Smith, J. (2020). Title one. Nature, 1, 1–
 console.log(pass + ' passed, ' + fail + ' failed');
 
 // --- regressions from the 2026-09-23 page-script review ---
-const splitByMode = new Function(html.slice(a, b) + '; return splitByMode;')();
+const splitByMode = (text, mode) => splitReferences(text, mode); // a mode other than auto goes straight to splitByMode
 const timed = (label, fn, limit) => { const t0 = Date.now(); fn(); const ms = Date.now() - t0; if (ms < (limit || 1000)) pass++; else { fail++; console.log('FAIL', label, ms + ' ms'); } };
 timed('particle run does not backtrack exponentially', () => splitReferences("Smith, J. (2020). Foo bar baz.\n" + "della ".repeat(30) + "x\nJones, K. (2019). Other. Journal, 1, 2-3."));
 timed('glued particles', () => splitReferences("Smith, J. (2020). Foo.\n" + "della".repeat(40) + " x\nJones, K. (2019). Other."));
@@ -108,7 +106,7 @@ eq('Chicago dashes take the author of the entry above', splitReferences('Smith, 
   ['Smith, John. 2020. “Deep Lea', 'Smith, John. 2019. “Mantle F', 'Smith, John, and Kate Jones.', 'Jones, Kate. 2017. “Quartz.”']);
 eq('underscores in lines mode too', splitByMode('Smith, John. 2020. “Deep Learning for Crystals.” Nature 1: 1–2.\n___. 2019. “Mantle Flow under Tibet.” Geology 2: 3–4.', 'lines')[1].slice(0, 18), 'Smith, John. 2019.');
 { const la = s => looksLikeTitleOf(s);
-  const looksLikeTitleOf = new Function('A', html.slice(a, b) + '; return looksLikeTitle;')(require(require('path').join(ROOT, 'citations.js')));
+  const looksLikeTitleOf = require(require('path').join(ROOT, 'splitter.js')).looksLikeTitle;
   check0('"John Smith, Deep learning for crystals, Nature, 2020" is an author, not a title', la('John Smith, Deep learning for crystals, Nature, 2020') === null);
   check0('"John Smith and Kate Jones, Mantle flow under Tibet and its causes, 2019" is an author', la('John Smith and Kate Jones, Mantle flow under Tibet and its causes, 2019') === null);
   check0('"Deep Learning, Nature 2015" is still a title with its journal', la('Deep Learning, Nature 2015') && la('Deep Learning, Nature 2015').journal === 'Nature');

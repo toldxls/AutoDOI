@@ -14,7 +14,7 @@ function fakeFetch(url) {
   state.fetched.push(url);
   if (/api\.crossref\.org\/works\/10\.1038%2Fnature12373/.test(url)) return response(200, JSON.stringify(work));
   if (/api\.crossref\.org\/works\/10\./.test(url)) return response(404, '{"status":"error"}');
-  if (/api\.crossref\.org\/works\?/.test(url)) return response(200, JSON.stringify({ status: 'ok', message: { items: [work.message] } }));
+  if (/api\.crossref\.org\/works\?/.test(url)) return response(200, JSON.stringify({ status: 'ok', message: { items: state.datasetFirst ? [state.datasetFirst, work.message] : [work.message] } }));
   if (/doi\.org\//.test(url)) return response(404, 'DOI not found', 'text/html');
   return response(404, '{}');
 }
@@ -80,6 +80,12 @@ check('FIND_DOI details row: DOI, title, journal, year, confidence', Array.isArr
 var risCell = ctx.REF_TO_RIS('Kucsko G, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54-58.');
 check('REF_TO_RIS from a pasted reference', /^TY  - JOUR/.test(risCell) && /DO  - 10\.1038\/nature12373/.test(risCell), risCell.slice(0, 200));
 check('REF_TO_DOI from a pasted reference', ctx.REF_TO_DOI('Kucsko G, et al. Nanometre-scale thermometry in a living cell. Nature. 2013;500:54-58.') === '10.1038/nature12373');
+
+// a dataset Crossref lists before the paper, with the paper's title: the paper is chosen, as on the page (AutoDOI.matchPicker)
+state.datasetFirst = JSON.parse(JSON.stringify(work.message)); state.datasetFirst.DOI = '10.5061/dryad.x1'; state.datasetFirst.type = 'dataset'; state.datasetFirst['container-title'] = [];
+var dsCell = ctx.REF_TO_DOI('Kucsko G, Maurer PC (2013) Nanometre-scale thermometry in a living cell. Nature 500:54-58');
+check('REF_TO_DOI passes over a dataset listed first for the paper', dsCell === '10.1038/nature12373', dsCell);
+state.datasetFirst = null;
 
 // FIND_DOI: Crossref always answers with its nearest record; one that scores below the floor resolve_ uses is not the paper asked for
 var poor = ctx.FIND_DOI('Something else entirely', 'Journal of Nothing');

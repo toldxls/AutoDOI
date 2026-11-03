@@ -200,6 +200,53 @@
       source: 'openlibrary'
     };
   }
+  // Open Library's edition record (openlibrary.org/isbn/<isbn>.json): the exact edition's year, edition, pages, series, publisher and place.
+  // Names come from its "by" statement; when that names nobody (or only an illustrator or translator), opts.authorNames (from the
+  // edition's author records) or else opts.searchNames (the work's author list, which may be another edition's: namesUnsure) stand in.
+  // The record has author or editor only when it has a name, so a caller can tell when to ask for more.
+  function fromOpenLibraryEdition(ed, isbn, opts) {
+    if (!ed || !ed.title) return null;
+    opts = opts || {};
+    var year = (String(ed.publish_date || '').match(/(1[5-9]|20)\d{2}/) || [])[0];
+    var m = {
+      type: 'book', title: [ed.title + (ed.subtitle ? ': ' + ed.subtitle : '')],
+      publisher: (ed.publishers || [])[0] || '', 'publisher-location': (ed.publish_places || [])[0] || '',
+      issued: { 'date-parts': [year ? [Number(year)] : []] },
+      ISBN: [isbn || (ed.isbn_13 || ed.isbn_10 || [])[0] || ''], 'number-of-pages': ed.number_of_pages ? String(ed.number_of_pages) : '',
+      edition: String(ed.edition_name || '').replace(/\s*(edition|ed\.?)\s*$/i, '').trim(),
+      'collection-title': (ed.series || [])[0] || '', source: 'openlibrary'
+    };
+    var people = function (list) { return (list || []).map(function (n) { return String(n || '').trim(); }).filter(Boolean).map(function (n) { return splitName(n) || { name: n }; }); };
+    var SEP = /\s*(?:,\s*(?:and\s+)?|\s+and\s+|;\s*|\s*&\s*)\s*/;
+    var by = String(ed.by_statement || '').replace(/\.$/, '');
+    var edited = by.match(/(?:edited|compiled)\s+by\s+(.+)$/i);
+    if (edited) m.editor = people(edited[1].split(SEP));
+    else if (by && !/\b(illustrat|translat|foreword|introduc|photograph)/i.test(by)) m.author = people(by.replace(/^by\s+/i, '').split(SEP));
+    if (m.editor && !m.editor.length) delete m.editor;
+    if (m.author && !m.author.length) delete m.author;
+    if (!m.author && !m.editor) {
+      if (people(opts.authorNames).length) m.author = people(opts.authorNames);
+      else if (people(opts.searchNames).length) { m.author = people(opts.searchNames); m.namesUnsure = true; }
+    }
+    return m;
+  }
+  // A book looked up by ISBN: Crossref's record when Crossref has the book (it carries the DOI), with Open Library's filling the place, pages,
+  // edition, names and year Crossref lacks; else Open Library's alone.  crossrefItems: a filter=isbn search's items; ol: a record from
+  // fromOpenLibraryEdition or fromOpenLibrary (or null).  Normalized; null when neither has the book.
+  function bookRecord(crossrefItems, ol, isbn) {
+    var book = (crossrefItems || []).filter(function (i) { return /^(book|monograph|edited-book|reference-book)$/.test(i && i.type); })[0];
+    var cr = book ? normalize(book) : null, olN = ol ? normalize(ol) : null;
+    if (olN) { olN.url = ''; olN.namesUnsure = !!ol.namesUnsure; } // an Open Library link is not part of a book reference
+    if (!cr && !olN) return null;
+    var r = cr || olN;
+    if (cr && olN) {
+      ['place', 'numPages', 'edition'].forEach(function (k) { if (!r[k] && olN[k]) r[k] = olN[k]; });
+      if (!r.authors.length && !r.editors.length) { r.authors = olN.authors; r.editors = olN.editors; r.namesUnsure = olN.namesUnsure; }
+      if (!r.year) r.year = olN.year;
+    }
+    if (!r.isbn) r.isbn = isbn;
+    return r;
+  }
 
   function first(v) { return Array.isArray(v) ? v[0] : v; }
 
@@ -2157,12 +2204,14 @@
     var title = retractedPaper ? marksToText(r.title).replace(TITLE_NOTICE_PREFIX, '') : marksToText(r.title), score = 0;
     if (!tokens(title).length && !tokens(r.originalTitle || '').length) return 0;
     // the record's title, or the original-language title Crossref holds beside a translation; a reference often drops a subtitle
+    var mainOnly = null; // the main title's words, when the score rests on it alone (the record's subtitle not in the reference)
     [title, r.originalTitle ? marksToText(r.originalTitle) : ''].forEach(function (t) {
       if (!t) return;
-      score = Math.max(score, titleScore(t, hay, haySet));
+      var whole = titleScore(t, hay, haySet);
+      if (whole >= score) { score = whole; mainOnly = null; }
       var main = t.split(/:\s+/)[0], dropped = t.slice(main.length);
       // a subtitle may be dropped, but not a notice tag: "Title: Reply" is a reply, not the paper
-      if (main !== t && tokens(main).length >= 3 && !isNotice(dropped) && !isNotice(dropped.replace(/^:\s*/, ''))) score = Math.max(score, titleScore(main, hay, haySet));
+      if (main !== t && tokens(main).length >= 3 && !isNotice(dropped) && !isNotice(dropped.replace(/^:\s*/, ''))) { var ms = titleScore(main, hay, haySet); if (ms > score) { score = ms; mainOnly = tokens(main); } }
     });
     if (opts.titleOnly) return Math.max(0, Math.min(1, score)); // the Find tab has no year or author to check
     // the first person named: an organisation deposited as first author cannot be checked against a name list
@@ -2252,6 +2301,14 @@
       var noLocKind = !hasLoc && !/^(?:journal-article|proceedings-article)$/.test(r.type); // a book or report has no volume or page to agree; an article record without either is thin
       if (!(doiSaid || (locOk && extra <= titleToks.length) || (noLocKind && (pubOk || extra <= titleToks.length)))) score = 0.6;
     }
+    // A main title found in the reference with the subtitle dropped is the article only when the reference adds no title words of its own:
+    // all of "Thermometry in living cells: a review" before its colon is in "Nanometre-scale thermometry in a living cell", but
+    // "Nanometre-scale" is not the record's.  The record's own subtitle words are not foreign (a reference cut off mid-subtitle, as
+    // deposited, is still the article); the volume and first page agreeing, or the DOI, still make it the article
+    if (mainOnly && score > 0.6 && /^(?:journal-article|proceedings-article)$/.test(r.type)) {
+      var mn = numbers(), mDoi = !!r.doi && String(refText).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1;
+      if (!mDoi && !(mn.volOk && mn.pageOk) && unexplained(mn.raw, tokens(title + ' ' + (r.originalTitle || '') + ' ' + r.publisher)).leftover >= 2) score = 0.6;
+    }
     if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
       var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
       var un = unexplained(raw), jwords = un.jwords, journalSaid = un.journalSaid, leftover = un.leftover;
@@ -2265,6 +2322,39 @@
     return Math.max(0, Math.min(1, score));
   }
 
+  // Choosing among search hits for one reference: the page, the command line and the Sheets functions all pick through this, so a
+  // rule learnt on the matching bench reaches all three.  add() takes one batch of hits (Crossref's, then OpenAlex's as a second
+  // opinion) and keeps the best so far; runnerUp() is the close second the page offers under "Not this one?".
+  // A dataset ("Data from: <the paper's title>"), a grant, a preprint, a figure or a review of the paper can score like the paper itself:
+  // once a hit of another type scores as a match, such hits stand back by 0.25 (and stay runners-up)
+  var ASIDE_TYPE = /^(?:dataset|grant|posted-content|preprint|component|peer-review|journal-issue)$/;
+  var BOOK_TYPE = /^(?:book|edited-book|monograph|reference-book)$/;
+  function matchPicker(refText) {
+    var p = { best: null, conf: 0, eff: 0, seen: [] };
+    p.add = function (hits) {
+      var scored = (hits || []).map(function (h) { var c = matchConfidence(refText, h); p.seen.push({ h: h, c: c }); return { h: h, c: c }; });
+      var anchored = scored.some(function (x) { return x.c >= 0.8 && !ASIDE_TYPE.test(x.h.type); });
+      // the highest score wins; within 0.05 the earlier hit stands, as the search's relevance ranking has seen metadata the grade cannot
+      scored.forEach(function (x) { var eff = anchored && ASIDE_TYPE.test(x.h.type) ? x.c - 0.25 : x.c; if (!p.best || eff > p.eff + 0.05) { p.best = x.h; p.conf = x.c; p.eff = eff; } });
+      // a chapter reference names the book, its editor and year too, so the book itself can outscore the chapter: when the reference cites a
+      // page range and a chapter of that very book (its DOI extends the book's) scores well, the chapter is the one cited
+      var best = p.best;
+      if (best && BOOK_TYPE.test(best.type) && best.doi && /\d+\s*[-–]\s*\d+/.test(refText)) {
+        var ch = scored.filter(function (x) { return x.c >= 0.8 && x.h.type === 'book-chapter' && x.h.doi && x.h.doi.toLowerCase().indexOf(best.doi.toLowerCase()) === 0; }).sort(function (a, b) { return b.c - a.c; })[0];
+        if (ch) { p.best = ch.h; p.conf = ch.c; p.eff = ch.c; }
+      }
+      return p;
+    };
+    // a runner-up that scores nearly as well as the winner: an erratum and its paper, a preprint and its journal version, the same title
+    // in a journal and in proceedings
+    p.runnerUp = function () {
+      var key = function (r) { return (r.doi || r.title || '').toLowerCase(); };
+      var alts = p.seen.filter(function (x) { return p.best && x.h !== p.best && key(x.h) !== key(p.best) && x.c >= 0.5 && p.conf - x.c < 0.15; }).sort(function (a, b) { return b.c - a.c; });
+      return alts.length ? { record: alts[0].h, conf: alts[0].c } : null;
+    };
+    return p;
+  }
+
   var api = {
     extractDoi: extractDoi,
     toDoi: toDoi,
@@ -2273,6 +2363,8 @@
     splitName: splitName,
     fromOpenAlex: fromOpenAlex,
     fromOpenLibrary: fromOpenLibrary,
+    fromOpenLibraryEdition: fromOpenLibraryEdition,
+    bookRecord: bookRecord,
     normalize: normalize,
     kind: kind,
     format: format,
@@ -2293,6 +2385,7 @@
     inTextForms: function (record, styleId, opts) { record = record || {}; return inTextForms(withYearSuffix(harden(record.authors ? record : normalize(record)), styleId, opts), styleId, opts); },
     yearSuffixes: yearSuffixes,
     matchConfidence: matchConfidence,
+    matchPicker: matchPicker,
     STYLES: STYLES,
     EXPORTS: EXPORTS
   };

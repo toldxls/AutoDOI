@@ -2,6 +2,17 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.5 - 2026-11-03
+
+### Fixed
+
+- `autodoi --match` and the Sheets functions choose among Crossref's hits as the page does: the best score wins, and a dataset or preprint listed before the paper no longer stands in for it.
+- `autodoi --match` asks OpenAlex when Crossref has no good match, looks up an ISBN given in a reference, and puts a close runner-up in `--json`.
+- `autodoi --match` splits a list with the page's splitter, so wrapped lines are joined and references run together on one line are cut apart; `--split` picks a layout as the page's menu does.
+- `autodoi` looks up an ISBN as the page does: Crossref's record and DOI when it has the book, and the exact edition from Open Library (edition, series, pages, names).
+- A paper whose title before its colon is all inside a longer reference title (a review of the cited paper, say) is no longer green unless its volume and page or its DOI agree.
+- A red row made green with the right DOI in its Fix box is ticked for the export; it stayed unticked when the red row had shown that same paper.
+
 ## 1.18.4 - 2026-11-02
 
 ### Changed

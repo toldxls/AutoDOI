@@ -149,7 +149,14 @@ async function mockNetwork(page, base, log) {
     var es = url.match(/eutils\.ncbi\.nlm\.nih\.gov\/entrez\/eutils\/esearch\.fcgi\?.*term=([^&]*)/);
     if (es) { var term = decodeURIComponent(es[1]); return json(route, { esearchresult: { idlist: /0028-0836\[issn\]/.test(term) ? ['0410462'] : /Lancet/.test(term) ? ['2985213R'] : [] } }); }
     if (/eutils\.ncbi\.nlm\.nih\.gov\/entrez\/eutils\/esummary\.fcgi/.test(url)) return json(route, { result: { '0410462': { medlineta: 'Nature', titlemainlist: [{ title: 'Nature.' }] }, '2985213R': { medlineta: 'Lancet', titlemainlist: [{ title: 'Lancet.' }] } } });
-    // OpenAlex, Europe PMC, Open Library, JabRef lists, other CSL styles: nothing to say
+    // Open Library: an edition record whose "by" statement is missing, so the names come from its author records
+    if (/openlibrary\.org\/isbn\/9780262035613\.json/.test(url)) return json(route, { title: 'Deep learning', publish_date: 'November 18, 2016', publishers: ['The MIT Press'], publish_places: ['Cambridge, Massachusetts'],
+      number_of_pages: 775, series: ['Adaptive computation and machine learning'], authors: [{ key: '/authors/OL7A' }, { key: '/authors/OL8A' }] });
+    if (/openlibrary\.org\/authors\/OL7A\.json/.test(url)) return json(route, { name: 'Ian Goodfellow' });
+    if (/openlibrary\.org\/authors\/OL8A\.json/.test(url)) return json(route, { personal_name: 'Yoshua Bengio' });
+    // Europe PMC: the sample paper's PubMed ID
+    if (/ebi\.ac\.uk\/europepmc\/webservices\/rest\/search\?.*query=EXT_ID%3A23903748%20AND%20SRC%3AMED/.test(url)) return json(route, { resultList: { result: [{ id: '23903748', doi: work.message.DOI }] } });
+    // OpenAlex, other Europe PMC and Open Library asks, JabRef lists, other CSL styles: nothing to say
     return json(route, {}, 404);
   });
 }
@@ -1225,6 +1232,43 @@ async function runFlows(browser, base, dark, cslReady) {
 }
 
 // Phone width: nothing overflows sideways on any tab, before and after content arrives, and axe still passes
+// A book by its ISBN and a paper by its PubMed ID, on the DOI tab: the lookups that go to Open Library and Europe PMC
+async function identifierFlows(browser, base) {
+  var s = await newPage(browser, base, false), page = s.page, name = function (n) { return n + ' [identifiers]'; };
+  await page.goto(base, { waitUntil: 'load' });
+  await page.click('#tab-cite');
+  var lookUp = async function (id) {
+    await page.fill('#doi-input', id); await page.click('#doi-go');
+    await page.waitForFunction(function () { return /Copy/.test(document.querySelector('#doi-result').textContent) && !/Looking|Resolving/.test(document.querySelector('#doi-status').textContent); }, null, { timeout: 15000 });
+    return page.locator('#doi-result').textContent();
+  };
+  var from = s.state.requests.length, text = await lookUp('ISBN 978-0-262-03561-3');
+  var asked = s.state.requests.slice(from);
+  check(name('an ISBN: the book from Open Library\'s edition record, its names from the author records'), /Goodfellow, I\., & Bengio, Y\. \(2016\)\. Deep learning\. The MIT Press\./.test(text), text.slice(0, 300));
+  check(name('the ISBN went to Crossref for a DOI, then Open Library for the edition and its two authors'), [/api\.crossref\.org\/works\?.*filter=isbn:9780262035613/, /openlibrary\.org\/isbn\/9780262035613\.json/, /authors\/OL7A\.json/, /authors\/OL8A\.json/].every(function (re) { return asked.some(function (u) { return re.test(u); }); }), asked.join(' '));
+  check(name('Crossref\'s journal articles for that search are not taken for the book'), !/Kucsko/.test(text), text.slice(0, 200));
+  check(name('a book from Open Library has no Open Library link in its reference'), !/openlibrary\.org/.test(text));
+  check(name('names from author records are not flagged for checking'), !/Check authors/.test(text));
+  text = await lookUp('PMID: 23903748');
+  check(name('a PubMed ID is resolved through Europe PMC to the paper'), /Kucsko/.test(text) && /Nanometre-scale thermometry/.test(text) && s.state.requests.some(function (u) { return /europepmc.*EXT_ID%3A23903748/.test(u); }), text.slice(0, 200));
+  // the Fix box under a red row: a retyped search that finds nothing better leaves the row and its box; the right DOI makes it green
+  await page.click('#tab-export');
+  await page.fill('#export-input', 'Smith J (2001) Groundwater recharge beneath ephemeral desert channels. J Arid Hydrol 1:1-2');
+  await page.click('#export-go');
+  await page.waitForFunction(function () { return /not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  var fixRow = page.locator('#export-matches .match').first(), fixBox = fixRow.locator('.fixrow input[type=text]');
+  check(name('an unmatched reference is red with a Fix box'), /\bbad\b/.test(await fixRow.getAttribute('class')) && (await fixBox.count()) === 1, await fixRow.getAttribute('class'));
+  await fixBox.fill('Groundwater recharge beneath ephemeral channels'); await fixRow.locator('.fixrow button:has-text("Fix")').click();
+  await page.waitForFunction(function () { var b = document.querySelector('#export-matches .match .fixrow button.primary'); return b && !b.disabled && b.textContent === 'Fix'; }, null, { timeout: 15000 });
+  check(name('a retyped search that finds nothing better leaves the row red and its Fix box ready'), /\bbad\b/.test(await fixRow.getAttribute('class')) && (await fixBox.count()) === 1);
+  await fixBox.fill('https://doi.org/10.1038/nature12373'); await fixBox.press('Enter');
+  await page.waitForFunction(function () { return document.querySelectorAll('#export-matches .match.good').length === 1; }, null, { timeout: 15000 });
+  check(name('the right DOI in the Fix box (Enter) makes the row green, ticked, with the box gone'), /10\.1038\/nature12373/.test(await fixRow.locator('.out code').first().textContent()) && (await fixRow.locator('input[type=checkbox][id^=inc-]').isChecked()) && (await fixRow.locator('.fixrow input[type=text]').count()) === 0, [await fixRow.locator('.out code').first().textContent().catch(function () { return 'no code'; }), await fixRow.locator('input[type=checkbox][id^=inc-]').isChecked().catch(function () { return 'no box'; }), await fixRow.locator('.fixrow input[type=text]').count(), (await fixRow.textContent()).slice(0, 200)].join(' / '));
+  check(name('the fixed row is in the formatted list'), /Kucsko, G\./.test(await page.locator('#export-output').textContent()), (await page.locator('#export-output').textContent()).slice(0, 200));
+  check(name('no page errors'), s.state.errors.length === 0, s.state.errors.join(' | '));
+  await s.ctx.close();
+}
+
 async function mobileFlows(browser, base) {
   var ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
   var page = await ctx.newPage(), errors = [];
@@ -1288,6 +1332,7 @@ async function main() {
     await runFlows(browser, base, false, cslReady);
     await runFlows(browser, base, true, cslReady);
     await mobileFlows(browser, base);
+    await identifierFlows(browser, base);
   } catch (e) {
     failed++; console.log('FAIL exception: ' + (e.stack || e.message));
     try { fs.mkdirSync(OUT, { recursive: true }); var pages = browser.contexts().flatMap(function (c) { return c.pages(); }); if (pages.length) await pages[0].screenshot({ path: path.join(OUT, 'failure.png'), fullPage: true }); } catch (e2) {}
