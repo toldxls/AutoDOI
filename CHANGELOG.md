@@ -2,6 +2,12 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.6 - 2026-11-03
+
+### Fixed
+
+- A reference kept as written in the list has its formulas set in sub- and superscript, as a record's title does ("Hg1+4Hg2+Cr6+O6" becomes Hg¹⁺₄Hg²⁺Cr⁶⁺O₆); it went in flat.
+
 ## 1.18.5 - 2026-11-03
 
 ### Fixed

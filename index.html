@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-iy83ZSe9q273DMxh2MqwZucsUaU/0k30nahtuJU75OM=' 'sha256-+xHiXgKjyNMYq2Du+9gH7Y0CygQ4aIogKmMDWCnR9r8=' 'sha256-mm/QOTZ0CzrcqTIJZZmT+vhhYsS6vNuD6mxa0Irrs3o=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-N9xMVJ5Iap3KVeKeWAS9LDuQRS3pPJ3iYkcLadzo3wc=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-iy83ZSe9q273DMxh2MqwZucsUaU/0k30nahtuJU75OM=' 'sha256-+xHiXgKjyNMYq2Du+9gH7Y0CygQ4aIogKmMDWCnR9r8=' 'sha256-mm/QOTZ0CzrcqTIJZZmT+vhhYsS6vNuD6mxa0Irrs3o=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-Gm+S/amfvjdaPUWzMPcBdArpyMH7tQcIb725Z8du7hI=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -7305,7 +7305,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.18.5'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.18.6'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -8499,10 +8499,11 @@
       return rs;
     };
     var rawYear = function (t) { var m = String(t).match(/(?:^|[^\d])((?:1[5-9]|20)\d\d)[a-z]?(?!\d)/); return m ? m[1] : ''; }; // a kept line's year: the first one written in it
-    // references with no record go in as pasted, in their place among the rest (or after the numbered entries)
+    // references with no record go in as pasted, in their place among the rest (or after the numbered entries); formulas and
+    // isotopes in them are set as in a record's title ("Hg1+4Hg2+Cr6+O6" -> Hg¹⁺₄Hg²⁺Cr⁶⁺O₆), the rest of the text untouched
     function finish(entries, numbered) { // entries: [{html, forms, place, year}]
       var all = entries.slice();
-      if (keptRaw.length) all = all.concat(keptRaw.map(function (t, i) { return { html: '<span class="as-written" title="Kept as pasted: no record was found">' + escT(t) + '</span>', forms: null, place: places.kept[i], year: rawYear(t) }; }));
+      if (keptRaw.length) all = all.concat(keptRaw.map(function (t, i) { return { html: '<span class="as-written" title="Kept as pasted: no record was found">' + A.titleHtml({ title: String(t) }) + '</span>', forms: null, place: places.kept[i], year: rawYear(t) }; }));
       var abc = function (a, b) { return htmlToText(a.html).localeCompare(htmlToText(b.html)); };
       if (!numbered) all.sort(order.value === 'given' ? function (a, b) { return a.place - b.place; } : byYear() ? function (a, b) { return yearCmp(a, b) || abc(a, b); } : abc);
       current.html = all.map(function (e) { return '<p>' + e.html + '</p>'; }).join('');
@@ -9946,7 +9947,7 @@
         tx.querySelector('.head').appendChild(el('span', 'zone-sub', 'Each line as you pasted it, with the DOI link of its ticked match at the end'));
         zone.appendChild(tx);
       }
-      if (kept.length) zone.appendChild(el('p', 'status', kept.length + ' reference' + (kept.length > 1 ? 's are' : ' is') + ' kept exactly as pasted in the reference list above; ' + (kept.length > 1 ? 'they are' : 'it is') + ' not in the EndNote / RIS / BibTeX files because no record was found.'));
+      if (kept.length) zone.appendChild(el('p', 'status', kept.length + ' reference' + (kept.length > 1 ? 's are' : ' is') + ' kept as pasted in the reference list above (formulas set in sub- and superscript); ' + (kept.length > 1 ? 'they are' : 'it is') + ' not in the EndNote / RIS / BibTeX files because no record was found.'));
     }
     rebuildBatch = build;
     // Words of the pasted reference that the matched record does not contain are marked, with the record's own spelling

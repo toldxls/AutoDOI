@@ -1203,6 +1203,15 @@ async function runFlows(browser, base, dark, cslReady) {
   await page.waitForFunction(function () { return /good|check|not matched/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
   var took = Date.now() - t0;
   check(name('a resubmit is not kept waiting behind the abandoned batch'), took < 7000 && (await page.locator('#export-matches .match').count()) === 1 && (await page.locator('#export-matches .match.good').count()) === 1, took + ' ms, ' + await textOf('#export-status'));
+  // A reference kept as written has its formula set as a record's title would: superscript charges, subscript counts
+  await page.fill('#export-input', 'Groat, L.A., Roberts, A.C., and Page, Y.L. (1995) The crystal structure of wattersite, Hg1+4Hg2+Cr6+O6. The Canadian Mineralogist, 33, 41–46.');
+  await page.click('#export-go');
+  await page.waitForFunction(function () { return /not matched|check/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
+  await page.waitForSelector('#export-output .reflist .as-written', { timeout: 5000 }).catch(function () {});
+  var keptHtml = await page.locator('#export-output .reflist .as-written').innerHTML().catch(function () { return ''; });
+  await page.locator('#export-output .export .actions button:has-text("Copy")').first().click();
+  clip = await page.evaluate(function () { return navigator.clipboard.readText(); });
+  check(name('a kept line gets its formula in sub- and superscript, and Copy gives it in Unicode'), /wattersite, Hg<sup>1\+<\/sup><sub>4<\/sub>Hg<sup>2\+<\/sup>Cr<sup>6\+<\/sup>O<sub>6<\/sub>\. The Canadian Mineralogist, 33, 41–46\.$/.test(keptHtml) && /^Groat, L\.A\., Roberts, A\.C\., and Page, Y\.L\. \(1995\)/.test(keptHtml) && /wattersite, Hg¹⁺₄Hg²⁺Cr⁶⁺O₆\. The Canadian/.test(clip), keptHtml + ' | ' + clip);
   // 13. Copy link holds at most 7,500 characters of DOIs and says so; 15. a layout set by the link does not outlive the run
   await page.selectOption('#split-mode', 'auto');
   var longDois = []; for (var li = 0; li < 20; li++) longDois.push('10.5555/long-' + '\u00e9'.repeat(60) + (li < 10 ? '0' : '') + li);
