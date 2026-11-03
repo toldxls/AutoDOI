@@ -2205,7 +2205,11 @@
     if (!tokens(title).length && !tokens(r.originalTitle || '').length) return 0;
     // the record's title, or the original-language title Crossref holds beside a translation; a reference often drops a subtitle
     var mainOnly = null; // the main title's words, when the score rests on it alone (the record's subtitle not in the reference)
-    [title, r.originalTitle ? marksToText(r.originalTitle) : ''].forEach(function (t) {
+    // An original-title with no word in it is a deposit's slip, not a title: "116(2018)v-vi DOI: https://doi.org/" would meet any
+    // reference that gives 2018 and a link
+    var origTitle = r.originalTitle ? marksToText(r.originalTitle) : '';
+    if (!tokens(origTitle).some(function (w) { return /\D/.test(w) && !/^(?:https?|www|doi|org|com)$/.test(w); })) origTitle = '';
+    [title, origTitle].forEach(function (t) {
       if (!t) return;
       var whole = titleScore(t, hay, haySet);
       if (whole >= score) { score = whole; mainOnly = null; }
@@ -2293,7 +2297,7 @@
     // says no more of a title than the record has; a book has no locators, so its publisher named in the reference stands in (a subtitle the
     // publisher did not deposit is common); otherwise it is one to check
     var titleToks = tokens(title);
-    if (titleToks.length <= 3 && !r.originalTitle && score > 0.6) {
+    if (titleToks.length <= 3 && !origTitle && score > 0.6) {
       var nn = numbers(), doiSaid = !!r.doi && String(refText).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1;
       var extra = unexplained(nn.raw, titleToks).leftover, hasLoc = nn.hasVol || nn.hasPage;
       var locOk = hasLoc && (nn.hasPage ? nn.pageOk : nn.volOk); // the first page, when the record has one; a Russian reference gives the issue and pages and no volume
@@ -2309,7 +2313,14 @@
       var mn = numbers(), mDoi = !!r.doi && String(refText).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1;
       if (!mDoi && !(mn.volOk && mn.pageOk) && unexplained(mn.raw, tokens(title + ' ' + (r.originalTitle || '') + ' ' + r.publisher)).leftover >= 2) score = 0.6;
     }
-    if (score < 0.35 && authorOk && recYears.length && yearsInRef.length) {
+    // Another first author and title words of the reference's own that the record's title lacks: a different work on the same subject
+    // ("McKee (1976) Origin of the McDermitt caldera … and related mercury deposits" is not "Rytuba (1976) Geology and ore deposits of the
+    // McDermitt Caldera"), unless the volume and first page agree
+    if (!authorOk && score >= 0.5) {
+      var an = numbers();
+      if (!(an.volOk && an.pageOk) && unexplained(an.raw, tokens(title + ' ' + (r.originalTitle || '') + ' ' + r.publisher)).leftover >= 3) score = Math.min(score, 0.45);
+    }
+    if (score < 0.35 && authorOk && persons.length && recYears.length && yearsInRef.length) { // a record with no person named has no author to agree
       var nums = numbers(), raw = nums.raw, volOk = nums.volOk, pageOk = nums.pageOk, nearYear = yearsInRef.some(function (x) { return recYears.some(function (y) { return Math.abs(x - y) <= 1; }); });
       var un = unexplained(raw), jwords = un.jwords, journalSaid = un.journalSaid, leftover = un.leftover;
       var journalOk = journalSaid || !jwords.length || leftover === 0; // the journal named, or no journal named at all; an unexplained word may be another journal
@@ -2327,6 +2338,14 @@
   // opinion) and keeps the best so far; runnerUp() is the close second the page offers under "Not this one?".
   // A dataset ("Data from: <the paper's title>"), a grant, a preprint, a figure or a review of the paper can score like the paper itself:
   // once a hit of another type scores as a match, such hits stand back by 0.25 (and stay runners-up)
+  // The year a reference gives, for a second Crossref search narrowed to it when the first finds nothing good ("Crystal Structure
+  // refinement with SHELX" drowns among older SHELX papers until the search is held to 2015): the first plausible year outside a
+  // link, a DOI and a page range ("81, 1932–1952"); 0 when there is none
+  function citedYear(refText) {
+    var t = String(refText || '').replace(/https?:\/\/\S+|10\.\d{4,9}\/\S+/g, ' ').replace(/\d+\s*[-‐-―−]\s*\d+/g, ' ');
+    var m = t.match(/\b((?:1[5-9]|20)\d{2})[a-z]?\b/), y = m ? Number(m[1]) : 0;
+    return y && y <= new Date().getFullYear() + 1 ? y : 0;
+  }
   var ASIDE_TYPE = /^(?:dataset|grant|posted-content|preprint|component|peer-review|journal-issue)$/;
   var BOOK_TYPE = /^(?:book|edited-book|monograph|reference-book)$/;
   function matchPicker(refText) {
@@ -2386,6 +2405,7 @@
     yearSuffixes: yearSuffixes,
     matchConfidence: matchConfidence,
     matchPicker: matchPicker,
+    citedYear: citedYear,
     STYLES: STYLES,
     EXPORTS: EXPORTS
   };

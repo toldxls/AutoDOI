@@ -2,6 +2,14 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.7 - 2026-11-03
+
+### Fixed
+
+- A reference Crossref's first search misses is searched again within its year, so "Sheldrick (2015b) Crystal Structure refinement with SHELX" finds its paper; on the page, `autodoi --match` and the Sheets functions.
+- Another first author with title words of the reference's own is a different work, not one to check: McKee (1976) on the McDermitt caldera no longer offers Rytuba's report.
+- A record with junk in its original title ("116(2018)v-vi DOI: https://doi.org/"), or with no person named, no longer passes for a reference by its year and link or first page alone.
+
 ## 1.18.6 - 2026-11-03
 
 ### Fixed

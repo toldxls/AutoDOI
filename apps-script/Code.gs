@@ -277,6 +277,10 @@ function resolve_(text, isNumber) {
   // chosen as the page and the command line choose (AutoDOI.matchPicker): the best score wins, and a dataset or preprint of the paper
   // stands back once the paper itself scores as a match.  No OpenAlex second opinion here: a cell has 30 seconds.
   var pk = AutoDOI.matchPicker(text).add(search_({ 'query.bibliographic': text }, 3));
+  var year = AutoDOI.citedYear(text);
+  if (year && (!pk.best || pk.conf < 0.8)) { // nothing good: Crossref again, held to the year the reference gives
+    try { pk.add(search_({ 'query.bibliographic': text, filter: 'from-pub-date:' + (year - 1) + ',until-pub-date:' + (year + 1) }, 3)); } catch (e) { /* the first answer stands */ }
+  }
   return pk.best && pk.conf >= MIN_CONFIDENCE ? pk.best : null;
 }
 

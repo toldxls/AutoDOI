@@ -113,6 +113,11 @@ async function matchReference(text, email) { // as the page does: a DOI or ISBN 
   var pk = A.matchPicker(text), via = 'search', crossrefError = null;
   try { pk.add(((await getJson(polite('https://api.crossref.org/works?rows=3&select=' + SELECT + '&query.bibliographic=' + encodeURIComponent(text), email))).message.items || []).map(A.normalize)); }
   catch (e) { crossrefError = e; }
+  var year = A.citedYear(text);
+  if (year && (!pk.best || pk.conf < 0.8)) { // nothing good: Crossref again, held to the year the reference gives
+    try { pk.add(((await getJson(polite('https://api.crossref.org/works?rows=3&select=' + SELECT + '&filter=from-pub-date:' + (year - 1) + ',until-pub-date:' + (year + 1) + '&query.bibliographic=' + encodeURIComponent(text), email))).message.items || []).map(A.normalize)); crossrefError = null; }
+    catch (e) { /* the first answer stands */ }
+  }
   if (!pk.best || pk.conf < 0.5) {
     try {
       var before = pk.eff;
