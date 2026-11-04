@@ -2,6 +2,16 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.8 - 2026-11-03
+
+### Changed
+
+- The References tab's export box shows the RIS text in its own scrolling window; BibTeX, EndNote and CSL JSON are Copy and Download buttons under it, so a long list no longer stretches the page.
+
+### Fixed
+
+- A journal style or locale asked for by two renders at once is fetched once, not twice (a flaky browser check).
+
 ## 1.18.7 - 2026-11-03
 
 ### Fixed

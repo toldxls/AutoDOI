@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pV7sayEVO9FmqAouXJwFqoZWEK4eVT4LFzmxICkB5eM=' 'sha256-+xHiXgKjyNMYq2Du+9gH7Y0CygQ4aIogKmMDWCnR9r8=' 'sha256-mm/QOTZ0CzrcqTIJZZmT+vhhYsS6vNuD6mxa0Irrs3o=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-ZkcuVrkPtyIoBU6UChsN4187kaJxxLnYyqcxK+pCXSg=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-pV7sayEVO9FmqAouXJwFqoZWEK4eVT4LFzmxICkB5eM=' 'sha256-+xHiXgKjyNMYq2Du+9gH7Y0CygQ4aIogKmMDWCnR9r8=' 'sha256-mm/QOTZ0CzrcqTIJZZmT+vhhYsS6vNuD6mxa0Irrs3o=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-QpPQSzFENeNOAkM1+CndUZuBqrwx37nPstSAxc42fCM=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -159,7 +159,7 @@
 
   .section-label { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 24px 0 8px; }
   pre.code { font-family: var(--mono); font-size: 13px; line-height: 1.5; background: var(--code-bg); border: 1px solid var(--line);
-    border-radius: 8px; padding: 12px 14px; margin: 0; overflow-x: auto; white-space: pre; }
+    border-radius: 8px; padding: 12px 14px; margin: 0; overflow: auto; white-space: pre; max-height: min(55vh, 440px); } /* a long export scrolls in its own window */
   .export { margin-top: 12px; }
   /* The References tab's export box: bordered and tinted in its own colour so it reads as the place to go once the rows are checked */
   .export-zone { margin-top: 24px; border: 2px solid var(--export); border-radius: 12px; background: var(--export-soft); padding: 14px 18px 18px; box-shadow: var(--shadow); }
@@ -168,6 +168,8 @@
   .export-zone .zone-sub { font-size: 13px; color: var(--muted); }
   .export-zone .zone-hint { font-size: 13px; color: var(--muted); margin: 0 0 8px; max-width: 70ch; }
   .export-zone .export { margin-top: 16px; }
+  .export-zone .export.buttons-only { margin-top: 8px; }
+  .export-zone .export.buttons-only .head { padding-bottom: 0; margin-bottom: 0; }
   .export-zone .section-label { color: var(--export); }
   .export-zone .btn { border-color: var(--export); color: var(--export); background: var(--surface); }
   .export-zone .btn.fill { background: var(--export); color: var(--export-ink); }
@@ -7325,7 +7327,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.18.7'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.18.8'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -7876,8 +7878,14 @@
       catch (e2) { throw /\(404\)/.test(e1.message) ? e2 : e1; } // report a timeout rather than a misleading 404
     }
   }
-  async function getStyleXml(name, depth, dep) {
-    if (csl.xml[name]) return csl.xml[name];
+  // Two renders at once (the page's and the list's, or a style picked while another renders) share one fetch per file, as ensureCiteproc does
+  function getStyleXml(name, depth, dep) {
+    if (csl.xml[name]) return Promise.resolve(csl.xml[name]);
+    csl.styleLoads = csl.styleLoads || {};
+    if (!csl.styleLoads[name]) csl.styleLoads[name] = loadStyleXml(name, depth, dep).finally(function () { delete csl.styleLoads[name]; });
+    return csl.styleLoads[name];
+  }
+  async function loadStyleXml(name, depth, dep) {
     var xml = await fetchStyleFile(name, dep);
     if (!/<style[\s>]/.test(xml)) throw new Error('The style file for "' + name + '" did not look like a citation style.');
     csl.own = csl.own || {}; csl.own[name] = xml; // the style's own file (its title), before following a parent
@@ -7889,9 +7897,15 @@
     csl.xml[name] = xml; return xml;
   }
   async function getLocale(code) {
-    code = code || 'en-US'; csl.locales = csl.locales || {};
-    if (!csl.locales[code]) { var t = await fetchText(code === 'en-US' ? CSL_LOCALE : CSL_LOCALE_BASE + code + '.xml'); if (!/<locale[\s>]/.test(t)) throw new Error('The citation locale file looked wrong; try again later.'); csl.locales[code] = t; }
-    if (code === 'en-US') csl.locale = t || csl.locales[code];
+    code = code || 'en-US'; csl.locales = csl.locales || {}; csl.localeLoads = csl.localeLoads || {};
+    if (!csl.locales[code]) {
+      if (!csl.localeLoads[code]) csl.localeLoads[code] = fetchText(code === 'en-US' ? CSL_LOCALE : CSL_LOCALE_BASE + code + '.xml').then(function (t) {
+        if (!/<locale[\s>]/.test(t)) throw new Error('The citation locale file looked wrong; try again later.');
+        csl.locales[code] = t;
+      }).finally(function () { delete csl.localeLoads[code]; });
+      await csl.localeLoads[code];
+    }
+    if (code === 'en-US') csl.locale = csl.locales[code];
     return csl.locales[code];
   }
   function localeFor(lang) { // what citeproc asks for: the chosen locale, a sibling of the same language, or en-US
@@ -8425,8 +8439,9 @@
     return box;
   }
 
-  function renderExport(label, ext, text, base) {
-    var wrap = el('div', 'export');
+  // buttonsOnly: the Copy and Download buttons without the text, for the formats the References tab offers beside its RIS window
+  function renderExport(label, ext, text, base, buttonsOnly) {
+    var wrap = el('div', buttonsOnly ? 'export buttons-only' : 'export');
     var head = el('div', 'head');
     head.appendChild(el('span', 'section-label', label)).style.margin = '0';
     var act = el('div', 'actions');
@@ -8434,13 +8449,18 @@
     act.appendChild(button('Download .' + ext, 'fill', function () { download(base + '.' + ext, text); }));
     head.appendChild(act);
     wrap.appendChild(head);
+    if (buttonsOnly) return wrap;
     var pre = el('pre', 'code', text); pre.tabIndex = 0; pre.setAttribute('role', 'region'); pre.setAttribute('aria-label', label + ' text'); // scrollable: reachable by keyboard
     wrap.appendChild(pre);
     return wrap;
   }
 
-  function renderExports(container, records, base) {
-    A.EXPORTS.forEach(function (x) {
+  // opts.risOnly (the References tab's export box): RIS is the one window with its text, a long list scrolling inside it; BibTeX, EndNote
+  // and CSL JSON follow as buttons, so the page does not run on for every record
+  function renderExports(container, records, base, opts) {
+    var risOnly = !!(opts && opts.risOnly);
+    var list = risOnly ? A.EXPORTS.filter(function (x) { return x.id === 'ris'; }).concat(A.EXPORTS.filter(function (x) { return x.id !== 'ris'; })) : A.EXPORTS;
+    list.forEach(function (x) {
       var seenKeys = {};
       var text = records.map(function (r) {
         var out = A.format(r, x.id);
@@ -8452,11 +8472,11 @@
         }
         return out;
       }).join(x.id === 'bibtex' ? '\n\n' : (x.id === 'ris' ? '' : '\n'));
-      container.appendChild(renderExport(x.label + (records.length > 1 ? ' · ' + records.length + ' records' : ''), x.ext, text, base));
+      container.appendChild(renderExport(x.label + (records.length > 1 ? ' · ' + records.length + ' records' : ''), x.ext, text, base, risOnly && x.id !== 'ris'));
     });
     // CSL JSON: what Zotero, citeproc and most reference tools read directly
     var cslText = JSON.stringify(records.map(function (r, i) { var it = toCsl(r, r.doi || 'ref-' + (i + 1)); Object.keys(it).forEach(function (k) { if (it[k] === undefined) delete it[k]; }); return it; }), null, 2);
-    container.appendChild(renderExport('CSL JSON' + (records.length > 1 ? ' · ' + records.length + ' records' : ''), 'json', cslText, base));
+    container.appendChild(renderExport('CSL JSON' + (records.length > 1 ? ' · ' + records.length + ' records' : ''), 'json', cslText, base, risOnly));
   }
 
   function renderRefList(container, records, keptRaw, places) { // places: where each record and each kept line stood in the paste
@@ -9959,7 +9979,7 @@
       out.appendChild(zone);
       recs = withCaseAll(recs);
       renderRefList(zone, recs, kept, { records: recPlaces, kept: keptRows.map(function (row) { return row.idx; }) });
-      if (recs.length) renderExports(zone, recs, recs.length === 1 ? fileBase(recs[0]) : 'references');
+      if (recs.length) renderExports(zone, recs, recs.length === 1 ? fileBase(recs[0]) : 'references', { risOnly: true });
       // Your text as pasted, each matched and ticked line with its DOI link at the end, as Crossref's Simple Text Query returns a list
       var textRows = rows.filter(function (row) { return row.raw; });
       if (textRows.length && textRows.some(function (row) { return row.rec && row.rec.doi && row.box.checked; })) {
