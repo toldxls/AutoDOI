@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-r28gzI58iB14dFNwiahuc+gbqOupp70NIlCvdkLUkX4=' 'sha256-+xHiXgKjyNMYq2Du+9gH7Y0CygQ4aIogKmMDWCnR9r8=' 'sha256-mm/QOTZ0CzrcqTIJZZmT+vhhYsS6vNuD6mxa0Irrs3o=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-DrkbYQAAdqCIJXJy9zTfaHV5Tn5BlSEdxSv5QBpGi5g=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-nTlFXsJTlCAd5grnE3xWgoioJHJULjC190LdvC9s7yI=' 'sha256-+xHiXgKjyNMYq2Du+9gH7Y0CygQ4aIogKmMDWCnR9r8=' 'sha256-mm/QOTZ0CzrcqTIJZZmT+vhhYsS6vNuD6mxa0Irrs3o=' 'sha256-xnc2FxOS56E/Li0D1ClmlQb7eI5arlHT/m/wcpQ2MPU=' 'sha256-WxbMbUey2R+ZCDR/KoCAd9qF40L8jDkufSPy6TKWm3g=' 'sha256-pEVI5Y6eb20HVRBrZZ+vdarxW/O3xF+Ui5nhiW5RowM=' https://cdn.jsdelivr.net/npm/citeproc@2.4.63/citeproc_commonjs.js; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.crossref.org https://doi.org https://api.openalex.org https://api.unpaywall.org https://www.ebi.ac.uk https://openlibrary.org https://eutils.ncbi.nlm.nih.gov https://raw.githubusercontent.com https://data.crosscite.org https://data.medra.org https://japanlinkcenter.org https://ra.publications.europa.eu; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1E5EB8">
 <link rel="manifest" href="manifest.webmanifest">
@@ -1628,8 +1628,12 @@
       var en = halves.map(function (h) { return (h.match(/\b(?:the|of|and|with|from|for|by|between|into|its|their)\b/gi) || []).length; });
       var keep = en[0] && !en[1] ? 0 : en[1] && !en[0] ? 1 : -1;
       if (keep !== -1) {
-        var mh = String(r.titleMarked || '').split(/\s+\/\s+/);
-        r.originalTitle = halves[1 - keep]; r.title = halves[keep]; r.titleMarked = mh.length === 2 ? mh[keep] : '';
+        var mh = String(r.titleMarked || '').split(/\s+\/\s+/), other = halves[1 - keep];
+        r.originalTitle = other; r.title = halves[keep]; r.titleMarked = mh.length === 2 ? mh[keep] : '';
+        // the paper is in the other half's language (a style may note it: American Mineralogist's "(in German)"); Crossref's own
+        // language field says "en" for these
+        r.paperLanguage = /[äöüß]|\b(?:der|die|das|und|von|mit|für|über|zur|zum|des|den|im|an|auf|bei)\b/i.test(other) ? 'German' :
+          /[éèêàç]|\b(?:le|la|les|du|et|sur|une|dans|pour)\b/i.test(other) ? 'French' : /\b(?:el|los|las|del|y|con|para)\b/i.test(other) ? 'Spanish' : '';
       }
     }
     if (!HAS_MARK.test(r.titleMarked) || stripMarks(r.titleMarked) !== r.title) delete r.titleMarked; // only keep real markup
@@ -2830,17 +2834,30 @@
       else if (nearYear && volOk && pageOk && journalSaid) score = Math.max(score, 0.6);
       else if (nearYear && leftover <= 3 && (volOk || pageOk)) score = Math.max(score, 0.6);
     }
+    // A mineral named on each side that the other does not name is another paper, however much of the rest agrees: "Deanesmithite, …, a new
+    // mineral species from the Clear Creek Claim, San Benito County, California" is not "Hanawaltite, …, a new mineral from the Clear Creek
+    // claim, San Benito County, California", nor "Tedhadleyite, … a new mineral species from the Clear Creek claim"
+    var recMinerals = mineralWords(title + ' ' + (r.originalTitle || '')), refMinerals = mineralWords(refText);
+    if (recMinerals.some(function (w) { return refMinerals.indexOf(w) === -1; }) && refMinerals.some(function (w) { return recMinerals.indexOf(w) === -1 && !tokens(r.container + ' ' + r.publisher).some(function (c) { return foldMineral(c) === w; }); })) score = Math.min(score, 0.3);
     // A ChemInform abstract reprints a paper's abstract under the paper's title: it is what a reference cites only when the reference says
     // ChemInform ("Hansen (1995) … Zeitschrift für Naturforschung B" is the paper, not its ChemInform abstract)
     if (isChemInform(r) && !/chem\s*inform/i.test(refText)) score = Math.min(score, 0.6);
-    // A book or chapter the reference says another publishing house issued is another book, or another edition: one to check.  Ross (1972)
+    // A book or chapter the reference says another publishing house issued is another book: not a match (a reprint can still be picked).  Ross (1972)
     // "Inorganic Infrared and Raman Spectra. McGraw-Hill" is not the Elsevier chapter "INFRARED AND RAMAN SPECTRA".  Imprints count as
     // their house (Pergamon is Elsevier, Plenum is Springer); a house the list does not know decides nothing
     if (BOOKISH_TYPE.test(r.type)) {
       var recHouses = houses(r.publisher), refHouses = recHouses.length ? houses(String(refText).replace(/https?:\/\/\S+/g, ' ')) : [];
-      if (refHouses.length && !refHouses.some(function (h) { return recHouses.indexOf(h) !== -1; })) score = Math.min(score, 0.6);
+      if (refHouses.length && !refHouses.some(function (h) { return recHouses.indexOf(h) !== -1; })) score = Math.min(score, 0.45);
     }
     return Math.max(0, Math.min(1, score));
+  }
+  // Mineral and rock names: words of six letters or more ending in -ite (plural folded), less the everyday ones
+  var NOT_MINERAL = /^(?:composite|definite|indefinite|infinite|opposite|favou?rite|satellite|website|appetite|expedite|dynamite|exquisite|prerequisite|requisite|apposite|parasite|campsite|erudite|contrite|polite|despite|elite|suite|white|write|quite|ignite|invite|unite|recite|excite|termite|sprite|onsite|offsite)$/;
+  function foldMineral(w) { return String(w).toLowerCase().replace(/ites$/, 'ite'); }
+  function mineralWords(text) {
+    var out = [];
+    tokens(String(text || '').replace(/https?:\/\/\S+|10\.\d{4,9}\/\S+/g, ' ')).forEach(function (w) { w = foldMineral(w); if (w.length >= 6 && /ite$/.test(w) && !NOT_MINERAL.test(w) && out.indexOf(w) === -1) out.push(w); });
+    return out;
   }
   function isChemInform(h) { return /^chem\s*inform$/i.test(String(h.container || (h['container-title'] || [])[0] || '').trim()); }
   var BOOKISH_TYPE = /^(?:book|book-chapter|book-part|book-section|edited-book|monograph|reference-book|reference-entry)$/;
@@ -2943,8 +2960,18 @@
       var o = copy(); o.title = o.title.split(w).join(c);
       if (o.titleMarked) { if (o.titleMarked.indexOf(w) !== -1) o.titleMarked = o.titleMarked.split(w).join(c); else delete o.titleMarked; }
     });
-    var ser = r.series || (kind(r) === 'report' ? r.container : '');
-    if (kind(r) === 'report' && ser && !r.number) {
+    // a report or book the record leaves without its series: the reference's "… Bulletin, 102", "… Series Map I-1230", "… Open File Report 76-535"
+    if ((kind(r) === 'report' || kind(r) === 'book') && !r.series && !(kind(r) === 'report' && r.container)) {
+      var sm = text.match(/((?:[A-Z][\w.'\u2019-]*|&|and|of)(?:\s+(?:[A-Z][\w.'\u2019-]*|&|and|of))*\s+(?:Bulletin|Circular|Report|Paper|Map|Memoir|Special Publication|Information Circular))[\s,.]+(?:no\.\s*)?([A-Z]{0,3}-?\d[\w\-\u2013]*)/);
+      var serName = sm ? sm[1].split(/(?:[^A-Z\s]|[A-Z][a-z]+)\.\s+/).pop() : ''; // the last sentence: "… Adjoining Area. Utah Geological …", but "U.S. Geological"
+      if (sm && !/^(?:In|The)\s/.test(serName)) { copy().series = serName.replace(/^(?:U\.\s?S\.|US)\s+Geological Survey\s+/, 'U.S. Geological Survey '); out.number = sm[2].replace(/\u2013/g, '-'); }
+    }
+    if ((kind(r) === 'report' || kind(r) === 'book') && !r.numPages) {
+      var pp = text.match(/\b(\d{1,4})\s*(?:pp|p)\.?(?=[\s,.;)]|$)(?!\s*\d)/);
+      if (pp && !/[-\u2013]\s*$/.test(text.slice(0, pp.index))) copy().numPages = pp[1];
+    }
+    var ser = (out || r).series || (kind(r) === 'report' ? r.container : '');
+    if (kind(r) === 'report' && ser && !(out || r).number) {
       var serRe = tokens(ser).map(function (w) { return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('[\\s\\-\u2010\u2013.]+');
       var nm = serRe && text.match(new RegExp(serRe + '[\\s,.]*(?:no\\.?\\s*)?([A-Z]{0,4}-?\\d[\\w.\\-\u2013]*\\d|\\d+)', 'i'));
       if (nm) copy().number = nm[1].replace(/\u2013/g, '-');
@@ -7423,7 +7450,7 @@
   }
 
   /* ---------- GitHub issue links, prefilled with what the page knows (never the pasted text) ---------- */
-  var APP_VERSION = '1.18.9'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
+  var APP_VERSION = '1.18.10'; // keep in step with package.json and CHANGELOG.md (tests/syntax.test.js checks)
   var REPO = 'https://github.com/toldxls/AutoDOI';
   function issueUrl(template, fields) {
     var url = REPO + '/issues/new?template=' + template;
@@ -8022,11 +8049,15 @@
       source: r.database || undefined, archive_location: r.accession || undefined };
     if (r.year) it.issued = { 'date-parts': [[Number(r.year)].concat(r.month ? [r.month] : []).concat(r.day ? [r.day] : [])] };
     if (A.kind(r) === 'thesis') { it.genre = r.genre || 'Ph.D. thesis'; it.publisher = r.publisher || r.institution || undefined; }
-    if (A.kind(r) === 'report') { // the series and number a report carries ("Open-File Report 76-535") go in its genre, which the styles print for a report
-      var ser = r.series || r.container;
+    var kd = A.kind(r);
+    if (kd === 'report' || (kd === 'book' && r.series && r.number)) { // the series and number a report or a numbered book carries ("Open-File Report 76-535", "Bulletin 102") go in its genre, which the styles print
+      var ser = r.series || (kd === 'report' ? r.container : '');
       if (ser || r.number) it.genre = [ser, r.number].filter(Boolean).join(' ');
-      if (ser) delete it['container-title'];
+      if (ser) { delete it['container-title']; if (kd === 'book') delete it['collection-title']; }
+      var pubKey = function (t) { return String(t || '').toLowerCase().replace(/\bu\.?\s?s\.?(?=\s)/g, 'us').replace(/[^a-z]+/g, ' ').trim(); };
+      if (it.genre && it.publisher && pubKey(it.genre).indexOf(pubKey(it.publisher)) === 0) delete it.publisher; // "U.S. Geological Survey Open-File Report 76-535", not "…, US Geological Survey" again
     }
+    if (/^\d+$/.test(r.numPages || '')) it['number-of-pages'] = r.numPages;
     if (A.kind(r) === 'preprint') { // repository as publisher reads best across styles ("[Preprint]. arXiv", "Preprint, bioRxiv")
       it.genre = 'Preprint'; it.publisher = r.institution || r.container || r.publisher || undefined; delete it['container-title']; delete it['container-title-short'];
       if (asContainer) it['container-title'] = it.publisher; // for styles that expect a journal slot (GSA/Geology)
@@ -8049,10 +8080,17 @@
   // A journal's house rules its CSL file does not express.  American Mineralogist prints an Acta Crystallographica section in the volume
   // ("Acta Crystallographica, B41", as its papers deposit it), and letters one author's year in the order the list gives, not by title: most
   // of its papers that cite both put Sheldrick's SHELXT (A71) before SHELXL (C71)
-  var CSL_HOUSE = { 'american-mineralogist': { actaVolume: true, lettersAsGiven: true } };
+  // From its reference guidelines (msaweb.org/MSA/AmMin/manuscriptinfo): the DOI after the pages with a comma ("247–252,
+  // https://doi.org/10.2138/am-1995-3-406."), no comma before "and" between two authors ("Born, M. and Huang, J."), journal and chapter
+  // titles with the first word and proper nouns capitalized and books with most words, and a paper in another language noted "(in German)"
+  var CSL_HOUSE = { 'american-mineralogist': { actaVolume: true, lettersAsGiven: true, doiComma: true, twoAuthorsNoComma: true, titleCase: { article: 'sentence', book: 'title' }, languageNote: true, agencyFirst: true } };
+  function houseOf(styleValue) { return /^csl:/.test(styleValue || '') ? CSL_HOUSE[styleValue.slice(4)] || {} : {}; }
   function houseItem(it, rules) {
     var m = rules.actaVolume && String(it['container-title'] || '').match(/^Acta\s+Crystallographica[.,:]?\s+(?:Section\s+)?([A-F])\b/i);
     if (m && it.volume && !/^[A-F]/i.test(it.volume)) { it['container-title'] = 'Acta Crystallographica'; it.volume = m[1].toUpperCase() + it.volume; delete it['container-title-short']; }
+    // a report names its agency before the series, "U.S. Geological Survey Open-File Report 76-535", as mineralogy journals print it
+    if (rules.agencyFirst && it.publisher) it.publisher = it.publisher.replace(/^US(?=\s+[A-Z])/, 'U.S.');
+    if (rules.agencyFirst && it.type === 'report' && it.genre && it.publisher) { it.genre = it.publisher + ' ' + it.genre; delete it.publisher; }
     return it;
   }
   // A style that prints every name as initials gets initials only: given in full, citeproc spells out names it finds alike to tell them apart,
@@ -8082,12 +8120,23 @@
       }
     }
     var items = {}, ids = [];
+    if (house.titleCase && caseState.mode === 'none') { // the journal's capitals, unless a case was chosen in the menu
+      try { await ensureWords(); } catch (e) { /* the list cannot load: titles stay as deposited */ }
+      // only a title in the other case is converted: one deposited in sentence case keeps its proper nouns ("Deer Trail", "Inorganic
+      // Crystal Structure Database"), which the converter cannot all tell from common words
+      if (caseState.words) records = records.map(function (r) {
+        var k = A.kind(r), m = k === 'book' ? house.titleCase.book : /^(?:journal|chapter|proceedings)$/.test(k) ? house.titleCase.article : '';
+        var now = m && C && C.detectCase ? C.detectCase(r.title || '', { words: caseState.words }) : '';
+        return (m === 'sentence' && (now === 'title' || now === 'upper')) || (m === 'title' && (now === 'sentence' || now === 'upper')) ? withCase(r, m) : r;
+      });
+    }
     var ini = cslInitialsOnly(csl.xml[style.name]), prep = function (it) { it = houseItem(it, house); return ini ? initialsItem(it) : it; };
     records.forEach(function (r, i) { var it = prep(toCsl(r, 'ITEM-' + (i + 1))); items[it.id] = it; ids.push(it.id); });
     // opts.unsorted: the bibliography's own sort is taken out, so the entries come in the order of the records, and the numbers,
     // year letters and repeated-author dashes follow that order
     var styleXml = opts && opts.unsorted ? csl.xml[style.name].replace(/(<bibliography\b[^>]*>)([\s\S]*?)(<\/bibliography>)/, function (m, a, b, c) { return a + b.replace(/<sort>[\s\S]*?<\/sort>/, '') + c; }) : csl.xml[style.name];
     // letters in the order given: the title key comes out of the bibliography's sort, so one author's works of a year stay in the records' order
+    if (house.twoAuthorsNoComma) styleXml = styleXml.replace(/delimiter-precedes-last="always"/g, 'delimiter-precedes-last="contextual"');
     if (house.lettersAsGiven) styleXml = styleXml.replace(/(<bibliography\b[^>]*>)([\s\S]*?)(<\/bibliography>)/, function (m, a, b, c) { return a + b.replace(/<key\s+variable="title"\s*\/>/g, '') + c; });
     var eng = new window.CSL.Engine({ retrieveLocale: localeFor, retrieveItem: function (id) { return items[id]; } }, styleXml, lang, true); // the chosen language overrides the style's default
     eng.updateItems(ids);
@@ -8155,13 +8204,14 @@
       return t.length === w.length ? t : w;
     });
   }
-  function caseTitle(title, extraProtect) {
-    if (!C || caseState.mode === 'none' || !caseState.words || !title) return null;
+  function caseTitle(title, extraProtect, mode) {
+    mode = mode || caseState.mode;
+    if (!C || mode === 'none' || !caseState.words || !title) return null;
     if (C.detectCase && C.detectCase(title) === 'upper' && /[A-Z]{4}/.test(title)) title = C.fromAllCaps ? C.fromAllCaps(title, caseState.words) : fromAllCaps(title);
     var protect = protectSet;
     if (extraProtect && extraProtect.length) { protect = new Set(Array.from(protectSet)); extraProtect.forEach(function (w) { protect.add(w); }); }
     var opts = { words: caseState.words, protect: protect };
-    var res = caseState.mode === 'sentence' ? (C.toSentenceCaseSafe || C.toSentenceCase)(title, opts) : C.toTitleCase(title, opts);
+    var res = mode === 'sentence' ? (C.toSentenceCaseSafe || C.toSentenceCase)(title, opts) : C.toTitleCase(title, opts);
     if (!res || !res.tokens) res = C.toSentenceCase(title, opts); // toSentenceCaseSafe may return the title untouched
     // user-forced lowercase words (never the first word of the title or of a subtitle)
     var first = true;
@@ -8174,14 +8224,14 @@
     res.base = title; // the text the engine worked on (all-caps titles are title-cased first)
     return res;
   }
-  function withCase(r) { // shallow copy with the converted title, so exports and styles see it too
-    var res = caseTitle(r.title, r.protectWords);
+  function withCase(r, mode) { // shallow copy with the converted title, so exports and styles see it too
+    var res = caseTitle(r.title, r.protectWords, mode);
     if (!res) return r;
     var copy = Object.create(Object.getPrototypeOf(r)); Object.keys(r).forEach(function (k) { copy[k] = r[k]; });
     copy.title = res.text; copy.titleTokens = res.tokens; copy.originalTitle = res.base || r.title; // tokens kept even when unchanged, so words stay clickable
     return copy;
   }
-  function withCaseAll(records) { return caseState.mode === 'none' ? records : records.map(withCase); }
+  function withCaseAll(records) { return caseState.mode === 'none' ? records : records.map(function (r) { return withCase(r); }); }
   $('case-select').value = ['none', 'sentence', 'title'].indexOf(caseState.mode) !== -1 ? caseState.mode : 'none';
   var pagesTimer = null;
   $('cite-pages').addEventListener('input', function () { // re-render the in-text lines with the new locator, a moment after typing stops
@@ -8642,9 +8692,11 @@
     doiLabel.title = 'Add each reference’s DOI link to the list where the style leaves it out. Off for Annals of Carnegie Museum, whose guide has none.';
     showDoi.addEventListener('change', function () { doiPref[sel.value] = showDoi.checked ? '1' : '0'; store.set('listdoi', JSON.stringify(doiPref)); build(); });
     var withDoi = function (html, r) { // the DOI link appended when asked and the style did not print it
+      var house = houseOf(sel.value);
+      if (house.languageNote && r && r.paperLanguage) html = html.replace(/\.\s*$/, '') + ' (in ' + escT(r.paperLanguage) + ').';
       if (!showDoi.checked || !r || !r.doi) return html;
       if (htmlToText(html).toLowerCase().indexOf(String(r.doi).toLowerCase()) !== -1) return html;
-      return html + ' https://doi.org/' + escT(r.doi);
+      return house.doiComma ? html.replace(/\.\s*$/, '') + ', https://doi.org/' + escT(r.doi) + '.' : html + ' https://doi.org/' + escT(r.doi);
     };
     // Order: the style's own (alphabetical for author-date styles), as given, or by year, for a publication list that leads with
     // the newest work. Remembered across styles
@@ -10177,7 +10229,7 @@
     }
     // The Find tab's list under a title row: every close title as a card, one click to take it. Open when the row is not an exact
     // match (the user picks the paper), folded under "Other matches" when it is
-    function offerHits(row, hits, collapsed, query) {
+    function offerHits(row, hits, collapsed, query, label) {
       if (row.hitsBox) { row.hitsBox.remove(); row.hitsBox = null; }
       if (!query) { var rq = looksLikeTitle(row.raw || ''); query = rq ? rq.title + ' ' + rq.journal : ''; }
       var ws = wordSet(query);
@@ -10212,7 +10264,7 @@
         list.appendChild(h);
       });
       if (collapsed) {
-        var d = document.createElement('details'), s = document.createElement('summary'); s.textContent = 'Other matches (' + shown.length + ')';
+        var d = document.createElement('details'), s = document.createElement('summary'); s.textContent = label || 'Other matches (' + shown.length + ')';
         d.appendChild(s); d.appendChild(list); box.appendChild(d);
       } else { box.appendChild(el('div', 'note', 'Which paper? Click the one you mean.')); box.appendChild(list); }
       row.out.appendChild(box); row.hitsBox = box;
@@ -10453,6 +10505,16 @@
           o.appendChild(el('span', 'chip bad', 'No match'));
           o.appendChild(el('span', 't', 'Nothing close at Crossref or OpenAlex. Paste a DOI or the bare title below.'));
           addFixRow(row);
+        } else if (res.via !== 'doi' && res.via !== 'isbn' && res.via !== 'title' && (res.remembered ? res.remembered.via === 'none' : res.conf < 0.5)) {
+          // Nothing came close: "No match", with the nearest record folded under it rather than shown as the answer.  A 1959 American
+          // Mineralogist paper Crossref does not hold met "New Multi-range Voltmeter", a Canadian Mineralogist one a salmon-fishery paper
+          m.classList.add('bad'); o.innerHTML = '';
+          o.appendChild(el('span', 'chip bad', 'No match'));
+          o.appendChild(el('span', 't', 'Nothing close at Crossref or OpenAlex. Paste a DOI or the bare title below.'));
+          var near = res.record; near.conf = res.conf;
+          offerHits(row, [near], true, '', 'Nearest record found (probably another work)');
+          addFixRow(row);
+          if (row.raw) batchMem.remember(row.raw, { record: near, level: 'bad', via: 'none', v: APP_VERSION });
         } else {
           var direct = res.via === 'doi' || res.via === 'isbn', titled = res.via === 'title';
           var level = direct ? 'good' : titled ? titleLevel(res.conf, res.allWords) : res.conf >= 0.8 ? 'good' : res.conf >= 0.5 ? 'warn' : 'bad';

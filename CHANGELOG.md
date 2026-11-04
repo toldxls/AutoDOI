@@ -2,6 +2,19 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.10 - 2026-11-04
+
+### Changed
+
+- American Mineralogist follows the journal's reference guidelines: the DOI after the pages with a comma, no comma before "and" between two authors, journal titles deposited in Title Case put in sentence case and books in title case, a paper in another language noted "(in German)", and a report as "U.S. Geological Survey Open-File Report 76-535, 9 p.".
+- A good match takes a report's or book's series, number and page count from the reference when its record lacks them ("Utah Geological & Mineralogical Survey Bulletin 102", "Miscellaneous Investigations Series Map I-1230").
+
+### Fixed
+
+- A reference nothing comes close to says No match, with the nearest record folded under it (still one click to use), instead of showing a wrong paper as its answer: a 1959 American Mineralogist paper Crossref does not hold met "New Multi-range Voltmeter". The Sheets functions answer No match below the same score.
+- A mineral named on one side that the other does not name is another paper: deanesmithite no longer meets hanawaltite or tedhadleyite, nor edoylerite bandylite.
+- A book the reference says another publishing house issued is not a match (it was one to check).
+
 ## 1.18.9 - 2026-11-03
 
 ### Changed

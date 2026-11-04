@@ -92,7 +92,7 @@ var poor = ctx.FIND_DOI('Something else entirely', 'Journal of Nothing');
 check('FIND_DOI below the confidence floor: No match', poor === 'No match', poor);
 var poorDetails = ctx.FIND_DOI('Something else entirely', 'Journal of Nothing', true);
 check('FIND_DOI details below the floor: a padded No match row', JSON.stringify(poorDetails) === JSON.stringify([['No match', '', '', '', '']]), JSON.stringify(poorDetails));
-check('the floor is the one resolve_ uses', ctx.MIN_CONFIDENCE === 0.35 && ctx.REF_TO_DOI('Something else entirely. Journal of Nothing. 1999;1:1-2.') === 'No match');
+check('the floor is the one resolve_ uses', ctx.MIN_CONFIDENCE === 0.5 && ctx.REF_TO_DOI('Something else entirely. Journal of Nothing. 1999;1:1-2.') === 'No match');
 var wide = ctx.FIND_DOI([['Nanometre-scale thermometry in a living cell', 'Nanometre-scale thermometry in a living cell']], 'Nature', true);
 check('FIND_DOI details over a multi-column range: one cell saying to give a single column, not misaligned rows', JSON.stringify(wide) === JSON.stringify([['Give a single column of titles for the details form']]), JSON.stringify(wide));
 var wideDois = ctx.FIND_DOI([['Nanometre-scale thermometry in a living cell', 'Nanometre-scale thermometry in a living cell']], 'Nature');

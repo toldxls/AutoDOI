@@ -28,7 +28,7 @@ var POLITE_EMAIL = ''; // optional: your email for Crossref's polite pool, e.g. 
 var TIME_BUDGET_MS = 24000; // stay under the 30 s custom-function limit
 var CACHE_SECONDS = 21600;  // 6 h, the CacheService maximum
 var MISS_SECONDS = 600;     // how long "not at Crossref" is remembered: a DataCite or mEDRA DOI then goes straight to doi.org
-var MIN_CONFIDENCE = 0.35;  // below this a Crossref hit is not the paper asked for: FIND_DOI, REF_TO_* and the export say "No match"
+var MIN_CONFIDENCE = 0.5;   // below this a Crossref hit is not the paper asked for (the page shows such a row as No match): FIND_DOI, REF_TO_* and the export say "No match"
 var runCache_ = {};         // this invocation's records, so a record too large for CacheService is still fetched once per recalculation
 
 var SELECT_ = 'DOI,URL,title,subtitle,original-title,author,editor,container-title,short-container-title,issued,published-print,' +

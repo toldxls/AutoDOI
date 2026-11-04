@@ -440,6 +440,9 @@ async function runFlows(browser, base, dark, cslReady) {
   var status = await textOf('#export-status');
   check(name('status counts one good and one unmatched'), /1 good/.test(status) && /1 not matched/.test(status), status);
   check(name('one row is a good match'), (await page.locator('#export-matches .match.good').count()) === 1);
+  // Vaswani's line meets only the Kucsko paper: nothing close, so "No match", the nearest record folded away rather than shown as the answer
+  var noRow = page.locator('#export-matches .match.bad');
+  check(name('a reference nothing comes close to says No match and folds the nearest record away'), (await noRow.locator('.chip:has-text("No match")').count()) === 1 && (await noRow.locator('.out > .t').first().textContent()) !== 'Nanometre-scale thermometry in a living cell' && (await noRow.locator('.hits details summary:has-text("Nearest record found")').count()) === 1 && !(await noRow.locator('.hits details').evaluate(function (d) { return d.open; })) && (await noRow.locator('.hits .hit button.pick').count()) === 1, await noRow.innerText());
   check(name('the first good row replaces the DOI tab record'), (await page.locator('#doi-result .chip:has-text("From your references")').count()) === 1 && /Kucsko/.test(await textOf('#doi-result')));
   await page.locator('#export-matches .match.good button:has-text("Format")').click();
   check(name('Format on a row opens it on the DOI tab'), (await page.getAttribute('#tab-cite', 'aria-selected')) === 'true' && (await page.inputValue('#doi-input')) === '10.1038/nature12373' && (await page.locator('#doi-result .chip:has-text("From your references")').count()) === 0);
@@ -714,6 +717,18 @@ async function runFlows(browser, base, dark, cslReady) {
     var am = [];
     // American Mineralogist letters one author's year in the order given (the file has Zebra before Apple), not by title
     check(name('a style’s dash for the same author stays under that author, not at the top, and Am Min letters the year as given'), (await orderIs('Dunes Zebra Apple Mapping Tides')) && /^Brown, B\. \(2019a\) Zebra/.test((am = await page.locator('#export-output .reflist p').allTextContents())[1]) && /^\u2014{3} \(2019b\) Apple/.test(am[2]), (am.length ? am : await page.locator('#export-output .reflist p').allTextContents()).join(' | '));
+    // American Mineralogist's own rules (msaweb.org/MSA/AmMin/manuscriptinfo): two authors without a comma before "and", a journal title in
+    // sentence case and a book's in title case, an Acta Crystallographica section in the volume, the DOI after the pages with a comma
+    var AMMIN_RIS = ['TY  - JOUR', 'AU  - Brown, I.D.', 'AU  - Altermatt, D.', 'TI  - Bond-Valence Parameters Obtained From a Systematic Analysis', 'JO  - Acta Crystallographica Section B Structural Science', 'PY  - 1985', 'VL  - 41', 'SP  - 244', 'EP  - 247', 'DO  - 10.1107/s0108768185002063', 'ER  - ', '',
+      'TY  - BOOK', 'AU  - Callaghan, E.', 'TI  - Mineral resource potential of Piute County', 'PB  - Utah Geological Survey', 'PY  - 1973', 'ER  - ', ''].join('\r\n');
+    await page.fill('#export-input', '');
+    await page.setInputFiles('#export-file-input', [{ name: 'ammin.ris', mimeType: 'application/x-research-info-systems', buffer: Buffer.from(AMMIN_RIS) }]);
+    await page.waitForFunction(function () { var p = document.querySelectorAll('#export-output .reflist p'); return /2 records read from the file/.test(document.querySelector('#export-status').textContent) && p.length === 2 && /Callaghan/.test(p[1].textContent) && !/Rendering/.test(p[0].textContent); }, null, { timeout: 30000 });
+    var amList = await page.locator('#export-output .reflist p').allTextContents();
+    check(name('American Mineralogist: no comma for two authors, sentence case for a journal title, title case for a book, B41, the DOI after a comma'), amList[0] === 'Brown, I.D. and Altermatt, D. (1985) Bond-valence parameters obtained from a systematic analysis. Acta Crystallographica, B41, 244–247, https://doi.org/10.1107/s0108768185002063.' && amList[1] === 'Callaghan, E. (1973) Mineral Resource Potential of Piute County. Utah Geological Survey.', amList.join(' | '));
+    await page.fill('#export-input', '');
+    await page.setInputFiles('#export-file-input', [{ name: 'order.ris', mimeType: 'application/x-research-info-systems', buffer: Buffer.from(ORDER_RIS) }]);
+    await page.waitForFunction(function () { return /5 records read from the file/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 30000 });
   }
   await page.selectOption('#list-order', 'style');
   await page.selectOption('#list-style', 'apa');

@@ -1141,8 +1141,12 @@
       var en = halves.map(function (h) { return (h.match(/\b(?:the|of|and|with|from|for|by|between|into|its|their)\b/gi) || []).length; });
       var keep = en[0] && !en[1] ? 0 : en[1] && !en[0] ? 1 : -1;
       if (keep !== -1) {
-        var mh = String(r.titleMarked || '').split(/\s+\/\s+/);
-        r.originalTitle = halves[1 - keep]; r.title = halves[keep]; r.titleMarked = mh.length === 2 ? mh[keep] : '';
+        var mh = String(r.titleMarked || '').split(/\s+\/\s+/), other = halves[1 - keep];
+        r.originalTitle = other; r.title = halves[keep]; r.titleMarked = mh.length === 2 ? mh[keep] : '';
+        // the paper is in the other half's language (a style may note it: American Mineralogist's "(in German)"); Crossref's own
+        // language field says "en" for these
+        r.paperLanguage = /[äöüß]|\b(?:der|die|das|und|von|mit|für|über|zur|zum|des|den|im|an|auf|bei)\b/i.test(other) ? 'German' :
+          /[éèêàç]|\b(?:le|la|les|du|et|sur|une|dans|pour)\b/i.test(other) ? 'French' : /\b(?:el|los|las|del|y|con|para)\b/i.test(other) ? 'Spanish' : '';
       }
     }
     if (!HAS_MARK.test(r.titleMarked) || stripMarks(r.titleMarked) !== r.title) delete r.titleMarked; // only keep real markup
@@ -2343,17 +2347,30 @@
       else if (nearYear && volOk && pageOk && journalSaid) score = Math.max(score, 0.6);
       else if (nearYear && leftover <= 3 && (volOk || pageOk)) score = Math.max(score, 0.6);
     }
+    // A mineral named on each side that the other does not name is another paper, however much of the rest agrees: "Deanesmithite, …, a new
+    // mineral species from the Clear Creek Claim, San Benito County, California" is not "Hanawaltite, …, a new mineral from the Clear Creek
+    // claim, San Benito County, California", nor "Tedhadleyite, … a new mineral species from the Clear Creek claim"
+    var recMinerals = mineralWords(title + ' ' + (r.originalTitle || '')), refMinerals = mineralWords(refText);
+    if (recMinerals.some(function (w) { return refMinerals.indexOf(w) === -1; }) && refMinerals.some(function (w) { return recMinerals.indexOf(w) === -1 && !tokens(r.container + ' ' + r.publisher).some(function (c) { return foldMineral(c) === w; }); })) score = Math.min(score, 0.3);
     // A ChemInform abstract reprints a paper's abstract under the paper's title: it is what a reference cites only when the reference says
     // ChemInform ("Hansen (1995) … Zeitschrift für Naturforschung B" is the paper, not its ChemInform abstract)
     if (isChemInform(r) && !/chem\s*inform/i.test(refText)) score = Math.min(score, 0.6);
-    // A book or chapter the reference says another publishing house issued is another book, or another edition: one to check.  Ross (1972)
+    // A book or chapter the reference says another publishing house issued is another book: not a match (a reprint can still be picked).  Ross (1972)
     // "Inorganic Infrared and Raman Spectra. McGraw-Hill" is not the Elsevier chapter "INFRARED AND RAMAN SPECTRA".  Imprints count as
     // their house (Pergamon is Elsevier, Plenum is Springer); a house the list does not know decides nothing
     if (BOOKISH_TYPE.test(r.type)) {
       var recHouses = houses(r.publisher), refHouses = recHouses.length ? houses(String(refText).replace(/https?:\/\/\S+/g, ' ')) : [];
-      if (refHouses.length && !refHouses.some(function (h) { return recHouses.indexOf(h) !== -1; })) score = Math.min(score, 0.6);
+      if (refHouses.length && !refHouses.some(function (h) { return recHouses.indexOf(h) !== -1; })) score = Math.min(score, 0.45);
     }
     return Math.max(0, Math.min(1, score));
+  }
+  // Mineral and rock names: words of six letters or more ending in -ite (plural folded), less the everyday ones
+  var NOT_MINERAL = /^(?:composite|definite|indefinite|infinite|opposite|favou?rite|satellite|website|appetite|expedite|dynamite|exquisite|prerequisite|requisite|apposite|parasite|campsite|erudite|contrite|polite|despite|elite|suite|white|write|quite|ignite|invite|unite|recite|excite|termite|sprite|onsite|offsite)$/;
+  function foldMineral(w) { return String(w).toLowerCase().replace(/ites$/, 'ite'); }
+  function mineralWords(text) {
+    var out = [];
+    tokens(String(text || '').replace(/https?:\/\/\S+|10\.\d{4,9}\/\S+/g, ' ')).forEach(function (w) { w = foldMineral(w); if (w.length >= 6 && /ite$/.test(w) && !NOT_MINERAL.test(w) && out.indexOf(w) === -1) out.push(w); });
+    return out;
   }
   function isChemInform(h) { return /^chem\s*inform$/i.test(String(h.container || (h['container-title'] || [])[0] || '').trim()); }
   var BOOKISH_TYPE = /^(?:book|book-chapter|book-part|book-section|edited-book|monograph|reference-book|reference-entry)$/;
@@ -2456,8 +2473,18 @@
       var o = copy(); o.title = o.title.split(w).join(c);
       if (o.titleMarked) { if (o.titleMarked.indexOf(w) !== -1) o.titleMarked = o.titleMarked.split(w).join(c); else delete o.titleMarked; }
     });
-    var ser = r.series || (kind(r) === 'report' ? r.container : '');
-    if (kind(r) === 'report' && ser && !r.number) {
+    // a report or book the record leaves without its series: the reference's "… Bulletin, 102", "… Series Map I-1230", "… Open File Report 76-535"
+    if ((kind(r) === 'report' || kind(r) === 'book') && !r.series && !(kind(r) === 'report' && r.container)) {
+      var sm = text.match(/((?:[A-Z][\w.'\u2019-]*|&|and|of)(?:\s+(?:[A-Z][\w.'\u2019-]*|&|and|of))*\s+(?:Bulletin|Circular|Report|Paper|Map|Memoir|Special Publication|Information Circular))[\s,.]+(?:no\.\s*)?([A-Z]{0,3}-?\d[\w\-\u2013]*)/);
+      var serName = sm ? sm[1].split(/(?:[^A-Z\s]|[A-Z][a-z]+)\.\s+/).pop() : ''; // the last sentence: "… Adjoining Area. Utah Geological …", but "U.S. Geological"
+      if (sm && !/^(?:In|The)\s/.test(serName)) { copy().series = serName.replace(/^(?:U\.\s?S\.|US)\s+Geological Survey\s+/, 'U.S. Geological Survey '); out.number = sm[2].replace(/\u2013/g, '-'); }
+    }
+    if ((kind(r) === 'report' || kind(r) === 'book') && !r.numPages) {
+      var pp = text.match(/\b(\d{1,4})\s*(?:pp|p)\.?(?=[\s,.;)]|$)(?!\s*\d)/);
+      if (pp && !/[-\u2013]\s*$/.test(text.slice(0, pp.index))) copy().numPages = pp[1];
+    }
+    var ser = (out || r).series || (kind(r) === 'report' ? r.container : '');
+    if (kind(r) === 'report' && ser && !(out || r).number) {
       var serRe = tokens(ser).map(function (w) { return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('[\\s\\-\u2010\u2013.]+');
       var nm = serRe && text.match(new RegExp(serRe + '[\\s,.]*(?:no\\.?\\s*)?([A-Z]{0,4}-?\\d[\\w.\\-\u2013]*\\d|\\d+)', 'i'));
       if (nm) copy().number = nm[1].replace(/\u2013/g, '-');
