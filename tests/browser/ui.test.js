@@ -1337,7 +1337,11 @@ async function mobileFlows(browser, base) {
   await ctx.close();
 }
 
+// BROWSER_PART=light runs the light-mode and phone flows, BROWSER_PART=dark the dark-mode and identifier flows; CI runs the two halves as
+// parallel jobs. Unset, everything runs.
+var PART = process.env.BROWSER_PART || 'all';
 async function main() {
+  if (!/^(?:all|light|dark)$/.test(PART)) { console.log('FAIL BROWSER_PART must be light, dark or unset, not "' + PART + '"'); process.exitCode = 1; return; }
   var cslReady = await loadUpstream();
   if (!cslReady) { skipped.push('CSL rendering (citeproc, nature.csl or locale not fetched)'); if (process.env.CI) { failed++; console.log('FAIL CSL files must be fetchable under CI'); } }
   var server = await serve(), base = server.base, browser;
@@ -1345,10 +1349,8 @@ async function main() {
   catch (e) { browser = await chromium.launch({ channel: 'chrome' }); } // no downloaded Chromium: use the installed Chrome
   var t0 = Date.now();
   try {
-    await runFlows(browser, base, false, cslReady);
-    await runFlows(browser, base, true, cslReady);
-    await mobileFlows(browser, base);
-    await identifierFlows(browser, base);
+    if (PART !== 'dark') { await runFlows(browser, base, false, cslReady); await mobileFlows(browser, base); }
+    if (PART !== 'light') { await runFlows(browser, base, true, cslReady); await identifierFlows(browser, base); }
   } catch (e) {
     failed++; console.log('FAIL exception: ' + (e.stack || e.message));
     try { fs.mkdirSync(OUT, { recursive: true }); var pages = browser.contexts().flatMap(function (c) { return c.pages(); }); if (pages.length) await pages[0].screenshot({ path: path.join(OUT, 'failure.png'), fullPage: true }); } catch (e2) {}
@@ -1356,7 +1358,7 @@ async function main() {
     await browser.close(); server.srv.close();
   }
   if (skipped.length) console.log('skipped: ' + skipped.join('; '));
-  console.log(passed + ' passed, ' + failed + ' failed  (' + (Date.now() - t0) + ' ms)');
+  console.log(passed + ' passed, ' + failed + ' failed  (' + (Date.now() - t0) + ' ms' + (PART !== 'all' ? ', ' + PART + ' half' : '') + ')');
   process.exitCode = failed ? 1 : 0;
 }
 main();
