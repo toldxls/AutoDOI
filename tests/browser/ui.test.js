@@ -48,9 +48,10 @@ var LOCALE_URL = 'https://raw.githubusercontent.com/citation-style-language/loca
 var DEP_STYLE_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/dependent/nature-geoscience.csl'; // dependent style: rendered with nature.csl as parent
 var HARVARD_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/harvard-cite-them-right.csl'; // a style whose terms ("pp.", "Available at") show the locale
 var LOCALE_DE_URL = 'https://raw.githubusercontent.com/citation-style-language/locales/' + LOCALES_SHA + '/locales-de-DE.xml';
+var AMMIN_URL = 'https://raw.githubusercontent.com/citation-style-language/styles/' + STYLES_SHA + '/american-mineralogist.csl'; // prints "———" for the author above
 var upstream = {}; // url -> body
 async function loadUpstream() {
-  var want = { citeproc: CITEPROC_URL, style: STYLE_URL, dependent: DEP_STYLE_URL, locale: LOCALE_URL, harvard: HARVARD_URL, localede: LOCALE_DE_URL };
+  var want = { citeproc: CITEPROC_URL, style: STYLE_URL, dependent: DEP_STYLE_URL, locale: LOCALE_URL, harvard: HARVARD_URL, localede: LOCALE_DE_URL, ammin: AMMIN_URL };
   fs.mkdirSync(CACHE, { recursive: true });
   for (var k in want) {
     var url = want[k], f = path.join(CACHE, k + '-' + url.split('/').slice(-2).join('_').replace(/[^\w.-]/g, '_'));
@@ -703,6 +704,16 @@ async function runFlows(browser, base, dark, cslReady) {
     await natureHit.click();
     var nat = [];
     check(name('a numbered journal style is numbered newest first'), (await orderIs('Apple Zebra Tides Dunes Mapping')) && /^1\.\s*Brown/.test((nat = await page.locator('#export-output .reflist p').allTextContents())[0]) && /^5\.\s*Mills/.test(nat[4]), nat.join(' | '));
+    // A style that prints "———" for the author above (American Mineralogist): that entry stays under the author's first, not at the top
+    await page.selectOption('#list-order', 'style');
+    await page.selectOption('#list-style', 'search');
+    await page.fill('#list-style-search', 'american mineralogist');
+    var amHit = page.locator('#export-output .list-find .hit.style').filter({ has: page.locator('.m', { hasText: /^american-mineralogist( ·|$)/ }) }).first();
+    await amHit.waitFor();
+    await amHit.click();
+    var am = [];
+    // American Mineralogist letters one author's year in the order given (the file has Zebra before Apple), not by title
+    check(name('a style’s dash for the same author stays under that author, not at the top, and Am Min letters the year as given'), (await orderIs('Dunes Zebra Apple Mapping Tides')) && /^Brown, B\. \(2019a\) Zebra/.test((am = await page.locator('#export-output .reflist p').allTextContents())[1]) && /^\u2014{3} \(2019b\) Apple/.test(am[2]), (am.length ? am : await page.locator('#export-output .reflist p').allTextContents()).join(' | '));
   }
   await page.selectOption('#list-order', 'style');
   await page.selectOption('#list-style', 'apa');
@@ -999,6 +1010,18 @@ async function runFlows(browser, base, dark, cslReady) {
   check(name('the last list is back and rebuilt at once'), /Your list from last time/.test(status) && /1 good/.test(status) && /Wakefield/.test(await page.inputValue('#export-input')), status);
   check(name('rebuilding it made no lookup'), !s.state.requests.slice(beforeReload).some(function (u) { return /api\.crossref\.org|api\.openalex\.org\/works\?/.test(u); }), s.state.requests.slice(beforeReload).filter(function (u) { return /crossref|openalex/.test(u); }).join(', ')); // the free-copy lookup for the DOI tab's record may still ask OpenAlex
   check(name('the rebuilt row keeps its record and its retraction flag'), (await page.locator('#export-matches .match.good').count()) === 1 && (await page.locator('#export-matches .match .chip.bad:has-text("Retracted")').count()) === 1);
+  // A match an older version remembered is looked up again (its grade may have changed), so the list is not rebuilt at once from it
+  await page.waitForTimeout(600); // the page writes its memory 400 ms after the last change, and again as it is left: let that write land first
+  await page.evaluate(function () { var m = JSON.parse(localStorage.getItem('autodoi.batch')); Object.keys(m.rows).forEach(function (k) { if (m.rows[k].record) m.rows[k].v = '1.0.0'; }); localStorage.setItem('autodoi.batch', JSON.stringify(m)); });
+  var beforeStale = s.state.requests.length;
+  await page.goto(base, { waitUntil: 'load' });
+  await page.waitForFunction(function () { return /Wakefield/.test(document.querySelector('#export-input').value) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
+  check(name('a list an older version matched comes back but is not rebuilt from that memory'), (await page.locator('#export-matches .match').count()) === 0, await textOf('#export-status'));
+  await page.click('#export-go');
+  await page.waitForFunction(function () { return /1 good/.test(document.querySelector('#export-status').textContent) && !document.querySelector('#export-go').disabled; }, null, { timeout: 15000 });
+  check(name('matching it again asks Crossref afresh'), s.state.requests.slice(beforeStale).some(function (u) { return /api\.crossref\.org\/works/.test(u); }), s.state.requests.slice(beforeStale).join(', '));
+  check(name('and remembers the match with this version'), await page.waitForFunction(function (v) { var m = JSON.parse(localStorage.getItem('autodoi.batch')); return Object.keys(m.rows).some(function (k) { return m.rows[k].record && m.rows[k].v === v; }); }, pkgVersion, { timeout: 5000 }).then(function () { return true; }, function () { return false; }));
+  beforeReload = s.state.requests.length; // the checks below count lookups from here: this one was asked for
   await page.locator('#export-matches .match').first().click({ position: { x: 10, y: 6 } });
   await page.waitForFunction(function () { return !document.querySelector('#export-zone'); }, null, { timeout: 5000 });
   await page.goto(base, { waitUntil: 'load' });

@@ -894,9 +894,10 @@
   var ORG_FAMILY = /^(?:Community|Consortium|Collaboration|Team|Group|Project|Society|Committee|Association|Initiative|Network|Institute|Organi[sz]ation|Council)$/;
   var SUFFIX_TAIL = new RegExp('^(.*?\\S)[\\s,]+(' + SUFFIX_WORDS + ')$'), SUFFIX_IN_FAMILY = new RegExp('^(.+?),\\s*(' + SUFFIX_WORDS + ')$', 'i');
   function person(p) {
-    var fam = clean(p.family);
+    // Wiley deposits "Hans‐J." and "Mueller‐buschbaum" with U+2010: a citation engine splits a given name only at "-", so "Hans‐J." became "H."
+    var fam = clean(p.family).replace(/[\u2010\u2011]/g, '-');
     if (fam) {
-      var given = clean(p.given), suffix = clean(p.suffix || '');
+      var given = clean(p.given).replace(/[\u2010\u2011]/g, '-'), suffix = clean(p.suffix || '');
       // ",", "-", "." deposited as a given name: a given name holds a letter of some script (Latin, Greek, Cyrillic, Armenian, Hebrew,
       // Arabic, Devanagari, Thai, Hangul, kana, CJK)
       if (!/[A-Za-z\u00C0-\u024F\u1E00-\u1EFF\u0370-\u03FF\u0400-\u04FF\u0530-\u058F\u0590-\u05FF\u0600-\u06FF\u0900-\u097F\u0E00-\u0E7F\u1100-\u11FF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/.test(given)) given = '';
@@ -1131,6 +1132,18 @@
       if (pre) r.institution = pre;
       else if (!r.institution && /Center for Open Science/i.test(r.publisher) && m['group-title']) r.institution = clean(m['group-title']);
       else if (!r.institution && /California Digital Library/i.test(r.publisher) && m['group-title']) r.institution = clean(m['group-title']);
+    }
+    // A title deposited in two languages ("Einkristallröntgenstrukturanalyse an Quecksilberchromat(VI): Hg3O2CrO4 / Single Crystal X-Ray
+    // Structure Determination of a Mercury Chromate(VI): Hg3O2CrO4", Zeitschrift für Naturforschung): the English half is the title and the
+    // other becomes the original title, which matching still reads
+    var halves = r.title.split(/\s+\/\s+/);
+    if (halves.length === 2 && !r.originalTitle && tokens(halves[0]).length >= 3 && tokens(halves[1]).length >= 3) {
+      var en = halves.map(function (h) { return (h.match(/\b(?:the|of|and|with|from|for|by|between|into|its|their)\b/gi) || []).length; });
+      var keep = en[0] && !en[1] ? 0 : en[1] && !en[0] ? 1 : -1;
+      if (keep !== -1) {
+        var mh = String(r.titleMarked || '').split(/\s+\/\s+/);
+        r.originalTitle = halves[1 - keep]; r.title = halves[keep]; r.titleMarked = mh.length === 2 ? mh[keep] : '';
+      }
     }
     if (!HAS_MARK.test(r.titleMarked) || stripMarks(r.titleMarked) !== r.title) delete r.titleMarked; // only keep real markup
     r.isArticleNumber = false;
@@ -2330,8 +2343,34 @@
       else if (nearYear && volOk && pageOk && journalSaid) score = Math.max(score, 0.6);
       else if (nearYear && leftover <= 3 && (volOk || pageOk)) score = Math.max(score, 0.6);
     }
+    // A ChemInform abstract reprints a paper's abstract under the paper's title: it is what a reference cites only when the reference says
+    // ChemInform ("Hansen (1995) … Zeitschrift für Naturforschung B" is the paper, not its ChemInform abstract)
+    if (isChemInform(r) && !/chem\s*inform/i.test(refText)) score = Math.min(score, 0.6);
+    // A book or chapter the reference says another publishing house issued is another book, or another edition: one to check.  Ross (1972)
+    // "Inorganic Infrared and Raman Spectra. McGraw-Hill" is not the Elsevier chapter "INFRARED AND RAMAN SPECTRA".  Imprints count as
+    // their house (Pergamon is Elsevier, Plenum is Springer); a house the list does not know decides nothing
+    if (BOOKISH_TYPE.test(r.type)) {
+      var recHouses = houses(r.publisher), refHouses = recHouses.length ? houses(String(refText).replace(/https?:\/\/\S+/g, ' ')) : [];
+      if (refHouses.length && !refHouses.some(function (h) { return recHouses.indexOf(h) !== -1; })) score = Math.min(score, 0.6);
+    }
     return Math.max(0, Math.min(1, score));
   }
+  function isChemInform(h) { return /^chem\s*inform$/i.test(String(h.container || (h['container-title'] || [])[0] || '').trim()); }
+  var BOOKISH_TYPE = /^(?:book|book-chapter|book-part|book-section|edited-book|monograph|reference-book|reference-entry)$/;
+  var HOUSES = [
+    ['elsevier', /\b(?:elsevier|pergamon|academic\s+press|north[-\s]holland|butterworths?|saunders|mosby|morgan\s+kaufmann|excerpta\s+medica)\b/i],
+    ['springer', /\b(?:springer|kluwer|plenum|birkh(?:ä|a)user|physica[-\s]verlag|steinkopff|humana\s+press)\b/i],
+    ['wiley', /\b(?:wiley|interscience|blackwell|jossey[-\s]bass)\b/i],
+    ['taylor', /\b(?:taylor\s*(?:&|and)\s*francis|routledge|crc\s+press|chapman\s*(?:&|and)\s*hall|garland|balkema)\b/i],
+    ['mcgraw', /\bmcgraw[-\s]?hill\b/i],
+    ['pearson', /\b(?:pearson|prentice[-\s]hall|addison[-\s]wesley|longman)\b/i],
+    ['oup', /\b(?:oxford\s+university\s+press|clarendon\s+press)\b/i],
+    ['cup', /\bcambridge\s+university\s+press\b/i],
+    ['degruyter', /\b(?:de\s+gruyter|oldenbourg)\b/i],
+    ['macmillan', /\b(?:macmillan|palgrave|w\.\s*h\.\s*freeman)\b/i],
+    ['dover', /\bdover\s+publications\b|\bdover\b(?=[,.:;\s]+(?:new\s+york|mineola)\b)/i]
+  ];
+  function houses(text) { var t = String(text || ''); return HOUSES.filter(function (h) { return h[1].test(t); }).map(function (h) { return h[0]; }); }
 
   // Choosing among search hits for one reference: the page, the command line and the Sheets functions all pick through this, so a
   // rule learnt on the matching bench reaches all three.  add() takes one batch of hits (Crossref's, then OpenAlex's as a second
@@ -2352,9 +2391,10 @@
     var p = { best: null, conf: 0, eff: 0, seen: [] };
     p.add = function (hits) {
       var scored = (hits || []).map(function (h) { var c = matchConfidence(refText, h); p.seen.push({ h: h, c: c }); return { h: h, c: c }; });
-      var anchored = scored.some(function (x) { return x.c >= 0.8 && !ASIDE_TYPE.test(x.h.type); });
+      var aside = function (h) { return ASIDE_TYPE.test(h.type) || isChemInform(h); };
+      var anchored = scored.some(function (x) { return x.c >= 0.8 && !aside(x.h); });
       // the highest score wins; within 0.05 the earlier hit stands, as the search's relevance ranking has seen metadata the grade cannot
-      scored.forEach(function (x) { var eff = anchored && ASIDE_TYPE.test(x.h.type) ? x.c - 0.25 : x.c; if (!p.best || eff > p.eff + 0.05) { p.best = x.h; p.conf = x.c; p.eff = eff; } });
+      scored.forEach(function (x) { var eff = anchored && aside(x.h) ? x.c - 0.25 : x.c; if (!p.best || eff > p.eff + 0.05) { p.best = x.h; p.conf = x.c; p.eff = eff; } });
       // a chapter reference names the book, its editor and year too, so the book itself can outscore the chapter: when the reference cites a
       // page range and a chapter of that very book (its DOI extends the book's) scores well, the chapter is the one cited
       var best = p.best;
@@ -2374,7 +2414,60 @@
     return p;
   }
 
+  // What a matched record lacks and the reference gives, taken from the reference (the page, the command line and the Sheets
+  // functions call it for a good match):
+  // - the authors, when the record names no person: Utah's Bulletin 102 and the USGS map I-1230 are deposited without their authors, and
+  //   a style then puts the title or the publisher first.  Only a plain "Family, I." list before the year is read; anything else is left
+  // - a formula's capitals, when the record's form is no formula and the reference's is ("HgSo4·2HgO" deposited, "HgSO4·2HgO" cited)
+  // - a report's number after its series ("Open File Report 76-535"), when the record has the series and no number
+  function referenceAuthors(refText) {
+    var t = String(refText || '').replace(/^\s*(?:\[\d{1,4}\]|\d{1,4}[.)])\s+/, '');
+    var m = t.match(/^(.{2,300}?)[\s,]*\(?(?:1[5-9]|20)\d{2}[a-z]?\)?(?=[\s.,;:)]|$)/);
+    if (!m) return [];
+    var seg = m[1].replace(/[\s,(]+$/, ''), others = false;
+    if (/,?\s*et\s+al\.?$/i.test(seg)) { others = true; seg = seg.replace(/,?\s*et\s+al\.?$/i, ''); }
+    var FAM = /^[\p{Lu}][\p{L}'\u2019-]+(?:\s+[\p{Lu}][\p{L}'\u2019-]+)*$/u, GIVEN = /^(?:(?:[\p{Lu}]\.\s?-?\s?)+|[\p{Lu}][\p{Ll}]+(?:\s+[\p{Lu}]\.)*)$/u, out = [];
+    var parts = seg.split(/\s*;\s*|,?\s+(?:and|&)\s+/);
+    for (var i = 0; i < parts.length; i++) {
+      var bits = parts[i].split(/\s*,\s*/);
+      if (bits.length % 2) return [];
+      for (var k = 0; k < bits.length; k += 2) {
+        if (!FAM.test(bits[k]) || !GIVEN.test(bits[k + 1])) return [];
+        out.push(person({ family: bits[k], given: bits[k + 1] }));
+      }
+    }
+    if (others && out.length) out.others = true;
+    return out;
+  }
+  function isFormula(w) { var el = w.match(/[A-Z][a-z]?/g); return !!el && /\d/.test(w) && /^(?:[A-Z][a-z]?|\d+|[()\[\]\u00B7.+-])+$/.test(w) && el.every(function (e) { return ELEM[e]; }); }
+  function fromReference(record, refText) {
+    if (!record) return record;
+    var r = harden(record.authors ? record : normalize(record)), text = String(refText || ''), out = null, copy = function () { if (!out) { out = {}; Object.keys(r).forEach(function (k) { out[k] = r[k]; }); } return out; };
+    if (!r.authors.some(function (p) { return !p.literal; })) {
+      var names = referenceAuthors(text);
+      if (names.length) { copy().authors = names.slice(); out.authorsOthers = !!names.others; out.authorsFromReference = true; }
+    }
+    var refForms = {};
+    (text.match(/[^\s,;:]+/g) || []).forEach(function (w) { w = w.replace(/[.,;:)\]]+$/, ''); if (isFormula(w)) refForms[w.toLowerCase()] = w; });
+    (String(r.title || '').match(/[^\s,;:]+/g) || []).forEach(function (w) {
+      w = w.replace(/[.,;:)\]]+$/, '');
+      var c = refForms[w.toLowerCase()];
+      if (!c || c === w || isFormula(w)) return;
+      var o = copy(); o.title = o.title.split(w).join(c);
+      if (o.titleMarked) { if (o.titleMarked.indexOf(w) !== -1) o.titleMarked = o.titleMarked.split(w).join(c); else delete o.titleMarked; }
+    });
+    var ser = r.series || (kind(r) === 'report' ? r.container : '');
+    if (kind(r) === 'report' && ser && !r.number) {
+      var serRe = tokens(ser).map(function (w) { return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('[\\s\\-\u2010\u2013.]+');
+      var nm = serRe && text.match(new RegExp(serRe + '[\\s,.]*(?:no\\.?\\s*)?([A-Z]{0,4}-?\\d[\\w.\\-\u2013]*\\d|\\d+)', 'i'));
+      if (nm) copy().number = nm[1].replace(/\u2013/g, '-');
+    }
+    return out || record;
+  }
+
   var api = {
+    fromReference: fromReference,
+    givenInitials: function (given) { return initials(String(given || ''), {}); }, // a given name as initials, as the built-in styles print it
     extractDoi: extractDoi,
     toDoi: toDoi,
     extractPmid: extractPmid,

@@ -142,5 +142,45 @@ var cref = 'Ribbe PH (ed) (1974) Sulfide mineralogy. Reviews in Mineralogy 1. De
 var cpk = A.matchPicker(cref).add([bk, chp]);
 picks('a reference with a page range takes the chapter of the book it names, though the book scores as well', cpk.best.doi, '10.1515/9781501508998-015');
 picks('without a page range the book stands', A.matchPicker('Ribbe PH (ed) (1974) Sulfide mineralogy. Reviews in Mineralogy 1. De Gruyter').add([bk, chp]).best.doi, '10.1515/9781501508998');
+// A ChemInform abstract reprints the paper's abstract under its title: not what a reference to the paper cites
+var hansenRef = 'Hansen, T., Müller Buschbaum, H.K., and Walz, L. (1995) Single crystal X-ray structure determination of a mercury chromate(VI): Hg3O2CrO4. Zeitschrift für Naturforschung B: Chemistry, Materials Science, 50, 47–50.';
+var hansenChin = A.normalize({ type: 'journal-article', DOI: '10.1002/chin.199521015', title: ['ChemInform Abstract: Single Crystal X‐Ray Structure Determination of a Mercury Chromate(VI): Hg3O2CrO4.'], author: [{ family: 'Hansen', given: 'TH.' }, { family: 'Mueller‐buschbaum', given: 'HK.' }, { family: 'Walz', given: 'L.' }], issued: { 'date-parts': [[1995]] }, 'container-title': ['ChemInform'], volume: '26', issue: '21' });
+var hansenZnb = A.normalize({ type: 'journal-article', DOI: '10.1515/znb-1995-0109', title: ['Einkristallröntgenstrukturanalyse an Quecksilberchromat(VI): Hg3O2CrO4 / Single Crystal X-Ray Structure Determination of a Mercury Chromate(VI): Hg3O2CrO4'], author: [{ family: 'Hansen', given: 'Th.' }, { family: 'Müller-Buschbaum', given: 'Hk.' }, { family: 'Walz', given: 'L.' }], issued: { 'date-parts': [[1995]] }, 'container-title': ['Zeitschrift für Naturforschung B'], volume: '50', issue: '1', page: '47-50' });
+lt('a ChemInform abstract of the cited paper is one to check, not green', hansenRef, hansenChin, GOOD);
+ge('...unless the reference says ChemInform', 'Hansen, T., Mueller-Buschbaum, H.K., and Walz, L. (1995) Single crystal X-ray structure determination of a mercury chromate(VI): Hg3O2CrO4. ChemInform, 26(21).', hansenChin, GOOD);
+picks('the paper wins over its ChemInform abstract listed first', A.matchPicker(hansenRef).add([hansenChin, hansenZnb]).best.doi, '10.1515/znb-1995-0109');
+// A book from another publishing house is another book or edition; imprints count as their house
+var rossRef = 'Ross, S.D. (1972) Inorganic Infrared and Raman Spectra. McGraw-Hill: Maidenhead.';
+var rossChapter = A.normalize({ type: 'book-chapter', DOI: '10.1016/b978-0-08-016651-3.50028-7', title: ['INFRARED AND RAMAN SPECTRA'], issued: { 'date-parts': [[1972]] }, 'container-title': ['Syntheses and Physical Studies of Inorganic Compounds'], publisher: 'Elsevier', page: '236-237' });
+lt('Ross (1972, McGraw-Hill) is not an Elsevier chapter of the same name', rossRef, rossChapter, GOOD);
+var pergBook = A.normalize({ type: 'book', DOI: '10.1016/c2013-0-02227-1', title: ['Infrared and Raman spectra of inorganic compounds'], author: [{ family: 'Ross', given: 'S. D.' }], issued: { 'date-parts': [[1972]] }, publisher: 'Elsevier' });
+ge('a Pergamon book is Elsevier\'s: no conflict', 'Ross, S.D. (1972) Infrared and Raman spectra of inorganic compounds. Pergamon Press, Oxford.', pergBook, GOOD);
+ge('a publisher the list does not know decides nothing', 'Callaghan, E. (1973) Mineral Resource Potential Of Piute County, Utah, and Adjoining Area. Utah Geological & Mineralogical Survey Bulletin, 102.', A.normalize({ type: 'book', DOI: '10.34191/b-102', title: ['Mineral resource potential of Piute County, Utah, and adjoining area'], issued: { 'date-parts': [[1973]] }, publisher: 'Utah Geological Survey' }), GOOD);
+
+// What a good match lacks and the reference gives (A.fromReference): the authors, a formula's capitals, a report's number
+function same(label, got, want) { if (JSON.stringify(got) === JSON.stringify(want)) pass++; else { fail++; console.log('FAIL ' + label + ': got ' + JSON.stringify(got) + ', want ' + JSON.stringify(want)); } }
+var names = function (r) { return r.authors.map(function (p) { return p.family + ', ' + p.given; }); };
+var b102 = A.normalize({ type: 'book', DOI: '10.34191/b-102', title: ['Mineral resource potential of Piute County, Utah, and adjoining area'], issued: { 'date-parts': [[1973]] }, publisher: 'Utah Geological Survey' });
+same('a record with no author takes the reference\'s', names(A.fromReference(b102, 'Callaghan, E. (1973) Mineral Resource Potential Of Piute County, Utah, and Adjoining Area. Utah Geological & Mineralogical Survey Bulletin, 102, 47–48.')), ['Callaghan, E.']);
+var i1230 = A.normalize({ type: 'report', DOI: '10.3133/i1230', title: ['Geologic map of the Deer Trail Mountain-Alunite Ridge mining area, west-central Utah'], issued: { 'date-parts': [[1979]] }, publisher: 'US Geological Survey' });
+same('two authors before a bare year, one with a given name', names(A.fromReference(i1230, 'Cunningham, C.G., and Steven, Thomas A., 1979. Geologic Map of the Deer Trail Mountain - Alunite Ridge Mining Area, West-Central Utah.')), ['Cunningham, C.G.', 'Steven, Thomas A.']);
+same('names in another form are left alone', names(A.fromReference(i1230, 'Cunningham CG, Steven TA. Geologic map of the Deer Trail Mountain-Alunite Ridge mining area. 1979.')), []);
+same('an organisation is not read as people', names(A.fromReference(i1230, 'US Geological Survey (1979) Geologic map of the Deer Trail Mountain-Alunite Ridge mining area.')), []);
+same('a record with its own authors keeps them', names(A.fromReference(rytuba, 'Smith, A. (1976) Geology and ore deposits of the McDermitt caldera.')), ['Rytuba, J. J.']);
+var nag = A.normalize({ type: 'journal-article', DOI: '10.1002/anie.196201152', title: ['The Structure of HgSo4·2HgO'], author: [{ family: 'Nagorsen', given: 'G.' }], issued: { 'date-parts': [[1962]] } });
+same('a deposited formula that is no formula takes the reference\'s capitals', A.fromReference(nag, 'Nagorsen, G., Lyng, S., Weiss, A., and Weiss A. (1962) The structure of HgSO4·2HgO. Angewandte Chemie International Edition in English, 1, 115.').title, 'The Structure of HgSO4·2HgO');
+var blasse = A.normalize({ type: 'journal-article', title: ['Vibrational spectra of HgMoO4 and HgWO4'], author: [{ family: 'Blasse', given: 'G.' }], issued: { 'date-parts': [[1975]] } });
+same('a formula the record writes correctly stays as deposited', A.fromReference(blasse, 'Blasse, G. (1975) Vibrational spectra of HGMOO4 and HgWO4.').title, 'Vibrational spectra of HgMoO4 and HgWO4');
+same('a report takes its number from the reference', A.fromReference(rytuba, 'Rytuba, J.J. (1976) Geology and ore deposits of the McDermitt caldera, Nevada-Oregon. U. S. Geological Survey Open File Report 76-535, 9 pp.').number, '76-535');
+same('nothing to take: the same record', A.fromReference(rytuba, 'Rytuba, J.J. (1976) Geology and ore deposits of the McDermitt caldera.') === rytuba, true);
+same('a name deposited with U+2010 is split at its hyphen', A.normalize({ title: ['x'], author: [{ family: 'Mueller‐Buschbaum', given: 'Hans‐J.' }] }).authors.map(function (p) { return p.family + ', ' + p.given; }), ['Mueller-Buschbaum, Hans-J.']);
+
+// A title deposited in two languages keeps its English half; the other is the original title, which matching still reads
+var twoLang = A.normalize({ type: 'journal-article', title: ['Einkristallröntgenstrukturanalyse an Quecksilberchromat(VI): Hg3O2CrO4 / Single Crystal X-Ray Structure Determination of a Mercury Chromate(VI): Hg3O2CrO4'], author: [{ family: 'Hansen', given: 'Th.' }], issued: { 'date-parts': [[1995]] }, 'container-title': ['Zeitschrift für Naturforschung B'], volume: '50', page: '47-50' });
+same('the English half of a two-language title is the title', [twoLang.title, twoLang.originalTitle], ['Single Crystal X-Ray Structure Determination of a Mercury Chromate(VI): Hg3O2CrO4', 'Einkristallröntgenstrukturanalyse an Quecksilberchromat(VI): Hg3O2CrO4']);
+ge('a reference giving the German title still matches it', 'Hansen, T. (1995) Einkristallröntgenstrukturanalyse an Quecksilberchromat(VI): Hg3O2CrO4. Z. Naturforsch. B, 50, 47-50.', twoLang, GOOD);
+same('a slash inside an English title is left alone', A.normalize({ title: ['Sea level and land use / The coast of the north'] }).title, 'Sea level and land use / The coast of the north');
+same('initials only: "Th." "Hk." "Alarich" "Hans-J."', ['Th.', 'Hk.', 'Alarich', 'Hans-J.'].map(A.givenInitials), ['T.', 'H.', 'A.', 'H.-J.']);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exitCode = fail ? 1 : 0;

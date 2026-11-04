@@ -2,6 +2,22 @@
 
 Versions follow [semver](https://semver.org/). The version shown in the page footer and in bug reports is `APP_VERSION` in `index.html`; `package.json` and this file carry the same number, and the tests fail if they drift.
 
+## 1.18.9 - 2026-11-03
+
+### Changed
+
+- American Mineralogist prints an Acta Crystallographica section in the volume ("Acta Crystallographica, B41") and letters one author's year in the order your list gives, so SHELXT (2015a) comes before SHELXL (2015b).
+
+### Fixed
+
+- A list remembered from an older version is matched again rather than rebuilt from its old matches, so a fix such as 1.18.7's second search reaches it; rows you fixed, picked or edited stay as you left them.
+- A journal style's "———" for the author above (American Mineralogist, Chicago) keeps that entry under the author's first; it sorted to the top of the list.
+- A ChemInform abstract no longer passes for the paper it abstracts, and a book the reference says another publishing house issued is one to check: Ross (1972, McGraw-Hill) matched an Elsevier chapter.
+- A good match takes from the reference what its record lacks: the authors (Callaghan's Bulletin 102, Cunningham and Steven's map I-1230), a formula's capitals ("HgSo4" deposited for HgSO4) and a report's number ("Open-File Report 76-535"); on the page, `autodoi --match` and the Sheets functions.
+- A given name deposited with a Unicode hyphen ("Hans‐J.") is initialled "H.-J." in journal styles, not "H.".
+- A journal style that prints initials prints only initials: two co-authors alike are "Weiss, A., and Weiss, A.", not spelled out.
+- A title deposited in two languages ("Einkristallröntgenstrukturanalyse … / Single Crystal X-Ray Structure Determination …") keeps its English half.
+
 ## 1.18.8 - 2026-11-03
 
 ### Changed

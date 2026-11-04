@@ -281,7 +281,8 @@ function resolve_(text, isNumber) {
   if (year && (!pk.best || pk.conf < 0.8)) { // nothing good: Crossref again, held to the year the reference gives
     try { pk.add(search_({ 'query.bibliographic': text, filter: 'from-pub-date:' + (year - 1) + ',until-pub-date:' + (year + 1) }, 3)); } catch (e) { /* the first answer stands */ }
   }
-  return pk.best && pk.conf >= MIN_CONFIDENCE ? pk.best : null;
+  if (!pk.best || pk.conf < MIN_CONFIDENCE) return null;
+  return pk.conf >= 0.8 ? AutoDOI.fromReference(pk.best, text) : pk.best; // a good match: the authors, a formula's capitals or a report number the record lacks
 }
 
 /* ------------------------------------------------------------------ */

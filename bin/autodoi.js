@@ -225,6 +225,7 @@ async function run(argv, io) {
   for (var k = 0; k < refs.length; k++) {
     var x;
     try { var m = await matchReference(refs[k], o.email); x = { text: refs[k], record: m.record, conf: m.conf, grade: m.record ? (m.via === 'doi' || m.via === 'isbn' ? 'good' : grade(m.conf)) : 'none' };
+      if (x.grade === 'good') x.record = A.fromReference(x.record, refs[k]); // the authors, a formula's capitals or a report number the record lacks, as the page takes them
       if (m.alt) x.alt = { record: m.alt.record, conf: m.alt.conf }; // the close second the page offers under "Not this one?"
     }
     catch (e) { failed++; x = { text: refs[k], record: null, conf: 0, grade: 'error', error: e.message }; }
